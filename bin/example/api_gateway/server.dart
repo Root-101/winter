@@ -25,7 +25,7 @@ void main() => WinterServer(
       ]),
     ).start();
 
-class ProxyRouter extends WinterRouter {
+class ProxyRouter extends AbstractWinterRouter {
   List<GatewayRoute> services;
 
   ProxyRouter(this.services);

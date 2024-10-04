@@ -1,33 +1,45 @@
 import '../winter.dart';
 
-class WinterRoute<In, Out> {
+class ParentRoute extends Route {
+  ParentRoute({
+    required String path,
+    required List<Route> routes,
+  }) : super._(
+          path,
+          HttpMethod(''),
+          (request) => ResponseEntity.ok(),
+          routes,
+        );
+}
+
+class Route {
   final String path;
   final HttpMethod method;
   final RequestHandler handler;
 
-  final List<WinterRoute> routes;
+  final List<Route> routes;
 
-  WinterRoute._(
-    this.method,
+  Route._(
     this.path,
+    this.method,
     this.handler,
     this.routes,
   );
 
-  factory WinterRoute({
+  factory Route({
     required String path,
     required HttpMethod method,
     required RequestHandler handler,
-    List<WinterRoute> routes = const [],
+    List<Route> routes = const [],
   }) {
     if (!path.startsWith('/')) {
       throw ArgumentError.value(
           path, 'path', 'expected route to start with a slash');
     }
 
-    return WinterRoute._(
-      method,
+    return Route._(
       path,
+      method,
       handler,
       routes,
     );

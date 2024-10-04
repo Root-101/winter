@@ -19,12 +19,12 @@ void main() => WinterServer(
           )
         ],
       ),
-      router: SimpleWinterRouter(
+      router: WinterRouter(
         config: RouterConfig(
           onInvalidUrl: OnInvalidUrl.fail(),
         ),
         routes: [
-          WinterRoute(
+          Route(
             path: '/filter-chain',
             method: HttpMethod.get,
             handler: (request) => ResponseEntity.ok(

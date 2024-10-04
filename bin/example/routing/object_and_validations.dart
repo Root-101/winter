@@ -2,19 +2,19 @@ import '../../winter/winter.dart';
 
 void main() => WinterServer(
       config: ServerConfig(port: 9090),
-      router: SimpleWinterRouter(
+      router: WinterRouter(
         config: RouterConfig(
           onInvalidUrl: OnInvalidUrl.fail(),
         ),
         routes: [
-          WinterRoute(
+          Route(
             path: '/test',
             method: HttpMethod.get,
             handler: (request) => ResponseEntity.ok(
               body: 'hello-world',
             ),
           ),
-          WinterRoute(
+          Route(
             path: '/object',
             method: HttpMethod.post,
             handler: (request) async {

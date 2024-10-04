@@ -1,5 +1,6 @@
 class HttpMethod {
   static HttpMethod get = HttpMethod('get');
+  static HttpMethod query = HttpMethod('query');
   static HttpMethod post = HttpMethod('post');
   static HttpMethod put = HttpMethod('put');
   static HttpMethod patch = HttpMethod('patch');
@@ -8,6 +9,7 @@ class HttpMethod {
   static HttpMethod options = HttpMethod('options');
   static List<HttpMethod> values = [
     get,
+    query,
     post,
     put,
     patch,

@@ -36,7 +36,7 @@ class WinterServer {
 
   final BuildContext context;
   final ServerConfig config;
-  final WinterRouter router;
+  final AbstractWinterRouter router;
   final FilterConfig filterConfig;
 
   late final HttpServer runningServer;
@@ -47,13 +47,13 @@ class WinterServer {
   WinterServer({
     BuildContext? context,
     ServerConfig? config,
-    WinterRouter? router,
+    AbstractWinterRouter? router,
     ExceptionHandler? exceptionHandler,
     WinterDI? di,
     FilterConfig? filterConfig,
   })  : context = context ?? BuildContext(),
         config = config ?? ServerConfig(),
-        router = router ?? SimpleWinterRouter(),
+        router = router ?? WinterRouter(),
         filterConfig = filterConfig ?? FilterConfig([]);
 
   ///Start the web server with all the current config in this object

@@ -2,21 +2,21 @@ import 'package:collection/collection.dart';
 
 import 'winter.dart';
 
-abstract class WinterRouter {
+abstract class AbstractWinterRouter {
   WinterHandler call(RequestEntity request);
 }
 
-class SimpleWinterRouter extends WinterRouter {
+class WinterRouter extends AbstractWinterRouter {
   String basePath;
   final RouterConfig config;
 
-  final List<WinterRoute> _rawRoutes;
+  final List<Route> _rawRoutes;
 
-  List<WinterRoute>? _expandedRoutes;
+  List<Route>? _expandedRoutes;
 
-  SimpleWinterRouter({
+  WinterRouter({
     this.basePath = '',
-    List<WinterRoute> routes = const [],
+    List<Route> routes = const [],
     RouterConfig? config,
   })  : _rawRoutes = routes,
         config = config ?? RouterConfig() {
@@ -24,7 +24,7 @@ class SimpleWinterRouter extends WinterRouter {
     this.config.onLoadedRoutes.afterInit(expandedRoutes);
   }
 
-  List<WinterRoute> get expandedRoutes {
+  List<Route> get expandedRoutes {
     _expandedRoutes ??= _flattenRoutes(_rawRoutes, initialPath: basePath);
 
     return _expandedRoutes ?? [];
@@ -34,7 +34,7 @@ class SimpleWinterRouter extends WinterRouter {
   WinterHandler call(RequestEntity request) {
     ///find routes that match with the path
     String urlPath = '/${request.url.path}';
-    List<WinterRoute> matchedRoutes = expandedRoutes
+    List<Route> matchedRoutes = expandedRoutes
         .where(
           (element) => element.match(urlPath),
         )
@@ -45,7 +45,7 @@ class SimpleWinterRouter extends WinterRouter {
       return (_) => ResponseEntity.notFound();
     } else {
       ///there is some route, check method (get, post, put...)
-      WinterRoute? finalRoute = matchedRoutes.firstWhereOrNull(
+      Route? finalRoute = matchedRoutes.firstWhereOrNull(
         (element) => element.method == HttpMethod(request.method),
       );
       if (finalRoute == null) {
@@ -59,27 +59,28 @@ class SimpleWinterRouter extends WinterRouter {
     }
   }
 
-  List<WinterRoute> _flattenRoutes(
-    List<WinterRoute> routers, {
+  List<Route> _flattenRoutes(
+    List<Route> routers, {
     String initialPath = '',
   }) {
-    List<WinterRoute> result = [];
+    List<Route> result = [];
 
-    void flattenRoutes(String parentPath, List<WinterRoute> routes) {
+    void flattenRoutes(String parentPath, List<Route> routes) {
       for (var route in routes) {
         String fullPath =
             (parentPath + route.path).replaceAll(RegExp(r'/+'), '/');
-        final currentRoute = WinterRoute(
-          path: fullPath,
-          method: route.method,
-          handler: route.handler,
-        );
-        if (isValidUri(fullPath)) {
-          result.add(currentRoute);
-        } else {
-          config.onInvalidUrl.onInvalid(currentRoute);
+        if (route is! ParentRoute) {
+          final currentRoute = Route(
+            path: fullPath,
+            method: route.method,
+            handler: route.handler,
+          );
+          if (isValidUri(fullPath)) {
+            result.add(currentRoute);
+          } else {
+            config.onInvalidUrl.onInvalid(currentRoute);
+          }
         }
-
         if (route.routes.isNotEmpty) {
           flattenRoutes(fullPath, route.routes);
         }

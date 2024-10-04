@@ -12,7 +12,7 @@ class RouterConfig {
 }
 
 class OnInvalidUrl {
-  final void Function(WinterRoute failedRoute) onInvalid;
+  final void Function(Route failedRoute) onInvalid;
 
   OnInvalidUrl(this.onInvalid);
 
@@ -38,7 +38,7 @@ class OnInvalidUrl {
 }
 
 class OnLoadedRoutes {
-  final void Function(List<WinterRoute> allRoutes) afterInit;
+  final void Function(List<Route> allRoutes) afterInit;
 
   OnLoadedRoutes(this.afterInit);
 
@@ -51,12 +51,12 @@ class OnLoadedRoutes {
   factory OnLoadedRoutes.log() {
     return OnLoadedRoutes(
       (allRoutes) {
-        print('*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*');
-        print('Config Routes:');
+        print('');
+        print('Routes:');
         for (var element in allRoutes) {
-          print('${element.method.name}: ${element.path}');
+          print('${element.method.name.toUpperCase()}:    ${element.path}');
         }
-        print('*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*');
+        print('');
       },
     );
   }

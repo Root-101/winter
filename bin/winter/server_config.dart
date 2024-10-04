@@ -3,7 +3,12 @@ import 'dart:io';
 const int defaultServerPort = 8080;
 
 class ServerConfig {
+  ///Address on which the service will be running
+  ///Default to InternetAddress.anyIPv4
   late final InternetAddress ip;
+
+  ///Port on which the service will be running
+  ///Default to `defaultServerPort` (8080)
   late final int port;
 
   ServerConfig({
