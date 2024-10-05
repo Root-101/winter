@@ -2,39 +2,45 @@ import 'package:collection/collection.dart';
 
 import 'winter.dart';
 
-abstract class AbstractWinterRouter {
-  WinterHandler call(RequestEntity request);
-}
-
-class WinterRouter extends AbstractWinterRouter {
-  String basePath;
+class WinterRouter {
+  final String basePath;
   final RouterConfig config;
 
-  final List<Route> _rawRoutes;
-
-  List<Route>? _expandedRoutes;
+  final List<Route> routes;
 
   WinterRouter({
+    required this.config,
+    required this.routes,
     this.basePath = '',
-    List<Route> routes = const [],
-    RouterConfig? config,
-  })  : _rawRoutes = routes,
-        config = config ?? RouterConfig() {
-    ///call getter to make flatten on init
-    this.config.onLoadedRoutes.afterInit(expandedRoutes);
-  }
+  });
 
-  List<Route> get expandedRoutes {
-    _expandedRoutes ??= _flattenRoutes(_rawRoutes, initialPath: basePath);
-
-    return _expandedRoutes ?? [];
-  }
-
-  @override
-  WinterHandler call(RequestEntity request) {
+  ///Return true or false if this router can successfully process a request
+  ///This means if the router if found, and the methods match
+  bool canHandle(RequestEntity request) {
     ///find routes that match with the path
     String urlPath = '/${request.url.path}';
-    List<Route> matchedRoutes = expandedRoutes
+    List<Route> matchedRoutes = routes
+        .where(
+          (element) => element.match(urlPath),
+        )
+        .toList();
+
+    ///no routes found: 404
+    if (matchedRoutes.isEmpty) {
+      return false;
+    } else {
+      ///there is some route, check method (get, post, put...)
+      return matchedRoutes.firstWhereOrNull(
+            (element) => element.method == HttpMethod(request.method),
+          ) !=
+          null;
+    }
+  }
+
+  WinterHandler handler(RequestEntity request) {
+    ///find routes that match with the path
+    String urlPath = '/${request.url.path}';
+    List<Route> matchedRoutes = routes
         .where(
           (element) => element.match(urlPath),
         )
@@ -58,50 +64,62 @@ class WinterRouter extends AbstractWinterRouter {
       }
     }
   }
+}
 
-  List<Route> _flattenRoutes(
-    List<Route> routers, {
-    String initialPath = '',
+class Route {
+  final String path;
+  final HttpMethod method;
+  final RequestHandler handler;
+
+  Route._(
+    this.path,
+    this.method,
+    this.handler,
+  );
+
+  Route.build({
+    required this.path,
+    required this.method,
+    required this.handler,
+  });
+
+  factory Route({
+    required String path,
+    required HttpMethod method,
+    required RequestHandler handler,
   }) {
-    List<Route> result = [];
-
-    void flattenRoutes(String parentPath, List<Route> routes) {
-      for (var route in routes) {
-        String fullPath =
-            (parentPath + route.path).replaceAll(RegExp(r'/+'), '/');
-        if (route is! ParentRoute) {
-          final currentRoute = Route(
-            path: fullPath,
-            method: route.method,
-            handler: route.handler,
-          );
-          if (isValidUri(fullPath)) {
-            result.add(currentRoute);
-          } else {
-            config.onInvalidUrl.onInvalid(currentRoute);
-          }
-        }
-        if (route.routes.isNotEmpty) {
-          flattenRoutes(fullPath, route.routes);
-        }
-      }
+    if (!path.startsWith('/')) {
+      throw ArgumentError.value(
+        path,
+        'path',
+        'expected route to start with a slash',
+      );
     }
 
-    flattenRoutes(basePath, routers);
-
-    return result;
+    return Route._(
+      path,
+      method,
+      handler,
+    );
   }
 
-  bool isValidUri(String path) {
-    // Intenta crear un objeto Uri con solo el path
-    try {
-      path = path.replaceAll('{', '%7B');
-      path = path.replaceAll('}', '%7D');
-      Uri uri = Uri(path: path);
-      // Valida que el path no contenga caracteres no permitidos y que no comience con "//"
-      return !path.startsWith('//') && uri.path == path;
-    } catch (e) {
-      return false;
-    }
+  bool match(String rawActualUrl) {
+    // Separar las partes de la URL y los parámetros de consulta
+    String templateUrlPath = path.split('?').first;
+    String actualUrlPath = rawActualUrl.split('?').first;
+
+    // Crear una expresión regular para encontrar los parámetros de ruta en la plantilla
+    final RegExp pathParamPattern = RegExp(r'{([^}]+)}');
+
+    // Crear una expresión regular para capturar los valores correspondientes en la URL real
+    String regexPattern = templateUrlPath.replaceAllMapped(
+        pathParamPattern, (match) => r'([^/?]+)');
+    regexPattern = '^' + regexPattern + r'$'; // Añadir el inicio y el final
+
+    // Comprobar si la parte de la URL coincide
+    final RegExpMatch? matchUrlPath =
+        RegExp(regexPattern).firstMatch(actualUrlPath);
+
+    return matchUrlPath != null;
   }
 }

@@ -1,67 +1,91 @@
 import '../winter.dart';
 
-class ParentRoute extends Route {
-  ParentRoute({
-    required String path,
-    required List<Route> routes,
-  }) : super._(
-          path,
-          HttpMethod(''),
-          (request) => ResponseEntity.ok(),
-          routes,
-        );
-}
+class AbcWinterRouter extends WinterRouter {
+  AbcWinterRouter._({
+    required super.config,
+    required super.routes,
+    super.basePath,
+  });
 
-class Route {
-  final String path;
-  final HttpMethod method;
-  final RequestHandler handler;
-
-  final List<Route> routes;
-
-  Route._(
-    this.path,
-    this.method,
-    this.handler,
-    this.routes,
-  );
-
-  factory Route({
-    required String path,
-    required HttpMethod method,
-    required RequestHandler handler,
-    List<Route> routes = const [],
+  factory AbcWinterRouter({
+    String? basePath,
+    List<HRoute> routes = const [],
+    RouterConfig? config,
   }) {
-    if (!path.startsWith('/')) {
-      throw ArgumentError.value(
-          path, 'path', 'expected route to start with a slash');
-    }
-
-    return Route._(
-      path,
-      method,
-      handler,
-      routes,
+    String nonNullBasePath = basePath ?? '';
+    RouterConfig nonNullConfig = config ?? RouterConfig();
+    return AbcWinterRouter._(
+      config: nonNullConfig,
+      routes: _flattenRoutes(routes, nonNullBasePath, nonNullConfig),
+      basePath: nonNullBasePath,
     );
   }
 
-  bool match(String rawActualUrl) {
-    // Separar las partes de la URL y los parámetros de consulta
-    String templateUrlPath = path.split('?').first;
-    String actualUrlPath = rawActualUrl.split('?').first;
+  static List<Route> _flattenRoutes(
+    List<HRoute> routes,
+    String initialPath,
+    RouterConfig config,
+  ) {
+    List<Route> result = [];
 
-    // Crear una expresión regular para encontrar los parámetros de ruta en la plantilla
-    final RegExp pathParamPattern = RegExp(r'{([^}]+)}');
+    void flattenRoutes(String parentPath, List<HRoute> routes) {
+      for (var route in routes) {
+        String fullPath =
+            (parentPath + route.path).replaceAll(RegExp(r'/+'), '/');
+        if (route is! ParentRoute) {
+          final currentRoute = Route(
+            path: fullPath,
+            method: route.method,
+            handler: route.handler,
+          );
+          if (_isValidUri(fullPath)) {
+            result.add(currentRoute);
+          } else {
+            config.onInvalidUrl.onInvalid(currentRoute);
+          }
+        }
+        if (route.routes.isNotEmpty) {
+          flattenRoutes(fullPath, route.routes);
+        }
+      }
+    }
 
-    // Crear una expresión regular para capturar los valores correspondientes en la URL real
-    String regexPattern = templateUrlPath.replaceAllMapped(
-        pathParamPattern, (match) => r'([^/?]+)');
-    regexPattern = '^' + regexPattern + r'$'; // Añadir el inicio y el final
+    flattenRoutes(initialPath, routes);
 
-    // Comprobar si la parte de la URL coincide
-    final RegExpMatch? matchUrlPath =
-        RegExp(regexPattern).firstMatch(actualUrlPath);
-
-    return matchUrlPath != null;
+    return result;
   }
+
+  static bool _isValidUri(String path) {
+    // Intenta crear un objeto Uri con solo el path
+    try {
+      path = path.replaceAll('{', '%7B');
+      path = path.replaceAll('}', '%7D');
+      Uri uri = Uri(path: path);
+      // Valida que el path no contenga caracteres no permitidos y que no comience con "//"
+      return !path.startsWith('//') && uri.path == path;
+    } catch (e) {
+      return false;
+    }
+  }
+}
+
+class ParentRoute extends HRoute {
+  ParentRoute({
+    required super.path,
+    required super.routes,
+  }) : super(
+          method: HttpMethod(''),
+          handler: (request) => ResponseEntity.ok(),
+        );
+}
+
+class HRoute extends Route {
+  List<HRoute> routes;
+
+  HRoute({
+    required super.path,
+    required super.method,
+    required super.handler,
+    this.routes = const [],
+  }) : super.build();
 }

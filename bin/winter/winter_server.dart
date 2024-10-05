@@ -36,7 +36,7 @@ class WinterServer {
 
   final BuildContext context;
   final ServerConfig config;
-  final AbstractWinterRouter router;
+  final WinterRouter router;
   final FilterConfig filterConfig;
 
   late final HttpServer runningServer;
@@ -47,13 +47,13 @@ class WinterServer {
   WinterServer({
     BuildContext? context,
     ServerConfig? config,
-    AbstractWinterRouter? router,
+    WinterRouter? router,
     ExceptionHandler? exceptionHandler,
     WinterDI? di,
     FilterConfig? filterConfig,
   })  : context = context ?? BuildContext(),
         config = config ?? ServerConfig(),
-        router = router ?? WinterRouter(),
+        router = router ?? BasicRouter(),
         filterConfig = filterConfig ?? FilterConfig([]);
 
   ///Start the web server with all the current config in this object
@@ -123,7 +123,7 @@ class WinterServer {
     );
 
     try {
-      WinterHandler baseCall = router.call(requestEntity);
+      WinterHandler baseCall = router.handler(requestEntity);
 
       FilterChain filterChain = FilterChain(
         filterConfig.filters,

@@ -31,7 +31,7 @@ class ProxyRouter extends AbstractWinterRouter {
   ProxyRouter(this.services);
 
   @override
-  WinterHandler call(RequestEntity request) {
+  WinterHandler handler(RequestEntity request) {
     String requestedUrl = '/${request.url.toString()}';
     for (var single in services) {
       if (requestedUrl.startsWith(single.path)) {
