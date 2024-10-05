@@ -208,3 +208,5 @@ The router will **ALWAYS** find first the route: `/user/{user-id}`, this means t
 well configured, its handler will never be called because always be called to one in the `/user/{user-id}`
 
 ### Router Config
+
+### Base path
