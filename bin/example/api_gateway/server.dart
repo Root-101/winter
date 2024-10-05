@@ -7,43 +7,25 @@ import '../../winter/winter.dart';
 
 void main() => WinterServer(
       config: ServerConfig(port: 9090),
-      router: ProxyRouter([
-        GatewayRoute(
-          gatewayName: 'local',
-          path: '/local',
-          uri: 'http://localhost:8080',
-          replaceFrom: '/local',
-          replaceTo: '/api/v1',
-        ),
-        GatewayRoute(
-          gatewayName: 'stories-dev',
-          path: '/stories',
-          uri: 'https://api.example.com',
-          replaceFrom: '/stories',
-          replaceTo: '',
-        ),
-      ]),
+      router: GatewayRouter(
+        services: [
+          GatewayRoute(
+            gatewayName: 'local',
+            path: '/local',
+            uri: 'http://localhost:8080',
+            replaceFrom: '/local',
+            replaceTo: '/api/v1',
+          ),
+          GatewayRoute(
+            gatewayName: 'stories-dev',
+            path: '/stories',
+            uri: 'https://api.example.com',
+            replaceFrom: '/stories',
+            replaceTo: '',
+          ),
+        ],
+      ),
     ).start();
-
-class ProxyRouter extends AbstractWinterRouter {
-  List<GatewayRoute> services;
-
-  ProxyRouter(this.services);
-
-  @override
-  WinterHandler handler(RequestEntity request) {
-    String requestedUrl = '/${request.url.toString()}';
-    for (var single in services) {
-      if (requestedUrl.startsWith(single.path)) {
-        return (request1) => gatewayHandler(
-              request1,
-              single,
-            );
-      }
-    }
-    return (_) => ResponseEntity.notFound();
-  }
-}
 
 class GatewayRoute {
   String gatewayName;
@@ -59,6 +41,37 @@ class GatewayRoute {
     required this.replaceFrom,
     required this.replaceTo,
   });
+}
+
+class GatewayRouter extends AbstractWinterRouter {
+  List<GatewayRoute> services;
+
+  GatewayRouter({
+    required this.services,
+  });
+
+  @override
+  WinterHandler handler(RequestEntity request) {
+    GatewayRoute? matched = _matchedService(request);
+    return matched != null
+        ? (request1) => gatewayHandler(request1, matched)
+        : (_) => ResponseEntity.notFound();
+  }
+
+  @override
+  bool canHandle(RequestEntity request) {
+    return _matchedService(request) != null;
+  }
+
+  GatewayRoute? _matchedService(RequestEntity request) {
+    String requestedUrl = '/${request.url.toString()}';
+    for (var single in services) {
+      if (requestedUrl.startsWith(single.path)) {
+        return single;
+      }
+    }
+    return null;
+  }
 }
 
 Future<ResponseEntity> gatewayHandler(

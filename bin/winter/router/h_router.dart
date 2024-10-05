@@ -1,20 +1,20 @@
 import '../winter.dart';
 
-class AbcWinterRouter extends WinterRouter {
-  AbcWinterRouter._({
+class HRouter extends WinterRouter {
+  HRouter._({
     required super.config,
     required super.routes,
     super.basePath,
   });
 
-  factory AbcWinterRouter({
+  factory HRouter({
     String? basePath,
     List<HRoute> routes = const [],
     RouterConfig? config,
   }) {
     String nonNullBasePath = basePath ?? '';
     RouterConfig nonNullConfig = config ?? RouterConfig();
-    return AbcWinterRouter._(
+    return HRouter._(
       config: nonNullConfig,
       routes: _flattenRoutes(routes, nonNullBasePath, nonNullConfig),
       basePath: nonNullBasePath,

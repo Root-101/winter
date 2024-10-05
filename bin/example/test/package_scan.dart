@@ -29,7 +29,7 @@ void main() {
   if (loadedRoute != null) {
     WinterServer(
       config: ServerConfig(port: 8080),
-      router: WinterRouter(
+      router: BasicRouter(
         routes: [
           loadedRoute,
         ],

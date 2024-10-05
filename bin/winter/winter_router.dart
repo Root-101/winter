@@ -2,7 +2,13 @@ import 'package:collection/collection.dart';
 
 import 'winter.dart';
 
-class WinterRouter {
+abstract class AbstractWinterRouter {
+  bool canHandle(RequestEntity request);
+
+  WinterHandler handler(RequestEntity request);
+}
+
+class WinterRouter extends AbstractWinterRouter {
   final String basePath;
   final RouterConfig config;
 
@@ -16,6 +22,7 @@ class WinterRouter {
 
   ///Return true or false if this router can successfully process a request
   ///This means if the router if found, and the methods match
+  @override
   bool canHandle(RequestEntity request) {
     ///find routes that match with the path
     String urlPath = '/${request.url.path}';
@@ -37,6 +44,7 @@ class WinterRouter {
     }
   }
 
+  @override
   WinterHandler handler(RequestEntity request) {
     ///find routes that match with the path
     String urlPath = '/${request.url.path}';
