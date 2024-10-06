@@ -1,11 +1,14 @@
 library winter;
 
+export 'package:shelf_multipart/shelf_multipart.dart';
+
 export 'build_context.dart';
 export 'context/context.dart';
 export 'context/dependency_injection/winter_di.dart';
 export 'filter_chain/filter.dart';
 export 'handler.dart';
 export 'http/http.dart';
+export 'package_scan/package_scan.dart';
 export 'request_entity.dart';
 export 'response_entity.dart';
 export 'router/router.dart';

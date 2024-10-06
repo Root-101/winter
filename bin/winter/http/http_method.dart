@@ -1,13 +1,13 @@
 class HttpMethod {
-  static HttpMethod get = HttpMethod('get');
-  static HttpMethod query = HttpMethod('query');
-  static HttpMethod post = HttpMethod('post');
-  static HttpMethod put = HttpMethod('put');
-  static HttpMethod patch = HttpMethod('patch');
-  static HttpMethod delete = HttpMethod('delete');
-  static HttpMethod head = HttpMethod('head');
-  static HttpMethod options = HttpMethod('options');
-  static List<HttpMethod> values = [
+  static const HttpMethod get = HttpMethod('get');
+  static const HttpMethod query = HttpMethod('query');
+  static const HttpMethod post = HttpMethod('post');
+  static const HttpMethod put = HttpMethod('put');
+  static const HttpMethod patch = HttpMethod('patch');
+  static const HttpMethod delete = HttpMethod('delete');
+  static const HttpMethod head = HttpMethod('head');
+  static const HttpMethod options = HttpMethod('options');
+  static const List<HttpMethod> values = [
     get,
     query,
     post,
@@ -18,9 +18,9 @@ class HttpMethod {
     options,
   ];
 
-  String name;
+  final String name;
 
-  HttpMethod(this.name);
+  const HttpMethod(this.name);
 
   @override
   bool operator ==(Object other) {

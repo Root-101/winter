@@ -34,9 +34,10 @@ class RequestEntity extends Request {
 
   Future<T?> body<T>({ObjectMapper? om}) async {
     if (_cachedBody == null || _cachedBody is! T) {
+      String rawString = await readAsString(encoding);
       _cachedBody =
           (om ?? WinterServer.instance.context.objectMapper).deserialize(
-        await readAsString(encoding),
+        rawString,
         T,
       );
     }

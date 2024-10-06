@@ -9,6 +9,7 @@ environment:
 dependencies:
   args: ^2.4.0
   shelf: ^1.4.0
+  shelf_multipart: ^2.0.0
 
   #para el parseo a snack case
   change_case: ^2.1.0
