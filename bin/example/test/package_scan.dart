@@ -9,19 +9,35 @@ class RequestBody {
   const RequestBody();
 }
 
-class RequestMapper {
+class RequestRoute {
   final String path;
   final String method;
 
-  const RequestMapper({
+  const RequestRoute({
     required this.path,
     required this.method,
   });
 }
 
-@RequestMapper(path: '/test', method: 'get')
-ResponseEntity handler(@RequestBody() String body) {
-  return ResponseEntity.ok(body: body);
+class GetRoute extends RequestRoute {
+  const GetRoute({required super.path}) : super(method: 'GET');
+}
+
+class RequestHeader {
+  final String headerName;
+
+  const RequestHeader({
+    required this.headerName,
+  });
+}
+
+@GetRoute(path: '/test')
+//@RequestRoute(path: '/test', method: 'get')
+ResponseEntity handler({
+  @RequestBody() String body = 'body',
+  @RequestHeader(headerName: 'abc') String headerAbc = 'abc',
+}) {
+  return ResponseEntity.ok(body: 'Body: $body, header: $headerAbc');
 }
 
 void main() {
@@ -38,6 +54,8 @@ void main() {
   }
 }
 
+typedef ParamExtractor = dynamic Function(RequestEntity request);
+
 Route? route() {
   // Obtener el MirrorSystem
   MirrorSystem mirrorSystem = currentMirrorSystem();
@@ -52,56 +70,146 @@ Route? route() {
         final declaration = entry2.value;
         if (declaration is MethodMirror) {
           MethodMirror methodMirror = declaration;
-          RequestMapper? mapper = methodMirror.metadata
+          RequestRoute? mapper = methodMirror.metadata
               .firstWhereOrNull(
-                (metadata) => metadata.reflectee.runtimeType == RequestMapper,
+                (metadata) => metadata.reflectee is RequestRoute,
               )
               ?.reflectee;
           if (mapper != null) {
             String method = mapper.method;
             String path = mapper.path;
 
-            List<dynamic Function(RequestEntity request)>
-                positionalArgumentsFunctions = [];
+            List<ParamExtractor> positionalArgumentsFunctions = [];
+            Map<Symbol, ParamExtractor> namedArgumentsFunctions = {};
             for (var singleParam in methodMirror.parameters) {
-              RequestBody? body = singleParam.metadata
-                  .firstWhereOrNull(
-                    (metadata) => metadata.reflectee.runtimeType == RequestBody,
-                  )
-                  ?.reflectee;
-              if (body != null) {
-                positionalArgumentsFunctions.add(
-                  (request) => request.body<String>(),
-                );
+              bool paramSuccessfullyExtracted = extractParam(
+                positionalArgumentsFunctions,
+                namedArgumentsFunctions,
+                singleParam,
+              );
+
+              if (!paramSuccessfullyExtracted) {
+                throw StateError(
+                    'Param ${singleParam.simpleName} don\'t have any recognised annotation (or any at all)');
               }
             }
+
             return Route(
               path: path,
               method: HttpMethod(method),
               handler: (request) async {
-                List<dynamic> args = [];
+                List<dynamic> posArgs = [];
                 for (var element in positionalArgumentsFunctions) {
-                  args.add(await element(request));
+                  posArgs.add(await element(request));
+                }
+
+                Map<Symbol, dynamic> namedArgs = {};
+                for (var entry in namedArgumentsFunctions.entries) {
+                  namedArgs[entry.key] = await entry.value(request);
                 }
 
                 return libMirror
                     .invoke(
                       methodMirror.simpleName,
-                      args,
+                      posArgs,
+                      namedArgs,
                     )
                     .reflectee;
               },
             );
           }
-        } else if (declaration is ClassMirror) {
+        } /*else if (declaration is ClassMirror) {
           // Verificar si la clase tiene la anotación MyAnnotation
           if (declaration.metadata.any(
               (metadata) => metadata.reflectee.runtimeType == RequestBody)) {
             print("Clase anotada encontrada: ${MirrorSystem.getName(symbol)}");
           }
-        }
+        }*/
       }
     }
   }
   return null;
+}
+
+bool extractParam(
+  List<ParamExtractor> positionalArgumentsFunctions,
+  Map<Symbol, ParamExtractor> namedArgumentsFunctions,
+  ParameterMirror singleParam,
+) {
+  //Process request body
+  bool processedBody = _processRequestBody(
+    positionalArgumentsFunctions,
+    namedArgumentsFunctions,
+    singleParam,
+  );
+
+  //Process request header
+  bool processedHeader = _processRequestHeader(
+    positionalArgumentsFunctions,
+    namedArgumentsFunctions,
+    singleParam,
+  );
+
+  return processedBody || processedHeader;
+}
+
+bool _processRequestBody(
+  List<ParamExtractor> positionalArgumentsFunctions,
+  Map<Symbol, ParamExtractor> namedArgumentsFunctions,
+  ParameterMirror singleParam,
+) {
+  RequestBody? body = singleParam.metadata
+      .firstWhereOrNull(
+        (metadata) => metadata.reflectee.runtimeType == RequestBody,
+      )
+      ?.reflectee;
+  if (body != null) {
+    bool isRequired = !singleParam.isOptional;
+
+    var defaultValue = singleParam.hasDefaultValue
+        ? singleParam.defaultValue?.reflectee
+        : null;
+
+    extractor(request) => isRequired
+        ? request.body<String>()
+        : request.body<String>() ?? defaultValue;
+
+    if (singleParam.isNamed) {
+      namedArgumentsFunctions[singleParam.simpleName] = extractor;
+    } else {
+      positionalArgumentsFunctions.add(extractor);
+    }
+  }
+  return body != null;
+}
+
+bool _processRequestHeader(
+  List<ParamExtractor> positionalArgumentsFunctions,
+  Map<Symbol, ParamExtractor> namedArgumentsFunctions,
+  ParameterMirror singleParam,
+) {
+  //Process request body
+  RequestHeader? header = singleParam.metadata
+      .firstWhereOrNull(
+        (metadata) => metadata.reflectee.runtimeType == RequestHeader,
+      )
+      ?.reflectee;
+  if (header != null) {
+    bool isRequired = !singleParam.isOptional;
+
+    var defaultValue = singleParam.hasDefaultValue
+        ? singleParam.defaultValue?.reflectee
+        : null;
+
+    extractor(request) => isRequired
+        ? request.headers[header.headerName]
+        : request.headers[header.headerName] ?? defaultValue;
+
+    if (singleParam.isNamed) {
+      namedArgumentsFunctions[singleParam.simpleName] = extractor;
+    } else {
+      positionalArgumentsFunctions.add(extractor);
+    }
+  }
+  return header != null;
 }
