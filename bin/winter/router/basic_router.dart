@@ -3,9 +3,10 @@ import '../winter.dart';
 class BasicRouter extends WinterRouter {
   BasicRouter({
     super.basePath,
-    super.routes = const [],
+    List<Route>? routes,
     RouterConfig? config,
   }) : super(
+          routes: routes ?? [],
           config: config ?? RouterConfig(),
         );
 

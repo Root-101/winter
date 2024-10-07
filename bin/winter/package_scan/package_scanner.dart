@@ -7,93 +7,136 @@ import '../winter.dart';
 ///Function used to extract a param, like the body or an header from a request
 typedef ParamExtractor = dynamic Function(RequestEntity request);
 
-Route? route() {
-  ObjectMapper om = ObjectMapperImpl();
+class PackageScanner {
+  final BuildContext context;
+  final BasicRouter _router;
+  final List<String> packageScan; //TODO: as a lib, always scan itself
 
-  // Obtener el MirrorSystem
-  MirrorSystem mirrorSystem = currentMirrorSystem();
+  PackageScanner._(
+    this._router, {
+    required this.context,
+    required this.packageScan,
+  });
 
-  // Iterar sobre todas las librerías cargadas
-  for (var entry in mirrorSystem.libraries.entries) {
-    final uri = entry.key;
-    final libMirror = entry.value;
-    if (uri.toString().contains('package_scan.dart')) {
-      for (var entry2 in libMirror.declarations.entries) {
-        final symbol = entry2.key;
-        final declaration = entry2.value;
+  factory PackageScanner({
+    BuildContext? context,
+    List<String>? packageScan,
+    bool autoScan = true,
+  }) {
+    PackageScanner scanner = PackageScanner._(
+      BasicRouter(),
+      context: context ?? BuildContext(),
+      packageScan: packageScan ?? [],
+    );
+
+    if (autoScan) {
+      scanner.scan();
+    }
+
+    return scanner;
+  }
+
+  WinterRouter get router => _router;
+
+  void scan() {
+    // Obtener el MirrorSystem
+    MirrorSystem mirrorSystem = currentMirrorSystem();
+
+    // Iterar sobre todas las librerías cargadas
+    for (var library in mirrorSystem.libraries.entries) {
+      final uri = library.key;
+      final libMirror = library.value;
+
+      String uriPath = uri.toString();
+
+      ///Dont scan if:
+      ///1 - Is a dart package
+      ///2 - Is an external package and it's not specified to scan it in `packageScan`'s list
+      if (uriPath.startsWith('dart:') ||
+          (uriPath.startsWith('package:') && !packageScan.contains(uriPath))) {
+        continue;
+      }
+      for (var entry in libMirror.declarations.entries) {
+        print('key: ${entry.key}, value: ${entry.value}');
+
+        final declaration = entry.value;
         if (declaration is MethodMirror) {
-          MethodMirror methodMirror = declaration;
-          RequestRoute? mapper = methodMirror.metadata
-              .firstWhereOrNull(
-                (metadata) => metadata.reflectee is RequestRoute,
-              )
-              ?.reflectee;
-          if (mapper != null) {
-            HttpMethod method = mapper.method;
-            String path = mapper.path;
-
-            List<ParamExtractor> positionalArgumentsFunctions = [];
-            Map<Symbol, ParamExtractor> namedArgumentsFunctions = {};
-            for (var singleParam in methodMirror.parameters) {
-              bool paramSuccessfullyExtracted = extractParam(
-                positionalArgumentsFunctions,
-                namedArgumentsFunctions,
-                singleParam,
-                om,
-              );
-
-              if (!paramSuccessfullyExtracted) {
-                throw StateError(
-                    'Param ${MirrorSystem.getName(singleParam.simpleName)} '
-                    'don\'t have any recognised annotation (or any at all)');
-              }
-            }
-
-            return Route(
-              path: path,
-              method: method,
-              handler: (request) async {
-                List<dynamic> posArgs = [];
-                for (var element in positionalArgumentsFunctions) {
-                  posArgs.add(await element(request));
-                }
-
-                Map<Symbol, dynamic> namedArgs = {};
-                for (var entry in namedArgumentsFunctions.entries) {
-                  namedArgs[entry.key] = await entry.value(request);
-                }
-
-                return libMirror
-                    .invoke(
-                      methodMirror.simpleName,
-                      posArgs,
-                      namedArgs,
-                    )
-                    .reflectee;
-              },
-            );
-          }
-        } /*else if (declaration is ClassMirror) {
-          // Verificar si la clase tiene la anotación MyAnnotation
-          if (declaration.metadata.any(
-              (metadata) => metadata.reflectee.runtimeType == RequestBody)) {
-            print("Clase anotada encontrada: ${MirrorSystem.getName(symbol)}");
-          }
-        }*/
+          _processRouteFromMethod(libMirror, declaration);
+        }
       }
     }
   }
-  return null;
+
+  void _processRouteFromMethod(
+    LibraryMirror libMirror,
+    MethodMirror methodMirror,
+  ) {
+    ///try to get the RequestRoute annotation on method
+    RequestRoute? mapper = methodMirror.metadata
+        .firstWhereOrNull(
+          (metadata) => metadata.reflectee is RequestRoute,
+        )
+        ?.reflectee;
+
+    ///If there is this annotation process it
+    ///Ignored if not (someone else will process it)
+    if (mapper != null) {
+      HttpMethod method = mapper.method;
+      String path = mapper.path;
+
+      List<ParamExtractor> positionalArgumentsFunctions = [];
+      Map<Symbol, ParamExtractor> namedArgumentsFunctions = {};
+      for (var singleParam in methodMirror.parameters) {
+        bool paramSuccessfullyExtracted = _extractParam(
+          positionalArgumentsFunctions,
+          namedArgumentsFunctions,
+          singleParam,
+          context.objectMapper,
+        );
+
+        if (!paramSuccessfullyExtracted) {
+          throw StateError(
+              'Param ${MirrorSystem.getName(singleParam.simpleName)} '
+              'don\'t have any recognised annotation (or any at all)');
+        }
+      }
+
+      ///add route to router
+      _router.add(
+        path,
+        method,
+        (request) async {
+          List<dynamic> posArgs = [];
+          for (var element in positionalArgumentsFunctions) {
+            posArgs.add(await element(request));
+          }
+
+          Map<Symbol, dynamic> namedArgs = {};
+          for (var entry in namedArgumentsFunctions.entries) {
+            namedArgs[entry.key] = await entry.value(request);
+          }
+
+          return libMirror
+              .invoke(
+                methodMirror.simpleName,
+                posArgs,
+                namedArgs,
+              )
+              .reflectee;
+        },
+      );
+    }
+  }
 }
 
-bool extractParam(
+bool _extractParam(
   List<ParamExtractor> positionalArgumentsFunctions,
   Map<Symbol, ParamExtractor> namedArgumentsFunctions,
   ParameterMirror singleParam,
   ObjectMapper om,
 ) {
   ///Process request body
-  bool processedBody = _processRequestBody(
+  bool processedBody = processBodyAnnotation(
     positionalArgumentsFunctions,
     namedArgumentsFunctions,
     singleParam,
@@ -101,7 +144,7 @@ bool extractParam(
   );
 
   ///Process request header
-  bool processedHeader = _processRequestHeader(
+  bool processedHeader = processHeaderAnnotation(
     positionalArgumentsFunctions,
     namedArgumentsFunctions,
     singleParam,
@@ -115,14 +158,14 @@ bool extractParam(
   );
 
   ///Process path param
-  bool processedPathParam = _processPathParam(
+  bool processedPathParam = processPathParamAnnotation(
     positionalArgumentsFunctions,
     namedArgumentsFunctions,
     singleParam,
   );
 
   ///Process query param
-  bool processedQueryParam = _processQueryParam(
+  bool processedQueryParam = processQueryParamAnnotation(
     positionalArgumentsFunctions,
     namedArgumentsFunctions,
     singleParam,
@@ -152,141 +195,4 @@ bool _processRawRequest(
     }
   }
   return isRequestEntity;
-}
-
-bool _processRequestBody(
-  List<ParamExtractor> positionalArgumentsFunctions,
-  Map<Symbol, ParamExtractor> namedArgumentsFunctions,
-  ParameterMirror singleParam,
-  ObjectMapper om,
-) {
-  Body? body = singleParam.metadata
-      .firstWhereOrNull(
-        (metadata) => metadata.reflectee is Body,
-      )
-      ?.reflectee;
-  if (body != null) {
-    bool isRequired = !singleParam.isOptional;
-
-    var defaultValue = singleParam.hasDefaultValue
-        ? singleParam.defaultValue?.reflectee
-        : null;
-
-    extractor(RequestEntity request) async {
-      String rawBody = await request.readAsString();
-      if (!isRequired && rawBody.isEmpty) {
-        return defaultValue;
-      }
-      Object parsedBody = body.parser(rawBody, om);
-      if (parsedBody is PlainBodyWrapper) {
-        return parsedBody.body;
-      }
-      return parsedBody;
-    }
-
-    if (singleParam.isNamed) {
-      namedArgumentsFunctions[singleParam.simpleName] = extractor;
-    } else {
-      positionalArgumentsFunctions.add(extractor);
-    }
-  }
-  return body != null;
-}
-
-bool _processRequestHeader(
-  List<ParamExtractor> positionalArgumentsFunctions,
-  Map<Symbol, ParamExtractor> namedArgumentsFunctions,
-  ParameterMirror singleParam,
-) {
-  Header? header = singleParam.metadata
-      .firstWhereOrNull(
-        (metadata) => metadata.reflectee.runtimeType == Header,
-      )
-      ?.reflectee;
-  if (header != null) {
-    bool isRequired = !singleParam.isOptional;
-
-    var defaultValue = singleParam.hasDefaultValue
-        ? singleParam.defaultValue?.reflectee
-        : null;
-
-    String headerName =
-        header.name ?? MirrorSystem.getName(singleParam.simpleName);
-
-    extractor(RequestEntity request) => isRequired
-        ? request.headers[headerName]
-        : request.headers[headerName] ?? defaultValue;
-
-    if (singleParam.isNamed) {
-      namedArgumentsFunctions[singleParam.simpleName] = extractor;
-    } else {
-      positionalArgumentsFunctions.add(extractor);
-    }
-  }
-  return header != null;
-}
-
-bool _processPathParam(
-  List<ParamExtractor> positionalArgumentsFunctions,
-  Map<Symbol, ParamExtractor> namedArgumentsFunctions,
-  ParameterMirror singleParam,
-) {
-  PathParam? pathParam = singleParam.metadata
-      .firstWhereOrNull(
-        (metadata) => metadata.reflectee.runtimeType == PathParam,
-      )
-      ?.reflectee;
-  if (pathParam != null) {
-    if (singleParam.isOptional) {
-      throw StateError(
-        '@PathParam needs to be a required field '
-        '(If not it could mess up the navigation and give some unexpected 404).'
-        '\nFailed Field: ${MirrorSystem.getName(singleParam.simpleName)}',
-      );
-    }
-    String paramName =
-        pathParam.name ?? MirrorSystem.getName(singleParam.simpleName);
-
-    extractor(RequestEntity request) => request.pathParams[paramName];
-
-    if (singleParam.isNamed) {
-      namedArgumentsFunctions[singleParam.simpleName] = extractor;
-    } else {
-      positionalArgumentsFunctions.add(extractor);
-    }
-  }
-  return pathParam != null;
-}
-
-bool _processQueryParam(
-  List<ParamExtractor> positionalArgumentsFunctions,
-  Map<Symbol, ParamExtractor> namedArgumentsFunctions,
-  ParameterMirror singleParam,
-) {
-  QueryParam? queryParam = singleParam.metadata
-      .firstWhereOrNull(
-        (metadata) => metadata.reflectee.runtimeType == QueryParam,
-      )
-      ?.reflectee;
-  if (queryParam != null) {
-    bool isRequired = !singleParam.isOptional;
-
-    var defaultValue = singleParam.hasDefaultValue
-        ? singleParam.defaultValue?.reflectee
-        : null;
-
-    String paramName =
-        queryParam.name ?? MirrorSystem.getName(singleParam.simpleName);
-
-    extractor(RequestEntity request) => isRequired
-        ? request.queryParams[paramName]
-        : request.queryParams[paramName] ?? defaultValue;
-
-    if (singleParam.isNamed) {
-      namedArgumentsFunctions[singleParam.simpleName] = extractor;
-    } else {
-      positionalArgumentsFunctions.add(extractor);
-    }
-  }
-  return queryParam != null;
 }
