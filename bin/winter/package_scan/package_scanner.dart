@@ -160,9 +160,9 @@ bool _processRequestBody(
   ParameterMirror singleParam,
   ObjectMapper om,
 ) {
-  AbstractBody? body = singleParam.metadata
+  Body? body = singleParam.metadata
       .firstWhereOrNull(
-        (metadata) => metadata.reflectee is AbstractBody,
+        (metadata) => metadata.reflectee is Body,
       )
       ?.reflectee;
   if (body != null) {
@@ -177,7 +177,11 @@ bool _processRequestBody(
       if (!isRequired && rawBody.isEmpty) {
         return defaultValue;
       }
-      return body.parser(rawBody, om);
+      Object parsedBody = body.parser(rawBody, om);
+      if (parsedBody is PlainBodyWrapper) {
+        return parsedBody.body;
+      }
+      return parsedBody;
     }
 
     if (singleParam.isNamed) {

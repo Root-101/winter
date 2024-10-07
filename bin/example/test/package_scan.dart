@@ -7,7 +7,9 @@ import '../../winter/winter.dart';
 FutureOr<ResponseEntity> handler(
   RequestEntity request,
   @PathParam(name: 'user-id') String userId, {
-  @BodyList<Test>() List<Test> body = const [],
+  //@Body<Test>() required Test body,
+  //@Body<Test>.list() List<Test> body = const [],
+  @Body<Test>.map() Map<String, Test> body = const {},
   @Header(name: 'abc') String headerAbc = 'abc',
   @QueryParam(name: 'qwe') String queryQwe = 'qwe',
 }) async {

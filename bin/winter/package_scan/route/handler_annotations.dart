@@ -1,25 +1,31 @@
 import '../../winter.dart';
 
-typedef BodyParser<T> = T Function(String body, ObjectMapper om);
+class Body<T> {
+  final Object Function(String body, ObjectMapper om) parser;
 
-abstract class AbstractBody<T> {
-  final BodyParser<T> parser;
+  const Body._(this.parser);
 
-  const AbstractBody(this.parser);
+  const Body() : parser = plainBodyParser<T>;
+
+  const Body.list() : parser = bodyListParser<T>;
+
+  const Body.map() : parser = bodyMapParser<T>;
 }
 
-T plainBodyParser<T>(String body, ObjectMapper om) => om.deserialize(body, T);
+class PlainBodyWrapper<T> {
+  final T body;
 
-class Body<T> extends AbstractBody<T> {
-  const Body() : super(plainBodyParser<T>);
+  PlainBodyWrapper(this.body);
 }
+
+PlainBodyWrapper<T> plainBodyParser<T>(String body, ObjectMapper om) =>
+    PlainBodyWrapper(om.deserialize(body, T));
 
 List<T> bodyListParser<T>(String body, ObjectMapper om) =>
     om.deserialize(body, List<T>).cast<T>();
 
-class BodyList<T> extends AbstractBody {
-  const BodyList() : super(bodyListParser<T>);
-}
+Map<String, T> bodyMapParser<T>(String body, ObjectMapper om) =>
+    om.deserialize(body, Map<String, T>).cast<String, T>();
 
 class Header {
   final String? name;
