@@ -1,6 +1,6 @@
-import 'dart:async';
-
 import '../../winter/winter.dart';
+
+import 'package_scan.dart';
 
 void main() {
   PackageScanner scanner = PackageScanner();

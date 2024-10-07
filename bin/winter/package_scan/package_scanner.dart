@@ -56,6 +56,7 @@ class PackageScanner {
           (uriPath.startsWith('package:') && !packageScan.contains(uriPath))) {
         continue;
       }
+
       for (var entry in libMirror.declarations.entries) {
         print('key: ${entry.key}, value: ${entry.value}');
 
