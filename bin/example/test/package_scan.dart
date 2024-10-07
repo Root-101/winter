@@ -7,14 +7,27 @@ import '../../winter/winter.dart';
 FutureOr<ResponseEntity> handler(
   RequestEntity request,
   @PathParam(name: 'user-id') String userId, {
-  //@Body() String body = 'body',
+  @BodyList<Test>() List<Test> body = const [],
   @Header(name: 'abc') String headerAbc = 'abc',
   @QueryParam(name: 'qwe') String queryQwe = 'qwe',
 }) async {
   return ResponseEntity.ok(
     body:
-        'header: $headerAbc, request: ${request.templateUrl}, path-param: $userId, q-param: $queryQwe',
+        'body: $body, header: $headerAbc, request: ${request.templateUrl}, path-param: $userId, q-param: $queryQwe',
   );
+}
+
+class Test {
+  String? name;
+
+  Test();
+
+  Test.named(this.name);
+
+  @override
+  String toString() {
+    return 'Test{name: $name}';
+  }
 }
 
 void main() {

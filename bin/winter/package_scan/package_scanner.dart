@@ -8,6 +8,8 @@ import '../winter.dart';
 typedef ParamExtractor = dynamic Function(RequestEntity request);
 
 Route? route() {
+  ObjectMapper om = ObjectMapperImpl();
+
   // Obtener el MirrorSystem
   MirrorSystem mirrorSystem = currentMirrorSystem();
 
@@ -37,6 +39,7 @@ Route? route() {
                 positionalArgumentsFunctions,
                 namedArgumentsFunctions,
                 singleParam,
+                om,
               );
 
               if (!paramSuccessfullyExtracted) {
@@ -87,12 +90,14 @@ bool extractParam(
   List<ParamExtractor> positionalArgumentsFunctions,
   Map<Symbol, ParamExtractor> namedArgumentsFunctions,
   ParameterMirror singleParam,
+  ObjectMapper om,
 ) {
   ///Process request body
   bool processedBody = _processRequestBody(
     positionalArgumentsFunctions,
     namedArgumentsFunctions,
     singleParam,
+    om,
   );
 
   ///Process request header
@@ -153,10 +158,11 @@ bool _processRequestBody(
   List<ParamExtractor> positionalArgumentsFunctions,
   Map<Symbol, ParamExtractor> namedArgumentsFunctions,
   ParameterMirror singleParam,
+  ObjectMapper om,
 ) {
-  Body? body = singleParam.metadata
+  AbstractBody? body = singleParam.metadata
       .firstWhereOrNull(
-        (metadata) => metadata.reflectee.runtimeType == Body,
+        (metadata) => metadata.reflectee is AbstractBody,
       )
       ?.reflectee;
   if (body != null) {
@@ -166,9 +172,13 @@ bool _processRequestBody(
         ? singleParam.defaultValue?.reflectee
         : null;
 
-    extractor(RequestEntity request) => isRequired
-        ? request.body<String>()
-        : request.body<String>() ?? defaultValue;
+    extractor(RequestEntity request) async {
+      String rawBody = await request.readAsString();
+      if (!isRequired && rawBody.isEmpty) {
+        return defaultValue;
+      }
+      return body.parser(rawBody, om);
+    }
 
     if (singleParam.isNamed) {
       namedArgumentsFunctions[singleParam.simpleName] = extractor;
