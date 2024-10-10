@@ -18,15 +18,15 @@ class Body<T> {
 
 ///internal parser/caster to plain Object (Wrapped to allow using generics)
 PlainBodyWrapper<T> plainBodyParser<T>(String body, ObjectMapper om) =>
-    PlainBodyWrapper(om.deserialize(body, T));
+    PlainBodyWrapper(om.deserialize<T>(body));
 
 ///internal parser/caster to list
 List<T> bodyListParser<T>(String body, ObjectMapper om) =>
-    om.deserialize(body, List<T>).cast<T>();
+    om.deserializeList<T>(body);
 
 ///internal parser/caster to map
 Map<String, T> bodyMapParser<T>(String body, ObjectMapper om) =>
-    om.deserialize(body, Map<String, T>).cast<String, T>();
+    om.deserializeMap<String, T>(body).cast<String, T>();
 
 ///wrapper around plain body to be able to use generic type
 class PlainBodyWrapper<T> {

@@ -44,7 +44,7 @@ class ObjectMapperImpl extends ObjectMapper {
   }
 
   @override
-  String serialize(dynamic object, {bool cleanUp = false}) {
+  String serialize(dynamic object) {
     dynamic parsedObject = _toMap(object, {});
 
     if (parsedObject is String) {
@@ -52,10 +52,6 @@ class ObjectMapperImpl extends ObjectMapper {
     }
 
     dynamic cleanedUpObject = parsedObject;
-
-    if (cleanUp) {
-      cleanedUpObject = cleanUpObject(parsedObject);
-    }
 
     // Beautify the JSON with indentation
     if (prettyPrint) {
@@ -155,12 +151,24 @@ class ObjectMapperImpl extends ObjectMapper {
 
   // -------------------------- DESERIALIZE FUNCTION -------------------------- \\
   @override
-  dynamic deserialize(String jsonString, Type targetType) {
-    if (defaultDeserializer.containsKey(targetType)) {
-      return defaultDeserializer[targetType]!(jsonString);
+  T deserialize<T>(String jsonString) {
+    if (defaultDeserializer.containsKey(T)) {
+      return defaultDeserializer[T]!(jsonString);
     }
     dynamic jsonObject = jsonDecode(jsonString);
-    return _fromMap(jsonObject, targetType);
+    return _fromMap(jsonObject, T);
+  }
+
+  @override
+  List<T> deserializeList<T>(String jsonString) {
+    dynamic jsonObject = jsonDecode(jsonString);
+    return _fromMap(jsonObject, List<T>).cast<T>();
+  }
+
+  @override
+  Map<K, V> deserializeMap<K, V>(String jsonString) {
+    dynamic jsonObject = jsonDecode(jsonString);
+    return _fromMap(jsonObject, Map<K, V>).cast<K, V>();
   }
 
   dynamic _fromMap(dynamic json, Type targetType) {
@@ -196,7 +204,7 @@ class ObjectMapperImpl extends ObjectMapper {
       }
 
       var classMirror = reflectClass(targetType);
-      var instanceMirror = classMirror.newInstance(Symbol(''), []);
+      InstanceMirror emptyInstanceMirror = _createEmptyInstance(classMirror);
 
       for (var declaration in classMirror.declarations.values) {
         if (declaration is VariableMirror && !declaration.isStatic) {
@@ -219,27 +227,51 @@ class ObjectMapperImpl extends ObjectMapper {
                   .firstWhereOrNull((element) => element.reflectee is CastList)
                   ?.reflectee as CastList?;
 
-              if (castListAnnotation != null) {
-                instanceMirror.setField(declaration.simpleName,
+              TypeMirror fieldTypeMirror =
+                  (declaration.type as ClassMirror).typeArguments.first;
+              String listParam = fieldTypeMirror.reflectedType.toString();
+
+              if (listParam == 'dynamic') {
+                emptyInstanceMirror.setField(
+                  declaration.simpleName,
+                  fieldValue,
+                );
+                continue;
+              } else if (castListAnnotation != null) {
+                emptyInstanceMirror.setField(declaration.simpleName,
                     castListAnnotation.parser(fieldValue));
                 continue;
               } else {
-                TypeMirror fieldTypeMirror =
-                    (declaration.type as ClassMirror).typeArguments.first;
-                String listParam = fieldTypeMirror.reflectedType.toString();
                 String rawFieldName =
                     MirrorSystem.getName(declaration.simpleName);
 
                 throw StateError(
-                    'Cant parse List without know it\'s type at runtime. Try add `@CastList<$listParam>()` on `List<$listParam> $rawFieldName;`');
+                  'Cant parse List without know it\'s type at runtime. Try add `@CastList<$listParam>()` on `List<$listParam> $rawFieldName;`',
+                );
               }
             } else if (fieldValue is Map) {
               CastMap? castMapAnnotation = declaration.metadata
                   .firstWhereOrNull((element) => element.reflectee is CastMap)
                   ?.reflectee as CastMap?;
 
-              if (castMapAnnotation != null) {
-                instanceMirror.setField(declaration.simpleName,
+              TypeMirror fieldFirstTypeMirror =
+                  (declaration.type as ClassMirror).typeArguments.first;
+              String firstMapParam =
+                  fieldFirstTypeMirror.reflectedType.toString();
+
+              TypeMirror fieldSecondTypeMirror =
+                  (declaration.type as ClassMirror).typeArguments[1];
+              String secondMapParam =
+                  fieldSecondTypeMirror.reflectedType.toString();
+
+              if (firstMapParam == 'dynamic' && secondMapParam == 'dynamic') {
+                emptyInstanceMirror.setField(
+                  declaration.simpleName,
+                  fieldValue,
+                );
+                continue;
+              } else if (castMapAnnotation != null) {
+                emptyInstanceMirror.setField(declaration.simpleName,
                     castMapAnnotation.parser(fieldValue));
                 continue;
               } else {
@@ -257,11 +289,12 @@ class ObjectMapperImpl extends ObjectMapper {
                     MirrorSystem.getName(declaration.simpleName);
 
                 throw StateError(
-                    'Cant parse Map without know it\'s type at runtime. Try add `@CastMap<$firstMapParam, $secondMapParam>()` on `Map<$firstMapParam, $secondMapParam> $rawFieldName;`');
+                  'Cant parse Map without know it\'s type at runtime. Try add `@CastMap<$firstMapParam, $secondMapParam>()` on `Map<$firstMapParam, $secondMapParam> $rawFieldName;`',
+                );
               }
             }
 
-            instanceMirror.setField(declaration.simpleName, fieldValue);
+            emptyInstanceMirror.setField(declaration.simpleName, fieldValue);
           } else {
             ClassMirror classMirror = declaration.type as ClassMirror;
             List<TypeMirror> fieldTypeMirror = classMirror.typeArguments;
@@ -286,7 +319,7 @@ class ObjectMapperImpl extends ObjectMapper {
         }
       }
 
-      return instanceMirror.reflectee;
+      return emptyInstanceMirror.reflectee;
     } else {
       throw StateError('No hay mapper para este tipo de dato');
     }
@@ -321,5 +354,30 @@ class ObjectMapperImpl extends ObjectMapper {
 
     String rawFieldName = MirrorSystem.getName(field.simpleName);
     return namingStrategy(rawFieldName);
+  }
+
+  InstanceMirror _createEmptyInstance(ClassMirror classMirror) {
+    var constructors = classMirror.declarations.values.where((declaration) {
+      return declaration is MethodMirror && declaration.isConstructor;
+    });
+    DeclarationMirror? fullEmpty = constructors.firstWhereOrNull(
+      (element) =>
+          MirrorSystem.getName((element as MethodMirror).constructorName) == '',
+    );
+    DeclarationMirror? empty = constructors.firstWhereOrNull(
+      (element) =>
+          MirrorSystem.getName((element as MethodMirror).constructorName) ==
+          'empty',
+    );
+    if (fullEmpty != null) {
+      return classMirror.newInstance(const Symbol(''), []);
+    } else if (empty != null) {
+      return classMirror.newInstance(const Symbol('empty'), []);
+    } else {
+      String className = MirrorSystem.getName(classMirror.simpleName);
+      throw StateError(
+        'Class $className need a $className() or an $className.empty() constructor',
+      );
+    }
   }
 }

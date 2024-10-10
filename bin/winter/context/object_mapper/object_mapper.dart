@@ -91,9 +91,13 @@ abstract class ObjectMapper {
     this.namingStrategy = namingStrategy ?? NamingStrategies.basic;
   }
 
-  String serialize(dynamic object, {bool cleanUp = false});
+  String serialize(dynamic object);
 
-  dynamic deserialize(String jsonString, Type targetType);
+  T deserialize<T>(String jsonString);
+
+  List<T> deserializeList<T>(String jsonString);
+
+  Map<K, V> deserializeMap<K, V>(String jsonString);
 }
 
 class NamingStrategies {
