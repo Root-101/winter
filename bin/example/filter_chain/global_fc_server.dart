@@ -2,7 +2,7 @@ import '../../winter/winter.dart';
 
 void main() => WinterServer(
       config: ServerConfig(port: 9090),
-      filterConfig: FilterConfig(
+      globalFilterConfig: FilterConfig(
         [
           RemoveQueryParamsFilter(),
           //LogsFilter(),
@@ -20,9 +20,6 @@ void main() => WinterServer(
         ],
       ),
       router: WinterRouter(
-        config: RouterConfig(
-          onInvalidUrl: OnInvalidUrl.fail(),
-        ),
         routes: [
           Route(
             path: '/filter-chain',
