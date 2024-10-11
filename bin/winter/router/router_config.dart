@@ -54,7 +54,7 @@ class OnLoadedRoutes {
         print('');
         print('Routes:');
         for (var element in allRoutes) {
-          print('${element.method.name.toUpperCase()}:    ${element.path}');
+          print('${element.method.name.toUpperCase()}:    ${element.path}    ${element.filterConfig}');
         }
         print('');
       },
