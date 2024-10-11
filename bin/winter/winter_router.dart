@@ -10,20 +10,18 @@ abstract class AbstractWinterRouter {
 
 class WinterRouter extends AbstractWinterRouter {
   final String basePath;
-  final RouterConfig config;
 
   final List<Route> routes;
 
   WinterRouter({
-    required this.config,
     required this.routes,
     this.basePath = '',
   });
 
-  ///Return true or false if this router can successfully process a request
-  ///This means if the router if found, and the methods match
-  @override
-  bool canHandle(RequestEntity request) {
+  ///Return the route that will handle the request
+  ///If a null value is returned, it means that this router can handle the request with a route
+  ///It will return an status code like 404 or 415
+  Route? handlerRoute(RequestEntity request) {
     ///find routes that match with the path
     String urlPath = '/${request.url.path}';
     List<Route> matchedRoutes = routes
@@ -34,14 +32,20 @@ class WinterRouter extends AbstractWinterRouter {
 
     ///no routes found: 404
     if (matchedRoutes.isEmpty) {
-      return false;
+      return null;
     } else {
       ///there is some route, check method (get, post, put...)
       return matchedRoutes.firstWhereOrNull(
-            (element) => element.method == HttpMethod(request.method),
-          ) !=
-          null;
+        (element) => element.method == HttpMethod(request.method),
+      );
     }
+  }
+
+  ///Return true or false if this router can successfully process a request
+  ///This means if the router if found, and the methods match
+  @override
+  bool canHandle(RequestEntity request) {
+    return handlerRoute(request) != null;
   }
 
   @override
@@ -78,23 +82,27 @@ class Route {
   final String path;
   final HttpMethod method;
   final RequestHandler handler;
+  final FilterConfig filterConfig;
 
   Route._(
     this.path,
     this.method,
     this.handler,
+    this.filterConfig,
   );
 
   Route.build({
     required this.path,
     required this.method,
     required this.handler,
+    this.filterConfig = const FilterConfig([]),
   });
 
   factory Route({
     required String path,
     required HttpMethod method,
     required RequestHandler handler,
+    FilterConfig? filterConfig,
   }) {
     if (!path.startsWith('/')) {
       throw ArgumentError.value(
@@ -108,6 +116,7 @@ class Route {
       path,
       method,
       handler,
+      filterConfig ?? const FilterConfig([]),
     );
   }
 
