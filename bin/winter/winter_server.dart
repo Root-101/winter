@@ -8,7 +8,7 @@ import 'package:shelf/src/response.dart';
 import 'winter.dart';
 
 ///Dependency Injection: easy access to the current dependency injection instance
-WinterDI get di => WinterServer.instance.context.dependencyInjection;
+DependencyInjection get di => WinterServer.instance.context.dependencyInjection;
 
 ///Dependency Injection: easy access to the current object mapper instance
 ObjectMapper get om => WinterServer.instance.context.objectMapper;
@@ -27,7 +27,8 @@ class WinterServer {
   static WinterServer get instance {
     if (_winterServer == null) {
       throw StateError(
-          'Server hasn\'t starter yet. Try calling start() first.');
+        'Server has\'t starter yet. Try calling start() first.',
+      );
     }
     return _winterServer!;
   }
@@ -37,7 +38,7 @@ class WinterServer {
   final BuildContext context;
   final ServerConfig config;
   final AbstractWinterRouter router;
-  final FilterConfig filterConfig;
+  final FilterConfig globalFilterConfig;
 
   late final HttpServer runningServer;
 
@@ -49,12 +50,11 @@ class WinterServer {
     ServerConfig? config,
     AbstractWinterRouter? router,
     ExceptionHandler? exceptionHandler,
-    WinterDI? di,
-    FilterConfig? filterConfig,
+    FilterConfig? globalFilterConfig,
   })  : context = context ?? BuildContext(),
         config = config ?? ServerConfig(),
         router = router ?? BasicRouter(),
-        filterConfig = filterConfig ?? FilterConfig([]);
+        globalFilterConfig = globalFilterConfig ?? const FilterConfig([]);
 
   ///Start the web server with all the current config in this object
   ///beforeStart:
@@ -104,9 +104,9 @@ class WinterServer {
   }
 
   Future close({bool force = false}) async {
+    await runningServer.close(force: force);
     _isRunning = false;
     _winterServer = null;
-    await runningServer.close(force: force);
   }
 
   FutureOr<Response> _handleRequest(Request request) async {
@@ -123,10 +123,19 @@ class WinterServer {
     );
 
     try {
+      FilterConfig? routeFilterConfig;
+      if (router is WinterRouter) {
+        routeFilterConfig =
+            (router as WinterRouter).handlerRoute(requestEntity)?.filterConfig;
+      }
+
       WinterHandler baseCall = router.handler(requestEntity);
 
       FilterChain filterChain = FilterChain(
-        filterConfig.filters,
+        [
+          ...globalFilterConfig.filters,
+          if (routeFilterConfig != null) ...routeFilterConfig.filters,
+        ],
         baseCall,
       );
 
