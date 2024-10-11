@@ -1,7 +1,7 @@
-abstract class WinterDI {
+abstract class DependencyInjection {
   static final _WinterDIImpl _diImpl = _WinterDIImpl(); //singleton instance
 
-  static WinterDI get instance => _diImpl;
+  static DependencyInjection get instance => _diImpl;
 
   S put<S>(S dependency, {String? tag});
 
@@ -10,7 +10,7 @@ abstract class WinterDI {
   S delete<S>({String? tag});
 }
 
-class _WinterDIImpl extends WinterDI {
+class _WinterDIImpl extends DependencyInjection {
   StateError notFound(Type S, String? tag) => StateError(
         'Dependency of <${S.toString()}> (with tag: ${tag ?? 'empty'}) not found',
       );
