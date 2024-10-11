@@ -15,12 +15,11 @@ void main() {
   });
 
   test('Manual validation - CustomValidatableObject', () async {
-    ///NOTE that the
     CustomValidatableObject object = CustomValidatableObject(name: 'abc');
 
     List<ConstrainViolation> violations = vs.validate(object);
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: 'abc',
         fieldName: 'base-object.name',
         message: 'Name can\'t have 3 letters',
@@ -71,12 +70,12 @@ void main() {
     );
     List<ConstrainViolation> violations = vs.validate(address);
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: '',
         fieldName: 'root.streetName',
         message: 'Text can\'t be empty',
       ),
-      ConstrainViolation(
+      const ConstrainViolation(
         value: null,
         fieldName: 'root.houseNumber',
         message: 'Value can\'t be null',
@@ -91,7 +90,7 @@ void main() {
 
     List<ConstrainViolation> violations = vs.validate(car);
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: '',
         fieldName: 'root.BRAND',
         message: 'Text can\'t be empty',
@@ -109,12 +108,12 @@ void main() {
     );
     List<ConstrainViolation> violations = vs.validate(address);
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: '',
         fieldName: 'this.streetName',
         message: 'Text can\'t be empty',
       ),
-      ConstrainViolation(
+      const ConstrainViolation(
         value: null,
         fieldName: 'this.houseNumber',
         message: 'Value can\'t be null',
@@ -132,12 +131,12 @@ void main() {
     );
     List<ConstrainViolation> violations = vs.validate(address);
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: '',
         fieldName: 'root -> streetName',
         message: 'Text can\'t be empty',
       ),
-      ConstrainViolation(
+      const ConstrainViolation(
         value: null,
         fieldName: 'root -> houseNumber',
         message: 'Value can\'t be null',
@@ -154,12 +153,12 @@ void main() {
     );
     List<ConstrainViolation> violations = vs.validate(address);
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: '',
         fieldName: 'root.streetName',
         message: 'Text can\'t be empty',
       ),
-      ConstrainViolation(
+      const ConstrainViolation(
         value: null,
         fieldName: 'root.houseNumber',
         message: 'Value can\'t be null',
@@ -182,12 +181,12 @@ void main() {
     );
     List<ConstrainViolation> violations = vs.validate(address);
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: '',
         fieldName: 'this -> street_name',
         message: 'Text can\'t be empty',
       ),
-      ConstrainViolation(
+      const ConstrainViolation(
         value: null,
         fieldName: 'this -> house_number',
         message: 'Value can\'t be null',
@@ -222,17 +221,17 @@ void main() {
     ];
     List<ConstrainViolation> violations = vs.validate(address);
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: '',
         fieldName: 'root[0].streetName',
         message: 'Text can\'t be empty',
       ),
-      ConstrainViolation(
+      const ConstrainViolation(
         value: null,
         fieldName: 'root[0].houseNumber',
         message: 'Value can\'t be null',
       ),
-      ConstrainViolation(
+      const ConstrainViolation(
         value: '',
         fieldName: 'root[1].streetName',
         message: 'Text can\'t be empty',
@@ -260,17 +259,17 @@ void main() {
     List<ConstrainViolation> violations = vs.validate(address);
 
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: '',
         fieldName: 'root[first].streetName',
         message: 'Text can\'t be empty',
       ),
-      ConstrainViolation(
+      const ConstrainViolation(
         value: null,
         fieldName: 'root[first].houseNumber',
         message: 'Value can\'t be null',
       ),
-      ConstrainViolation(
+      const ConstrainViolation(
         value: '',
         fieldName: 'root[second].streetName',
         message: 'Text can\'t be empty',
@@ -284,7 +283,7 @@ void main() {
     User object = User(
       userName: null,
       userId: 0,
-      duration: Duration(days: 365),
+      duration: const Duration(days: 365),
       isActive: true,
       addresses: [
         Address(
@@ -313,37 +312,37 @@ void main() {
     List<ConstrainViolation> violations = vs.validate(object);
 
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: 'User{userName: null, userId: 0}',
         fieldName: 'root',
         message: 'Can\'t have a cero id',
       ),
-      ConstrainViolation(
+      const ConstrainViolation(
         value: null,
         fieldName: 'root.userName',
         message: 'Value can\'t be null',
       ),
-      ConstrainViolation(
+      const ConstrainViolation(
         value: '',
         fieldName: 'root.addresses[0].streetName',
         message: 'Text can\'t be empty',
       ),
-      ConstrainViolation(
+      const ConstrainViolation(
         value: null,
         fieldName: 'root.addresses[0].houseNumber',
         message: 'Value can\'t be null',
       ),
-      ConstrainViolation(
+      const ConstrainViolation(
         value: null,
         fieldName: 'root.singleAddress.streetName',
         message: 'Error validating field',
       ),
-      ConstrainViolation(
+      const ConstrainViolation(
         value: null,
         fieldName: 'root.additionalAttributes[key3].streetName',
         message: 'Error validating field',
       ),
-      ConstrainViolation(
+      const ConstrainViolation(
         value: null,
         fieldName: 'root.additionalAttributes[key3].houseNumber',
         message: 'Value can\'t be null',
@@ -364,7 +363,7 @@ void main() {
         fieldName: 'root',
         message: 'need more ram',
       ),
-      ConstrainViolation(
+      const ConstrainViolation(
         value: 256,
         fieldName: 'root.hard_drive_space',
         message: 'need more hd space',
@@ -380,7 +379,7 @@ void main() {
     List<ConstrainViolation> violations1 = vs.validate(object1);
 
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: '    ',
         fieldName: 'root.notBlankParam',
         message: 'Value can\'t be blank',
@@ -401,7 +400,7 @@ void main() {
     List<ConstrainViolation> violations1 = vs.validate(object1);
 
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: null,
         fieldName: 'root.notNullParam',
         message: 'Value can\'t be null',
@@ -422,7 +421,7 @@ void main() {
     List<ConstrainViolation> violations1 = vs.validate(object1);
 
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: '',
         fieldName: 'root.notEmptyParam',
         message: 'Text can\'t be empty',
@@ -443,7 +442,7 @@ void main() {
     List<ConstrainViolation> violations1 = vs.validate(object1);
 
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: [],
         fieldName: 'root.notEmptyParam',
         message: 'List can\'t be empty',
@@ -464,7 +463,7 @@ void main() {
     List<ConstrainViolation> violations1 = vs.validate(object1);
 
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: {},
         fieldName: 'root.notEmptyParam',
         message: 'Map can\'t be empty',
@@ -485,7 +484,7 @@ void main() {
     List<ConstrainViolation> violations1 = vs.validate(object1);
 
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: {},
         fieldName: 'root.notEmptyParam',
         message: 'Set can\'t be empty',
@@ -506,7 +505,7 @@ void main() {
     List<ConstrainViolation> violations1 = vs.validate(object1);
 
     List<ConstrainViolation> correctValidations = [
-      ConstrainViolation(
+      const ConstrainViolation(
         value: '',
         fieldName: 'root.sizedParam',
         message: 'Text length must be greater than 5',
