@@ -1,6 +1,6 @@
 import '../../winter.dart';
 
-class RequestRoute {
+class RequestRoute extends ScanComponent {
   final String path;
   final HttpMethod method;
 
