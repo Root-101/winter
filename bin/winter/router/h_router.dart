@@ -1,8 +1,10 @@
 import '../winter.dart';
 
 class HRouter extends WinterRouter {
+  final RouterConfig config;
+
   HRouter._({
-    required super.config,
+    required this.config,
     required super.routes,
     super.basePath,
   });
@@ -14,11 +16,15 @@ class HRouter extends WinterRouter {
   }) {
     String nonNullBasePath = basePath ?? '';
     RouterConfig nonNullConfig = config ?? RouterConfig();
-    return HRouter._(
+    HRouter router = HRouter._(
       config: nonNullConfig,
       routes: _flattenRoutes(routes, nonNullBasePath, nonNullConfig),
       basePath: nonNullBasePath,
     );
+
+    nonNullConfig.onLoadedRoutes.afterInit(router.routes);
+
+    return router;
   }
 
   static List<Route> _flattenRoutes(
@@ -28,15 +34,25 @@ class HRouter extends WinterRouter {
   ) {
     List<Route> result = [];
 
-    void flattenRoutes(String parentPath, List<HRoute> routes) {
+    void flattenRoutes(
+      String parentPath,
+      FilterConfig? parentFilterConfig,
+      List<HRoute> routes,
+    ) {
       for (var route in routes) {
         String fullPath =
             (parentPath + route.path).replaceAll(RegExp(r'/+'), '/');
+
+        FilterConfig? newParentFilterConfig = parentFilterConfig != null
+            ? parentFilterConfig.merge(route.filterConfig)
+            : route.filterConfig.merge(parentFilterConfig);
+
         if (route is! ParentRoute) {
           final currentRoute = Route(
             path: fullPath,
             method: route.method,
             handler: route.handler,
+            filterConfig: newParentFilterConfig,
           );
           if (_isValidUri(fullPath)) {
             result.add(currentRoute);
@@ -45,12 +61,12 @@ class HRouter extends WinterRouter {
           }
         }
         if (route.routes.isNotEmpty) {
-          flattenRoutes(fullPath, route.routes);
+          flattenRoutes(fullPath, newParentFilterConfig, route.routes);
         }
       }
     }
 
-    flattenRoutes(initialPath, routes);
+    flattenRoutes(initialPath, null, routes);
 
     return result;
   }
@@ -73,8 +89,9 @@ class ParentRoute extends HRoute {
   ParentRoute({
     required super.path,
     required super.routes,
+    super.filterConfig,
   }) : super(
-          method: HttpMethod(''),
+          method: const HttpMethod(''),
           handler: (request) => ResponseEntity.ok(),
         );
 }
@@ -86,6 +103,7 @@ class HRoute extends Route {
     required super.path,
     required super.method,
     required super.handler,
+    super.filterConfig,
     this.routes = const [],
   }) : super.build();
 }
