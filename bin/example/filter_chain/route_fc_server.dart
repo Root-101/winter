@@ -31,7 +31,7 @@ void main() => WinterServer(
                     const Duration(minutes: 1),
                   ),
                   log: (request, requestId) {
-                    print('Rate limiter fail');
+                    print('Rate limiter fail for request ${request.templateUrl}');
                   },
                 ),
               ],
