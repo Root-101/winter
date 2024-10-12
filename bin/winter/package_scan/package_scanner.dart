@@ -10,7 +10,11 @@ typedef ParamExtractor = dynamic Function(RequestEntity request);
 ///Base annotation for top level annotations, if ANYTHING is not annotated with this, it's not processed
 ///All top level annotations SHOULD extends this if they wanna be processed
 class ScanComponent {
-  const ScanComponent();
+  final int order;
+
+  const ScanComponent({
+    this.order = 1,
+  });
 }
 
 class PackageScanner {
@@ -44,11 +48,29 @@ class PackageScanner {
   BuildContext get context => _context;
 
   void scan() {
-    // Obtener el MirrorSystem
-    MirrorSystem mirrorSystem = currentMirrorSystem();
+    //scan and get all components
+    List<PreprocessedComponent> components = _getComponents();
+    _sortComponents(components);
 
+    for (var singleComponent in components) {
+      if (singleComponent.declaration is MethodMirror) {
+        Route? route = _processRouteFromMethod(
+          singleComponent.libMirror,
+          singleComponent.declaration as MethodMirror,
+          _context.objectMapper,
+        );
+        if (route != null) {
+          _router.addRoute(route);
+        }
+      }
+    }
+  }
+
+  ///Get all the raw component of the system
+  List<PreprocessedComponent> _getComponents() {
+    List<PreprocessedComponent> components = [];
     // Iterar sobre todas las librerías cargadas
-    for (var library in mirrorSystem.libraries.entries) {
+    for (var library in currentMirrorSystem().libraries.entries) {
       final uri = library.key;
       final libMirror = library.value;
 
@@ -74,22 +96,31 @@ class PackageScanner {
             ?.reflectee;
 
         if (component != null) {
-          if (declaration is MethodMirror) {
-            Route? route = _processRouteFromMethod(
-              libMirror,
-              declaration,
-              _context.objectMapper,
-            );
-            if (route != null) {
-              _router.addRoute(route);
-            }
-          }
+          components
+              .add(PreprocessedComponent(component, libMirror, declaration));
         }
       }
     }
+    return components;
+  }
+
+  void _sortComponents(List<PreprocessedComponent> components) {
+    //sort components by priority
+    components.sort(
+      (a, b) => a.scanComponent.order.compareTo(b.scanComponent.order),
+    );
   }
 }
 
+class PreprocessedComponent {
+  final ScanComponent scanComponent;
+  final LibraryMirror libMirror;
+  final DeclarationMirror declaration;
+
+  PreprocessedComponent(this.scanComponent, this.libMirror, this.declaration);
+}
+
+///--------------------- ROUTE ---------------------\\\
 Route? _processRouteFromMethod(
   LibraryMirror libMirror,
   MethodMirror methodMirror,
@@ -107,6 +138,7 @@ Route? _processRouteFromMethod(
   if (mapper != null) {
     HttpMethod method = mapper.method;
     String path = mapper.path;
+    FilterConfig? filterConfig = mapper.filterConfig;
 
     List<ParamExtractor> positionalArgumentsFunctions = [];
     Map<Symbol, ParamExtractor> namedArgumentsFunctions = {};
@@ -125,11 +157,10 @@ Route? _processRouteFromMethod(
       }
     }
 
-    ///TODO: add filter config annotation and add it to this route
-    ///add route to router
     return Route(
       path: path,
       method: method,
+      filterConfig: filterConfig,
       handler: (request) async {
         List<dynamic> posArgs = [];
         for (var element in positionalArgumentsFunctions) {
@@ -221,3 +252,4 @@ bool _processRouteRawRequest(
   }
   return isRequestEntity;
 }
+///--------------------- ROUTE ---------------------\\\
