@@ -21,7 +21,7 @@ class LogsFilter implements Filter {
   final void Function(ResponseEntity response) logResponse;
   final void Function(Exception exception) logErrorResponse;
 
-  LogsFilter({
+  const LogsFilter({
     void Function(RequestEntity request)? logRequest,
     void Function(ResponseEntity response)? logResponse,
     void Function(Exception exception)? logErrorResponse,
@@ -60,7 +60,7 @@ class RateLimiterFilter implements Filter {
   final FutureOr<String> Function(RequestEntity request) onRequest;
   final void Function(RequestEntity request, String requestId)? log;
 
-  RateLimiterFilter({
+  const RateLimiterFilter({
     required this.onRequest,
     required this.rateLimiter,
     this.log = defaultLogRateLimiter,
