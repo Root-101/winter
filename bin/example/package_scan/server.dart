@@ -6,7 +6,7 @@ void main() {
   PackageScanner scanner = PackageScanner();
 
   WinterServer(
-    config: ServerConfig(port: 8080),
+    config: ServerConfig(port: 9090),
     router: scanner.router,
   ).start();
 }
