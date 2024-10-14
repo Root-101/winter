@@ -9,6 +9,10 @@ class FilterConfig {
     return FilterConfig([...filters, ...(other?.filters ?? [])]);
   }
 
+  void add(Filter filter) {
+    filters.add(filter);
+  }
+  
   @override
   String toString() {
     return '$filters';

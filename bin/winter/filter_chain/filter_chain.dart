@@ -9,7 +9,7 @@ class FilterChain {
   FilterChain(List<Filter> filters, WinterHandler requestHandler)
       : _filters = List.of([...filters, BaseFilter(requestHandler)]);
 
-  Future<ResponseEntity> doFilter(RequestEntity request) async {
+  FutureOr<ResponseEntity> doFilter(RequestEntity request) async {
     if (_currentFilterIndex < _filters.length) {
       final filter = _filters[_currentFilterIndex];
       _currentFilterIndex++;
@@ -23,7 +23,7 @@ class FilterChain {
 }
 
 abstract class Filter {
-  Future<ResponseEntity> doFilter(
+  FutureOr<ResponseEntity> doFilter(
     RequestEntity request,
     FilterChain chain,
   );
@@ -35,7 +35,7 @@ class BaseFilter implements Filter {
   BaseFilter(this._baseHandler);
 
   @override
-  Future<ResponseEntity> doFilter(
+  FutureOr<ResponseEntity> doFilter(
     RequestEntity request,
     FilterChain chain,
   ) async {

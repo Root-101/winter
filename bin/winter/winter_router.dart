@@ -76,6 +76,11 @@ class WinterRouter extends AbstractWinterRouter {
       }
     }
   }
+
+  @override
+  String toString() {
+    return 'WinterRouter{basePath: $basePath, routes: $routes}';
+  }
 }
 
 class Route {
@@ -138,5 +143,10 @@ class Route {
         RegExp(regexPattern).firstMatch(actualUrlPath);
 
     return matchUrlPath != null;
+  }
+
+  @override
+  String toString() {
+    return 'Route{path: $path, method: $method, handler: $handler, filterConfig: $filterConfig}';
   }
 }
