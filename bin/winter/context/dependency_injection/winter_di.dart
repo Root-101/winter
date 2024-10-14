@@ -1,37 +1,32 @@
+import 'dart:mirrors';
+
 abstract class DependencyInjection {
-  static final _WinterDIImpl _diImpl = _WinterDIImpl(); //singleton instance
+  static DependencyInjection build() => _DependencyInjectionImpl();
 
-  static DependencyInjection get instance => _diImpl;
-
-  S put<S>(S dependency, {String? tag});
+  void put(dynamic dependency, {String? tag});
 
   S find<S>({String? tag});
+
+  ///NOTE: this could return null if the element is not found
+  dynamic findByType(Type type, {String? tag});
 
   S delete<S>({String? tag});
 }
 
-class _WinterDIImpl extends DependencyInjection {
+class _DependencyInjectionImpl extends DependencyInjection {
   StateError notFound(Type S, String? tag) => StateError(
         'Dependency of <${S.toString()}> (with tag: ${tag ?? 'empty'}) not found',
       );
 
-  static final _WinterDIImpl _singleton = _WinterDIImpl._internal();
-
-  _WinterDIImpl._internal();
-
-  factory _WinterDIImpl() {
-    return _singleton;
-  }
-
   static final Map<String, dynamic> _singl = {};
 
   @override
-  S put<S>(S dependency, {String? tag}) {
-    final key = _getKey(S, tag);
+  void put(dynamic dependency, {String? tag}) {
+    Type type = reflect(dependency).type.reflectedType;
+
+    final key = _getKey(type, tag);
 
     _singl[key] = dependency;
-
-    return find<S>(tag: tag);
   }
 
   @override
@@ -42,6 +37,17 @@ class _WinterDIImpl extends DependencyInjection {
       return _singl[key] as S;
     } else {
       throw notFound(S, tag);
+    }
+  }
+
+  @override
+  dynamic findByType(Type type, {String? tag}) {
+    final key = _getKey(type, tag);
+
+    if (_singl[key] != null) {
+      return _singl[key];
+    } else {
+      return null;
     }
   }
 
@@ -58,9 +64,9 @@ class _WinterDIImpl extends DependencyInjection {
     }
   }
 
-  /// Generates the key based on [type] (and optionally a [name])
+  /// Generates the key based on [type] (and optionally a [tag])
   /// to register an Instance Builder in the hashmap.
-  String _getKey(Type type, String? name) {
-    return name == null ? type.toString() : type.toString() + name;
+  String _getKey(Type type, String? tag) {
+    return tag == null ? type.toString() : '${type.toString()}-$tag';
   }
 }
