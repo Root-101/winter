@@ -300,11 +300,11 @@ class ObjectMapperImpl extends ObjectMapper {
             List<TypeMirror> fieldTypeMirror = classMirror.typeArguments;
             String params = fieldTypeMirror
                 .fold(
-                  "",
+                  '',
                   (previousValue, reflectedType) =>
                       '$previousValue, ${reflectedType.toString()}',
                 )
-                .replaceFirst(",", "")
+                .replaceFirst(',', '')
                 .trim();
 
             if (params.isNotEmpty) {
