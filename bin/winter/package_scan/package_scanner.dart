@@ -25,6 +25,8 @@ class PackageScanner {
   final FilterConfig _filterConfig;
   final List<String> packageScan; //TODO: as a lib, always scan itself
 
+  final List<ProcessedComponent> summary = [];
+
   static const RouteProcessor _routeProcessor = RouteProcessor();
   static const FilterProcessor _filterProcessor = FilterProcessor();
 
@@ -48,7 +50,7 @@ class PackageScanner {
       packageScan: packageScan ?? [],
     );
 
-    scanner.scan();
+    scanner._scan();
 
     return scanner;
   }
@@ -59,51 +61,90 @@ class PackageScanner {
 
   FilterConfig get filterConfig => _filterConfig;
 
-  void scan() {
+  void _addProcessedComponent({
+    required ComponentType type,
+    required RawComponent component,
+    required ProcessedAs processedAs,
+  }) {
+    summary.add(
+      ProcessedComponent(
+        type: type,
+        name: MirrorSystem.getName(component.declaration.simpleName),
+        library: MirrorSystem.getName(component.libMirror.simpleName),
+        processedAs: processedAs,
+      ),
+    );
+  }
+
+  void _scan() {
     //scan and get all components
-    List<PreprocessedComponent> components = _getComponents();
+    List<RawComponent> components = _getComponents();
     _sortComponents(components);
 
-    for (var singleComponent in components) {
-      if (singleComponent.declaration is MethodMirror) {
-        MethodMirror methodMirror = singleComponent.declaration as MethodMirror;
+    for (var rawComponent in components) {
+      if (rawComponent.declaration is MethodMirror) {
+        MethodMirror methodMirror = rawComponent.declaration as MethodMirror;
 
         ///------ process possible route ------\\\
         Route? route = _routeProcessor.processRouteFromMethod(
-          singleComponent.libMirror,
+          rawComponent.libMirror,
           methodMirror,
           _context.objectMapper,
         );
         if (route != null) {
           _router.addRoute(route);
+
+          _addProcessedComponent(
+            type: ComponentType.method,
+            component: rawComponent,
+            processedAs: ProcessedAs.route,
+          );
+
+          continue;
         }
 
         ///------ process possible FilterAsFunction ------\\\
         Filter? filter = _filterProcessor.processFilterFromMethod(
-          singleComponent.libMirror,
+          rawComponent.libMirror,
           methodMirror,
         );
         if (filter != null) {
           _filterConfig.add(filter);
+
+          _addProcessedComponent(
+            type: ComponentType.method,
+            component: rawComponent,
+            processedAs: ProcessedAs.filter,
+          );
+
+          continue;
         }
-      } else if (singleComponent.declaration is ClassMirror) {
-        ClassMirror classMirror = singleComponent.declaration as ClassMirror;
+      } else if (rawComponent.declaration is ClassMirror) {
+        ClassMirror classMirror = rawComponent.declaration as ClassMirror;
 
         ///------ process possible FilterAsFunction ------\\\
         Filter? filter = _filterProcessor.processFilterFromClass(
-          singleComponent.libMirror,
+          rawComponent.libMirror,
           classMirror,
         );
         if (filter != null) {
           _filterConfig.add(filter);
+
+          _addProcessedComponent(
+            type: ComponentType.clazz,
+            component: rawComponent,
+            processedAs: ProcessedAs.filter,
+          );
+
+          continue;
         }
       }
     }
   }
 
   ///Get all the raw component of the system
-  List<PreprocessedComponent> _getComponents() {
-    List<PreprocessedComponent> components = [];
+  List<RawComponent> _getComponents() {
+    List<RawComponent> components = [];
     // Iterar sobre todas las librerías cargadas
     for (var library in currentMirrorSystem().libraries.entries) {
       final uri = library.key;
@@ -131,15 +172,14 @@ class PackageScanner {
             ?.reflectee;
 
         if (component != null) {
-          components
-              .add(PreprocessedComponent(component, libMirror, declaration));
+          components.add(RawComponent(component, libMirror, declaration));
         }
       }
     }
     return components;
   }
 
-  void _sortComponents(List<PreprocessedComponent> components) {
+  void _sortComponents(List<RawComponent> components) {
     //sort components by priority
     components.sort(
       (a, b) => a.scanComponent.order.compareTo(b.scanComponent.order),
@@ -147,10 +187,43 @@ class PackageScanner {
   }
 }
 
-class PreprocessedComponent {
+class RawComponent {
   final ScanComponent scanComponent;
   final LibraryMirror libMirror;
   final DeclarationMirror declaration;
 
-  PreprocessedComponent(this.scanComponent, this.libMirror, this.declaration);
+  RawComponent(this.scanComponent, this.libMirror, this.declaration);
+}
+
+enum ComponentType {
+  clazz,
+  method,
+  variable,
+  unknown;
+}
+
+enum ProcessedAs {
+  route,
+  filter,
+  bean,
+  notProcessed;
+}
+
+class ProcessedComponent {
+  final ComponentType type;
+  final String name;
+  final String library;
+  final ProcessedAs processedAs;
+
+  ProcessedComponent({
+    required this.type,
+    required this.name,
+    required this.library,
+    required this.processedAs,
+  });
+
+  @override
+  String toString() {
+    return 'ProcessedComponent{type: $type, name: $name, library: $library, processedAs: $processedAs}';
+  }
 }
