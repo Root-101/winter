@@ -29,6 +29,7 @@ class PackageScanner {
 
   static const RouteProcessor _routeProcessor = RouteProcessor();
   static const FilterProcessor _filterProcessor = FilterProcessor();
+  static const InjectableProcessor _injectableProcessor = InjectableProcessor();
 
   PackageScanner._(
     this._router,
@@ -76,6 +77,7 @@ class PackageScanner {
     );
   }
 
+  //TODO: ver si con el .owner se puede acceder al library mirror sin tener que pasarlo por parametros
   void _scan() {
     //scan and get all components
     List<RawComponent> components = _getComponents();
@@ -119,10 +121,32 @@ class PackageScanner {
 
           continue;
         }
+
+        ///------ process possible injectable (as method)------\\\
+        ({Object? dependency, String? tag}) injectableObject =
+            _injectableProcessor.processInjectableFromMethod(
+          methodMirror,
+          _context.dependencyInjection,
+        );
+
+        if (injectableObject.dependency != null) {
+          _context.dependencyInjection.put(
+            injectableObject.dependency,
+            tag: injectableObject.tag,
+          );
+
+          _addProcessedComponent(
+            type: ComponentType.method,
+            component: rawComponent,
+            processedAs: ProcessedAs.injectable,
+          );
+
+          continue;
+        }
       } else if (rawComponent.declaration is ClassMirror) {
         ClassMirror classMirror = rawComponent.declaration as ClassMirror;
 
-        ///------ process possible FilterAsFunction ------\\\
+        ///------ process possible Filter (as class) ------\\\
         Filter? filter = _filterProcessor.processFilterFromClass(
           rawComponent.libMirror,
           classMirror,
@@ -134,6 +158,30 @@ class PackageScanner {
             type: ComponentType.clazz,
             component: rawComponent,
             processedAs: ProcessedAs.filter,
+          );
+
+          continue;
+        }
+      } else if (rawComponent.declaration is VariableMirror) {
+        VariableMirror variableMirror =
+            rawComponent.declaration as VariableMirror;
+
+        ///------ process possible injectable (as variable)------\\\
+        ({Object? dependency, String? tag}) injectableObject =
+            _injectableProcessor.processInjectableFromVariable(
+          variableMirror,
+        );
+
+        if (injectableObject.dependency != null) {
+          _context.dependencyInjection.put(
+            injectableObject.dependency,
+            tag: injectableObject.tag,
+          );
+
+          _addProcessedComponent(
+            type: ComponentType.variable,
+            component: rawComponent,
+            processedAs: ProcessedAs.injectable,
           );
 
           continue;
@@ -205,7 +253,7 @@ enum ComponentType {
 enum ProcessedAs {
   route,
   filter,
-  bean,
+  injectable,
   notProcessed;
 }
 
