@@ -16,7 +16,7 @@ class ResponseEntity extends Response {
         super(
           body: body is! Stream
               ? body != null
-                  ? (objectMapper ?? WinterServer.instance.context.objectMapper)
+                  ? (objectMapper ?? Winter.instance.context.objectMapper)
                       .serialize(body)
                   : ''
               : body,

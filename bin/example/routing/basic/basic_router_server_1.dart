@@ -16,8 +16,8 @@ void main() {
     ],
   );
 
-  WinterServer(
+  Winter.run(
     config: ServerConfig(port: 8080),
     router: router,
-  ).start();
+  );
 }

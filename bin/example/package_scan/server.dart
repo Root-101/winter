@@ -5,8 +5,8 @@ import 'package_scan.dart';
 void main() {
   PackageScanner scanner = PackageScanner();
 
-  WinterServer(
+  Winter.run(
     config: ServerConfig(port: 9090),
     router: scanner.router,
-  ).start();
+  );
 }

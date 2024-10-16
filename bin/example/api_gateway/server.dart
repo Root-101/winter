@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 
 import '../../winter/winter.dart';
 
-void main() => WinterServer(
+void main() => Winter.run(
       config: ServerConfig(port: 9090),
       router: GatewayRouter(
         services: [
@@ -25,7 +25,7 @@ void main() => WinterServer(
           ),
         ],
       ),
-    ).start();
+    );
 
 class GatewayRoute {
   String gatewayName;

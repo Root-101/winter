@@ -6,8 +6,8 @@ void main() {
     ..add('/other', HttpMethod('other'),
         (request) => ResponseEntity.ok(body: 'hello-other-world'));
 
-  WinterServer(
+  Winter.run(
     config: ServerConfig(port: 8080),
     router: router,
-  ).start();
+  );
 }

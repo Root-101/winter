@@ -1,6 +1,6 @@
 import '../../winter/winter.dart';
 
-void main() => WinterServer(
+void main() => Winter.run(
       config: ServerConfig(port: 9090),
       globalFilterConfig: FilterConfig(
         [
@@ -60,7 +60,7 @@ void main() => WinterServer(
           ),
         ],
       ),
-    ).start();
+    );
 
 class RemoveQueryParamsFilter implements Filter {
   @override
