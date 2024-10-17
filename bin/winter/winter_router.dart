@@ -8,6 +8,25 @@ abstract class AbstractWinterRouter {
   WinterHandler handler(RequestEntity request);
 }
 
+///Example:
+///ServeRouter((request) => ResponseEntity.ok(body: 'Hello world!!!'))
+///This will handle all request and always return a 200:Hello world!!!
+class ServeRouter extends AbstractWinterRouter {
+  final RequestHandler function;
+
+  ServeRouter(this.function);
+
+  @override
+  bool canHandle(RequestEntity request) {
+    return true;
+  }
+
+  @override
+  RequestHandler handler(_) {
+    return (newRequest) => function(newRequest);
+  }
+}
+
 class WinterRouter extends AbstractWinterRouter {
   final String basePath;
 

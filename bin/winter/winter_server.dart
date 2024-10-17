@@ -52,14 +52,15 @@ class Winter {
     required HttpServer rawServer,
   }) : _rawServer = rawServer;
 
-  static Future<Winter> server({
+  /*static Future<Winter> server({
     BuildContext? context,
     ServerConfig? config,
     AbstractWinterRouter? router,
     FilterConfig? globalFilterConfig,
   }) async {
 
-  }
+  }*/
+  
   static Future<Winter> run({
     BuildContext? context,
     ServerConfig? config,
