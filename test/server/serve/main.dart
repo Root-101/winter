@@ -22,7 +22,7 @@ void main() {
 
   Future<String> get(String path) => http.read(Uri.parse(url + path));
 
-  test('get sync/async handler', () async {
+  test('Test serve router', () async {
     expect(await get('/anything'), body);
     expect(await get('/anything-1'), body);
     expect(await get('/abc'), body);
