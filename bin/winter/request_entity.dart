@@ -3,10 +3,8 @@ import 'package:shelf/shelf.dart';
 import 'winter.dart';
 
 class RequestEntity extends Request {
-  late final Map<String, String> pathParams;
-  late final Map<String, String> queryParams;
-
-  late final String templateUrl;
+  Map<String, String>? _pathParams;
+  Map<String, String>? _queryParams;
 
   RequestEntity(
     super.method,
@@ -19,19 +17,46 @@ class RequestEntity extends Request {
     super.encoding,
     super.context,
   }) {
-    queryParams = _extractQueryParams(requestedUri.toString());
+    _queryParams = _extractQueryParams(requestedUri.toString());
   }
 
   HttpMethod get httpMethod => HttpMethod(method);
 
+  Map<String, String> get queryParams => _queryParams ?? {};
+
+  Map<String, String> get pathParams => _pathParams ?? {};
+
+  ///The path params need to be initialized with a template
+  ///For the url:
+  ///   /user/adam/details
+  ///
+  ///A possible template could be:
+  ///   /user/{name}/details
+  ///
+  /// With this set-up the path params will be: {id: 1234}
+  ///
+  /// But the same url (/user/adam/details), with the template:
+  ///   /user/adam/{action}
+  ///
+  /// Will give the params: {action: details}
+  ///
+  /// Or with the template:
+  ///   /user/{name}/{action}
+  ///
+  /// Will give the params: {name: adam, action: details}
+  ///
+  /// Basically at the time of the request is first made, this template is not available,
+  /// only after the route is selected with the template o is manually configured,
+  /// only after this the path params are configured, any other case the params will be an empty map
   void setUpPathParams(String template) {
-    templateUrl = template;
-    pathParams = _extractPathParams(
-      templateUrl,
+    _pathParams = _extractPathParams(
+      template,
       requestedUri.toString(),
     );
   }
 
+  /// Get the body of the request, it's get parsed with the ObjectMapper in the process
+  /// It's algo get cached in case the method is called multiple times
   Future<T?> body<T>({ObjectMapper? om}) async {
     if (_cachedBody == null || _cachedBody is! T) {
       String rawString = await readAsString(encoding);
@@ -41,32 +66,39 @@ class RequestEntity extends Request {
     return _cachedBody as T;
   }
 
+  ///Cached body (if any)
   Object? _cachedBody;
 }
 
 Map<String, String> _extractPathParams(String templateUrl, String actualUrl) {
   actualUrl = Uri.parse(actualUrl).path; //remove http(s)://domain.com
 
-  // Separar la parte de la URL que contiene los parámetros de consulta (si existe)
+  /// Separate the part of the URL that contains the query parameters (if any)
   String templateUrlPath = templateUrl.split('?').first;
   String actualUrlPath = actualUrl.split('?').first;
 
-  // Crear una expresión regular para encontrar los parámetros de ruta en la plantilla
+  /// Create a regular expression to find path parameters in the template
   final RegExp pathParamPattern = RegExp(r'{([^}]+)}');
 
-  // Crear una expresión regular para capturar los valores correspondientes en la URL real
+  /// Create a regular expression to capture the corresponding values in the actual URL
   String regexPattern = templateUrlPath.replaceAllMapped(
-      pathParamPattern, (match) => r'([^/?]+)');
+    pathParamPattern,
+    (match) => r'([^/?]+)',
+  );
 
-  // Añadir el inicio (^) y el final opcional ($) para asegurar una coincidencia completa
-  regexPattern = '^' + regexPattern;
+  /// Add the start (^) and optional end ($) to ensure a complete match
+  regexPattern = '^$regexPattern';
 
-  // Encontrar los valores de los parámetros de ruta en la URL real
+  /// Finding the values of the route parameters in the actual URL
   final RegExpMatch? matchUrl = RegExp(regexPattern).firstMatch(actualUrlPath);
 
+  /// Create empty map to storage possible values
   Map<String, String> pathParam = {};
+
+  /// Get all matches
   Iterable<RegExpMatch> matches = pathParamPattern.allMatches(templateUrlPath);
 
+  /// Get every path-param for every match
   int index = 1;
   for (final RegExpMatch match in matches) {
     String paramName = match.group(1)!;
@@ -74,10 +106,20 @@ Map<String, String> _extractPathParams(String templateUrl, String actualUrl) {
     pathParam[paramName] = paramValue;
   }
 
+  ///return founded params
   return pathParam;
 }
 
+/// Extract query params from the url
+///
+/// In the case of the url:
+/// http(s)://domain.com/some-url?id=5&name=adam
+///
+/// The query params will be:
+/// { id: 5, name: adam}
 Map<String, String> _extractQueryParams(String actualUrl) {
   Uri uri = Uri.parse(actualUrl);
+
+  ///wrapped in a Map.of to avoid unmodifiable map
   return Map.of(uri.queryParameters);
 }

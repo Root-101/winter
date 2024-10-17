@@ -51,11 +51,11 @@ class GatewayRouter extends AbstractWinterRouter {
   });
 
   @override
-  RequestHandler handler(RequestEntity request) {
+  FutureOr<ResponseEntity> handler(RequestEntity request) async {
     GatewayRoute? matched = _matchedService(request);
     return matched != null
-        ? (request1) => gatewayHandler(request1, matched)
-        : (_) => ResponseEntity.notFound();
+        ? gatewayHandler(request, matched)
+        : ResponseEntity.notFound();
   }
 
   @override
@@ -74,7 +74,7 @@ class GatewayRouter extends AbstractWinterRouter {
   }
 }
 
-Future<ResponseEntity> gatewayHandler(
+FutureOr<ResponseEntity> gatewayHandler(
   RequestEntity serverRequest,
   GatewayRoute gatewayRoute, {
   String? apiGatewayName,

@@ -22,10 +22,10 @@ void main() => Winter.run(
       router: WinterRouter(
         routes: [
           Route(
-            path: '/filter-chain',
+            path: '/filter-chain/{id}',
             method: HttpMethod.get,
             handler: (request) => ResponseEntity.ok(
-              body: request.queryParams,
+              body: 'path: ${request.pathParams}, query: ${request.queryParams}',
             ),
           ),
         ],
@@ -38,6 +38,7 @@ class RemoveQueryParamsFilter implements Filter {
     RequestEntity request,
     FilterChain chain,
   ) async {
+    request.pathParams.clear();
     request.queryParams.clear();
     return await chain.doFilter(request);
   }

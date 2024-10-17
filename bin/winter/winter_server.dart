@@ -56,7 +56,7 @@ class Winter {
   }) async {
 
   }*/
-  
+
   static Future<Winter> run({
     BuildContext? context,
     ServerConfig? config,
@@ -128,17 +128,23 @@ class Winter {
     try {
       FilterConfig? routeFilterConfig;
       if (router is WinterRouter) {
-        routeFilterConfig = router.handlerRoute(requestEntity)?.filterConfig;
-      }
+        Route? route = router.handlerRoute(requestEntity);
 
-      RequestHandler baseCall = router.handler(requestEntity);
+        if (route != null) {
+          ///set-up the filter config from route
+          routeFilterConfig = router.handlerRoute(requestEntity)?.filterConfig;
+
+          ///set-up path params
+          requestEntity.setUpPathParams(route.path);
+        }
+      }
 
       FilterChain filterChain = FilterChain(
         [
           ...globalFilterConfig.filters,
           if (routeFilterConfig != null) ...routeFilterConfig.filters,
         ],
-        baseCall,
+        router.handler,
       );
 
       return await filterChain.doFilter(requestEntity);

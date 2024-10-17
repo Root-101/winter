@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 
 import 'winter.dart';
@@ -5,7 +7,7 @@ import 'winter.dart';
 abstract class AbstractWinterRouter {
   bool canHandle(RequestEntity request);
 
-  RequestHandler handler(RequestEntity request);
+  FutureOr<ResponseEntity> handler(RequestEntity request);
 }
 
 ///Example:
@@ -22,8 +24,8 @@ class ServeRouter extends AbstractWinterRouter {
   }
 
   @override
-  RequestHandler handler(_) {
-    return (newRequest) => function(newRequest);
+  FutureOr<ResponseEntity> handler(RequestEntity request) {
+    return function(request);
   }
 }
 
@@ -68,7 +70,7 @@ class WinterRouter extends AbstractWinterRouter {
   }
 
   @override
-  RequestHandler handler(RequestEntity request) {
+  FutureOr<ResponseEntity> handler(RequestEntity request) {
     ///find routes that match with the path
     String urlPath = '/${request.url.path}';
     List<Route> matchedRoutes = routes
@@ -79,7 +81,7 @@ class WinterRouter extends AbstractWinterRouter {
 
     ///no routes found: 404
     if (matchedRoutes.isEmpty) {
-      return (_) => ResponseEntity.notFound();
+      return ResponseEntity.notFound();
     } else {
       ///there is some route, check method (get, post, put...)
       Route? finalRoute = matchedRoutes.firstWhereOrNull(
@@ -87,11 +89,9 @@ class WinterRouter extends AbstractWinterRouter {
       );
       if (finalRoute == null) {
         ///no route matching method: 415
-        return (_) => ResponseEntity.methodNotAllowed();
+        return ResponseEntity.methodNotAllowed();
       } else {
-        ///founded route: set up path params & return handler for this request
-        request.setUpPathParams(finalRoute.path);
-        return (newRequest) => finalRoute.handler(newRequest);
+        return finalRoute.handler(request);
       }
     }
   }
@@ -154,7 +154,9 @@ class Route {
 
     // Crear una expresión regular para capturar los valores correspondientes en la URL real
     String regexPattern = templateUrlPath.replaceAllMapped(
-        pathParamPattern, (match) => r'([^/?]+)');
+      pathParamPattern,
+      (match) => r'([^/?]+)',
+    );
     regexPattern = '^' + regexPattern + r'$'; // Añadir el inicio y el final
 
     // Comprobar si la parte de la URL coincide

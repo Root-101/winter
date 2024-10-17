@@ -31,7 +31,7 @@ void main() => Winter.run(
                     const Duration(minutes: 1),
                   ),
                   log: (request, requestId) {
-                    print('Rate limiter fail for request ${request.templateUrl}');
+                    print('Rate limiter fail for request ${request.requestedUri}');
                   },
                 ),
               ],

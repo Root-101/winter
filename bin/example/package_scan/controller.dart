@@ -13,7 +13,7 @@ FutureOr<ResponseEntity> handler(
 }) async {
   return ResponseEntity.ok(
     body:
-        'body: $body, header: $headerAbc, request: ${request.templateUrl}, path-param: $userId, q-param: $queryQwe',
+        'body: $body, header: $headerAbc, request: ${request.requestedUri}, path-param: $userId, q-param: $queryQwe',
   );
 }
 
@@ -32,6 +32,6 @@ FutureOr<ResponseEntity> handler0(
 }) async {
   return ResponseEntity.ok(
     body:
-        'body: $body, header: $headerAbc, request: ${request.templateUrl}, path-param: $userId, q-param: $queryQwe',
+        'body: $body, header: $headerAbc, request: ${request.requestedUri}, path-param: $userId, q-param: $queryQwe',
   );
 }
