@@ -48,15 +48,6 @@ class Winter {
     required HttpServer rawServer,
   }) : _rawServer = rawServer;
 
-  /*static Future<Winter> server({
-    BuildContext? context,
-    ServerConfig? config,
-    AbstractWinterRouter? router,
-    FilterConfig? globalFilterConfig,
-  }) async {
-
-  }*/
-
   static Future<Winter> run({
     BuildContext? context,
     ServerConfig? config,
@@ -103,8 +94,8 @@ class Winter {
     return nextRunningServer;
   }
 
-  Future close({bool force = false}) async {
-    await _rawServer.close(force: force);
+  static Future close({bool force = false}) async {
+    await instance._rawServer.close(force: force);
     _server = null;
   }
 
