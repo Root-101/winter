@@ -6,7 +6,7 @@ class FilterChain {
   int _currentFilterIndex = 0;
   final List<Filter> _filters;
 
-  FilterChain(List<Filter> filters, WinterHandler requestHandler)
+  FilterChain(List<Filter> filters, RequestHandler requestHandler)
       : _filters = List.of([...filters, BaseFilter(requestHandler)]);
 
   FutureOr<ResponseEntity> doFilter(RequestEntity request) async {
@@ -30,7 +30,7 @@ abstract class Filter {
 }
 
 class BaseFilter implements Filter {
-  final WinterHandler _baseHandler;
+  final RequestHandler _baseHandler;
 
   BaseFilter(this._baseHandler);
 

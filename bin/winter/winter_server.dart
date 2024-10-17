@@ -19,10 +19,6 @@ ValidationService get vs => Winter.instance.context.validationService;
 ///Exception Handler: easy access to the current exception handler instance
 ExceptionHandler get eh => Winter.instance.context.exceptionHandler;
 
-typedef WinterHandler = FutureOr<ResponseEntity> Function(
-  RequestEntity request,
-);
-
 class Winter {
   static Winter get instance {
     if (_server == null) {
@@ -135,7 +131,7 @@ class Winter {
         routeFilterConfig = router.handlerRoute(requestEntity)?.filterConfig;
       }
 
-      WinterHandler baseCall = router.handler(requestEntity);
+      RequestHandler baseCall = router.handler(requestEntity);
 
       FilterChain filterChain = FilterChain(
         [

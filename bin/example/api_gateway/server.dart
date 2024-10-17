@@ -51,7 +51,7 @@ class GatewayRouter extends AbstractWinterRouter {
   });
 
   @override
-  WinterHandler handler(RequestEntity request) {
+  RequestHandler handler(RequestEntity request) {
     GatewayRoute? matched = _matchedService(request);
     return matched != null
         ? (request1) => gatewayHandler(request1, matched)

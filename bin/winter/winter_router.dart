@@ -5,7 +5,7 @@ import 'winter.dart';
 abstract class AbstractWinterRouter {
   bool canHandle(RequestEntity request);
 
-  WinterHandler handler(RequestEntity request);
+  RequestHandler handler(RequestEntity request);
 }
 
 ///Example:
@@ -68,7 +68,7 @@ class WinterRouter extends AbstractWinterRouter {
   }
 
   @override
-  WinterHandler handler(RequestEntity request) {
+  RequestHandler handler(RequestEntity request) {
     ///find routes that match with the path
     String urlPath = '/${request.url.path}';
     List<Route> matchedRoutes = routes

@@ -13,7 +13,7 @@ class BasicRouter extends WinterRouter {
   void add(
     String path,
     HttpMethod method,
-    WinterHandler handler, {
+    RequestHandler handler, {
     FilterConfig? filterConfig,
   }) =>
       routes.add(
@@ -27,7 +27,7 @@ class BasicRouter extends WinterRouter {
 
   void get(
     String path,
-    WinterHandler handler, {
+    RequestHandler handler, {
     FilterConfig? filterConfig,
   }) =>
       routes.add(
@@ -41,7 +41,7 @@ class BasicRouter extends WinterRouter {
 
   void query(
     String path,
-    WinterHandler handler, {
+    RequestHandler handler, {
     FilterConfig? filterConfig,
   }) =>
       routes.add(
@@ -55,7 +55,7 @@ class BasicRouter extends WinterRouter {
 
   void post(
     String path,
-    WinterHandler handler, {
+    RequestHandler handler, {
     FilterConfig? filterConfig,
   }) =>
       routes.add(
@@ -69,7 +69,7 @@ class BasicRouter extends WinterRouter {
 
   void put(
     String path,
-    WinterHandler handler, {
+    RequestHandler handler, {
     FilterConfig? filterConfig,
   }) =>
       routes.add(
@@ -83,7 +83,7 @@ class BasicRouter extends WinterRouter {
 
   void patch(
     String path,
-    WinterHandler handler, {
+    RequestHandler handler, {
     FilterConfig? filterConfig,
   }) =>
       routes.add(
@@ -97,7 +97,7 @@ class BasicRouter extends WinterRouter {
 
   void delete(
     String path,
-    WinterHandler handler, {
+    RequestHandler handler, {
     FilterConfig? filterConfig,
   }) =>
       routes.add(
@@ -111,7 +111,7 @@ class BasicRouter extends WinterRouter {
 
   void head(
     String path,
-    WinterHandler handler, {
+    RequestHandler handler, {
     FilterConfig? filterConfig,
   }) =>
       routes.add(
@@ -125,7 +125,7 @@ class BasicRouter extends WinterRouter {
 
   void options(
     String path,
-    WinterHandler handler, {
+    RequestHandler handler, {
     FilterConfig? filterConfig,
   }) =>
       routes.add(
