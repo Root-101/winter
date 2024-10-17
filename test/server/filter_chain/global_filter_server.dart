@@ -20,7 +20,15 @@ void main() {
         router: WinterRouter(
           routes: [
             Route(
-              path: '/filter-chain/{id}',
+              path: '/global-filter/{id}',
+              method: HttpMethod.get,
+              handler: (request) => ResponseEntity.ok(
+                body:
+                    'path: ${request.pathParams}, query: ${request.queryParams}',
+              ),
+            ),
+            Route(
+              path: '/global-filter/2/{id}',
               method: HttpMethod.get,
               handler: (request) => ResponseEntity.ok(
                 body:
@@ -37,10 +45,18 @@ void main() {
 
   Uri url(String path) => Uri.parse(localUrl + path);
 
-  test('get sync/async handler', () async {
-    http.Response response = await http.get(url('/filter-chain/{id}'));
+  test('Test Global Filter', () async {
+    String urlToTest = '/global-filter/55?some=123&another=963';
+    http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 200);
-    expect(response.body, 'path: {}, query: {}'); //body with empty
+    expect(response.body, 'path: {}, query: {}'); //body with empty params
+  });
+
+  test('Test Global Filter #2', () async {
+    String urlToTest = '/global-filter/66?some=456&another=852';
+    http.Response response = await http.get(url(urlToTest));
+    expect(response.statusCode, 200);
+    expect(response.body, 'path: {}, query: {}'); //body with empty params
   });
 }
 

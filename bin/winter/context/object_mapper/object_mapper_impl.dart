@@ -179,6 +179,7 @@ class ObjectMapperImpl extends ObjectMapper {
 
     ClassMirror typeMirror = reflectClass(targetType);
     if (typeMirror.superinterfaces.contains(jsonSerializableMirror)) {
+      //TODO: hacerlo como mismo se hace el de `_createEmptyInstance` y buscar todos los builders y eso
       return typeMirror.newInstance(Symbol('fromJson'), [json]).reflectee;
     } else if (json is List) {
       ClassMirror classMirror = reflectType(targetType) as ClassMirror;
@@ -360,15 +361,16 @@ class ObjectMapperImpl extends ObjectMapper {
     var constructors = classMirror.declarations.values.where((declaration) {
       return declaration is MethodMirror && declaration.isConstructor;
     });
-    DeclarationMirror? fullEmpty = constructors.firstWhereOrNull(
-      (element) =>
-          MirrorSystem.getName((element as MethodMirror).constructorName) == '',
-    );
-    DeclarationMirror? empty = constructors.firstWhereOrNull(
-      (element) =>
-          MirrorSystem.getName((element as MethodMirror).constructorName) ==
-          'empty',
-    );
+    DeclarationMirror? fullEmpty = constructors.firstWhereOrNull((element) {
+      MethodMirror mirror = element as MethodMirror;
+      return MirrorSystem.getName((mirror).constructorName) == '' &&
+          mirror.parameters.isEmpty;
+    });
+    DeclarationMirror? empty = constructors.firstWhereOrNull((element) {
+      MethodMirror mirror = element as MethodMirror;
+      return MirrorSystem.getName((mirror).constructorName) == 'empty' &&
+          mirror.parameters.isEmpty;
+    });
     if (fullEmpty != null) {
       return classMirror.newInstance(const Symbol(''), []);
     } else if (empty != null) {
