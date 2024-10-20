@@ -10,7 +10,7 @@ enum HttpStatus with HttpStatusCode {
   CONTINUE(
     100,
     Series.INFORMATIONAL,
-    "Continue",
+    'Continue',
   ),
 
   /// {status-code: 101 Switching Protocols}.
@@ -18,7 +18,7 @@ enum HttpStatus with HttpStatusCode {
   SWITCHING_PROTOCOLS(
     101,
     Series.INFORMATIONAL,
-    "Switching Protocols",
+    'Switching Protocols',
   ),
 
   /// {status-code: 102 Processing}.
@@ -26,7 +26,7 @@ enum HttpStatus with HttpStatusCode {
   PROCESSING(
     102,
     Series.INFORMATIONAL,
-    "Processing",
+    'Processing',
   ),
 
   /// {status-code: 103 Early Hints}.
@@ -35,7 +35,7 @@ enum HttpStatus with HttpStatusCode {
   EARLY_HINTS(
     103,
     Series.INFORMATIONAL,
-    "Early Hints",
+    'Early Hints',
   ),
 
   // 2xx Success
@@ -45,7 +45,7 @@ enum HttpStatus with HttpStatusCode {
   OK(
     200,
     Series.SUCCESSFUL,
-    "OK",
+    'OK',
   ),
 
   /// {status-code: 201 Created}.
@@ -53,7 +53,7 @@ enum HttpStatus with HttpStatusCode {
   CREATED(
     201,
     Series.SUCCESSFUL,
-    "Created",
+    'Created',
   ),
 
   /// {status-code: 202 Accepted}.
@@ -61,7 +61,7 @@ enum HttpStatus with HttpStatusCode {
   ACCEPTED(
     202,
     Series.SUCCESSFUL,
-    "Accepted",
+    'Accepted',
   ),
 
   /// {status-code: 203 Non-Authoritative Information}.
@@ -69,7 +69,7 @@ enum HttpStatus with HttpStatusCode {
   NON_AUTHORITATIVE_INFORMATION(
     203,
     Series.SUCCESSFUL,
-    "Non-Authoritative Information",
+    'Non-Authoritative Information',
   ),
 
   /// {status-code: 204 No Content}.
@@ -77,7 +77,7 @@ enum HttpStatus with HttpStatusCode {
   NO_CONTENT(
     204,
     Series.SUCCESSFUL,
-    "No Content",
+    'No Content',
   ),
 
   /// {status-code: 205 Reset Content}.
@@ -85,7 +85,7 @@ enum HttpStatus with HttpStatusCode {
   RESET_CONTENT(
     205,
     Series.SUCCESSFUL,
-    "Reset Content",
+    'Reset Content',
   ),
 
   /// {status-code: 206 Partial Content}.
@@ -93,7 +93,7 @@ enum HttpStatus with HttpStatusCode {
   PARTIAL_CONTENT(
     206,
     Series.SUCCESSFUL,
-    "Partial Content",
+    'Partial Content',
   ),
 
   /// {status-code: 207 Multi-Status}.
@@ -101,7 +101,7 @@ enum HttpStatus with HttpStatusCode {
   MULTI_STATUS(
     207,
     Series.SUCCESSFUL,
-    "Multi-Status",
+    'Multi-Status',
   ),
 
   /// {status-code: 208 Already Reported}.
@@ -109,7 +109,7 @@ enum HttpStatus with HttpStatusCode {
   ALREADY_REPORTED(
     208,
     Series.SUCCESSFUL,
-    "Already Reported",
+    'Already Reported',
   ),
 
   /// {status-code: 226 IM Used}.
@@ -117,7 +117,7 @@ enum HttpStatus with HttpStatusCode {
   IM_USED(
     226,
     Series.SUCCESSFUL,
-    "IM Used",
+    'IM Used',
   ),
 
   // 3xx Redirection
@@ -127,7 +127,7 @@ enum HttpStatus with HttpStatusCode {
   MULTIPLE_CHOICES(
     300,
     Series.REDIRECTION,
-    "Multiple Choices",
+    'Multiple Choices',
   ),
 
   /// {status-code: 301 Moved Permanently}.
@@ -135,7 +135,7 @@ enum HttpStatus with HttpStatusCode {
   MOVED_PERMANENTLY(
     301,
     Series.REDIRECTION,
-    "Moved Permanently",
+    'Moved Permanently',
   ),
 
   /// {status-code: 302 Found}.
@@ -143,7 +143,7 @@ enum HttpStatus with HttpStatusCode {
   FOUND(
     302,
     Series.REDIRECTION,
-    "Found",
+    'Found',
   ),
 
   /// {status-code: 302 Moved Temporarily}.
@@ -153,7 +153,7 @@ enum HttpStatus with HttpStatusCode {
   MOVED_TEMPORARILY(
     302,
     Series.REDIRECTION,
-    "Moved Temporarily",
+    'Moved Temporarily',
   ),
 
   /// {status-code: 303 See Other}.
@@ -161,7 +161,7 @@ enum HttpStatus with HttpStatusCode {
   SEE_OTHER(
     303,
     Series.REDIRECTION,
-    "See Other",
+    'See Other',
   ),
 
   /// {status-code: 304 Not Modified}.
@@ -169,7 +169,7 @@ enum HttpStatus with HttpStatusCode {
   NOT_MODIFIED(
     304,
     Series.REDIRECTION,
-    "Not Modified",
+    'Not Modified',
   ),
 
   /// {status-code: 305 Use Proxy}.
@@ -179,7 +179,7 @@ enum HttpStatus with HttpStatusCode {
   USE_PROXY(
     305,
     Series.REDIRECTION,
-    "Use Proxy",
+    'Use Proxy',
   ),
 
   /// {status-code: 307 Temporary Redirect}.
@@ -187,7 +187,7 @@ enum HttpStatus with HttpStatusCode {
   TEMPORARY_REDIRECT(
     307,
     Series.REDIRECTION,
-    "Temporary Redirect",
+    'Temporary Redirect',
   ),
 
   /// {status-code: 308 Permanent Redirect}.
@@ -195,7 +195,7 @@ enum HttpStatus with HttpStatusCode {
   PERMANENT_REDIRECT(
     308,
     Series.REDIRECTION,
-    "Permanent Redirect",
+    'Permanent Redirect',
   ),
 
   // --- 4xx Client Error ---
@@ -205,7 +205,7 @@ enum HttpStatus with HttpStatusCode {
   BAD_REQUEST(
     400,
     Series.CLIENT_ERROR,
-    "Bad Request",
+    'Bad Request',
   ),
 
   /// {status-code: 401 Unauthorized}.
@@ -213,7 +213,7 @@ enum HttpStatus with HttpStatusCode {
   UNAUTHORIZED(
     401,
     Series.CLIENT_ERROR,
-    "Unauthorized",
+    'Unauthorized',
   ),
 
   /// {status-code: 402 Payment Required}.
@@ -221,7 +221,7 @@ enum HttpStatus with HttpStatusCode {
   PAYMENT_REQUIRED(
     402,
     Series.CLIENT_ERROR,
-    "Payment Required",
+    'Payment Required',
   ),
 
   /// {status-code: 403 Forbidden}.
@@ -229,7 +229,7 @@ enum HttpStatus with HttpStatusCode {
   FORBIDDEN(
     403,
     Series.CLIENT_ERROR,
-    "Forbidden",
+    'Forbidden',
   ),
 
   /// {status-code: 404 Not Found}.
@@ -237,7 +237,7 @@ enum HttpStatus with HttpStatusCode {
   NOT_FOUND(
     404,
     Series.CLIENT_ERROR,
-    "Not Found",
+    'Not Found',
   ),
 
   /// {status-code: 405 Method Not Allowed}.
@@ -245,7 +245,7 @@ enum HttpStatus with HttpStatusCode {
   METHOD_NOT_ALLOWED(
     405,
     Series.CLIENT_ERROR,
-    "Method Not Allowed",
+    'Method Not Allowed',
   ),
 
   /// {status-code: 406 Not Acceptable}.
@@ -253,7 +253,7 @@ enum HttpStatus with HttpStatusCode {
   NOT_ACCEPTABLE(
     406,
     Series.CLIENT_ERROR,
-    "Not Acceptable",
+    'Not Acceptable',
   ),
 
   /// {status-code: 407 Proxy Authentication Required}.
@@ -261,7 +261,7 @@ enum HttpStatus with HttpStatusCode {
   PROXY_AUTHENTICATION_REQUIRED(
     407,
     Series.CLIENT_ERROR,
-    "Proxy Authentication Required",
+    'Proxy Authentication Required',
   ),
 
   /// {status-code: 408 Request Timeout}.
@@ -269,7 +269,7 @@ enum HttpStatus with HttpStatusCode {
   REQUEST_TIMEOUT(
     408,
     Series.CLIENT_ERROR,
-    "Request Timeout",
+    'Request Timeout',
   ),
 
   /// {status-code: 409 Conflict}.
@@ -277,7 +277,7 @@ enum HttpStatus with HttpStatusCode {
   CONFLICT(
     409,
     Series.CLIENT_ERROR,
-    "Conflict",
+    'Conflict',
   ),
 
   /// {status-code: 410 Gone}.
@@ -286,7 +286,7 @@ enum HttpStatus with HttpStatusCode {
   GONE(
     410,
     Series.CLIENT_ERROR,
-    "Gone",
+    'Gone',
   ),
 
   /// {status-code: 411 Length Required}.
@@ -295,7 +295,7 @@ enum HttpStatus with HttpStatusCode {
   LENGTH_REQUIRED(
     411,
     Series.CLIENT_ERROR,
-    "Length Required",
+    'Length Required',
   ),
 
   /// {status-code: 412 Precondition failed}.
@@ -304,7 +304,7 @@ enum HttpStatus with HttpStatusCode {
   PRECONDITION_FAILED(
     412,
     Series.CLIENT_ERROR,
-    "Precondition Failed",
+    'Precondition Failed',
   ),
 
   /// {status-code: 413 Payload Too Large}.
@@ -314,7 +314,7 @@ enum HttpStatus with HttpStatusCode {
   PAYLOAD_TOO_LARGE(
     413,
     Series.CLIENT_ERROR,
-    "Payload Too Large",
+    'Payload Too Large',
   ),
 
   /// {status-code: 413 Request Entity Too Large}.
@@ -325,7 +325,7 @@ enum HttpStatus with HttpStatusCode {
   REQUEST_ENTITY_TOO_LARGE(
     413,
     Series.CLIENT_ERROR,
-    "Request Entity Too Large",
+    'Request Entity Too Large',
   ),
 
   /// {status-code: 414 URI Too Long}.
@@ -335,7 +335,7 @@ enum HttpStatus with HttpStatusCode {
   URI_TOO_LONG(
     414,
     Series.CLIENT_ERROR,
-    "URI Too Long",
+    'URI Too Long',
   ),
 
   /// {status-code: 414 Request-URI Too Long}.
@@ -345,7 +345,7 @@ enum HttpStatus with HttpStatusCode {
   REQUEST_URI_TOO_LONG(
     414,
     Series.CLIENT_ERROR,
-    "Request-URI Too Long",
+    'Request-URI Too Long',
   ),
 
   /// {status-code: 415 Unsupported Media Type}.
@@ -354,7 +354,7 @@ enum HttpStatus with HttpStatusCode {
   UNSUPPORTED_MEDIA_TYPE(
     415,
     Series.CLIENT_ERROR,
-    "Unsupported Media Type",
+    'Unsupported Media Type',
   ),
 
   /// {status-code: 416 Requested Range Not Satisfiable}.
@@ -362,7 +362,7 @@ enum HttpStatus with HttpStatusCode {
   REQUESTED_RANGE_NOT_SATISFIABLE(
     416,
     Series.CLIENT_ERROR,
-    "Requested range not satisfiable",
+    'Requested range not satisfiable',
   ),
 
   /// {status-code: 417 Expectation Failed}.
@@ -371,7 +371,7 @@ enum HttpStatus with HttpStatusCode {
   EXPECTATION_FAILED(
     417,
     Series.CLIENT_ERROR,
-    "Expectation Failed",
+    'Expectation Failed',
   ),
 
   /// {status-code: 418 I'm a teapot}.
@@ -389,7 +389,7 @@ enum HttpStatus with HttpStatusCode {
   INSUFFICIENT_SPACE_ON_RESOURCE(
     419,
     Series.CLIENT_ERROR,
-    "Insufficient Space On Resource",
+    'Insufficient Space On Resource',
   ),
 
   /// @deprecated See
@@ -399,7 +399,7 @@ enum HttpStatus with HttpStatusCode {
   METHOD_FAILURE(
     420,
     Series.CLIENT_ERROR,
-    "Method Failure",
+    'Method Failure',
   ),
 
   /// @deprecated
@@ -409,7 +409,7 @@ enum HttpStatus with HttpStatusCode {
   DESTINATION_LOCKED(
     421,
     Series.CLIENT_ERROR,
-    "Destination Locked",
+    'Destination Locked',
   ),
 
   /// {status-code: 422 Unprocessable Entity}.
@@ -417,7 +417,7 @@ enum HttpStatus with HttpStatusCode {
   UNPROCESSABLE_ENTITY(
     422,
     Series.CLIENT_ERROR,
-    "Unprocessable Entity",
+    'Unprocessable Entity',
   ),
 
   /// {status-code: 423 Locked}.
@@ -425,7 +425,7 @@ enum HttpStatus with HttpStatusCode {
   LOCKED(
     423,
     Series.CLIENT_ERROR,
-    "Locked",
+    'Locked',
   ),
 
   /// {status-code: 424 Failed Dependency}.
@@ -433,7 +433,7 @@ enum HttpStatus with HttpStatusCode {
   FAILED_DEPENDENCY(
     424,
     Series.CLIENT_ERROR,
-    "Failed Dependency",
+    'Failed Dependency',
   ),
 
   /// {status-code: 425 Too Early}.
@@ -442,7 +442,7 @@ enum HttpStatus with HttpStatusCode {
   TOO_EARLY(
     425,
     Series.CLIENT_ERROR,
-    "Too Early",
+    'Too Early',
   ),
 
   /// {status-code: 426 Upgrade Required}.
@@ -450,7 +450,7 @@ enum HttpStatus with HttpStatusCode {
   UPGRADE_REQUIRED(
     426,
     Series.CLIENT_ERROR,
-    "Upgrade Required",
+    'Upgrade Required',
   ),
 
   /// {status-code: 428 Precondition Required}.
@@ -458,7 +458,7 @@ enum HttpStatus with HttpStatusCode {
   PRECONDITION_REQUIRED(
     428,
     Series.CLIENT_ERROR,
-    "Precondition Required",
+    'Precondition Required',
   ),
 
   /// {status-code: 429 Too Many Requests}.
@@ -466,7 +466,7 @@ enum HttpStatus with HttpStatusCode {
   TOO_MANY_REQUESTS(
     429,
     Series.CLIENT_ERROR,
-    "Too Many Requests",
+    'Too Many Requests',
   ),
 
   /// {status-code: 431 Request Header Fields Too Large}.
@@ -474,7 +474,7 @@ enum HttpStatus with HttpStatusCode {
   REQUEST_HEADER_FIELDS_TOO_LARGE(
     431,
     Series.CLIENT_ERROR,
-    "Request Header Fields Too Large",
+    'Request Header Fields Too Large',
   ),
 
   /// {status-code: 451 Unavailable For Legal Reasons}.
@@ -484,7 +484,7 @@ enum HttpStatus with HttpStatusCode {
   UNAVAILABLE_FOR_LEGAL_REASONS(
     451,
     Series.CLIENT_ERROR,
-    "Unavailable For Legal Reasons",
+    'Unavailable For Legal Reasons',
   ),
 
   // --- 5xx Server Error ---
@@ -494,7 +494,7 @@ enum HttpStatus with HttpStatusCode {
   INTERNAL_SERVER_ERROR(
     500,
     Series.SERVER_ERROR,
-    "Internal Server Error",
+    'Internal Server Error',
   ),
 
   /// {status-code: 501 Not Implemented}.
@@ -502,7 +502,7 @@ enum HttpStatus with HttpStatusCode {
   NOT_IMPLEMENTED(
     501,
     Series.SERVER_ERROR,
-    "Not Implemented",
+    'Not Implemented',
   ),
 
   /// {status-code: 502 Bad Gateway}.
@@ -510,7 +510,7 @@ enum HttpStatus with HttpStatusCode {
   BAD_GATEWAY(
     502,
     Series.SERVER_ERROR,
-    "Bad Gateway",
+    'Bad Gateway',
   ),
 
   /// {status-code: 503 Service Unavailable}.
@@ -518,7 +518,7 @@ enum HttpStatus with HttpStatusCode {
   SERVICE_UNAVAILABLE(
     503,
     Series.SERVER_ERROR,
-    "Service Unavailable",
+    'Service Unavailable',
   ),
 
   /// {status-code: 504 Gateway Timeout}.
@@ -526,7 +526,7 @@ enum HttpStatus with HttpStatusCode {
   GATEWAY_TIMEOUT(
     504,
     Series.SERVER_ERROR,
-    "Gateway Timeout",
+    'Gateway Timeout',
   ),
 
   /// {status-code: 505 HTTP Version Not Supported}.
@@ -534,7 +534,7 @@ enum HttpStatus with HttpStatusCode {
   HTTP_VERSION_NOT_SUPPORTED(
     505,
     Series.SERVER_ERROR,
-    "HTTP Version not supported",
+    'HTTP Version not supported',
   ),
 
   /// {status-code: 506 Variant Also Negotiates}
@@ -542,7 +542,7 @@ enum HttpStatus with HttpStatusCode {
   VARIANT_ALSO_NEGOTIATES(
     506,
     Series.SERVER_ERROR,
-    "Variant Also Negotiates",
+    'Variant Also Negotiates',
   ),
 
   /// {status-code: 507 Insufficient Storage}
@@ -550,7 +550,7 @@ enum HttpStatus with HttpStatusCode {
   INSUFFICIENT_STORAGE(
     507,
     Series.SERVER_ERROR,
-    "Insufficient Storage",
+    'Insufficient Storage',
   ),
 
   /// {status-code: 508 Loop Detected}
@@ -558,14 +558,14 @@ enum HttpStatus with HttpStatusCode {
   LOOP_DETECTED(
     508,
     Series.SERVER_ERROR,
-    "Loop Detected",
+    'Loop Detected',
   ),
 
   /// {status-code: 509 Bandwidth Limit Exceeded}
   BANDWIDTH_LIMIT_EXCEEDED(
     509,
     Series.SERVER_ERROR,
-    "Bandwidth Limit Exceeded",
+    'Bandwidth Limit Exceeded',
   ),
 
   /// {status-code: 510 Not Extended}
@@ -573,7 +573,7 @@ enum HttpStatus with HttpStatusCode {
   NOT_EXTENDED(
     510,
     Series.SERVER_ERROR,
-    "Not Extended",
+    'Not Extended',
   ),
 
   /// {status-code: 511 Network Authentication Required}.
@@ -581,7 +581,7 @@ enum HttpStatus with HttpStatusCode {
   NETWORK_AUTHENTICATION_REQUIRED(
     511,
     Series.SERVER_ERROR,
-    "Network Authentication Required",
+    'Network Authentication Required',
   );
 
   @override
@@ -630,7 +630,7 @@ enum HttpStatus with HttpStatusCode {
   /// Return a string representation of this status code.
   @override
   String toString() {
-    return "$value $name";
+    return '$value $name';
   }
 
   /// Return the {status-code: HttpStatus} enum constant with the specified numeric value.
@@ -640,7 +640,7 @@ enum HttpStatus with HttpStatusCode {
   static HttpStatus valueOf(int statusCode) {
     HttpStatus? status = resolve(statusCode);
     if (status == null) {
-      throw StateError("No matching constant for [$statusCode]");
+      throw StateError('No matching constant for [$statusCode]');
     }
     return status;
   }
@@ -679,7 +679,7 @@ enum Series {
   static Series valueOf(int statusCode) {
     Series? series = resolve(statusCode);
     if (series == null) {
-      throw StateError("No matching constant for [$statusCode]");
+      throw StateError('No matching constant for [$statusCode]');
     }
     return series;
   }
