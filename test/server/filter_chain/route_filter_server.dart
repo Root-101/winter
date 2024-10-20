@@ -47,9 +47,9 @@ void main() {
     String urlToTest = '/route-filter/55?some=123&another=963';
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 200);
-    expect(response.body, 'path: {}, query: {}');
 
     ///body with empty params
+    expect(response.body, 'path: {}, query: {}');
   });
 
   test('Test Route Filter #2', () async {
@@ -62,6 +62,7 @@ void main() {
   });
 }
 
+///This filter remove the path & query params of the request
 class RemoveQueryParamsFilter implements Filter {
   @override
   Future<ResponseEntity> doFilter(
