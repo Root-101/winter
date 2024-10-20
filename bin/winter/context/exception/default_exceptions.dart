@@ -10,11 +10,13 @@ class ResponseException implements Exception {
 ///Base exception
 class ApiException implements Exception {
   final int statusCode;
-  final String message;
+  final Object? body;
+  final Map<String, Object>? headers;
 
   ApiException({
     required this.statusCode,
-    required this.message,
+    this.body,
+    this.headers,
   });
 }
 
@@ -22,9 +24,9 @@ class ApiException implements Exception {
 class BadRequestException extends ApiException {
   static final HttpStatus status = HttpStatus.BAD_REQUEST;
 
-  BadRequestException({String? message})
+  BadRequestException({Object? body, super.headers})
       : super(
-          message: message ?? status.reasonPhrase,
+          body: body ?? status.reasonPhrase,
           statusCode: status.value,
         );
 }
@@ -33,9 +35,9 @@ class BadRequestException extends ApiException {
 class ForbiddenException extends ApiException {
   static final HttpStatus status = HttpStatus.UNAUTHORIZED;
 
-  ForbiddenException({String? message})
+  ForbiddenException({Object? body, super.headers})
       : super(
-          message: message ?? status.reasonPhrase,
+          body: body ?? status.reasonPhrase,
           statusCode: status.value,
         );
 }
@@ -44,9 +46,9 @@ class ForbiddenException extends ApiException {
 class PaymentRequiredException extends ApiException {
   static final HttpStatus status = HttpStatus.PAYMENT_REQUIRED;
 
-  PaymentRequiredException({String? message})
+  PaymentRequiredException({Object? body, super.headers})
       : super(
-          message: message ?? status.reasonPhrase,
+          body: body ?? status.reasonPhrase,
           statusCode: status.value,
         );
 }
@@ -55,9 +57,9 @@ class PaymentRequiredException extends ApiException {
 class UnauthorizedException extends ApiException {
   static final HttpStatus status = HttpStatus.FORBIDDEN;
 
-  UnauthorizedException({String? message})
+  UnauthorizedException({Object? body, super.headers})
       : super(
-          message: message ?? status.reasonPhrase,
+          body: body ?? status.reasonPhrase,
           statusCode: status.value,
         );
 }
@@ -66,9 +68,9 @@ class UnauthorizedException extends ApiException {
 class NotFoundException extends ApiException {
   static final HttpStatus status = HttpStatus.NOT_FOUND;
 
-  NotFoundException({String? message})
+  NotFoundException({Object? body, super.headers})
       : super(
-          message: message ?? status.reasonPhrase,
+          body: body ?? status.reasonPhrase,
           statusCode: status.value,
         );
 }
@@ -77,9 +79,9 @@ class NotFoundException extends ApiException {
 class ConflictException extends ApiException {
   static final HttpStatus status = HttpStatus.CONFLICT;
 
-  ConflictException({String? message})
+  ConflictException({Object? body, super.headers})
       : super(
-          message: message ?? status.reasonPhrase,
+          body: body ?? status.reasonPhrase,
           statusCode: status.value,
         );
 }
@@ -88,9 +90,9 @@ class ConflictException extends ApiException {
 class InternalServerErrorException extends ApiException {
   static final HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
 
-  InternalServerErrorException({String? message})
+  InternalServerErrorException({Object? body, super.headers})
       : super(
-          message: message ?? status.reasonPhrase,
+          body: body ?? status.reasonPhrase,
           statusCode: status.value,
         );
 }
@@ -99,9 +101,9 @@ class InternalServerErrorException extends ApiException {
 class UnprocessableEntityException extends ApiException {
   static final HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
 
-  UnprocessableEntityException({String? message})
+  UnprocessableEntityException({Object? body, super.headers})
       : super(
-          message: message ?? status.reasonPhrase,
+          body: body ?? status.reasonPhrase,
           statusCode: status.value,
         );
 }
@@ -109,7 +111,7 @@ class UnprocessableEntityException extends ApiException {
 class ValidationException extends UnprocessableEntityException {
   final List<ConstrainViolation> violations;
 
-  ValidationException({required this.violations});
+  ValidationException({required this.violations, super.headers});
 
   @override
   String toString() {

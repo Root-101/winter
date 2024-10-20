@@ -25,11 +25,10 @@ class SimpleExceptionHandler extends ExceptionHandler {
     } else if (exception is ApiException) {
       return ResponseEntity(
         exception.statusCode,
-        body: exception.message,
+        body: exception.body,
+        headers: exception.headers,
       );
     }
-    print(exception);
-    print(stackTrac);
     return ResponseEntity.internalServerError(body: exception.toString());
   }
 }
