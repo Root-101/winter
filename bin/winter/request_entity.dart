@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:shelf/shelf.dart';
 
 import 'winter.dart';
@@ -5,6 +7,7 @@ import 'winter.dart';
 class RequestEntity extends Request {
   Map<String, String>? _pathParams;
   Map<String, String>? _queryParams;
+  String? _pathTemplate;
 
   RequestEntity(
     super.method,
@@ -16,8 +19,12 @@ class RequestEntity extends Request {
     super.body,
     super.encoding,
     super.context,
+    String? pathTemplate,
   }) {
     _queryParams = _extractQueryParams(requestedUri.toString());
+    if (pathTemplate != null) {
+      setUpPathParams(pathTemplate);
+    }
   }
 
   HttpMethod get httpMethod => HttpMethod(method);
@@ -25,6 +32,8 @@ class RequestEntity extends Request {
   Map<String, String> get queryParams => _queryParams ?? {};
 
   Map<String, String> get pathParams => _pathParams ?? {};
+
+  String? get pathTemplate => _pathTemplate;
 
   ///The path params need to be initialized with a template
   ///For the url:
@@ -49,6 +58,7 @@ class RequestEntity extends Request {
   /// only after the route is selected with the template o is manually configured,
   /// only after this the path params are configured, any other case the params will be an empty map
   void setUpPathParams(String template) {
+    _pathTemplate = template;
     _pathParams = _extractPathParams(
       template,
       requestedUri.toString(),
@@ -68,6 +78,26 @@ class RequestEntity extends Request {
 
   ///Cached body (if any)
   Object? _cachedBody;
+
+  RequestEntity copyWith({
+    Map<String, /* String | List<String> */ Object>? headers,
+    Object? body,
+    Encoding? encoding,
+    Map<String, Object>? context,
+  }) {
+    return RequestEntity(
+      method,
+      requestedUri,
+      url: url,
+      protocolVersion: protocolVersion,
+      pathTemplate: pathTemplate,
+      handlerPath: handlerPath,
+      body: body ?? _cachedBody ?? read(),
+      headers: headers ?? this.headers,
+      encoding: encoding ?? this.encoding,
+      context: context ?? this.context,
+    );
+  }
 }
 
 Map<String, String> _extractPathParams(String templateUrl, String actualUrl) {
