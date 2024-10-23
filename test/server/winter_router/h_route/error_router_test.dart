@@ -1,12 +1,15 @@
+@TestOn('vm')
+library;
+
 import 'package:test/test.dart';
 
 import '../../../../bin/winter/winter.dart';
 
 void main() {
-  int port = 9090;
+  int port = 9050;
 
   bool failed = false;
-  setUp(
+  setUpAll(
     () async {
       try {
         await Winter.run(

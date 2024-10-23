@@ -1,3 +1,6 @@
+@TestOn('vm')
+library;
+
 import 'package:test/test.dart';
 
 import '../../bin/winter/winter.dart';

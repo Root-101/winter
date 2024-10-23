@@ -1,25 +1,25 @@
+@TestOn('vm')
+library;
+
 import 'package:test/test.dart';
 
 import '../../../bin/winter/winter.dart';
 
-//NOTE: the '_4' in name represent the a param is passed as a positioned argument
-//and another as named argument, both with @Injected
+//NOTE: the '_3' in name represent the a param is passed as a positioned argument
+//and another as named argument, both withOUT @Injected
 @Injectable()
-String foo(
-  @Injected(tag: '1') String hw, {
-  @Injected(tag: '2') String? anotherParam,
-}) {
+String foo(String hw, {String? anotherParam}) {
   return 'injectable text in $hw and another: $anotherParam';
 }
 
 void main() {
   test(
-      '@Injectable on method with positioned and named arguments (with @Injected)',
+      '@Injectable on method with positioned and named arguments (without @Injected)',
       () async {
     DependencyInjection di = DependencyInjection.build();
 
-    di.put('Hello world', tag: '1');
-    di.put('Hello world number 2', tag: '2');
+    di.put('Hello world', tag: 'hw');
+    di.put('Hello world number 2', tag: 'anotherParam');
 
     PackageScanner scanner =
         PackageScanner(context: BuildContext(dependencyInjection: di));

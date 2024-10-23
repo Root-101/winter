@@ -4,15 +4,15 @@ library;
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
-import '../../bin/winter/winter.dart';
+import '../../../bin/winter/winter.dart';
 
 void main() {
-  int port = 9090;
+  int port = 9011;
   String localUrl = 'http://localhost:$port';
 
   ExceptionHandler exc = TestExceptionHandler();
 
-  setUp(
+  setUpAll(
     () async {
       await Winter.run(
         config: ServerConfig(port: port),
@@ -38,7 +38,7 @@ void main() {
     },
   );
 
-  tearDown(() => Winter.close(force: true));
+  tearDownAll(() => Winter.close(force: true));
 
   Uri url(String path) => Uri.parse(localUrl + path);
 

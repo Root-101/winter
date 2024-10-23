@@ -1,3 +1,6 @@
+@TestOn('vm')
+library;
+
 import 'dart:async';
 
 import 'package:test/test.dart';
@@ -5,19 +8,27 @@ import 'package:test/test.dart';
 import '../../../bin/winter/winter.dart';
 
 @GlobalFilter()
-FutureOr<ResponseEntity> testFilter(
-  RequestEntity request,
-  FilterChain chain,
-) async {
-  return await chain.doFilter(request);
+class TestFilter2 implements Filter {
+  const TestFilter2();
+
+  @override
+  Future<ResponseEntity> doFilter(
+    RequestEntity request,
+    FilterChain chain,
+  ) async {
+    print('doing filter 2');
+    return await chain.doFilter(
+      request,
+    );
+  }
 }
 
 void main() {
-  //TODO: add test for fails (method with different signature, not returning response-entity...)
-  test('@GlobalFilter on method', () async {
+  //TODO: add test for fails (class that dont extends Filter...)
+  test('@GlobalFilter on class', () async {
     PackageScanner scanner = PackageScanner();
     FilterConfig config = const FilterConfig([
-      FunctionAsFilter(functionFilter: testFilter),
+      TestFilter2(),
     ]);
 
     expect(scanner.filterConfig.filters.length, config.filters.length);

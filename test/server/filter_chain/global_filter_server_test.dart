@@ -7,18 +7,20 @@ import 'package:test/test.dart';
 import '../../../bin/winter/winter.dart';
 
 void main() {
-  int port = 9090;
+  int port = 9021;
   String localUrl = 'http://localhost:$port';
 
-  setUp(
+  setUpAll(
     () async {
       await Winter.run(
         config: ServerConfig(port: port),
+        globalFilterConfig: FilterConfig(
+          [RemoveQueryParamsFilter()],
+        ),
         router: WinterRouter(
           routes: [
             Route(
-              path: '/route-filter/{id}',
-              filterConfig: FilterConfig([RemoveQueryParamsFilter()]),
+              path: '/global-filter/{id}',
               method: HttpMethod.get,
               handler: (request) => ResponseEntity.ok(
                 body:
@@ -26,7 +28,7 @@ void main() {
               ),
             ),
             Route(
-              path: '/route-filter/2/{id}',
+              path: '/global-filter/2/{id}',
               method: HttpMethod.get,
               handler: (request) => ResponseEntity.ok(
                 body:
@@ -39,30 +41,25 @@ void main() {
     },
   );
 
-  tearDown(() => Winter.close(force: true));
+  tearDownAll(() => Winter.close(force: true));
 
   Uri url(String path) => Uri.parse(localUrl + path);
 
-  test('Test Route Filter', () async {
-    String urlToTest = '/route-filter/55?some=123&another=963';
+  test('Test Global Filter', () async {
+    String urlToTest = '/global-filter/55?some=123&another=963';
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 200);
-
-    ///body with empty params
-    expect(response.body, 'path: {}, query: {}');
+    expect(response.body, 'path: {}, query: {}'); //body with empty params
   });
 
-  test('Test Route Filter #2', () async {
-    String urlToTest = '/route-filter/2/55?some=123&another=963';
+  test('Test Global Filter #2', () async {
+    String urlToTest = '/global-filter/66?some=456&another=852';
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 200);
-
-    ///body with current params (not removed by filter)
-    expect(response.body, 'path: {id: 55}, query: {some: 123, another: 963}');
+    expect(response.body, 'path: {}, query: {}'); //body with empty params
   });
 }
 
-///This filter remove the path & query params of the request
 class RemoveQueryParamsFilter implements Filter {
   @override
   Future<ResponseEntity> doFilter(

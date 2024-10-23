@@ -7,18 +7,18 @@ import 'package:test/test.dart';
 import '../../../bin/winter/winter.dart';
 
 void main() {
-  int port = 9090;
+  int port = 9030;
   String url = 'http://localhost:$port';
 
   String body = 'Hello world!!!';
-  setUp(() async {
+  setUpAll(() async {
     await Winter.run(
       config: ServerConfig(port: port),
       router: ServeRouter((request) => ResponseEntity.ok(body: body)),
     );
   });
 
-  tearDown(() => Winter.close(force: true));
+  tearDownAll(() => Winter.close(force: true));
 
   Future<String> get(String path) => http.read(Uri.parse(url + path));
 
