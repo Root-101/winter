@@ -94,9 +94,18 @@ class Winter {
     return nextRunningServer;
   }
 
-  static Future close({bool force = false}) async {
-    await instance._rawServer.close(force: force);
-    _server = null;
+  static Future close(
+      {bool force = false, void Function()? onAlreadyStarted}) async {
+    if (isRunning) {
+      await instance._rawServer.close(force: force);
+      _server = null;
+    } else {
+      if (onAlreadyStarted != null) {
+        onAlreadyStarted();
+      } else {
+        print('Server already started');
+      }
+    }
   }
 
   static FutureOr<Response> _handleRunRequest({
