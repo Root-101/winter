@@ -22,7 +22,7 @@ class HRouter extends WinterRouter {
       basePath: nonNullBasePath,
     );
 
-    nonNullConfig.onLoadedRoutes.afterInit(router.routes);
+    nonNullConfig.onLoadedRoutes(router.routes);
 
     return router;
   }
@@ -57,7 +57,7 @@ class HRouter extends WinterRouter {
           if (_isValidUri(fullPath)) {
             result.add(currentRoute);
           } else {
-            config.onInvalidUrl.onInvalid(currentRoute);
+            config.onInvalidUrl(currentRoute);
           }
         }
         if (route.routes.isNotEmpty) {

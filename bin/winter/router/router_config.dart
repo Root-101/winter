@@ -4,60 +4,51 @@ class RouterConfig {
   RouterConfig({
     OnInvalidUrl? onInvalidUrl,
     OnLoadedRoutes? onLoadedRoutes,
-  })  : onInvalidUrl = onInvalidUrl ?? OnInvalidUrl.ignore(),
-        onLoadedRoutes = onLoadedRoutes ?? OnLoadedRoutes.log();
+  })  : onInvalidUrl = onInvalidUrl ?? DefaultOnInvalidUrl.ignore(),
+        onLoadedRoutes = onLoadedRoutes ?? DefaultOnLoadedRoutes.ignore();
 
   final OnInvalidUrl onInvalidUrl;
   final OnLoadedRoutes onLoadedRoutes;
 }
 
-class OnInvalidUrl {
-  final void Function(Route failedRoute) onInvalid;
+typedef OnInvalidUrl = void Function(Route failedRoute);
 
-  OnInvalidUrl(this.onInvalid);
-
-  factory OnInvalidUrl.ignore({bool log = true}) {
-    return OnInvalidUrl(
-      (failedRoute) {
-        if (log) {
-          print(
-              '${failedRoute.path} is not a valid URL. Excluded from routing config');
-        }
-      },
-    );
+class DefaultOnInvalidUrl {
+  static OnInvalidUrl ignore({bool log = true}) {
+    return (failedRoute) {
+      if (log) {
+        print(
+          '${failedRoute.path} is not a valid URL. Excluded from routing config',
+        );
+      }
+    };
   }
 
-  factory OnInvalidUrl.fail() {
-    return OnInvalidUrl(
-      (failedRoute) {
-        throw StateError(
-            '${failedRoute.path} is not a valid URL. Failing to start app');
-      },
-    );
+  static OnInvalidUrl fail() {
+    return (failedRoute) {
+      throw StateError(
+        '${failedRoute.path} is not a valid URL. Failing to start app',
+      );
+    };
   }
 }
 
-class OnLoadedRoutes {
-  final void Function(List<Route> allRoutes) afterInit;
+typedef OnLoadedRoutes = void Function(List<Route> allRoutes);
 
-  OnLoadedRoutes(this.afterInit);
-
-  factory OnLoadedRoutes.ignore() {
-    return OnLoadedRoutes(
-      (allRoutes) {},
-    );
+class DefaultOnLoadedRoutes {
+  static OnLoadedRoutes ignore() {
+    return (allRoutes) {};
   }
 
-  factory OnLoadedRoutes.log() {
-    return OnLoadedRoutes(
-      (allRoutes) {
-        print('');
-        print('Routes:');
-        for (var element in allRoutes) {
-          print('${element.method.name.toUpperCase()}:    ${element.path}    ${element.filterConfig}');
-        }
-        print('');
-      },
-    );
+  static OnLoadedRoutes log() {
+    return (allRoutes) {
+      print('');
+      print('Routes:');
+      for (var element in allRoutes) {
+        print(
+            '${element.method.name.toUpperCase()}:    ${element.path}    ${element.filterConfig}');
+      }
+      print('');
+    };
   }
 }
