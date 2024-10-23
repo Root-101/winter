@@ -145,25 +145,25 @@ class Route {
   }
 
   bool match(String rawActualUrl) {
-    // Separar las partes de la URL y los parámetros de consulta
+    /// Clean up urls, remove query params
     String templateUrlPath = path.split('?').first;
     String actualUrlPath = rawActualUrl.split('?').first;
 
-    // Crear una expresión regular para encontrar los parámetros de ruta en la plantilla
+    /// Create a regular expression to find path parameters in the template
     final RegExp pathParamPattern = RegExp(r'{([^}]+)}');
 
-    // Crear una expresión regular para capturar los valores correspondientes en la URL real
+    /// Create a regular expression to capture the corresponding values in the actual URL
     String regexPattern = templateUrlPath.replaceAllMapped(
       pathParamPattern,
       (match) => r'([^/?]+)',
     );
-    regexPattern = '^' + regexPattern + r'$'; // Añadir el inicio y el final
 
-    // Comprobar si la parte de la URL coincide
-    final RegExpMatch? matchUrlPath =
-        RegExp(regexPattern).firstMatch(actualUrlPath);
+    /// Add start and end
+    /// Same as '^$regexPattern\$' => '^something$'
+    regexPattern = r'^' + regexPattern + r'$';
 
-    return matchUrlPath != null;
+    /// Check if url match
+    return RegExp(regexPattern).hasMatch(actualUrlPath);
   }
 
   @override
