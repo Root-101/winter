@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:mirrors';
 
-import 'package:collection/collection.dart'; // needed firstWhereOrNull. You have to add this manually, for some reason it cannot be added automatically
+import 'package:collection/collection.dart';
 
 import 'object_mapper.dart';
 

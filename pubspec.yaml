@@ -11,6 +11,9 @@ dependencies:
   shelf: ^1.4.0
   shelf_multipart: ^2.0.0
 
+  #Utils
+  collection: ^1.19.1
+
   #For naming strategy
   change_case: ^2.1.0
 
