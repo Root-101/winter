@@ -1,26 +1,33 @@
 ## TODO:
+What we have worked on recently and what we plan to work on in the future.
 
 ### General:
-- [] Doc & examples
-- [] Tests per part & with each case scenario
+- [x] readme
+
+### Package scan
+- [] full coverage of all config aspects of the server
+- [] docs
+- [] tests
 
 ### Object Mapper:
 - [] docs
 
 ### Validation Service
-- [] Add async validations (maybe FutureOr)
-- [] More tests to expand the possibles use cases
+- [] add async validations (maybe FutureOr)
+- [] more tests to expand the possibles use cases
 
 ### Exception handler
 - [] docs
+- [x] tests
 
 ### Router
 - [] docs
+- [x] tests
 
 ### Dependency injection
 - [] do a more robust DI
-- [] tests
 - [] docs
+- [] tests
 
 ### Filter Chain
 - [] docs
@@ -29,7 +36,15 @@
 - ALL
 
 ### Scheduling
-- [] make the scheduling inside server (maybe use https://pub.dev/packages/cron)
+- [] make the scheduling a native part of the server (maybe use under the hood https://pub.dev/packages/cron)
+
+### Multipart
+- [] make the multipart a native part of the server (maybe use under the hood https://pub.dev/packages/shelf_multipart)
 
 ### Logs inside server
-- [] Make the abstraction layer for logs (look at )
+- [] Make the abstraction layer for logs
+
+### Web sockets
+- [] Make an implementation for web socket
+- [] docs
+- [] test

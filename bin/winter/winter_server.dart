@@ -62,7 +62,7 @@ class Winter {
 
     BuildContext nonNullContext = context ?? BuildContext();
     ServerConfig nonNullConfig = config ?? ServerConfig();
-    AbstractWinterRouter nonNullRouter = router ?? BasicRouter();
+    AbstractWinterRouter nonNullRouter = router ?? WinterRouter();
     FilterConfig nonNullGlobalFilterConfig =
         globalFilterConfig ?? const FilterConfig([]);
 

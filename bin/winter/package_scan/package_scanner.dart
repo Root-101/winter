@@ -21,7 +21,7 @@ class ScanComponent {
 
 class PackageScanner {
   final BuildContext _context;
-  final BasicRouter _router;
+  final WinterRouter _router;
   final FilterConfig _filterConfig;
   final List<String> packageScan; //TODO: as a lib, always scan itself
 
@@ -44,7 +44,7 @@ class PackageScanner {
     FilterConfig? filterConfig,
   }) {
     PackageScanner scanner = PackageScanner._(
-      BasicRouter(),
+      WinterRouter(),
       context ?? BuildContext(),
       filterConfig ?? FilterConfig([]),
       //cant be const bc 'Unsupported operation: Cannot add to an unmodifiable list'
