@@ -83,7 +83,7 @@ class ResponseEntity extends Response {
               'Too many requests.${retryAfter != null ? ' Please try again in $retryAfter seconds.' : ''}',
           headers: {
             if (headers != null) ...headers,
-            if (retryAfter != null) HttpHeaders.RETRY_AFTER: '$retryAfter',
+            if (retryAfter != null) HttpHeaders.retryAfter: '$retryAfter',
           },
         );
 

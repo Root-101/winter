@@ -63,7 +63,7 @@ void main() {
     String urlToTest = '/mixed-filter/55';
     http.Response response = await http.get(
       url(urlToTest),
-      headers: {HttpHeaders.AUTHORIZATION: 'Bearer 123456'},
+      headers: {HttpHeaders.authorization: 'Bearer 123456'},
     );
     expect(response.statusCode, 200);
 
@@ -76,7 +76,7 @@ void main() {
     String urlToTest = '/mixed-filter/2/55?some=123&another=963';
     http.Response response = await http.get(
       url(urlToTest),
-      headers: {HttpHeaders.AUTHORIZATION: 'Bearer 123456'},
+      headers: {HttpHeaders.authorization: 'Bearer 123456'},
     );
     expect(response.statusCode, 200);
 
@@ -91,10 +91,10 @@ class InterceptNotAuthRequestsFilter implements Filter {
     RequestEntity request,
     FilterChain chain,
   ) async {
-    if (!request.headers.containsKey(HttpHeaders.AUTHORIZATION)) {
+    if (!request.headers.containsKey(HttpHeaders.authorization)) {
       return ResponseEntity(
         401,
-        body: 'Request need the ${HttpHeaders.AUTHORIZATION} header',
+        body: 'Request need the ${HttpHeaders.authorization} header',
       );
     }
     return await chain.doFilter(request);
