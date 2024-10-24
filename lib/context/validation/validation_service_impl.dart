@@ -2,7 +2,7 @@ import 'dart:mirrors';
 
 import 'package:collection/collection.dart';
 
-import '../../winter.dart';
+import 'package:winter/winter.dart';
 
 typedef ValidationFunction = bool Function(
   dynamic object,

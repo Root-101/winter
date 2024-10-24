@@ -1,5 +1,4 @@
-import 'package:http_parser/src/scan.dart';
-import 'package:string_scanner/string_scanner.dart';
+import 'package:winter/winter.dart';
 
 class MediaType {
   static MediaType all = const MediaType(

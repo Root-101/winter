@@ -1,4 +1,4 @@
-import '../../winter.dart';
+import 'package:winter/winter.dart';
 
 ///Special exception to break up any current flow and return this instead
 class ResponseException implements Exception {
