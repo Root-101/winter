@@ -1,3 +1,7 @@
+* 0.0.5:
+  * **DATE** :date: : 2024-10-24.
+  * **General** :hammer_and_wrench: : Fix example to pass in `pub points`
+
 * 0.0.4:
   * **DATE** :date: : 2024-10-24.
   * **General** :hammer_and_wrench: : Fix code analyzer
