@@ -70,7 +70,8 @@ class Size extends Valid {
 bool size(dynamic property, ConstraintValidatorContext cvc) {
   if (cvc.parent is! Size) {
     throw StateError(
-        'size validation called inside a non Size annotation (@Size)');
+      'size validation called inside a non Size annotation (@Size)',
+    );
   }
   Size rawAnnotation = cvc.parent as Size;
   if (rawAnnotation.min > rawAnnotation.max) {

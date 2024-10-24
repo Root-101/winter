@@ -19,7 +19,7 @@ class InjectableProcessor {
 
     // If the annotation exists, process it
     if (injectable != null) {
-      var value;
+      Object? value;
 
       // Verifica si el owner es un ClassMirror o un LibraryMirror
       var owner = variableMirror.owner;
@@ -81,7 +81,7 @@ class InjectableProcessor {
         }
       }
 
-      var value;
+      Object? value;
 
       // Verifica si el owner es un ClassMirror o un LibraryMirror
       var owner = methodMirror.owner;

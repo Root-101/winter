@@ -48,7 +48,8 @@ class DefaultOnLoadedRoutes {
       dev.log('Routes:');
       for (var element in allRoutes) {
         dev.log(
-            '${element.method.name.toUpperCase()}:    ${element.path}    ${element.filterConfig}');
+          '${element.method.name.toUpperCase()}:    ${element.path}    ${element.filterConfig}',
+        );
       }
       dev.log('');
     };

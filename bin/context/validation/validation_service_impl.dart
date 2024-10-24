@@ -26,9 +26,9 @@ class ConstraintValidatorContext {
   final Valid parent;
 
   ConstraintValidatorContext({
+    required this.parent,
     List<ConstrainViolation>? constrainViolations,
     this.concatParentName = true,
-    required this.parent,
   })  : constrainViolations = constrainViolations ?? [],
         templateViolations = [];
 
@@ -226,15 +226,17 @@ class ValidationServiceImpl extends ValidationService {
                     .toList(),
               );
               if (cvc.concatParentName) {
-                violations.addAll(cvc.constrainViolations
-                    .map(
-                      (e) => ConstrainViolation(
-                        value: e.value,
-                        fieldName: '$fieldName.${e.fieldName}',
-                        message: e.message,
-                      ),
-                    )
-                    .toList());
+                violations.addAll(
+                  cvc.constrainViolations
+                      .map(
+                        (e) => ConstrainViolation(
+                          value: e.value,
+                          fieldName: '$fieldName.${e.fieldName}',
+                          message: e.message,
+                        ),
+                      )
+                      .toList(),
+                );
               } else {
                 violations.addAll(cvc.constrainViolations);
               }

@@ -55,7 +55,7 @@ class ObjectMapperImpl extends ObjectMapper {
 
     // Beautify the JSON with indentation
     if (prettyPrint) {
-      return JsonEncoder.withIndent('  ').convert(cleanedUpObject);
+      return const JsonEncoder.withIndent('  ').convert(cleanedUpObject);
     } else {
       return jsonEncode(cleanedUpObject);
     }
@@ -180,7 +180,7 @@ class ObjectMapperImpl extends ObjectMapper {
     ClassMirror typeMirror = reflectClass(targetType);
     if (typeMirror.superinterfaces.contains(jsonSerializableMirror)) {
       //TODO: hacerlo como mismo se hace el de `_createEmptyInstance` y buscar todos los builders y eso
-      return typeMirror.newInstance(Symbol('fromJson'), [json]).reflectee;
+      return typeMirror.newInstance(const Symbol('fromJson'), [json]).reflectee;
     } else if (json is List) {
       ClassMirror classMirror = reflectType(targetType) as ClassMirror;
       TypeMirror paramTypeMirror = classMirror.typeArguments.first;
@@ -200,8 +200,10 @@ class ObjectMapperImpl extends ObjectMapper {
         Type keyType = reflectType(targetType).typeArguments[0].reflectedType;
         Type valueType = reflectType(targetType).typeArguments[1].reflectedType;
 
-        return json.map((key, value) =>
-            MapEntry(_fromMap(key, keyType), _fromMap(value, valueType)));
+        return json.map(
+          (key, value) =>
+              MapEntry(_fromMap(key, keyType), _fromMap(value, valueType)),
+        );
       }
 
       var classMirror = reflectClass(targetType);
@@ -239,8 +241,10 @@ class ObjectMapperImpl extends ObjectMapper {
                 );
                 continue;
               } else if (castListAnnotation != null) {
-                emptyInstanceMirror.setField(declaration.simpleName,
-                    castListAnnotation.parser(fieldValue));
+                emptyInstanceMirror.setField(
+                  declaration.simpleName,
+                  castListAnnotation.parser(fieldValue),
+                );
                 continue;
               } else {
                 String rawFieldName =
@@ -272,8 +276,10 @@ class ObjectMapperImpl extends ObjectMapper {
                 );
                 continue;
               } else if (castMapAnnotation != null) {
-                emptyInstanceMirror.setField(declaration.simpleName,
-                    castMapAnnotation.parser(fieldValue));
+                emptyInstanceMirror.setField(
+                  declaration.simpleName,
+                  castMapAnnotation.parser(fieldValue),
+                );
                 continue;
               } else {
                 TypeMirror fieldFirstTypeMirror =
@@ -315,7 +321,8 @@ class ObjectMapperImpl extends ObjectMapper {
             String rawFieldName = MirrorSystem.getName(declaration.simpleName);
 
             throw StateError(
-                'No value in map present for field: `${classMirror.reflectedType}$params $rawFieldName`');
+              'No value in map present for field: `${classMirror.reflectedType}$params $rawFieldName`',
+            );
           }
         }
       }

@@ -46,8 +46,9 @@ class PackageScanner {
     PackageScanner scanner = PackageScanner._(
       WinterRouter(),
       context ?? BuildContext(),
-      filterConfig ?? FilterConfig([]),
       //cant be const bc 'Unsupported operation: Cannot add to an unmodifiable list'
+      //ignore: prefer_const_constructors
+      filterConfig ?? FilterConfig([]),
       packageScan: packageScan ?? [],
     );
 

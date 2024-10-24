@@ -76,7 +76,7 @@ void main() {
     List<Tool> object = [
       Tool(name: 'Drill'),
       Tool(name: 'Screwdriver'),
-      Tool(name: 'Hammer')
+      Tool(name: 'Hammer'),
     ];
     String expectedResult =
         '[{"NAME":"Drill"},{"NAME":"Screwdriver"},{"NAME":"Hammer"}]';
@@ -128,7 +128,7 @@ void main() {
     List<Computer> object = [
       Computer.named(brand: 'hp'),
       Computer.named(brand: 'gateway'),
-      Computer.named(brand: 'mac')
+      Computer.named(brand: 'mac'),
     ];
 
     String expectedResult =
@@ -161,7 +161,7 @@ void main() {
     List<Mouse> object = [
       Mouse.named(brand: 'Logitech'),
       Mouse.named(brand: 'Gamer'),
-      Mouse.named(brand: 'iMouse')
+      Mouse.named(brand: 'iMouse'),
     ];
 
     String expectedResult =
@@ -223,7 +223,7 @@ void main() {
     User object = User.named(
       userName: 'John Doe',
       userId: 1,
-      duration: Duration(days: 365),
+      duration: const Duration(days: 365),
       isActive: true,
       addresses: [
         Address.named(
@@ -277,7 +277,7 @@ void main() {
     User object = User.named(
       userName: 'John Doe',
       userId: 1,
-      duration: Duration(days: 365),
+      duration: const Duration(days: 365),
       isActive: true,
       addresses: [
         Address.named(
@@ -360,7 +360,7 @@ void main() {
     List<DateTime> object = [
       DateTime(2023, 9, 1),
       DateTime(2024, 1, 1),
-      DateTime(2025, 12, 31)
+      DateTime(2025, 12, 31),
     ];
     String expectedResult =
         '["2023-09-01T00:00:00.000","2024-01-01T00:00:00.000","2025-12-31T00:00:00.000"]';
@@ -387,7 +387,7 @@ void main() {
     List<DateTime> object = [
       DateTime(2023, 9, 1),
       DateTime(2024, 1, 1),
-      DateTime(2025, 12, 31)
+      DateTime(2025, 12, 31),
     ];
 
     String jsonString = customParser.serialize(object);
@@ -407,9 +407,9 @@ void main() {
 
   test('Serialize/Deserialize - List<Duration>', () async {
     List<Duration> object = [
-      Duration(days: 1, hours: 5, minutes: 30),
-      Duration(hours: 10, minutes: 45),
-      Duration(seconds: 90)
+      const Duration(days: 1, hours: 5, minutes: 30),
+      const Duration(hours: 10, minutes: 45),
+      const Duration(seconds: 90),
     ];
 
     List<String> expectedResult =
@@ -420,40 +420,45 @@ void main() {
 
     List<Duration> deserialized = parser.deserializeList<Duration>(jsonString);
 
-    expect(deserialized.map((d) => d.inMilliseconds).toList(),
-        object.map((d) => d.inMilliseconds).toList());
+    expect(
+      deserialized.map((d) => d.inMilliseconds).toList(),
+      object.map((d) => d.inMilliseconds).toList(),
+    );
   });
 
   test('Serialize/Deserialize - List<Duration> (Custom Parser)', () async {
-    ObjectMapperImpl customParser =
-        ObjectMapperImpl(defaultSerializerOverride: {
-      Duration: (dynamic object) => (object as Duration).toString(),
-    }, defaultDeserializerOverride: {
-      Duration: (dynamic value) {
-        List<String> parts = (value as String).split('.');
-
-        // Obtiene la parte de horas, minutos, segundos
-        List<String> timeParts = parts[0].split(':');
-        int hours = int.parse(timeParts[0]);
-        int minutes = int.parse(timeParts[1]);
-        int seconds = int.parse(timeParts[2]);
-
-        // Obtiene la parte de milisegundos si existe
-        int milliseconds = parts.length > 1 ? int.parse(parts[1]) : 0;
-
-        return Duration(
-          hours: hours,
-          minutes: minutes,
-          seconds: seconds,
-          milliseconds: milliseconds ~/ 1000,
-        );
+    ObjectMapperImpl customParser = ObjectMapperImpl(
+      defaultSerializerOverride: {
+        Duration: (dynamic object) => (object as Duration).toString(),
       },
-    }, prettyPrint: false);
+      defaultDeserializerOverride: {
+        Duration: (dynamic value) {
+          List<String> parts = (value as String).split('.');
+
+          // Obtiene la parte de horas, minutos, segundos
+          List<String> timeParts = parts[0].split(':');
+          int hours = int.parse(timeParts[0]);
+          int minutes = int.parse(timeParts[1]);
+          int seconds = int.parse(timeParts[2]);
+
+          // Obtiene la parte de milisegundos si existe
+          int milliseconds = parts.length > 1 ? int.parse(parts[1]) : 0;
+
+          return Duration(
+            hours: hours,
+            minutes: minutes,
+            seconds: seconds,
+            milliseconds: milliseconds ~/ 1000,
+          );
+        },
+      },
+      prettyPrint: false,
+    );
 
     List<Duration> object = [
-      Duration(days: 1, hours: 5, minutes: 30),
-      Duration(hours: 10, minutes: 45),
-      Duration(seconds: 90)
+      const Duration(days: 1, hours: 5, minutes: 30),
+      const Duration(hours: 10, minutes: 45),
+      const Duration(seconds: 90),
     ];
 
     // Serializa las duraciones en el formato "hh:mm:ss.mmm"
@@ -461,13 +466,17 @@ void main() {
         object.map((d) => d.toString()).toList();
     String jsonString = customParser.serialize(object);
 
-    expect(jsonString,
-        '[${expectedSerializedResult.map((e) => '"$e"').join(",")}]');
+    expect(
+      jsonString,
+      '[${expectedSerializedResult.map((e) => '"$e"').join(",")}]',
+    );
 
     List<Duration> deserialized =
         customParser.deserializeList<Duration>(jsonString);
-    expect(deserialized.map((d) => d.inMilliseconds).toList(),
-        object.map((d) => d.inMilliseconds).toList());
+    expect(
+      deserialized.map((d) => d.inMilliseconds).toList(),
+      object.map((d) => d.inMilliseconds).toList(),
+    );
   });
 
   //TODO: URI & REGEX
@@ -661,12 +670,14 @@ void main() {
     DateTime deserializedObject =
         customParser.deserialize<DateTime>(jsonString);
 
-    expect(deserializedObject.millisecondsSinceEpoch,
-        object.millisecondsSinceEpoch);
+    expect(
+      deserializedObject.millisecondsSinceEpoch,
+      object.millisecondsSinceEpoch,
+    );
   });
 
   test('Serialize/Deserialize: Duration', () async {
-    Duration object = Duration(days: 365);
+    Duration object = const Duration(days: 365);
     int rawResult = object.inMilliseconds;
     String result = rawResult.toString();
     String jsonString = parser.serialize(object);
@@ -708,7 +719,7 @@ void main() {
     );
 
     Duration object =
-        Duration(days: 5, hours: 3, seconds: 20, milliseconds: 850);
+        const Duration(days: 5, hours: 3, seconds: 20, milliseconds: 850);
 
     String expectedSerializedResult = object.toString();
     String jsonString = parser.serialize(object);

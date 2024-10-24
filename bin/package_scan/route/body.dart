@@ -7,8 +7,6 @@ import '../../winter.dart';
 class Body<T> {
   final Object Function(String body, ObjectMapper om) parser;
 
-  const Body._(this.parser);
-
   const Body() : parser = plainBodyParser<T>;
 
   const Body.list() : parser = bodyListParser<T>;

@@ -1,3 +1,3 @@
 ///Authorization pair for bearer & basic
-const String bearer = "Bearer ";
-const String basic = "Basic ";
+const String bearer = 'Bearer ';
+const String basic = 'Basic ';

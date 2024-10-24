@@ -16,7 +16,8 @@ import 'response_entity.dart';
 /// directly returned by an HTTP server or have further processing done by other
 /// middleware.
 typedef RequestHandler = FutureOr<ResponseEntity> Function(
-    RequestEntity request);
+  RequestEntity request,
+);
 
 ///ExceptionHandler
 typedef ExcHandler = FutureOr<ResponseEntity> Function(

@@ -74,8 +74,10 @@ mixin HttpStatusCode {
   /// positive number
   ///
   static HttpStatusCode valueOf(int code) {
-    assert(code >= 100 && code <= 999,
-        "Status code $code should be a three-digit positive integer");
+    assert(
+      code >= 100 && code <= 999,
+      'Status code $code should be a three-digit positive integer',
+    );
     HttpStatus? status = HttpStatus.resolve(code);
     if (status != null) {
       return status;
