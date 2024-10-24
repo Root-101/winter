@@ -26,6 +26,25 @@ Now that we have made all this clear:
 
 ## Let's get started
 
+### Configure the package
+At this point we assume that you have the basic knowledge of dart, and a fully configured environment
+
+If not, please take a look at the [official dart guide](https://dart.dev/get-dart)
+
+Once you have a basic project running you need to;
+
+1 - Add `winter` to dependencies:
+```yaml
+dependencies:
+  winter: ^0.0.2
+```
+
+2 - Run `dart pub get`.
+
+3 - Go to your main file and import the package.
+
+When this step are done, we can now learn:
+
 ### How to start the server:
 
 To start the server we need to call the `Winter.run` method. (Remember to import the `package:winter/winter.dart`).
