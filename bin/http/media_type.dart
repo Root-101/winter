@@ -2,115 +2,115 @@ import 'package:http_parser/src/scan.dart';
 import 'package:string_scanner/string_scanner.dart';
 
 class MediaType {
-  static MediaType ALL = const MediaType(
+  static MediaType all = const MediaType(
     '*',
     '*',
   );
-  static MediaType APPLICATION_ATOM_XML = const MediaType(
+  static MediaType applicationAtomXml = const MediaType(
     'application',
     'atom+xml',
   );
-  static MediaType APPLICATION_CBOR = const MediaType(
+  static MediaType applicationCbor = const MediaType(
     'application',
     'cbor',
   );
-  static MediaType APPLICATION_FORM_URLENCODED = const MediaType(
+  static MediaType applicationFormUrlencoded = const MediaType(
     'application',
     'x-www-form-urlencoded',
   );
-  static MediaType APPLICATION_GRAPHQL = const MediaType(
+  static MediaType applicationGraphql = const MediaType(
     'application',
     'graphql+json',
   );
-  static MediaType APPLICATION_GRAPHQL_RESPONSE = const MediaType(
+  static MediaType applicationGraphqlResponse = const MediaType(
     'application',
     'graphql-response+json',
   );
-  static MediaType APPLICATION_JSON = const MediaType(
+  static MediaType applicationJson = const MediaType(
     'application',
     'json',
   );
-  static MediaType APPLICATION_NDJSON = const MediaType(
+  static MediaType applicationNdjson = const MediaType(
     'application',
     'x-ndjson',
   );
-  static MediaType APPLICATION_OCTET_STREAM = const MediaType(
+  static MediaType applicationOctetStream = const MediaType(
     'application',
     'octet-stream',
   );
-  static MediaType APPLICATION_PDF = const MediaType(
+  static MediaType applicationPdf = const MediaType(
     'application',
     'pdf',
   );
-  static MediaType APPLICATION_PROBLEM_JSON = const MediaType(
+  static MediaType applicationProblemJson = const MediaType(
     'application',
     'problem+json',
   );
-  static MediaType APPLICATION_PROBLEM_XML = const MediaType(
+  static MediaType applicationProblemXml = const MediaType(
     'application',
     'problem+xml',
   );
-  static MediaType APPLICATION_PROTOBUF = const MediaType(
+  static MediaType applicationProtobuf = const MediaType(
     'application',
     'x-protobuf',
   );
-  static MediaType APPLICATION_RSS_XML = const MediaType(
+  static MediaType applicationRssXml = const MediaType(
     'application',
     'rss+xml',
   );
-  static MediaType APPLICATION_STREAM_JSON = const MediaType(
+  static MediaType applicationStreamJson = const MediaType(
     'application',
     'stream+json',
   );
-  static MediaType APPLICATION_XHTML_XML = const MediaType(
+  static MediaType applicationXhtmlXml = const MediaType(
     'application',
     'xhtml+xml',
   );
-  static MediaType APPLICATION_XML = const MediaType(
+  static MediaType applicationXml = const MediaType(
     'application',
     'xml',
   );
-  static MediaType IMAGE_GIF = const MediaType(
+  static MediaType imageGif = const MediaType(
     'image',
     'gif',
   );
-  static MediaType IMAGE_JPEG = const MediaType(
+  static MediaType imageJpeg = const MediaType(
     'image',
     'jpeg',
   );
-  static MediaType IMAGE_PNG = const MediaType(
+  static MediaType imagePng = const MediaType(
     'image',
     'png',
   );
-  static MediaType MULTIPART_FORM_DATA = const MediaType(
+  static MediaType multipartFormData = const MediaType(
     'multipart',
     'form-data',
   );
-  static MediaType MULTIPART_MIXED = const MediaType(
+  static MediaType multipartMixed = const MediaType(
     'multipart',
     'mixed',
   );
-  static MediaType MULTIPART_RELATED = const MediaType(
+  static MediaType multipartRelated = const MediaType(
     'multipart',
     'related',
   );
-  static MediaType TEXT_EVENT_STREAM = const MediaType(
+  static MediaType textEventStream = const MediaType(
     'text',
     'event-stream',
   );
-  static MediaType TEXT_HTML = const MediaType(
+  static MediaType textHtml = const MediaType(
     'text',
     'html',
   );
-  static MediaType TEXT_MARKDOWN = const MediaType(
+  static MediaType textMarkdown = const MediaType(
     'text',
     'markdown',
   );
-  static MediaType TEXT_PLAIN = const MediaType(
+  static MediaType textPlain = const MediaType(
     'text',
     'plain',
   );
-  static MediaType TEXT_XML = const MediaType(
+  static MediaType textXml = const MediaType(
     'text',
     'xml',
   );
