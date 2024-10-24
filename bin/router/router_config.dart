@@ -1,4 +1,5 @@
 import '../winter.dart';
+import 'dart:developer' as dev;
 
 class RouterConfig {
   RouterConfig({
@@ -17,7 +18,7 @@ class DefaultOnInvalidUrl {
   static OnInvalidUrl ignore({bool log = true}) {
     return (failedRoute) {
       if (log) {
-        print(
+        dev.log(
           '${failedRoute.path} is not a valid URL. Excluded from routing config',
         );
       }
@@ -42,13 +43,13 @@ class DefaultOnLoadedRoutes {
 
   static OnLoadedRoutes log() {
     return (allRoutes) {
-      print('');
-      print('Routes:');
+      dev.log('');
+      dev.log('Routes:');
       for (var element in allRoutes) {
-        print(
+        dev.log(
             '${element.method.name.toUpperCase()}:    ${element.path}    ${element.filterConfig}');
       }
-      print('');
+      dev.log('');
     };
   }
 }

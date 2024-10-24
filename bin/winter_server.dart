@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:shelf/shelf_io.dart' as shelf_io;
@@ -89,7 +90,7 @@ class Winter {
 
     final endTime = DateTime.now();
     double timeDiff = endTime.difference(startTime).inMilliseconds / 1000;
-    print('Server started on port ${rawServer.port} ($timeDiff sec)');
+    log('Server started on port ${rawServer.port} ($timeDiff sec)');
 
     return nextRunningServer;
   }
@@ -103,7 +104,7 @@ class Winter {
       if (onAlreadyStarted != null) {
         onAlreadyStarted();
       } else {
-        print('Server already started');
+        log('Server already started');
       }
     }
   }

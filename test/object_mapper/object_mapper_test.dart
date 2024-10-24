@@ -329,7 +329,7 @@ void main() {
 
   //---------- Maps ----------\\
   test('Serialize - Map<String, dynamic>', () async {
-    Map<String, dynamic> object = {"name": "John", "age": 30, "active": true};
+    Map<String, dynamic> object = {'name': 'John', 'age': 30, 'active': true};
     String result = '{"name":"John","age":30,"active":true}';
     String jsonString = parser.serialize(object);
 
@@ -337,7 +337,7 @@ void main() {
   });
 
   test('Serialize - Map<String, String>', () async {
-    Map<String, dynamic> object = {"name": "John", "age": "30", "active": true};
+    Map<String, dynamic> object = {'name': 'John', 'age': '30', 'active': true};
     String result = '{"name":"John","age":"30","active":true}';
     String jsonString = parser.serialize(object);
 
@@ -346,7 +346,7 @@ void main() {
 
   //---------- Lists ----------\\
   test('Serialize/Deserialize - List<dynamic>', () async {
-    List<dynamic> object = ["John", 30, "active"];
+    List<dynamic> object = ['John', 30, 'active'];
     String expectedString = '["John",30,"active"]';
     String jsonString = parser.serialize(object);
 
@@ -430,10 +430,10 @@ void main() {
       Duration: (dynamic object) => (object as Duration).toString(),
     }, defaultDeserializerOverride: {
       Duration: (dynamic value) {
-        List<String> parts = (value as String).split(".");
+        List<String> parts = (value as String).split('.');
 
         // Obtiene la parte de horas, minutos, segundos
-        List<String> timeParts = parts[0].split(":");
+        List<String> timeParts = parts[0].split(':');
         int hours = int.parse(timeParts[0]);
         int minutes = int.parse(timeParts[1]);
         int seconds = int.parse(timeParts[2]);
@@ -472,7 +472,7 @@ void main() {
 
   //TODO: URI & REGEX
   test('Serialize - List<String>', () async {
-    List<String> object = ["John", '30', "active"];
+    List<String> object = ['John', '30', 'active'];
     String expectedResult = '["John","30","active"]';
     String jsonString = parser.serialize(object);
 
@@ -493,7 +493,7 @@ void main() {
       prettyPrint: false,
     );
 
-    List<String> object = ["hello", "world"];
+    List<String> object = ['hello', 'world'];
     String expectedResult = '["HELLO","WORLD"]';
     String jsonString = customParser.serialize(object);
 
@@ -610,10 +610,10 @@ void main() {
   test('Serialize/Deserialize - List<bool> (Custom Parser)', () async {
     ObjectMapperImpl customParser = ObjectMapperImpl(
       defaultSerializerOverride: {
-        bool: (dynamic object) => (object as bool) ? "yes" : "no",
+        bool: (dynamic object) => (object as bool) ? 'yes' : 'no',
       },
       defaultDeserializerOverride: {
-        bool: (dynamic value) => value == "yes",
+        bool: (dynamic value) => value == 'yes',
       },
       prettyPrint: false,
     );
@@ -685,10 +685,10 @@ void main() {
       },
       defaultDeserializerOverride: {
         Duration: (dynamic value) {
-          List<String> parts = (value as String).split(".");
+          List<String> parts = (value as String).split('.');
 
           // Obtiene la parte de horas, minutos, segundos
-          List<String> timeParts = parts[0].split(":");
+          List<String> timeParts = parts[0].split(':');
           int hours = int.parse(timeParts[0]);
           int minutes = int.parse(timeParts[1]);
           int seconds = int.parse(timeParts[2]);
@@ -749,8 +749,8 @@ void main() {
   });
 
   test('Serialize/Deserialize: String', () async {
-    String object = "Hello, world!";
-    String expectedString = "Hello, world!";
+    String object = 'Hello, world!';
+    String expectedString = 'Hello, world!';
     String jsonString = parser.serialize(object);
 
     expect(expectedString, jsonString);
@@ -769,8 +769,8 @@ void main() {
       },
     );
 
-    String object = "Hello, World!".toLowerCase();
-    String expectedString = "Hello, world!".toUpperCase();
+    String object = 'Hello, World!'.toLowerCase();
+    String expectedString = 'Hello, world!'.toUpperCase();
     String jsonString = customParser.serialize(object);
     expect(expectedString, jsonString);
 
@@ -876,10 +876,10 @@ void main() {
   test('Serialize/Deserialize: bool (Custom Parser)', () async {
     ObjectMapperImpl customParser = ObjectMapperImpl(
       defaultSerializerOverride: {
-        bool: (dynamic object) => (object as bool) ? "yes" : "no",
+        bool: (dynamic object) => (object as bool) ? 'yes' : 'no',
       },
       defaultDeserializerOverride: {
-        bool: (dynamic value) => value == "yes",
+        bool: (dynamic value) => value == 'yes',
       },
     );
 

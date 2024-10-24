@@ -220,7 +220,7 @@ void main() {
       Address(
         streetName: 'Third Street',
         houseNumber: 789,
-      )
+      ),
     ];
     List<ConstrainViolation> violations = vs.validate(address);
     List<ConstrainViolation> correctValidations = [

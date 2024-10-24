@@ -209,7 +209,7 @@ class PackageScanner {
       }
 
       for (var entry in libMirror.declarations.entries) {
-        //print('key: ${entry.key}, value: ${entry.value}');
+        //log('key: ${entry.key}, value: ${entry.value}');
 
         final declaration = entry.value;
 
