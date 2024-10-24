@@ -2,117 +2,117 @@ import 'package:http_parser/src/scan.dart';
 import 'package:string_scanner/string_scanner.dart';
 
 class MediaType {
-  static MediaType ALL = MediaType(
+  static MediaType ALL = const MediaType(
     '*',
     '*',
   );
-  static MediaType APPLICATION_ATOM_XML = MediaType(
-    "application",
-    "atom+xml",
+  static MediaType APPLICATION_ATOM_XML = const MediaType(
+    'application',
+    'atom+xml',
   );
-  static MediaType APPLICATION_CBOR = MediaType(
-    "application",
-    "cbor",
+  static MediaType APPLICATION_CBOR = const MediaType(
+    'application',
+    'cbor',
   );
-  static MediaType APPLICATION_FORM_URLENCODED = MediaType(
-    "application",
-    "x-www-form-urlencoded",
+  static MediaType APPLICATION_FORM_URLENCODED = const MediaType(
+    'application',
+    'x-www-form-urlencoded',
   );
-  static MediaType APPLICATION_GRAPHQL = MediaType(
-    "application",
-    "graphql+json",
+  static MediaType APPLICATION_GRAPHQL = const MediaType(
+    'application',
+    'graphql+json',
   );
-  static MediaType APPLICATION_GRAPHQL_RESPONSE = MediaType(
-    "application",
-    "graphql-response+json",
+  static MediaType APPLICATION_GRAPHQL_RESPONSE = const MediaType(
+    'application',
+    'graphql-response+json',
   );
-  static MediaType APPLICATION_JSON = MediaType(
-    "application",
-    "json",
+  static MediaType APPLICATION_JSON = const MediaType(
+    'application',
+    'json',
   );
-  static MediaType APPLICATION_NDJSON = MediaType(
-    "application",
-    "x-ndjson",
+  static MediaType APPLICATION_NDJSON = const MediaType(
+    'application',
+    'x-ndjson',
   );
-  static MediaType APPLICATION_OCTET_STREAM = MediaType(
-    "application",
-    "octet-stream",
+  static MediaType APPLICATION_OCTET_STREAM = const MediaType(
+    'application',
+    'octet-stream',
   );
-  static MediaType APPLICATION_PDF = MediaType(
-    "application",
-    "pdf",
+  static MediaType APPLICATION_PDF = const MediaType(
+    'application',
+    'pdf',
   );
-  static MediaType APPLICATION_PROBLEM_JSON = MediaType(
-    "application",
-    "problem+json",
+  static MediaType APPLICATION_PROBLEM_JSON = const MediaType(
+    'application',
+    'problem+json',
   );
-  static MediaType APPLICATION_PROBLEM_XML = MediaType(
-    "application",
-    "problem+xml",
+  static MediaType APPLICATION_PROBLEM_XML = const MediaType(
+    'application',
+    'problem+xml',
   );
-  static MediaType APPLICATION_PROTOBUF = MediaType(
-    "application",
-    "x-protobuf",
+  static MediaType APPLICATION_PROTOBUF = const MediaType(
+    'application',
+    'x-protobuf',
   );
-  static MediaType APPLICATION_RSS_XML = MediaType(
-    "application",
-    "rss+xml",
+  static MediaType APPLICATION_RSS_XML = const MediaType(
+    'application',
+    'rss+xml',
   );
-  static MediaType APPLICATION_STREAM_JSON = MediaType(
-    "application",
-    "stream+json",
+  static MediaType APPLICATION_STREAM_JSON = const MediaType(
+    'application',
+    'stream+json',
   );
-  static MediaType APPLICATION_XHTML_XML = MediaType(
-    "application",
-    "xhtml+xml",
+  static MediaType APPLICATION_XHTML_XML = const MediaType(
+    'application',
+    'xhtml+xml',
   );
-  static MediaType APPLICATION_XML = MediaType(
-    "application",
-    "xml",
+  static MediaType APPLICATION_XML = const MediaType(
+    'application',
+    'xml',
   );
-  static MediaType IMAGE_GIF = MediaType(
-    "image",
-    "gif",
+  static MediaType IMAGE_GIF = const MediaType(
+    'image',
+    'gif',
   );
-  static MediaType IMAGE_JPEG = MediaType(
-    "image",
-    "jpeg",
+  static MediaType IMAGE_JPEG = const MediaType(
+    'image',
+    'jpeg',
   );
-  static MediaType IMAGE_PNG = MediaType(
-    "image",
-    "png",
+  static MediaType IMAGE_PNG = const MediaType(
+    'image',
+    'png',
   );
-  static MediaType MULTIPART_FORM_DATA = MediaType(
-    "multipart",
-    "form-data",
+  static MediaType MULTIPART_FORM_DATA = const MediaType(
+    'multipart',
+    'form-data',
   );
-  static MediaType MULTIPART_MIXED = MediaType(
-    "multipart",
-    "mixed",
+  static MediaType MULTIPART_MIXED = const MediaType(
+    'multipart',
+    'mixed',
   );
-  static MediaType MULTIPART_RELATED = MediaType(
-    "multipart",
-    "related",
+  static MediaType MULTIPART_RELATED = const MediaType(
+    'multipart',
+    'related',
   );
-  static MediaType TEXT_EVENT_STREAM = MediaType(
-    "text",
-    "event-stream",
+  static MediaType TEXT_EVENT_STREAM = const MediaType(
+    'text',
+    'event-stream',
   );
-  static MediaType TEXT_HTML = MediaType(
-    "text",
-    "html",
+  static MediaType TEXT_HTML = const MediaType(
+    'text',
+    'html',
   );
-  static MediaType TEXT_MARKDOWN = MediaType(
-    "text",
-    "markdown",
+  static MediaType TEXT_MARKDOWN = const MediaType(
+    'text',
+    'markdown',
   );
-  static MediaType TEXT_PLAIN = MediaType(
-    "text",
-    "plain",
+  static MediaType TEXT_PLAIN = const MediaType(
+    'text',
+    'plain',
   );
-  static MediaType TEXT_XML = MediaType(
-    "text",
-    "xml",
+  static MediaType TEXT_XML = const MediaType(
+    'text',
+    'xml',
   );
 
   final String type;

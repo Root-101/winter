@@ -1,7 +1,7 @@
-name: shelf_test
-description: A server app using the shelf package and Docker.
-version: 1.0.0
-# repository: https://github.com/my_org/my_repo
+name: winter
+description: A lightweight framework for create server side applications
+version: 0.0.1
+repository: https://github.com/Root-101/winter.git
 
 environment:
   sdk: ^3.5.0
@@ -9,14 +9,16 @@ environment:
 dependencies:
   args: ^2.4.0
   shelf: ^1.4.0
-  shelf_router: ^1.1.0
+  shelf_multipart: ^2.0.0
 
-  #para el parseo a snack case
+  #For naming strategy
   change_case: ^2.1.0
 
-  #para el parsea del media type
+  #For media type parsing
   string_scanner: ^1.3.0
   http_parser: ^4.1.0
+
+  mongo_dart: ^0.10.3
 
 dev_dependencies:
   http: ^1.1.0
