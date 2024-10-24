@@ -1,12 +1,12 @@
 ## Winter Framework: a backend for the Dart enthusiasts
 
-This project is designed to create APIs in the simplest way possible and reduce the learning
+This project is designed to create server side apps the simplest way possible, and reduce the learning
 curve in backend development.
 
 This project aims to be a lightweight backend framework to create BASICS services and APIs.
 Maybe in a feature, a more mature framework with a greater ecosystem to build all kind of backends.
 
-It's greatly inspired by others such as **Spring** or **Nest.js**.
+It's greatly inspired by others frameworks such as **Spring** or **Nest.js**.
 
 This is an EXPERIMENTAL project, and it's by no means a ready production framework, use it at your own discretion.
 
