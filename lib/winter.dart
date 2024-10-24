@@ -1,6 +1,9 @@
 library winter;
 
 export 'package:shelf_multipart/shelf_multipart.dart';
+export 'package:shelf/shelf.dart';
+export 'package:http_parser/src/scan.dart';
+export 'package:string_scanner/string_scanner.dart';
 
 export 'build_context.dart';
 export 'context/context.dart';

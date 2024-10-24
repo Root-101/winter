@@ -1,9 +1,9 @@
-import '../../winter.dart';
+import 'package:winter/winter.dart';
 
 abstract class ExceptionHandler {
   Future<ResponseEntity> call(
     RequestEntity request,
-    Exception error,
+    Exception exception,
     StackTrace stackTrace,
   );
 }
@@ -13,7 +13,7 @@ class SimpleExceptionHandler extends ExceptionHandler {
   Future<ResponseEntity> call(
     RequestEntity request,
     Exception exception,
-    StackTrace stackTrac,
+    StackTrace stackTrace,
   ) async {
     if (exception is ResponseException) {
       return exception.responseEntity;

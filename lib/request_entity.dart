@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-import 'package:shelf/shelf.dart';
-
 import 'winter.dart';
 
 class RequestEntity extends Request {
