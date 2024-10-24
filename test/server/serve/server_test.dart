@@ -4,7 +4,7 @@ library;
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
-import '../../../bin/winter/winter.dart';
+import '../../../bin/winter.dart';
 
 void main() {
   int port = 9030;

@@ -3,7 +3,7 @@ library;
 
 import 'package:test/test.dart';
 
-import '../../../bin/winter/winter.dart';
+import '../../../bin/winter.dart';
 
 @Injectable(tag: 'test')
 const String foo = 'Hello world!!!';
