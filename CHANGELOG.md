@@ -1,3 +1,7 @@
+* 0.0.4:
+  * **DATE** :date: : 2024-10-24.
+  * **General** :hammer_and_wrench: : Fix code analyzer
+
 * 0.0.3:
     * **DATE** :date: : 2024-10-24.
     * **General** :hammer_and_wrench: : Move code to `/lib` folder, update everything else.
