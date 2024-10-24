@@ -2,8 +2,8 @@
 library;
 
 import 'package:test/test.dart';
+import 'package:winter/winter.dart';
 
-import '../../bin/winter.dart';
 import 'models.dart';
 
 late ValidationService vs;

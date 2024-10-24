@@ -3,7 +3,7 @@ library;
 
 import 'package:test/test.dart';
 
-import '../../bin/winter.dart';
+import 'package:winter/winter.dart';
 import 'models.dart';
 
 late ObjectMapper parser;

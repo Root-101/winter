@@ -2,8 +2,7 @@
 library;
 
 import 'package:test/test.dart';
-
-import '../../../bin/winter.dart';
+import 'package:winter/winter.dart';
 
 //NOTE: the '_2' in name represent the param passed as a positioned argument WITH @Injected
 @Injectable(tag: 'test')

@@ -4,8 +4,7 @@ library;
 import 'dart:async';
 
 import 'package:test/test.dart';
-
-import '../../../bin/winter.dart';
+import 'package:winter/winter.dart';
 
 @GlobalFilter()
 FutureOr<ResponseEntity> testFilter(

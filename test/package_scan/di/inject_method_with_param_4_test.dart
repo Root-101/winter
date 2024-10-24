@@ -2,8 +2,7 @@
 library;
 
 import 'package:test/test.dart';
-
-import '../../../bin/winter.dart';
+import 'package:winter/winter.dart';
 
 //NOTE: the '_4' in name represent the a param is passed as a positioned argument
 //and another as named argument, both with @Injected
