@@ -16,7 +16,6 @@ class TestFilter2 implements Filter {
     RequestEntity request,
     FilterChain chain,
   ) async {
-    print('doing filter 2');
     return await chain.doFilter(
       request,
     );
