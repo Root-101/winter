@@ -1,3 +1,6 @@
+@TestOn('vm')
+library;
+
 import 'package:test/test.dart';
 
 import '../../bin/winter/winter.dart';
@@ -64,7 +67,7 @@ void main() {
     String jsonString = parser.serialize(object);
     expect(expectedResult, jsonString);
 
-    Tool deserialized = parser.deserialize(jsonString, Tool) as Tool;
+    Tool deserialized = parser.deserialize<Tool>(jsonString);
 
     expect(deserialized, object);
   });
@@ -81,8 +84,26 @@ void main() {
     String jsonString = parser.serialize(object);
     expect(expectedResult, jsonString);
 
-    List<Tool> deserialized =
-        parser.deserialize(jsonString, List<Tool>).cast<Tool>();
+    List<Tool> deserialized = parser.deserializeList<Tool>(jsonString);
+
+    expect(deserialized, object);
+  });
+
+  test('Serialize/Deserialize - Map<String, Tool>', () async {
+    Map<String, Tool> object = {
+      'drill': Tool(name: 'Drill'),
+      'screw': Tool(name: 'Screwdriver'),
+      'hamm': Tool(name: 'Hammer'),
+    };
+
+    String expectedResult =
+        '{"drill":{"NAME":"Drill"},"screw":{"NAME":"Screwdriver"},"hamm":{"NAME":"Hammer"}}';
+
+    String jsonString = parser.serialize(object);
+    expect(expectedResult, jsonString);
+
+    Map<String, Tool> deserialized =
+        parser.deserializeMap<String, Tool>(jsonString);
 
     expect(deserialized, object);
   });
@@ -98,8 +119,7 @@ void main() {
     String jsonString = parser.serialize(object);
     expect(expectedResult, jsonString);
 
-    Computer deserialized =
-        parser.deserialize(jsonString, Computer) as Computer;
+    Computer deserialized = parser.deserialize<Computer>(jsonString);
 
     expect(deserialized, object);
   });
@@ -117,8 +137,7 @@ void main() {
     String jsonString = parser.serialize(object);
     expect(expectedResult, jsonString);
 
-    List<Computer> deserialized =
-        parser.deserialize(jsonString, List<Computer>).cast<Computer>();
+    List<Computer> deserialized = parser.deserializeList<Computer>(jsonString);
 
     expect(deserialized, object);
   });
@@ -133,8 +152,7 @@ void main() {
     String jsonString = parser.serialize(object);
     expect(expectedResult, jsonString);
 
-    Mouse deserialized =
-        parser.deserialize(jsonString, Mouse) as Mouse;
+    Mouse deserialized = parser.deserialize<Mouse>(jsonString);
 
     expect(deserialized, object);
   });
@@ -152,8 +170,7 @@ void main() {
     String jsonString = parser.serialize(object);
     expect(expectedResult, jsonString);
 
-    List<Mouse> deserialized =
-        parser.deserialize(jsonString, List<Mouse>).cast<Mouse>();
+    List<Mouse> deserialized = parser.deserializeList<Mouse>(jsonString);
 
     expect(deserialized, object);
   });
@@ -170,7 +187,7 @@ void main() {
     String jsonString = parser.serialize(object);
     expect(expectedResult, jsonString);
 
-    Address deserialized = parser.deserialize(jsonString, Address) as Address;
+    Address deserialized = parser.deserialize<Address>(jsonString);
 
     expect(deserialized, object);
   });
@@ -197,8 +214,7 @@ void main() {
     String jsonString = parser.serialize(object);
     expect(expectedResult, jsonString);
 
-    List<Address> deserialized =
-        parser.deserialize(jsonString, List<Address>).cast<Address>();
+    List<Address> deserialized = parser.deserializeList<Address>(jsonString);
 
     expect(deserialized, object);
   });
@@ -253,7 +269,7 @@ void main() {
     String jsonString = parser.serialize(object);
     expect(expectedResult, jsonString);
 
-    User deserialized = parser.deserialize(jsonString, User);
+    User deserialized = parser.deserialize<User>(jsonString);
     expect(deserialized, object);
   });
 
@@ -307,7 +323,7 @@ void main() {
     String jsonString = parser.serialize(object);
     expect(expectedResult, jsonString);
 
-    User deserialized = parser.deserialize(jsonString, User);
+    User deserialized = parser.deserialize<User>(jsonString);
     expect(deserialized, object);
   });
 
@@ -336,7 +352,7 @@ void main() {
 
     expect(expectedString, jsonString);
 
-    List<dynamic> deserialized = parser.deserialize(jsonString, List);
+    List<dynamic> deserialized = parser.deserialize(jsonString);
     expect(deserialized, object);
   });
 
@@ -352,8 +368,7 @@ void main() {
 
     expect(expectedResult, jsonString);
 
-    List<DateTime> deserialized =
-        parser.deserialize(jsonString, List<DateTime>).cast<DateTime>();
+    List<DateTime> deserialized = parser.deserializeList<DateTime>(jsonString);
     expect(deserialized, object);
   });
 
@@ -383,9 +398,11 @@ void main() {
     expect(jsonString, expectedSerializedResult);
 
     List<DateTime> deserialized =
-        customParser.deserialize(jsonString, List<DateTime>).cast<DateTime>();
-    expect(deserialized.map((d) => d.millisecondsSinceEpoch).toList(),
-        object.map((d) => d.millisecondsSinceEpoch).toList());
+        customParser.deserializeList<DateTime>(jsonString);
+    expect(
+      deserialized.map((d) => d.millisecondsSinceEpoch).toList(),
+      object.map((d) => d.millisecondsSinceEpoch).toList(),
+    );
   });
 
   test('Serialize/Deserialize - List<Duration>', () async {
@@ -401,8 +418,7 @@ void main() {
 
     expect(jsonString, '[${expectedResult.join(",")}]');
 
-    List<Duration> deserialized =
-        parser.deserialize(jsonString, List<Duration>).cast<Duration>();
+    List<Duration> deserialized = parser.deserializeList<Duration>(jsonString);
 
     expect(deserialized.map((d) => d.inMilliseconds).toList(),
         object.map((d) => d.inMilliseconds).toList());
@@ -449,7 +465,7 @@ void main() {
         '[${expectedSerializedResult.map((e) => '"$e"').join(",")}]');
 
     List<Duration> deserialized =
-        customParser.deserialize(jsonString, List<Duration>).cast<Duration>();
+        customParser.deserializeList<Duration>(jsonString);
     expect(deserialized.map((d) => d.inMilliseconds).toList(),
         object.map((d) => d.inMilliseconds).toList());
   });
@@ -462,8 +478,7 @@ void main() {
 
     expect(expectedResult, jsonString);
 
-    List<String> deserialized =
-        parser.deserialize(jsonString, List<String>).cast<String>();
+    List<String> deserialized = parser.deserializeList<String>(jsonString);
     expect(deserialized, object);
   });
 
@@ -485,7 +500,7 @@ void main() {
     expect(expectedResult, jsonString);
 
     List<String> deserialized =
-        customParser.deserialize(jsonString, List<String>).cast<String>();
+        customParser.deserializeList<String>(jsonString);
     expect(deserialized, object.map((e) => e.toLowerCase()).toList());
   });
 
@@ -496,17 +511,20 @@ void main() {
 
     expect(expectedResult, jsonString);
 
-    List<num> deserialized = parser.deserialize(jsonString, List).cast<num>();
+    List<num> deserialized = parser.deserializeList<num>(jsonString);
     expect(deserialized, object);
   });
 
   test('Serialize/Deserialize - List<num> (Custom Parser)', () async {
-    ObjectMapperImpl customParser =
-        ObjectMapperImpl(defaultSerializerOverride: {
-      num: (dynamic object) => object.toString(),
-    }, defaultDeserializerOverride: {
-      num: (dynamic value) => num.parse(value),
-    }, prettyPrint: false);
+    ObjectMapperImpl customParser = ObjectMapperImpl(
+      defaultSerializerOverride: {
+        num: (dynamic object) => object.toString(),
+      },
+      defaultDeserializerOverride: {
+        num: (dynamic value) => num.parse(value.toString()),
+      },
+      prettyPrint: false,
+    );
 
     List<num> object = [123, 456.78, -90.12, 0];
 
@@ -516,8 +534,7 @@ void main() {
 
     expect(jsonString, '[${expectedSerializedResult.join(",")}]');
 
-    List<num> deserialized =
-        customParser.deserialize(jsonString, List).cast<num>();
+    List<num> deserialized = customParser.deserializeList<num>(jsonString);
     expect(deserialized, object);
   });
 
@@ -528,8 +545,7 @@ void main() {
 
     expect(expectedResult, jsonString);
 
-    List<int> deserialized =
-        parser.deserialize(jsonString, List<int>).cast<int>();
+    List<int> deserialized = parser.deserializeList<int>(jsonString);
     expect(deserialized, object);
   });
 
@@ -547,8 +563,7 @@ void main() {
     List<int> object = [42, 100, 5];
     String jsonString = customParser.serialize(object);
 
-    List<int> deserialized =
-        customParser.deserialize(jsonString, List<int>).cast<int>();
+    List<int> deserialized = customParser.deserializeList<int>(jsonString);
     expect(deserialized, object);
   });
 
@@ -559,8 +574,7 @@ void main() {
 
     expect(expectedResult, jsonString);
 
-    List<double> deserialized =
-        parser.deserialize(jsonString, List<double>).cast<double>();
+    List<double> deserialized = parser.deserializeList<double>(jsonString);
     expect(deserialized, object);
   });
 
@@ -579,7 +593,7 @@ void main() {
     String jsonString = customParser.serialize(object);
 
     List<double> deserialized =
-        customParser.deserialize(jsonString, List<double>).cast<double>();
+        customParser.deserializeList<double>(jsonString);
     expect(deserialized, object);
   });
   test('Serialize/Deserialize - List<bool>', () async {
@@ -589,8 +603,7 @@ void main() {
 
     expect(expectedResult, jsonString);
 
-    List<bool> deserialized =
-        parser.deserialize(jsonString, List<bool>).cast<bool>();
+    List<bool> deserialized = parser.deserializeList<bool>(jsonString);
     expect(deserialized, object);
   });
 
@@ -611,8 +624,7 @@ void main() {
 
     expect(expectedString, jsonString);
 
-    List<bool> deserialized =
-        customParser.deserialize(jsonString, List<bool>).cast<bool>();
+    List<bool> deserialized = customParser.deserializeList<bool>(jsonString);
     expect(deserialized, object);
   });
 
@@ -624,7 +636,7 @@ void main() {
 
     expect(expectedString, jsonString);
 
-    DateTime deserializedObject = parser.deserialize(jsonString, DateTime);
+    DateTime deserializedObject = parser.deserialize<DateTime>(jsonString);
     expect(deserializedObject.toIso8601String(), object.toIso8601String());
   });
 
@@ -647,7 +659,7 @@ void main() {
     expect(expectedString, jsonString);
 
     DateTime deserializedObject =
-        customParser.deserialize(jsonString, DateTime);
+        customParser.deserialize<DateTime>(jsonString);
 
     expect(deserializedObject.millisecondsSinceEpoch,
         object.millisecondsSinceEpoch);
@@ -661,7 +673,7 @@ void main() {
 
     expect(jsonString, result);
 
-    Duration duration = parser.deserialize(jsonString, Duration);
+    Duration duration = parser.deserialize<Duration>(jsonString);
     expect(object.inMilliseconds, duration.inMilliseconds);
   });
 
@@ -703,7 +715,7 @@ void main() {
 
     expect(jsonString, expectedSerializedResult);
 
-    Duration duration = parser.deserialize(jsonString, Duration);
+    Duration duration = parser.deserialize<Duration>(jsonString);
     expect(object.inMilliseconds, duration.inMilliseconds);
   });
 
@@ -728,7 +740,7 @@ void main() {
     RegExp object = RegExp(r'^[a-zA-Z0-9]+$');
     String jsonString = parser.serialize(object);
 
-    RegExp deserializedObject = parser.deserialize(jsonString, RegExp);
+    RegExp deserializedObject = parser.deserialize<RegExp>(jsonString);
     expect(deserializedObject.pattern, object.pattern);
   });
 
@@ -743,7 +755,7 @@ void main() {
 
     expect(expectedString, jsonString);
 
-    String deserializedObject = parser.deserialize(jsonString, String);
+    String deserializedObject = parser.deserialize<String>(jsonString);
     expect(deserializedObject, object);
   });
 
@@ -762,7 +774,7 @@ void main() {
     String jsonString = customParser.serialize(object);
     expect(expectedString, jsonString);
 
-    String deserializedObject = customParser.deserialize(jsonString, String);
+    String deserializedObject = customParser.deserialize<String>(jsonString);
     expect(deserializedObject, object.toLowerCase());
   });
 
@@ -772,7 +784,7 @@ void main() {
     String jsonString = parser.serialize(object);
     expect(expectedNum, jsonString);
 
-    num deserializedObject = parser.deserialize(jsonString, num);
+    num deserializedObject = parser.deserialize<num>(jsonString);
     expect(deserializedObject, object);
   });
 
@@ -791,7 +803,7 @@ void main() {
     String jsonString = customParser.serialize(object);
     expect(expectedNum, jsonString);
 
-    num deserializedObject = customParser.deserialize(jsonString, num);
+    num deserializedObject = customParser.deserialize<num>(jsonString);
     expect(deserializedObject, object);
   });
 
@@ -801,7 +813,7 @@ void main() {
     String jsonString = parser.serialize(object);
     expect(expectedNum, jsonString);
 
-    int deserializedObject = parser.deserialize(jsonString, int);
+    int deserializedObject = parser.deserialize<int>(jsonString);
     expect(deserializedObject, object);
   });
 
@@ -818,7 +830,7 @@ void main() {
     int object = 42;
     String jsonString = customParser.serialize(object);
 
-    int deserializedObject = customParser.deserialize(jsonString, int);
+    int deserializedObject = customParser.deserialize<int>(jsonString);
     expect(deserializedObject, object);
   });
 
@@ -828,7 +840,7 @@ void main() {
     String jsonString = parser.serialize(object);
     expect(expectedString, jsonString);
 
-    double deserializedObject = parser.deserialize(jsonString, double);
+    double deserializedObject = parser.deserialize<double>(jsonString);
     expect(deserializedObject, object);
   });
 
@@ -847,7 +859,7 @@ void main() {
     String jsonString = customParser.serialize(object);
     expect(expectedString, jsonString);
 
-    double deserializedObject = customParser.deserialize(jsonString, double);
+    double deserializedObject = customParser.deserialize<double>(jsonString);
     expect(deserializedObject, object);
   });
 
@@ -857,7 +869,7 @@ void main() {
     String jsonString = parser.serialize(object);
     expect(expectedString, jsonString);
 
-    bool deserializedObject = parser.deserialize(jsonString, bool);
+    bool deserializedObject = parser.deserialize<bool>(jsonString);
     expect(deserializedObject, object);
   });
 
@@ -876,7 +888,7 @@ void main() {
     String jsonString = customParser.serialize(object);
     expect(expectedString, jsonString);
 
-    bool deserializedObject = customParser.deserialize(jsonString, bool);
+    bool deserializedObject = customParser.deserialize<bool>(jsonString);
     expect(deserializedObject, object);
   });
 }

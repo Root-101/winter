@@ -1,12 +1,9 @@
 import 'default_http_status_code.dart';
 import 'http_status.dart';
 
-///
 /// Represents an HTTP response status code. Implemented by {@link HttpStatus},
 /// but defined as an interface to allow for values not in that enumeration.
 ///
-/// @author Arjen Poutsma
-/// @since 6.0
 /// @see <a href="https:www.iana.orgassignmentshttp-status-codes">HTTP Status Code Registry<a>
 /// @see <a href="https:en.wikipedia.orgwikiList_of_HTTP_status_codes">List of HTTP status codes - Wikipedia<a>
 ///

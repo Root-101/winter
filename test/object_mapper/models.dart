@@ -1,4 +1,4 @@
-import '../../bin/winter/core/core.dart';
+import '../../bin/winter/winter.dart';
 
 //----------------------
 class Tool implements WinterSerializer, WinterDeserializable {
