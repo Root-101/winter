@@ -1,7 +1,7 @@
 name: winter
-description: A lightweight framework for create server side applications
-version: 0.0.1
-repository: https://github.com/Root-101/winter.git
+description: This project is designed to create server side apps the simplest way possible, and reduce the learning curve in backend development.
+version: 0.0.2
+repository: https://github.com/Root-101/winter
 
 environment:
   sdk: ^3.5.0
@@ -10,6 +10,9 @@ dependencies:
   args: ^2.4.0
   shelf: ^1.4.0
   shelf_multipart: ^2.0.0
+
+  #Utils
+  collection: ^1.19.1
 
   #For naming strategy
   change_case: ^2.1.0

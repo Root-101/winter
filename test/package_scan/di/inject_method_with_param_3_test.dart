@@ -3,7 +3,7 @@ library;
 
 import 'package:test/test.dart';
 
-import '../../../bin/winter/winter.dart';
+import '../../../bin/winter.dart';
 
 //NOTE: the '_3' in name represent the a param is passed as a positioned argument
 //and another as named argument, both withOUT @Injected

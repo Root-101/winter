@@ -4,7 +4,7 @@ library;
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
-import '../../../bin/winter/winter.dart';
+import '../../../bin/winter.dart';
 
 void main() {
   int port = 9045;
@@ -35,7 +35,8 @@ void main() {
               method: HttpMethod.post,
               handler: (request) async {
                 return ResponseEntity.ok(
-                    body: 'Response from any other source');
+                  body: 'Response from any other source',
+                );
               },
             ),
           ],

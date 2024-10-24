@@ -124,7 +124,7 @@ Tests and example for *Routing* could be found at '/test/server/winter_router'.
 #### There is more in routing:
 
 Routing is a complex and deep subject, because of that, we have created a separated docs just for routing,
-if you want to know all the details and more advanced routing, go to [route-docs](docs/routing/winter_router.md).
+if you want to know all the details and more advanced routing, go to [route-docs](doc/routing/winter_router.md).
 
 ### Other topics
 
@@ -134,7 +134,7 @@ easy running server.
 Of course, we also provide a wide range of functionalities like:
 
 - Object Mapping
-- [Validations](docs/vs/vs.md)
+- [Validations](doc/vs/vs.md)
 - Filter Chain
 - Exception handler
 - Dependency injection

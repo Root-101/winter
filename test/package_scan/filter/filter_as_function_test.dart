@@ -5,7 +5,7 @@ import 'dart:async';
 
 import 'package:test/test.dart';
 
-import '../../../bin/winter/winter.dart';
+import '../../../bin/winter.dart';
 
 @GlobalFilter()
 FutureOr<ResponseEntity> testFilter(

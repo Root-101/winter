@@ -3,7 +3,7 @@ library;
 
 import 'package:test/test.dart';
 
-import '../../bin/winter/winter.dart';
+import '../../bin/winter.dart';
 import 'models.dart';
 
 late ValidationService vs;
@@ -220,7 +220,7 @@ void main() {
       Address(
         streetName: 'Third Street',
         houseNumber: 789,
-      )
+      ),
     ];
     List<ConstrainViolation> violations = vs.validate(address);
     List<ConstrainViolation> correctValidations = [
