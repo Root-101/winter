@@ -22,7 +22,7 @@ class ApiException implements Exception {
 
 /// exception for 400
 class BadRequestException extends ApiException {
-  static final HttpStatus status = HttpStatus.BAD_REQUEST;
+  static final HttpStatus status = HttpStatus.badRequest;
 
   BadRequestException({Object? body, super.headers})
       : super(
@@ -33,7 +33,7 @@ class BadRequestException extends ApiException {
 
 /// exception for 401
 class ForbiddenException extends ApiException {
-  static final HttpStatus status = HttpStatus.UNAUTHORIZED;
+  static final HttpStatus status = HttpStatus.unauthorized;
 
   ForbiddenException({Object? body, super.headers})
       : super(
@@ -44,7 +44,7 @@ class ForbiddenException extends ApiException {
 
 /// exception for 402
 class PaymentRequiredException extends ApiException {
-  static final HttpStatus status = HttpStatus.PAYMENT_REQUIRED;
+  static final HttpStatus status = HttpStatus.paymentRequired;
 
   PaymentRequiredException({Object? body, super.headers})
       : super(
@@ -55,7 +55,7 @@ class PaymentRequiredException extends ApiException {
 
 /// exception for 403
 class UnauthorizedException extends ApiException {
-  static final HttpStatus status = HttpStatus.FORBIDDEN;
+  static final HttpStatus status = HttpStatus.forbidden;
 
   UnauthorizedException({Object? body, super.headers})
       : super(
@@ -66,7 +66,7 @@ class UnauthorizedException extends ApiException {
 
 /// exception for 404
 class NotFoundException extends ApiException {
-  static final HttpStatus status = HttpStatus.NOT_FOUND;
+  static final HttpStatus status = HttpStatus.notFound;
 
   NotFoundException({Object? body, super.headers})
       : super(
@@ -77,7 +77,7 @@ class NotFoundException extends ApiException {
 
 /// exception for 409
 class ConflictException extends ApiException {
-  static final HttpStatus status = HttpStatus.CONFLICT;
+  static final HttpStatus status = HttpStatus.conflict;
 
   ConflictException({Object? body, super.headers})
       : super(
@@ -88,7 +88,7 @@ class ConflictException extends ApiException {
 
 /// exception for 500
 class InternalServerErrorException extends ApiException {
-  static final HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+  static final HttpStatus status = HttpStatus.internalServerError;
 
   InternalServerErrorException({Object? body, super.headers})
       : super(
@@ -99,7 +99,7 @@ class InternalServerErrorException extends ApiException {
 
 /// Validation exception 422
 class UnprocessableEntityException extends ApiException {
-  static final HttpStatus status = HttpStatus.UNPROCESSABLE_ENTITY;
+  static final HttpStatus status = HttpStatus.unprocessableEntity;
 
   UnprocessableEntityException({Object? body, super.headers})
       : super(

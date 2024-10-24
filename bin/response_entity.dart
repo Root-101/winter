@@ -32,7 +32,7 @@ class ResponseEntity extends Response {
     Object? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this(
-          HttpStatus.OK.value,
+          HttpStatus.ok.value,
           body: body,
           headers: headers,
         );
@@ -41,7 +41,7 @@ class ResponseEntity extends Response {
     Object? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this(
-          HttpStatus.INTERNAL_SERVER_ERROR.value,
+          HttpStatus.internalServerError.value,
           body: body ?? 'Internal Server Error',
           headers: headers,
         );
@@ -50,7 +50,7 @@ class ResponseEntity extends Response {
     Object? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this(
-          HttpStatus.BAD_REQUEST.value,
+          HttpStatus.badRequest.value,
           body: body ?? 'Bad Request',
           headers: headers,
         );
@@ -59,7 +59,7 @@ class ResponseEntity extends Response {
     Object? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this(
-          HttpStatus.NOT_FOUND.value,
+          HttpStatus.notFound.value,
           body: body ?? 'Not found',
           headers: headers,
         );
@@ -68,7 +68,7 @@ class ResponseEntity extends Response {
     Object? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this(
-          HttpStatus.METHOD_NOT_ALLOWED.value,
+          HttpStatus.methodNotAllowed.value,
           body: body ?? 'Method not allowed',
           headers: headers,
         );
@@ -78,7 +78,7 @@ class ResponseEntity extends Response {
     int? retryAfter,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this(
-          HttpStatus.TOO_MANY_REQUESTS.value,
+          HttpStatus.tooManyRequests.value,
           body: body ??
               'Too many requests.${retryAfter != null ? ' Please try again in $retryAfter seconds.' : ''}',
           headers: {
