@@ -1,4 +1,5 @@
 import 'dart:mirrors';
+
 import 'package:collection/collection.dart';
 
 import '../../winter.dart';
@@ -12,23 +13,22 @@ class PathParam {
   });
 }
 
-
 bool processPathParamAnnotation(
-    List<ParamExtractor> positionalArgumentsFunctions,
-    Map<Symbol, ParamExtractor> namedArgumentsFunctions,
-    ParameterMirror singleParam,
-    ) {
+  List<ParamExtractor> positionalArgumentsFunctions,
+  Map<Symbol, ParamExtractor> namedArgumentsFunctions,
+  ParameterMirror singleParam,
+) {
   PathParam? pathParam = singleParam.metadata
       .firstWhereOrNull(
         (metadata) => metadata.reflectee.runtimeType == PathParam,
-  )
+      )
       ?.reflectee;
   if (pathParam != null) {
     if (singleParam.isOptional) {
       throw StateError(
         '@PathParam needs to be a required field '
-            '(If not it could mess up the navigation and give some unexpected 404).'
-            '\nFailed Field: ${MirrorSystem.getName(singleParam.simpleName)}',
+        '(If not it could mess up the navigation and give some unexpected 404).'
+        '\nFailed Field: ${MirrorSystem.getName(singleParam.simpleName)}',
       );
     }
     String paramName =

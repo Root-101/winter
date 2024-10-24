@@ -12,7 +12,7 @@ class FilterConfig {
   void add(Filter filter) {
     filters.add(filter);
   }
-  
+
   @override
   String toString() {
     return '$filters';

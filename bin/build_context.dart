@@ -21,5 +21,6 @@ class BuildContext {
         objectMapper = objectMapper ?? ObjectMapperImpl(),
         validationService = validationService ?? ValidationServiceImpl(),
         exceptionHandler = exceptionHandler ?? SimpleExceptionHandler(),
-        dependencyInjection = dependencyInjection ?? DependencyInjection.build();
+        dependencyInjection =
+            dependencyInjection ?? DependencyInjection.build();
 }

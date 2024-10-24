@@ -73,7 +73,9 @@ void main() {
 class UserRequest {
   String? email;
 
-  UserRequest.empty();///needed constructor for ObjectMapper to work
+  UserRequest.empty();
+
+  ///needed constructor for ObjectMapper to work
 
   UserRequest({
     required this.email,
@@ -84,7 +86,9 @@ class UserResponse {
   String? username;
   DateTime? createdAt;
 
-  UserResponse();///needed constructor for ObjectMapper to work
+  UserResponse();
+
+  ///needed constructor for ObjectMapper to work
 
   UserResponse.build({
     required this.username,
