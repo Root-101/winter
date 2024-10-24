@@ -1,6 +1,6 @@
 name: winter
 description: This project is designed to create server side apps the simplest way possible, and reduce the learning curve in backend development.
-version: 0.0.4
+version: 0.0.5
 repository: https://github.com/Root-101/winter
 
 environment:
