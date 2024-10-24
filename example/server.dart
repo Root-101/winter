@@ -1,4 +1,4 @@
-import '../../bin/winter.dart';
+import 'package:winter/winter.dart';
 
 void main() => Winter.run(
       router:

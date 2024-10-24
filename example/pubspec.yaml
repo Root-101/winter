@@ -1,6 +1,0 @@
-name: winter_example
-description: An example application for running a basic winter server
-version: 0.0.1
-
-environment:
-  sdk: ^3.5.0

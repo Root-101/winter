@@ -1,10 +1,12 @@
-import '../../bin/winter.dart';
+import 'package:winter/winter.dart';
 
 //----------------------
 class Tool implements WinterSerializer, WinterDeserializable {
-  String name;
+  String? name;
 
   Tool({required this.name});
+
+  Tool.empty();
 
   factory Tool.fromJson(Map<String, dynamic> json) {
     return Tool(

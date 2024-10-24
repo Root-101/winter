@@ -4,8 +4,7 @@ library;
 import 'dart:async';
 
 import 'package:test/test.dart';
-
-import '../../../bin/winter.dart';
+import 'package:winter/winter.dart';
 
 @GlobalFilter()
 class TestFilter2 implements Filter {

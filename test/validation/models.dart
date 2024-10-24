@@ -1,4 +1,4 @@
-import '../../bin/winter.dart';
+import 'package:winter/winter.dart';
 
 class CustomValidatableObject with Validatable {
   //This annotation is ignored because the use of Validatable

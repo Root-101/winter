@@ -6,4 +6,4 @@ pubspec.lock
 
 winter_framework.iml
 
-bin/example
+lib/example
