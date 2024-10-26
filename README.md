@@ -27,16 +27,18 @@ Now that we have made all this clear:
 ## Let's get started
 
 ### Configure the package
+
 At this point we assume that you have the basic knowledge of dart, and a fully configured environment
 
 If not, please take a look at the [official dart guide](https://dart.dev/get-dart)
 
-Once you have a basic project running you need to;
+Once you have a basic project running you need to:
 
 1 - Add `winter` to dependencies:
+
 ```yaml
 dependencies:
-  winter: ^0.0.2
+  winter: latest_version
 ```
 
 2 - Run `dart pub get`.
@@ -129,7 +131,8 @@ void main() =>
 
 This way we provide a different handler for every route, now, by making a request to
 `http://localhost:8080/test` we will receive a `200:'Response from /test'`, and by making a different request to
-`http://localhost:8080/custom` we will receive a `200:'Response from /custom'`, finally if any other request is made,
+`http://localhost:8080/custom` we will receive a `200:'Response from /custom'`, finally if any other request is made (
+of `post` type in this case),
 it's handled by the `/.*` route, this means that if a request is made to another url,
 like `http://localhost:8080/abcdefg`, we will receive `200:'Response from any other source'`.
 
@@ -147,8 +150,7 @@ if you want to know all the details and more advanced routing, go to [route-docs
 
 ### Other topics
 
-This is the more basic instruction to start the server, in the way that anyone could follow this guide in order to be an
-easy running server.
+This is the more basic instruction to start the server, in the way that anyone could follow this guide in order to have an easy running server.
 
 Of course, we also provide a wide range of functionalities like:
 
