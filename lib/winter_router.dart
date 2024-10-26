@@ -30,14 +30,41 @@ class ServeRouter extends AbstractWinterRouter {
 }
 
 class WinterRouter extends AbstractWinterRouter {
+  final RouterConfig config;
+
   final String basePath;
 
   final List<Route> routes;
 
-  WinterRouter({
+  WinterRouter.build({
+    required this.routes,
+    required this.basePath,
+    required this.config,
+  });
+
+  factory WinterRouter({
     List<Route>? routes,
-    this.basePath = '',
-  }) : routes = routes ?? [];
+    RouterConfig? config,
+    String basePath = '',
+  }) {
+    List<Route> nonNullRoutes = [];
+    RouterConfig nonNullConfig = config ?? RouterConfig();
+
+    for (var route in (routes ?? [])) {
+      if (isValidUri(route.path)) {
+        nonNullRoutes.add(route);
+      } else {
+        nonNullConfig.onInvalidUrl(route);
+      }
+    }
+    nonNullConfig.onLoadedRoutes(nonNullRoutes);
+
+    return WinterRouter.build(
+      config: nonNullConfig,
+      routes: nonNullRoutes,
+      basePath: basePath,
+    );
+  }
 
   ///Return the route that will handle the request
   ///If a null value is returned, it means that this router can handle the request with a route
