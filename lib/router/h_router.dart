@@ -1,13 +1,11 @@
 import '../winter.dart';
 
 class HRouter extends WinterRouter {
-  final RouterConfig config;
-
   HRouter._({
-    required this.config,
+    required super.config,
     required super.routes,
-    super.basePath,
-  });
+    required super.basePath,
+  }) : super.build();
 
   factory HRouter({
     String? basePath,
@@ -54,7 +52,7 @@ class HRouter extends WinterRouter {
             handler: route.handler,
             filterConfig: newParentFilterConfig,
           );
-          if (_isValidUri(fullPath)) {
+          if (isValidUri(fullPath)) {
             result.add(currentRoute);
           } else {
             config.onInvalidUrl(currentRoute);
@@ -69,19 +67,6 @@ class HRouter extends WinterRouter {
     flattenRoutes(initialPath, null, routes);
 
     return result;
-  }
-
-  static bool _isValidUri(String path) {
-    // Intenta crear un objeto Uri con solo el path
-    try {
-      path = path.replaceAll('{', '%7B');
-      path = path.replaceAll('}', '%7D');
-      Uri uri = Uri(path: path);
-      // Valida que el path no contenga caracteres no permitidos y que no comience con "//"
-      return !path.startsWith('//') && uri.path == path;
-    } catch (e) {
-      return false;
-    }
   }
 }
 
