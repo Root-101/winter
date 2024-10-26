@@ -6,7 +6,7 @@ import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9042;
+  int port = 9044;
   String localUrl = 'http://localhost:$port';
 
   setUpAll(
