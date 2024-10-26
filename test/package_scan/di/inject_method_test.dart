@@ -1,7 +1,8 @@
 @TestOn('vm')
 library;
 
-import 'package:test/test.dart';import 'package:winter/winter.dart';
+import 'package:test/test.dart';
+import 'package:winter/winter.dart';
 
 @Injectable(tag: 'test')
 String foo() {
