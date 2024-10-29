@@ -1,3 +1,7 @@
+* 0.0.7:
+    * **DATE** :date: : 2024-10-29.
+    * **General** :hammer_and_wrench: : Update min sdk version to ^3.4.0
+  
 * 0.0.6:
     * **DATE** :date: : 2024-10-26.
     * **Router** :twisted_rightwards_arrows: : Move `RouterConfig` inside `WinterRouter` (This way we can validate path
