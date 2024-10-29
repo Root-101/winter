@@ -28,7 +28,8 @@ Now that we have made all this clear:
 
 ### Configure the package
 
-At this point we assume that you have the basic knowledge of dart, and a fully configured environment
+At this point we assume that you have the basic knowledge of dart, and a fully configured environment (with sdk
+version `^3.4.0`).
 
 If not, please take a look at the [official dart guide](https://dart.dev/get-dart)
 
@@ -150,7 +151,8 @@ if you want to know all the details and more advanced routing, go to [route-docs
 
 ### Other topics
 
-This is the more basic instruction to start the server, in the way that anyone could follow this guide in order to have an easy running server.
+This is the more basic instruction to start the server, in the way that anyone could follow this guide in order to have
+an easy running server.
 
 Of course, we also provide a wide range of functionalities like:
 
