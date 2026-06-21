@@ -1,13 +1,9 @@
 import 'dart:mirrors';
 
-import 'package:collection/collection.dart';
-
 import 'package:winter/winter.dart';
 
-typedef ValidationFunction = bool Function(
-  dynamic object,
-  ConstraintValidatorContext cvc,
-);
+typedef ValidationFunction =
+    bool Function(dynamic object, ConstraintValidatorContext cvc);
 
 class Valid {
   final List<ValidationFunction> validations;
@@ -29,8 +25,8 @@ class ConstraintValidatorContext {
     required this.parent,
     List<ConstrainViolation>? constrainViolations,
     this.concatParentName = true,
-  })  : constrainViolations = constrainViolations ?? [],
-        templateViolations = [];
+  }) : constrainViolations = constrainViolations ?? [],
+       templateViolations = [];
 
   ///Add a default violation that will be completed with the default value and field name
   void addTemplateViolation(String message) {
@@ -44,11 +40,7 @@ class ConstraintValidatorContext {
     required String message,
   }) {
     constrainViolations.add(
-      ConstrainViolation(
-        value: value,
-        fieldName: fieldName,
-        message: message,
-      ),
+      ConstrainViolation(value: value, fieldName: fieldName, message: message),
     );
   }
 
@@ -62,19 +54,15 @@ class ConstraintValidatorContext {
 }
 
 class ValidationServiceImpl extends ValidationService {
-  late final NamingStrategy namingStrategy;
   final String? baseName;
   final String? defaultFieldSeparator;
   final bool? defaultTrowException;
 
   ValidationServiceImpl({
-    NamingStrategy? namingStrategy,
     this.baseName = 'root',
     this.defaultFieldSeparator = '.',
     this.defaultTrowException = false,
-  }) {
-    this.namingStrategy = namingStrategy ?? NamingStrategies.basic;
-  }
+  });
 
   @override
   List<ConstrainViolation> validate(
@@ -96,10 +84,7 @@ class ValidationServiceImpl extends ValidationService {
       for (var i = 0; i < object.length; ++i) {
         dynamic element = object[i];
         violations.addAll(
-          validate(
-            element,
-            parentFieldName: '$parentFieldName[$i]',
-          ),
+          validate(element, parentFieldName: '$parentFieldName[$i]'),
         );
       }
     } else if (object is Map) {
@@ -137,8 +122,9 @@ class ValidationServiceImpl extends ValidationService {
           if (declaration is VariableMirror && !declaration.isStatic) {
             var fieldName =
                 '$parentFieldName$fieldSeparator${_getFieldName(declaration)}';
-            var fieldValue =
-                objectMirror.getField(declaration.simpleName).reflectee;
+            var fieldValue = objectMirror
+                .getField(declaration.simpleName)
+                .reflectee;
 
             List<Valid> valid = _getValid(declaration.metadata);
             violations.addAll(
@@ -151,10 +137,7 @@ class ValidationServiceImpl extends ValidationService {
 
             if (doRecursiveType(fieldValue)) {
               violations.addAll(
-                validate(
-                  fieldValue,
-                  parentFieldName: fieldName,
-                ),
+                validate(fieldValue, parentFieldName: fieldName),
               );
             }
           }
@@ -170,7 +153,8 @@ class ValidationServiceImpl extends ValidationService {
   }
 
   bool doRecursiveType(dynamic object) {
-    bool primitive = object is int ||
+    bool primitive =
+        object is int ||
         object is double ||
         object is bool ||
         object is String ||
@@ -265,26 +249,14 @@ class ValidationServiceImpl extends ValidationService {
   }
 
   List<Valid> _getValid(List<InstanceMirror> metadata) {
-    Iterable<InstanceMirror> rawValid =
-        metadata.where((element) => element.reflectee is Valid);
-    return rawValid
-        .map(
-          (e) => e.reflectee as Valid,
-        )
-        .toList();
+    Iterable<InstanceMirror> rawValid = metadata.where(
+      (element) => element.reflectee is Valid,
+    );
+    return rawValid.map((e) => e.reflectee as Valid).toList();
   }
 
   //Duplicated from object mapper
   String _getFieldName(DeclarationMirror field) {
-    JsonProperty? jsonPropAnnotation = field.metadata
-        .firstWhereOrNull((element) => element.reflectee is JsonProperty)
-        ?.reflectee as JsonProperty?;
-
-    if (jsonPropAnnotation != null) {
-      return jsonPropAnnotation.name;
-    }
-
-    String rawFieldName = MirrorSystem.getName(field.simpleName);
-    return namingStrategy(rawFieldName);
+    return '';
   }
 }

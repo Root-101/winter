@@ -1,7 +1,6 @@
-import 'package:winter/winter.dart';
+import 'package:winter/context/context.dart';
 
-//----------------------
-class Tool implements WinterSerializer, WinterDeserializable {
+class Tool {
   String? name;
 
   Tool({required this.name});
@@ -9,16 +8,11 @@ class Tool implements WinterSerializer, WinterDeserializable {
   Tool.empty();
 
   factory Tool.fromJson(Map<String, dynamic> json) {
-    return Tool(
-      name: json['NAME'] as String,
-    );
+    return Tool(name: json['NAME'] as String);
   }
 
-  @override
-  Map toJson() {
-    return {
-      'NAME': name,
-    };
+  Map<String, dynamic> toJson() {
+    return {'NAME': name};
   }
 
   @override
@@ -35,169 +29,61 @@ class Tool implements WinterSerializer, WinterDeserializable {
   int get hashCode => name.hashCode;
 }
 
-//----------------------
-String _propertyToString(dynamic property) =>
-    (property as String).toUpperCase();
+class Worker {
+  String name;
+  Tool tool;
 
-String _propertyFromJson(dynamic property) =>
-    (property as String).toLowerCase();
+  Worker({required this.name, required this.tool});
 
-//Tiene que tener el Computer();
-class Computer {
-  @ToJsonParser(_propertyToString)
-  @FromJsonParser(_propertyFromJson)
-  String? brand;
+  factory Worker.fromJson(Map<String, dynamic> json) {
+    return Worker(
+      name: json['name'] as String,
+      tool: Tool.fromJson(json['tool'] as Map<String, dynamic>),
+    );
+  }
 
-  Computer();
-
-  Computer.named({required this.brand});
+  Map<String, dynamic> toJson() {
+    return {'name': name, 'tool': tool.toJson()};
+  }
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is Computer &&
+      other is Worker &&
           runtimeType == other.runtimeType &&
-          brand == other.brand;
+          name == other.name &&
+          tool == other.tool;
 
   @override
-  int get hashCode => brand.hashCode;
+  int get hashCode => name.hashCode ^ tool.hashCode;
 }
 
-//----------------------
-class Mouse {
-  @JsonProperty('mouse_brand')
-  String? brand;
+class SerializableTool implements Serializable {
+  String? name;
 
-  Mouse();
+  SerializableTool({required this.name});
 
-  Mouse.named({required this.brand});
+  SerializableTool.empty();
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Mouse &&
-          runtimeType == other.runtimeType &&
-          brand == other.brand;
+  factory SerializableTool.fromJson(Map<String, dynamic> json) {
+    return SerializableTool(name: json['NAME'] as String);
+  }
 
   @override
-  int get hashCode => brand.hashCode;
-}
-
-//----------------------
-class Address {
-  String? streetName;
-  int? houseNumber;
-
-  Address();
-
-  Address.named({
-    this.streetName,
-    this.houseNumber,
-  });
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Address &&
-          runtimeType == other.runtimeType &&
-          streetName == other.streetName &&
-          houseNumber == other.houseNumber;
-
-  @override
-  int get hashCode => streetName.hashCode ^ houseNumber.hashCode;
+  Map<String, dynamic> toJson() {
+    return {'NAME': name};
+  }
 
   @override
   String toString() {
-    return 'Address{streetName: $streetName, houseNumber: $houseNumber}';
-  }
-}
-
-class User {
-  String? userName;
-
-  int? userId;
-
-  Duration? duration;
-
-  bool? isActive;
-
-  @CastList<Address>()
-  List<Address>? addresses;
-
-  Address? singleAddress;
-
-  @CastMap<String, dynamic>()
-  Map<String, dynamic>? additionalAttributes;
-
-  User();
-
-  User.named({
-    required this.userName,
-    required this.userId,
-    required this.duration,
-    required this.isActive,
-    required this.addresses,
-    required this.singleAddress,
-    required this.additionalAttributes,
-  });
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    if (other.runtimeType != runtimeType) return false;
-    final User otherUser = other as User;
-    return userName == otherUser.userName &&
-        userId == otherUser.userId &&
-        duration == otherUser.duration &&
-        isActive == otherUser.isActive &&
-        _listEquals(addresses, otherUser.addresses) &&
-        singleAddress == otherUser.singleAddress &&
-        _mapEquals(additionalAttributes, otherUser.additionalAttributes);
-  }
-
-  bool _listEquals(List? a, List? b) {
-    if (a == null && b == null) return true;
-    if (a == null || b == null || a.length != b.length) return false;
-    for (int i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
-
-  bool _mapEquals(Map? a, Map? b) {
-    if (a == null && b == null) return true;
-    if (a == null || b == null || a.length != b.length) return false;
-
-    for (final key in a.keys) {
-      if (!b.containsKey(key)) return false;
-
-      final valueA = a[key];
-      final valueB = b[key];
-
-      // Comparar recursivamente si el valor es otro Map
-      if (valueA is Map && valueB is Map) {
-        if (!_mapEquals(valueA, valueB)) return false;
-      } else if (valueA is List && valueB is List) {
-        return _listEquals(valueA, valueB);
-      } else if (valueA != valueB) {
-        return false;
-      }
-    }
-    return true;
+    return 'SerializableTool{name: $name}';
   }
 
   @override
-  int get hashCode =>
-      userName.hashCode ^
-      userId.hashCode ^
-      duration.hashCode ^
-      isActive.hashCode ^
-      addresses.hashCode ^
-      singleAddress.hashCode ^
-      additionalAttributes.hashCode;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Tool && runtimeType == other.runtimeType && name == other.name;
 
   @override
-  String toString() {
-    return 'User{userName: $userName, userId: $userId, duration: $duration, isActive: $isActive, addresses: $addresses, singleAddress: $singleAddress, additionalAttributes: $additionalAttributes}';
-  }
+  int get hashCode => name.hashCode;
 }

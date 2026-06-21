@@ -14,9 +14,6 @@ dependencies:
   #Utils
   collection: 1.19.1
 
-  #For naming strategy
-  change_case: 2.2.0
-
   #For media type parsing
   string_scanner: 1.4.1
   http_parser: 4.1.2

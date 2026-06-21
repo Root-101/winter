@@ -176,7 +176,6 @@ void main() {
     ValidationService vs = ValidationServiceImpl(
       baseName: 'this',
       defaultFieldSeparator: ' -> ',
-      namingStrategy: NamingStrategies.snakeCase,
     );
     Address address = Address(
       streetName: '',

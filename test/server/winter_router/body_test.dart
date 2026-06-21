@@ -1,6 +1,8 @@
 @TestOn('vm')
 library;
 
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
@@ -60,7 +62,7 @@ void main() {
 
     expect(response.statusCode, 200);
 
-    UserResponse responseBody = om.deserialize(response.body);
+    UserResponse responseBody = om.deserialize(jsonDecode(response.body));
     expect(responseBody.username, 'test');
     expect(
       responseBody.createdAt?.toIso8601String(),

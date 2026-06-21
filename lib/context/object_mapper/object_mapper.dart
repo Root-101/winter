@@ -1,145 +1,169 @@
-import 'package:change_case/change_case.dart';
+import 'dart:io';
 
-//-------------------- default impl of to/from json --------------------\\
-abstract class WinterSerializer {
-  Map toJson() {
-    throw UnimplementedError('toJson() is not implemented');
+abstract class Serializable {
+  Object? toJson();
+}
+
+class Serializer<T> {
+  final Type type;
+  final Object? Function(T object) serializer;
+
+  Serializer(this.serializer) : type = T {
+    if (type.toString() == 'dynamic') {
+      stderr.writeln(
+        '\n'
+        'WARNING: Unable to infer Serializer type. '
+        'The serializer was registered as "dynamic", which usually happens when '
+        'the generic type argument is omitted. '
+        'Declare it explicitly, for example: '
+        'Serializer<YOUR-EXPLICIT-TYPE>((object) => object.toJson())'
+        '\n',
+      );
+    }
   }
 }
 
-abstract class WinterDeserializable {
-  factory WinterDeserializable.fromJson(Map<String, dynamic> json) {
-    throw UnimplementedError('fromJson() is not implemented');
+class Deserializer<T> {
+  final Type type;
+  final T Function(dynamic data) deserializer;
+
+  Deserializer(this.deserializer) : type = T {
+    if (type.toString() == 'dynamic') {
+      stderr.writeln(
+        '\n'
+        'WARNING: Unable to infer Deserializer type. '
+        'The deserializer was registered as "dynamic", which usually happens when '
+        'the generic type argument is omitted. '
+        'Declare it explicitly, for example: '
+        'Deserializer<YOUR-EXPLICIT-TYPE>((object) => object.toJson())'
+        '\n',
+      );
+    }
   }
 }
-
-//-------------------- default impl of to/from json --------------------\\
-//-------------------------- naming --------------------------\\
-typedef NamingStrategy = String Function(String value);
-
-class JsonProperty {
-  final String name;
-
-  const JsonProperty(this.name);
-}
-
-//-------------------------- naming --------------------------\\
-//-------------------------- parser --------------------------\\
-///Definicion de funcion para hacer el parseo de un json a un objeto
-typedef FromJsonParserFunction = dynamic Function(dynamic property);
-
-///Definicion de funcion para hacer el parseo de un objeto a un json
-typedef ToJsonParserFunction = dynamic Function(dynamic property);
-
-///Definicion de funcion para hacer el casteo de: List<dynamic> a List<T>
-typedef ListParserFunction<T> = List<T> Function(List property);
-
-///Definicion de funcion para hacer el casteo de: Map<dynamic> a Map<T>
-typedef MapParserFunction<K, V> = Map<K, V> Function(Map property);
-
-///Annotation con ambas funciones from-json y to-json
-class PropertyParser {
-  final FromJsonParserFunction fromJsonParser;
-  final ToJsonParserFunction toJsonParser;
-
-  const PropertyParser(this.fromJsonParser, this.toJsonParser);
-}
-
-///Annotation para personalizar el parsea a un objeto a un json
-class FromJsonParser {
-  final FromJsonParserFunction parser;
-
-  const FromJsonParser(this.parser);
-}
-
-///Annotation para personalizar el parsea a un json de un objeto
-class ToJsonParser {
-  final ToJsonParserFunction parser;
-
-  const ToJsonParser(this.parser);
-}
-
-///Annotation para obtener el tipo T de una lista y hacerle el parser
-class CastList<T> {
-  final ListParserFunction<T> parser;
-
-  const CastList() : parser = listCaster;
-}
-
-///funcion por defecto para hacer el parser de una List<dynamic> a List<T>
-List<T> listCaster<T>(List list) => list.cast<T>();
-
-///Annotation para obtener el tipo T de un map y hacerle el parser
-class CastMap<K, V> {
-  final MapParserFunction<K, V> parser;
-
-  const CastMap() : parser = mapCaster;
-}
-
-///funcion por defecto para hacer el parser de una List<dynamic> a List<T>
-Map<K, V> mapCaster<K, V>(Map map) => map.cast<K, V>();
-//-------------------------- parser --------------------------\\
 
 abstract class ObjectMapper {
-  late final NamingStrategy namingStrategy;
-  late final bool prettyPrint;
+  Object? serialize<S>(S object);
 
-  ObjectMapper({
-    NamingStrategy? namingStrategy,
-    this.prettyPrint = true,
-  }) {
-    this.namingStrategy = namingStrategy ?? NamingStrategies.basic;
-  }
+  S deserialize<S>(dynamic data);
 
-  String serialize(dynamic object);
+  Object? serializeList<S>(List<S> objects);
 
-  T deserialize<T>(String jsonString);
+  List<S> deserializeList<S>(dynamic json);
 
-  List<T> deserializeList<T>(String jsonString);
+  void addSerializer<S>(Serializer<S> serializer);
 
-  Map<K, V> deserializeMap<K, V>(String jsonString);
+  void removeSerializer<S>();
+
+  void addDeserializer<S>(Deserializer<S> deserializer);
+
+  void removeDeserializer<S>();
 }
 
-class NamingStrategies {
-  // Example: "exampleString" -> "exampleString"
-  static NamingStrategy get basic => (String value) => value;
+class ObjectMapperImpl extends ObjectMapper {
+  static final List<Serializer> _defaultSerializers = [
+    Serializer<DateTime>((object) => object.toIso8601String()),
+    Serializer<Duration>((object) => object.inMilliseconds),
+    Serializer<Uri>((object) => object.toString()),
+    Serializer<RegExp>((object) => object.pattern),
+    Serializer<String>((object) => object),
+    Serializer<num>((object) => object),
+    Serializer<int>((object) => object),
+    Serializer<double>((object) => object),
+    Serializer<bool>((object) => object),
+  ];
 
-  // Example: "exampleString" -> "example_string"
-  static NamingStrategy get snakeCase => (String value) => value.toSnakeCase();
+  static final List<Deserializer> _defaultDeserializers = [
+    Deserializer<DateTime>((value) => DateTime.parse(value.toString())),
+    Deserializer<Duration>(
+      (value) => Duration(milliseconds: int.parse(value.toString())),
+    ),
+    Deserializer<Uri>((value) => Uri.parse(value.toString())),
+    Deserializer<RegExp>((value) => RegExp(value.toString())),
+    Deserializer<String>((value) => value as String),
+    Deserializer<num>((value) => num.parse(value.toString())),
+    Deserializer<int>((value) => int.parse(value.toString())),
+    Deserializer<double>((value) => double.parse(value.toString())),
+    Deserializer<bool>((value) => bool.parse(value.toString())),
+  ];
 
-  // Example: "exampleString" -> "exampleString"
-  static NamingStrategy camelCase = (String value) => value.toCamelCase();
+  final Map<Type, Serializer> _serializers = {};
 
-  // Example: "exampleString" -> "ExampleString"
-  static NamingStrategy pascalCase = (String value) => value.toPascalCase();
+  final Map<Type, Deserializer> _deserializers = {};
 
-  // Example: "exampleString" -> "example-string"
-  static NamingStrategy kebabCase = (String value) => value.toKebabCase();
+  ObjectMapperImpl({
+    List<Serializer>? serializers,
+    List<Deserializer>? deserializers,
+  }) {
+    _serializers.addAll(
+      Map.fromEntries(_defaultSerializers.map((e) => MapEntry(e.type, e))),
+    );
+    _deserializers.addAll(
+      Map.fromEntries(_defaultDeserializers.map((e) => MapEntry(e.type, e))),
+    );
 
-  // Example: "exampleString" -> "example.string"
-  static NamingStrategy dotCase = (String value) => value.toDotCase();
+    if (serializers != null) {
+      _serializers.addAll(
+        Map.fromEntries(serializers.map((e) => MapEntry(e.type, e))),
+      );
+    }
+    if (deserializers != null) {
+      _deserializers.addAll(
+        Map.fromEntries(deserializers.map((e) => MapEntry(e.type, e))),
+      );
+    }
+  }
 
-  // Example: "exampleString" -> "example/string"
-  static NamingStrategy pathCase = (String value) => value.toPathCase();
+  @override
+  Object? serialize<S>(S object) {
+    if (object is Serializable) {
+      return object.toJson();
+    }
+    Type type = S;
+    Serializer? serializer = _serializers[type];
+    if (serializer != null) {
+      return (serializer as Serializer<S>).serializer(object);
+    }
+    throw StateError('No serializer found for type: <${S.toString()}>');
+  }
 
-  // Example: "exampleString" -> "EXAMPLE_STRING"
-  static NamingStrategy constantCase = (String value) => value.toConstantCase();
+  @override
+  S deserialize<S>(dynamic data) {
+    Type type = S;
+    Deserializer? deserializer = _deserializers[type];
+    if (deserializer != null) {
+      return (deserializer as Deserializer<S>).deserializer(data);
+    }
+    throw StateError('No deserializer found for type: <${S.toString()}>');
+  }
 
-  // Example: "exampleString" -> "Example-String"
-  static NamingStrategy headerCase = (String value) => value.toHeaderCase();
+  @override
+  Object? serializeList<S>(List<S> objects) {
+    return objects.map((e) => serialize<S>(e)).toList();
+  }
 
-  // Example: "exampleString" -> "Example string"
-  static NamingStrategy sentenceCase = (String value) => value.toSentenceCase();
+  @override
+  List<S> deserializeList<S>(dynamic json) {
+    return (json as List<dynamic>).map((e) => deserialize<S>(e)).toList();
+  }
 
-  // Example: "exampleString" -> "Example String"
-  static NamingStrategy titleCase = (String value) => value.toTitleCase();
+  @override
+  void addSerializer<S>(Serializer<S> serializer) {
+    _serializers[serializer.type] = serializer;
+  }
 
-  // Example: "ExampleString" -> "eXAMPLEsTRING"
-  static NamingStrategy swapCase = (String value) => value.toSwapCase();
+  @override
+  void removeSerializer<S>() {
+    _serializers.remove(S);
+  }
 
-  // Example: "exampleString" -> "EXAMPLESTRING"
-  static NamingStrategy upperCase = (String value) => value.toUpperCase();
+  @override
+  void addDeserializer<S>(Deserializer<S> deserializer) {
+    _deserializers[deserializer.type] = deserializer;
+  }
 
-  // Example: "exampleString" -> "examplestring"
-  static NamingStrategy lowerCase = (String value) => value.toLowerCase();
+  @override
+  void removeDeserializer<S>() {
+    _deserializers.remove(S);
+  }
 }
