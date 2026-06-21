@@ -9,40 +9,36 @@ void main() {
   int port = 9047;
   String localUrl = 'http://localhost:$port';
 
-  setUpAll(
-    () async {
-      await Winter.run(
-        config: ServerConfig(port: port),
-        router: WinterRouter(
-          routes: [
-            Route(
-              path: '/test',
-              method: HttpMethod.get,
-              handler: (request) async {
-                return ResponseEntity.ok(body: 'Response from /test');
-              },
-            ),
-            Route(
-              path: '/custom',
-              method: HttpMethod.post,
-              handler: (request) async {
-                return ResponseEntity.ok(body: 'Response from /custom');
-              },
-            ),
-            Route(
-              path: '/.*',
-              method: HttpMethod.post,
-              handler: (request) async {
-                return ResponseEntity.ok(
-                  body: 'Response from any other source',
-                );
-              },
-            ),
-          ],
-        ),
-      );
-    },
-  );
+  setUpAll(() async {
+    await Winter.run(
+      config: ServerConfig(port: port),
+      router: WinterRouter(
+        routes: [
+          Route(
+            path: '/test',
+            method: HttpMethod.get,
+            handler: (request) async {
+              return ResponseEntity.ok(body: 'Response from /test');
+            },
+          ),
+          Route(
+            path: '/custom',
+            method: HttpMethod.post,
+            handler: (request) async {
+              return ResponseEntity.ok(body: 'Response from /custom');
+            },
+          ),
+          Route(
+            path: '/.*',
+            method: HttpMethod.post,
+            handler: (request) async {
+              return ResponseEntity.ok(body: 'Response from any other source');
+            },
+          ),
+        ],
+      ),
+    );
+  });
 
   tearDownAll(() => Winter.close(force: true));
 

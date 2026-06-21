@@ -9,42 +9,38 @@ void main() {
   int port = 9060;
   String localUrl = 'http://localhost:$port';
 
-  setUpAll(
-    () async {
-      await Winter.run(
-        config: ServerConfig(port: port),
-        router: MultiRouter(
-          [
-            WinterRouter(
-              routes: [
-                Route(
-                  path: '/test',
-                  method: HttpMethod.get,
-                  handler: (request) async {
-                    return ResponseEntity.ok(body: 'Response from /test');
-                  },
-                ),
-              ],
-            ),
-            ServeRouter(
-              (request) => ResponseEntity.ok(body: 'Response from router #2'),
-            ),
-            WinterRouter(
-              routes: [
-                Route(
-                  path: '/users',
-                  method: HttpMethod.get,
-                  handler: (request) async {
-                    return ResponseEntity.ok(body: 'Response from /users');
-                  },
-                ),
-              ],
+  setUpAll(() async {
+    await Winter.run(
+      config: ServerConfig(port: port),
+      router: MultiRouter([
+        WinterRouter(
+          routes: [
+            Route(
+              path: '/test',
+              method: HttpMethod.get,
+              handler: (request) async {
+                return ResponseEntity.ok(body: 'Response from /test');
+              },
             ),
           ],
         ),
-      );
-    },
-  );
+        ServeRouter(
+          (request) => ResponseEntity.ok(body: 'Response from router #2'),
+        ),
+        WinterRouter(
+          routes: [
+            Route(
+              path: '/users',
+              method: HttpMethod.get,
+              handler: (request) async {
+                return ResponseEntity.ok(body: 'Response from /users');
+              },
+            ),
+          ],
+        ),
+      ]),
+    );
+  });
 
   tearDownAll(() => Winter.close(force: true));
 

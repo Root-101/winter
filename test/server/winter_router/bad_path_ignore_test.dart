@@ -12,35 +12,31 @@ void main() {
   String localUrl = 'http://localhost:$port';
 
   bool failed = false;
-  setUpAll(
-    () async {
-      try {
-        await Winter.run(
-          config: ServerConfig(port: port),
-          router: WinterRouter(
-            config: RouterConfig(
-              onInvalidUrl: (failedRoute) =>
-                  log('${failedRoute.path} is not a valid URL. Ignoring'),
-            ),
-            routes: [
-              Route(
-                path: '/test - asdt',
-                method: HttpMethod.get,
-                handler: (request) async {
-                  return ResponseEntity.ok(
-                    body: 'hello world!!!',
-                  );
-                },
-              ),
-            ],
+  setUpAll(() async {
+    try {
+      await Winter.run(
+        config: ServerConfig(port: port),
+        router: WinterRouter(
+          config: RouterConfig(
+            onInvalidUrl: (failedRoute) =>
+                log('${failedRoute.path} is not a valid URL. Ignoring'),
           ),
-        );
-        failed = false;
-      } catch (_) {
-        failed = true;
-      }
-    },
-  );
+          routes: [
+            Route(
+              path: '/test - asdt',
+              method: HttpMethod.get,
+              handler: (request) async {
+                return ResponseEntity.ok(body: 'hello world!!!');
+              },
+            ),
+          ],
+        ),
+      );
+      failed = false;
+    } catch (_) {
+      failed = true;
+    }
+  });
 
   tearDownAll(() => Winter.close(force: true));
 

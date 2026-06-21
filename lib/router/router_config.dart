@@ -3,11 +3,9 @@ import 'dart:developer' as dev;
 import '../winter.dart';
 
 class RouterConfig {
-  RouterConfig({
-    OnInvalidUrl? onInvalidUrl,
-    OnLoadedRoutes? onLoadedRoutes,
-  })  : onInvalidUrl = onInvalidUrl ?? DefaultOnInvalidUrl.ignore(),
-        onLoadedRoutes = onLoadedRoutes ?? DefaultOnLoadedRoutes.ignore();
+  RouterConfig({OnInvalidUrl? onInvalidUrl, OnLoadedRoutes? onLoadedRoutes})
+    : onInvalidUrl = onInvalidUrl ?? DefaultOnInvalidUrl.ignore(),
+      onLoadedRoutes = onLoadedRoutes ?? DefaultOnLoadedRoutes.ignore();
 
   final OnInvalidUrl onInvalidUrl;
   final OnLoadedRoutes onLoadedRoutes;

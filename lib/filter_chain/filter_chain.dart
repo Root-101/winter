@@ -7,7 +7,7 @@ class FilterChain {
   final List<Filter> _filters;
 
   FilterChain(List<Filter> filters, RequestHandler requestHandler)
-      : _filters = List.of([...filters, BaseFilter(requestHandler)]);
+    : _filters = List.of([...filters, BaseFilter(requestHandler)]);
 
   FutureOr<ResponseEntity> doFilter(RequestEntity request) async {
     if (_currentFilterIndex < _filters.length) {
@@ -23,10 +23,7 @@ class FilterChain {
 }
 
 abstract class Filter {
-  FutureOr<ResponseEntity> doFilter(
-    RequestEntity request,
-    FilterChain chain,
-  );
+  FutureOr<ResponseEntity> doFilter(RequestEntity request, FilterChain chain);
 }
 
 class BaseFilter implements Filter {

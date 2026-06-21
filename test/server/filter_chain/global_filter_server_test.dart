@@ -9,36 +9,32 @@ void main() {
   int port = 9021;
   String localUrl = 'http://localhost:$port';
 
-  setUpAll(
-    () async {
-      await Winter.run(
-        config: ServerConfig(port: port),
-        globalFilterConfig: FilterConfig(
-          [RemoveQueryParamsFilter()],
-        ),
-        router: WinterRouter(
-          routes: [
-            Route(
-              path: '/global-filter/{id}',
-              method: HttpMethod.get,
-              handler: (request) => ResponseEntity.ok(
-                body:
-                    'path: ${request.pathParams}, query: ${request.queryParams}',
-              ),
+  setUpAll(() async {
+    await Winter.run(
+      config: ServerConfig(port: port),
+      globalFilterConfig: FilterConfig([RemoveQueryParamsFilter()]),
+      router: WinterRouter(
+        routes: [
+          Route(
+            path: '/global-filter/{id}',
+            method: HttpMethod.get,
+            handler: (request) => ResponseEntity.ok(
+              body:
+                  'path: ${request.pathParams}, query: ${request.queryParams}',
             ),
-            Route(
-              path: '/global-filter/2/{id}',
-              method: HttpMethod.get,
-              handler: (request) => ResponseEntity.ok(
-                body:
-                    'path: ${request.pathParams}, query: ${request.queryParams}',
-              ),
+          ),
+          Route(
+            path: '/global-filter/2/{id}',
+            method: HttpMethod.get,
+            handler: (request) => ResponseEntity.ok(
+              body:
+                  'path: ${request.pathParams}, query: ${request.queryParams}',
             ),
-          ],
-        ),
-      );
-    },
-  );
+          ),
+        ],
+      ),
+    );
+  });
 
   tearDownAll(() => Winter.close(force: true));
 

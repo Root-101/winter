@@ -9,31 +9,29 @@ void main() {
   int port = 9020;
   String localUrl = 'http://localhost:$port';
 
-  setUpAll(
-    () async {
-      await Winter.run(
-        config: ServerConfig(port: port),
-        globalFilterConfig: FilterConfig([FullChangeFilterFilter()]),
-        router: WinterRouter(
-          routes: [
-            Route(
-              path: '/full-change-filter',
-              method: HttpMethod.post,
-              handler: (request) async {
-                return ResponseEntity.ok(
-                  body: await request.body<String>(),
-                  headers: {
-                    'before-request-header':
-                        request.headers['before-request-header'] ?? '',
-                  },
-                );
-              },
-            ),
-          ],
-        ),
-      );
-    },
-  );
+  setUpAll(() async {
+    await Winter.run(
+      config: ServerConfig(port: port),
+      globalFilterConfig: FilterConfig([FullChangeFilterFilter()]),
+      router: WinterRouter(
+        routes: [
+          Route(
+            path: '/full-change-filter',
+            method: HttpMethod.post,
+            handler: (request) async {
+              return ResponseEntity.ok(
+                body: await request.body<String>(),
+                headers: {
+                  'before-request-header':
+                      request.headers['before-request-header'] ?? '',
+                },
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  });
 
   tearDownAll(() => Winter.close(force: true));
 
@@ -59,10 +57,7 @@ class FullChangeFilterFilter implements Filter {
     FilterChain chain,
   ) async {
     RequestEntity newRequestEntity = request.copyWith(
-      headers: {
-        ...request.headers,
-        'before-request-header': 'before-request',
-      },
+      headers: {...request.headers, 'before-request-header': 'before-request'},
     );
 
     ResponseEntity newResponseEntity = await chain.doFilter(newRequestEntity);

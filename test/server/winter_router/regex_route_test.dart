@@ -9,38 +9,31 @@ void main() {
   int port = 9045;
   String localUrl = 'http://localhost:$port';
 
-  setUpAll(
-    () async {
-      await Winter.run(
-        config: ServerConfig(port: port),
-        router: WinterRouter(
-          routes: [
-            Route(
-              path: '/test_.*',
-              method: HttpMethod.get,
-              handler: (request) => ResponseEntity.ok(
-                body: 'test',
-              ),
-            ),
-            Route(
-              path: '/hi_.*/{id}',
-              method: HttpMethod.get,
-              handler: (request) => ResponseEntity.ok(
-                body: request.pathParams['id'],
-              ),
-            ),
-            Route(
-              path: '/anything.*',
-              method: HttpMethod.get,
-              handler: (request) => ResponseEntity.ok(
-                body: request.url,
-              ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
+  setUpAll(() async {
+    await Winter.run(
+      config: ServerConfig(port: port),
+      router: WinterRouter(
+        routes: [
+          Route(
+            path: '/test_.*',
+            method: HttpMethod.get,
+            handler: (request) => ResponseEntity.ok(body: 'test'),
+          ),
+          Route(
+            path: '/hi_.*/{id}',
+            method: HttpMethod.get,
+            handler: (request) =>
+                ResponseEntity.ok(body: request.pathParams['id']),
+          ),
+          Route(
+            path: '/anything.*',
+            method: HttpMethod.get,
+            handler: (request) => ResponseEntity.ok(body: request.url),
+          ),
+        ],
+      ),
+    );
+  });
 
   tearDownAll(() => Winter.close(force: true));
 

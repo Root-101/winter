@@ -11,31 +11,27 @@ void main() {
 
   ExceptionHandler exc = TestExceptionHandler();
 
-  setUpAll(
-    () async {
-      await Winter.run(
-        config: ServerConfig(port: port),
-        context: BuildContext(exceptionHandler: exc),
-        router: WinterRouter(
-          routes: [
-            Route(
-              path: '/exception/1',
-              method: HttpMethod.get,
-              handler: (request) =>
-                  throw TestException(message: 'Error from /exception'),
-            ),
-            Route(
-              path: '/exception/2',
-              method: HttpMethod.get,
-              handler: (request) => ResponseEntity.ok(
-                body: 'Hello world!!!',
-              ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
+  setUpAll(() async {
+    await Winter.run(
+      config: ServerConfig(port: port),
+      context: BuildContext(exceptionHandler: exc),
+      router: WinterRouter(
+        routes: [
+          Route(
+            path: '/exception/1',
+            method: HttpMethod.get,
+            handler: (request) =>
+                throw TestException(message: 'Error from /exception'),
+          ),
+          Route(
+            path: '/exception/2',
+            method: HttpMethod.get,
+            handler: (request) => ResponseEntity.ok(body: 'Hello world!!!'),
+          ),
+        ],
+      ),
+    );
+  });
 
   tearDownAll(() => Winter.close(force: true));
 
@@ -59,9 +55,7 @@ void main() {
 class TestException implements Exception {
   final String message;
 
-  TestException({
-    required this.message,
-  });
+  TestException({required this.message});
 
   @override
   String toString() {

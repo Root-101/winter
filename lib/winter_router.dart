@@ -73,9 +73,7 @@ class WinterRouter extends AbstractWinterRouter {
     ///find routes that match with the path
     String urlPath = '/${request.url.path}';
     List<Route> matchedRoutes = routes
-        .where(
-          (element) => element.match(urlPath),
-        )
+        .where((element) => element.match(urlPath))
         .toList();
 
     ///no routes found: 404
@@ -101,9 +99,7 @@ class WinterRouter extends AbstractWinterRouter {
     ///find routes that match with the path
     String urlPath = '/${request.url.path}';
     List<Route> matchedRoutes = routes
-        .where(
-          (element) => element.match(urlPath),
-        )
+        .where((element) => element.match(urlPath))
         .toList();
 
     ///no routes found: 404
@@ -130,21 +126,16 @@ class WinterRouter extends AbstractWinterRouter {
     HttpMethod method,
     RequestHandler handler, {
     FilterConfig? filterConfig,
-  }) =>
-      routes.add(
-        Route(
-          path: path,
-          method: method,
-          handler: handler,
-          filterConfig: filterConfig,
-        ),
-      );
+  }) => routes.add(
+    Route(
+      path: path,
+      method: method,
+      handler: handler,
+      filterConfig: filterConfig,
+    ),
+  );
 
-  void get(
-    String path,
-    RequestHandler handler, {
-    FilterConfig? filterConfig,
-  }) =>
+  void get(String path, RequestHandler handler, {FilterConfig? filterConfig}) =>
       routes.add(
         Route(
           path: path,
@@ -158,35 +149,29 @@ class WinterRouter extends AbstractWinterRouter {
     String path,
     RequestHandler handler, {
     FilterConfig? filterConfig,
-  }) =>
-      routes.add(
-        Route(
-          path: path,
-          method: HttpMethod.query,
-          handler: handler,
-          filterConfig: filterConfig,
-        ),
-      );
+  }) => routes.add(
+    Route(
+      path: path,
+      method: HttpMethod.query,
+      handler: handler,
+      filterConfig: filterConfig,
+    ),
+  );
 
   void post(
     String path,
     RequestHandler handler, {
     FilterConfig? filterConfig,
-  }) =>
-      routes.add(
-        Route(
-          path: path,
-          method: HttpMethod.post,
-          handler: handler,
-          filterConfig: filterConfig,
-        ),
-      );
+  }) => routes.add(
+    Route(
+      path: path,
+      method: HttpMethod.post,
+      handler: handler,
+      filterConfig: filterConfig,
+    ),
+  );
 
-  void put(
-    String path,
-    RequestHandler handler, {
-    FilterConfig? filterConfig,
-  }) =>
+  void put(String path, RequestHandler handler, {FilterConfig? filterConfig}) =>
       routes.add(
         Route(
           path: path,
@@ -200,57 +185,53 @@ class WinterRouter extends AbstractWinterRouter {
     String path,
     RequestHandler handler, {
     FilterConfig? filterConfig,
-  }) =>
-      routes.add(
-        Route(
-          path: path,
-          method: HttpMethod.patch,
-          handler: handler,
-          filterConfig: filterConfig,
-        ),
-      );
+  }) => routes.add(
+    Route(
+      path: path,
+      method: HttpMethod.patch,
+      handler: handler,
+      filterConfig: filterConfig,
+    ),
+  );
 
   void delete(
     String path,
     RequestHandler handler, {
     FilterConfig? filterConfig,
-  }) =>
-      routes.add(
-        Route(
-          path: path,
-          method: HttpMethod.delete,
-          handler: handler,
-          filterConfig: filterConfig,
-        ),
-      );
+  }) => routes.add(
+    Route(
+      path: path,
+      method: HttpMethod.delete,
+      handler: handler,
+      filterConfig: filterConfig,
+    ),
+  );
 
   void head(
     String path,
     RequestHandler handler, {
     FilterConfig? filterConfig,
-  }) =>
-      routes.add(
-        Route(
-          path: path,
-          method: HttpMethod.head,
-          handler: handler,
-          filterConfig: filterConfig,
-        ),
-      );
+  }) => routes.add(
+    Route(
+      path: path,
+      method: HttpMethod.head,
+      handler: handler,
+      filterConfig: filterConfig,
+    ),
+  );
 
   void options(
     String path,
     RequestHandler handler, {
     FilterConfig? filterConfig,
-  }) =>
-      routes.add(
-        Route(
-          path: path,
-          method: HttpMethod.options,
-          handler: handler,
-          filterConfig: filterConfig,
-        ),
-      );
+  }) => routes.add(
+    Route(
+      path: path,
+      method: HttpMethod.options,
+      handler: handler,
+      filterConfig: filterConfig,
+    ),
+  );
 
   @override
   String toString() {
@@ -264,12 +245,7 @@ class Route {
   final RequestHandler handler;
   final FilterConfig filterConfig;
 
-  Route._(
-    this.path,
-    this.method,
-    this.handler,
-    this.filterConfig,
-  );
+  Route._(this.path, this.method, this.handler, this.filterConfig);
 
   Route.build({
     required this.path,
