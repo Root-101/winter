@@ -1,30 +1,16 @@
-abstract class DependencyInjection {
-  static DependencyInjection build() => _DependencyInjectionImpl();
-
-  void put<S>(S dependency, {String? tag});
-
-  S find<S>({String? tag});
-
-  S? tryFind<S>({String? tag});
-
-  S delete<S>({String? tag});
-}
-
-class _DependencyInjectionImpl extends DependencyInjection {
+class DependencyInjection {
   StateError notFound(Type S, String? tag) => StateError(
     'Dependency of <${S.toString()}> (with tag: ${tag ?? 'empty'}) not found',
   );
 
   static final Map<String, dynamic> _singl = {};
 
-  @override
   void put<S>(S dependency, {String? tag}) {
     final key = _getKey(S, tag);
 
     _singl[key] = dependency;
   }
 
-  @override
   S find<S>({String? tag}) {
     final key = _getKey(S, tag);
 
@@ -35,7 +21,6 @@ class _DependencyInjectionImpl extends DependencyInjection {
     }
   }
 
-  @override
   S? tryFind<S>({String? tag}) {
     final key = _getKey(S, tag);
 
@@ -46,7 +31,6 @@ class _DependencyInjectionImpl extends DependencyInjection {
     }
   }
 
-  @override
   S delete<S>({String? tag}) {
     final key = _getKey(S, tag);
 

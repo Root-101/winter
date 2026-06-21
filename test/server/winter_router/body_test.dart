@@ -12,42 +12,38 @@ void main() {
   String localUrl = 'http://localhost:$port';
 
   DateTime createdAt = DateTime.now();
-  ObjectMapper om = ObjectMapperImpl();
+  ObjectMapper om = ObjectMapper();
 
-  setUpAll(
-    () async {
-      await Winter.run(
-        config: ServerConfig(port: port),
-        context: BuildContext(objectMapper: om),
-        router: WinterRouter(
-          routes: [
-            Route(
-              path: '/create-user',
-              method: HttpMethod.post,
-              handler: (request) async {
-                ///Note that we use the null operator (!) because its a controlled test
-                ///In other test we will validate that this elements are not null to avoid using '!'
-                UserRequest requestBody = (await request.body<UserRequest>())!;
+  setUpAll(() async {
+    await Winter.run(
+      config: ServerConfig(port: port),
+      context: BuildContext(objectMapper: om),
+      router: WinterRouter(
+        routes: [
+          Route(
+            path: '/create-user',
+            method: HttpMethod.post,
+            handler: (request) async {
+              ///Note that we use the null operator (!) because its a controlled test
+              ///In other test we will validate that this elements are not null to avoid using '!'
+              UserRequest requestBody = (await request.body<UserRequest>())!;
 
-                ///Username will be the email without the provider
-                ///email: `test@test.com` will be username: `test`
-                String username = requestBody.email!.split('@')[0];
+              ///Username will be the email without the provider
+              ///email: `test@test.com` will be username: `test`
+              String username = requestBody.email!.split('@')[0];
 
-                UserResponse responseBody = UserResponse.build(
-                  username: username,
-                  createdAt: createdAt,
-                );
+              UserResponse responseBody = UserResponse.build(
+                username: username,
+                createdAt: createdAt,
+              );
 
-                return ResponseEntity.ok(
-                  body: responseBody,
-                );
-              },
-            ),
-          ],
-        ),
-      );
-    },
-  );
+              return ResponseEntity.ok(body: responseBody);
+            },
+          ),
+        ],
+      ),
+    );
+  });
 
   tearDownAll(() => Winter.close(force: true));
 
@@ -57,8 +53,10 @@ void main() {
     String urlToTest = '/create-user';
     UserRequest requestBody = UserRequest(email: 'test@test.com');
 
-    http.Response response =
-        await http.post(url(urlToTest), body: om.serialize(requestBody));
+    http.Response response = await http.post(
+      url(urlToTest),
+      body: om.serialize(requestBody),
+    );
 
     expect(response.statusCode, 200);
 
@@ -78,9 +76,7 @@ class UserRequest {
 
   ///needed constructor for ObjectMapper to work
 
-  UserRequest({
-    required this.email,
-  });
+  UserRequest({required this.email});
 }
 
 class UserResponse {
@@ -91,8 +87,5 @@ class UserResponse {
 
   ///needed constructor for ObjectMapper to work
 
-  UserResponse.build({
-    required this.username,
-    required this.createdAt,
-  });
+  UserResponse.build({required this.username, required this.createdAt});
 }

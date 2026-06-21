@@ -12,18 +12,13 @@ DependencyInjection get di => Winter.instance.context.dependencyInjection;
 ///Dependency Injection: easy access to the current object mapper instance
 ObjectMapper get om => Winter.instance.context.objectMapper;
 
-///Validation Service: easy access to the current validation service instance
-ValidationService get vs => Winter.instance.context.validationService;
-
 ///Exception Handler: easy access to the current exception handler instance
 ExceptionHandler get eh => Winter.instance.context.exceptionHandler;
 
 class Winter {
   static Winter get instance {
     if (_server == null) {
-      throw StateError(
-        'Server has\'t starter yet. Try starting one first.',
-      );
+      throw StateError('Server has\'t starter yet. Try starting one first.');
     }
     return _server!;
   }
@@ -140,13 +135,10 @@ class Winter {
         }
       }
 
-      FilterChain filterChain = FilterChain(
-        [
-          ...globalFilterConfig.filters,
-          if (routeFilterConfig != null) ...routeFilterConfig.filters,
-        ],
-        router.handler,
-      );
+      FilterChain filterChain = FilterChain([
+        ...globalFilterConfig.filters,
+        if (routeFilterConfig != null) ...routeFilterConfig.filters,
+      ], router.handler);
 
       return await filterChain.doFilter(requestEntity);
     } on Exception catch (error, stackTrace) {
