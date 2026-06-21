@@ -42,25 +42,7 @@ class Deserializer<T> {
   }
 }
 
-abstract class ObjectMapper {
-  Object? serialize<S>(S object);
-
-  S deserialize<S>(dynamic data);
-
-  Object? serializeList<S>(List<S> objects);
-
-  List<S> deserializeList<S>(dynamic json);
-
-  void addSerializer<S>(Serializer<S> serializer);
-
-  void removeSerializer<S>();
-
-  void addDeserializer<S>(Deserializer<S> deserializer);
-
-  void removeDeserializer<S>();
-}
-
-class ObjectMapperImpl extends ObjectMapper {
+class ObjectMapper {
   static final List<Serializer> _defaultSerializers = [
     Serializer<DateTime>((object) => object.toIso8601String()),
     Serializer<Duration>((object) => object.inMilliseconds),
@@ -91,7 +73,7 @@ class ObjectMapperImpl extends ObjectMapper {
 
   final Map<Type, Deserializer> _deserializers = {};
 
-  ObjectMapperImpl({
+  ObjectMapper({
     List<Serializer>? serializers,
     List<Deserializer>? deserializers,
   }) {
@@ -114,7 +96,6 @@ class ObjectMapperImpl extends ObjectMapper {
     }
   }
 
-  @override
   Object? serialize<S>(S object) {
     if (object is Serializable) {
       return object.toJson();
@@ -127,7 +108,6 @@ class ObjectMapperImpl extends ObjectMapper {
     throw StateError('No serializer found for type: <${S.toString()}>');
   }
 
-  @override
   S deserialize<S>(dynamic data) {
     Type type = S;
     Deserializer? deserializer = _deserializers[type];
@@ -137,32 +117,26 @@ class ObjectMapperImpl extends ObjectMapper {
     throw StateError('No deserializer found for type: <${S.toString()}>');
   }
 
-  @override
   Object? serializeList<S>(List<S> objects) {
     return objects.map((e) => serialize<S>(e)).toList();
   }
 
-  @override
   List<S> deserializeList<S>(dynamic json) {
     return (json as List<dynamic>).map((e) => deserialize<S>(e)).toList();
   }
 
-  @override
   void addSerializer<S>(Serializer<S> serializer) {
     _serializers[serializer.type] = serializer;
   }
 
-  @override
   void removeSerializer<S>() {
     _serializers.remove(S);
   }
 
-  @override
   void addDeserializer<S>(Deserializer<S> deserializer) {
     _deserializers[deserializer.type] = deserializer;
   }
 
-  @override
   void removeDeserializer<S>() {
     _deserializers.remove(S);
   }

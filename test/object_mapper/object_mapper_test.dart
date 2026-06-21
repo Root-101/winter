@@ -9,13 +9,13 @@ import 'models.dart';
 void main() {
   baseTests(
     'Mapper with serializers in constructor',
-    () => ObjectMapperImpl(
+    () => ObjectMapper(
       serializers: [Serializer<Tool>((object) => object.toJson())],
       deserializers: [Deserializer<Tool>((json) => Tool.fromJson(json))],
     ),
   );
   baseTests('Mapper with serializers added after', () {
-    ObjectMapper om = ObjectMapperImpl();
+    ObjectMapper om = ObjectMapper();
 
     om.addSerializer(Serializer<Tool>((object) => object.toJson()));
     om.addDeserializer(Deserializer<Tool>((json) => Tool.fromJson(json)));
@@ -27,7 +27,7 @@ void main() {
     late ObjectMapper parser;
 
     setUp(() {
-      parser = ObjectMapperImpl();
+      parser = ObjectMapper();
     });
 
     test('No Serializer - Tool', () {
@@ -43,11 +43,11 @@ void main() {
     });
   });
 
-  group('Serializer via \'implements Serializable\'', () {
+  group('Serializer via \'ements Serializable\'', () {
     late ObjectMapper parser;
 
     setUp(() {
-      parser = ObjectMapperImpl();
+      parser = ObjectMapper();
     });
 
     test('Serialize - SerializableTool', () {
@@ -64,7 +64,7 @@ void main() {
     late ObjectMapper parser;
 
     setUp(() {
-      parser = ObjectMapperImpl();
+      parser = ObjectMapper();
     });
 
     test('Overwrite serializer', () {
@@ -156,7 +156,7 @@ void main() {
     late ObjectMapper parser;
 
     setUp(() {
-      parser = ObjectMapperImpl();
+      parser = ObjectMapper();
     });
 
     test('serializeList and deserializeList', () {

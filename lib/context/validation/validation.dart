@@ -1,5 +1,3 @@
-import 'package:winter/winter.dart';
-
 /// Class that represent a fail validation
 /// (Details and examples in docs)
 class ConstrainViolation {
@@ -37,42 +35,4 @@ class ConstrainViolation {
 
   @override
   int get hashCode => value.hashCode ^ fieldName.hashCode ^ message.hashCode;
-}
-
-///Default class to define the validation
-abstract class ValidationService {
-  List<ConstrainViolation> validate(
-    dynamic object, {
-    String? parentFieldName,
-    String? fieldSeparator,
-    bool? throwExceptionOnFail,
-  });
-}
-
-///mixin to implement in every class where the validation want to be done it by hand
-mixin Validatable {
-  List<ConstrainViolation> validate({
-    String? parentFieldName,
-    String? fieldSeparator,
-  });
-}
-
-///extension to make every object validatable
-///Just call: `someObject.validate()`
-///
-/// NOTE: this only work with an already initialized winter-server with a
-/// previously configured ValidationService instance
-extension GloballyValidatable on Object {
-  List<ConstrainViolation> validate({
-    String? parentFieldName,
-    String? fieldSeparator,
-    bool? throwExceptionOnFail,
-  }) {
-    return vs.validate(
-      this,
-      parentFieldName: parentFieldName,
-      fieldSeparator: fieldSeparator,
-      throwExceptionOnFail: throwExceptionOnFail,
-    );
-  }
 }
