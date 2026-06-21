@@ -57,10 +57,7 @@ class RequestEntity extends Request {
   /// only after this the path params are configured, any other case the params will be an empty map
   void setUpPathParams(String template) {
     _pathTemplate = template;
-    _pathParams = _extractPathParams(
-      template,
-      requestedUri.toString(),
-    );
+    _pathParams = _extractPathParams(template, requestedUri.toString());
   }
 
   /// Get the body of the request, it's get parsed with the ObjectMapper in the process
@@ -68,8 +65,9 @@ class RequestEntity extends Request {
   Future<T?> body<T>({ObjectMapper? om}) async {
     if (_cachedBody == null || _cachedBody is! T) {
       String rawString = await readAsString(encoding);
-      _cachedBody = (om ?? Winter.instance.context.objectMapper)
-          .deserialize<T>(rawString);
+      _cachedBody = (om ?? Winter.instance.context.objectMapper).deserialize<T>(
+        jsonDecode(rawString),
+      );
     }
     return _cachedBody as T;
   }
