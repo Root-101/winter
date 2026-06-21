@@ -38,8 +38,10 @@ class HRouter extends WinterRouter {
       List<HRoute> routes,
     ) {
       for (var route in routes) {
-        String fullPath =
-            (parentPath + route.path).replaceAll(RegExp(r'/+'), '/');
+        String fullPath = (parentPath + route.path).replaceAll(
+          RegExp(r'/+'),
+          '/',
+        );
 
         FilterConfig? newParentFilterConfig = parentFilterConfig != null
             ? parentFilterConfig.merge(route.filterConfig)
@@ -71,14 +73,11 @@ class HRouter extends WinterRouter {
 }
 
 class ParentRoute extends HRoute {
-  ParentRoute({
-    required super.path,
-    required super.routes,
-    super.filterConfig,
-  }) : super(
-          method: const HttpMethod(''),
-          handler: (request) => ResponseEntity.ok(),
-        );
+  ParentRoute({required super.path, required super.routes, super.filterConfig})
+    : super(
+        method: const HttpMethod(''),
+        handler: (request) => ResponseEntity.ok(),
+      );
 }
 
 class HRoute extends Route {

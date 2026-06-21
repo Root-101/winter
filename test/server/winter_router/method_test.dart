@@ -9,66 +9,57 @@ void main() {
   int port = 9043;
   String localUrl = 'http://localhost:$port';
 
-  setUpAll(
-    () async {
-      await Winter.run(
-        config: ServerConfig(port: port),
-        router: WinterRouter(
-          routes: [
-            Route(
-              path: '/get-method',
-              method: HttpMethod.get,
-              handler: (request) => ResponseEntity.ok(
-                body: 'Response from get-method',
-              ),
-            ),
-            Route(
-              path: '/post-method',
-              method: HttpMethod.post,
-              handler: (request) => ResponseEntity.ok(
-                body: 'Response from post-method',
-              ),
-            ),
-            Route(
-              path: '/put-method',
-              method: HttpMethod.put,
-              handler: (request) => ResponseEntity.ok(
-                body: 'Response from put-method',
-              ),
-            ),
-            Route(
-              path: '/delete-method',
-              method: HttpMethod.delete,
-              handler: (request) => ResponseEntity.ok(
-                body: 'Response from delete-method',
-              ),
-            ),
-            Route(
-              path: '/patch-method',
-              method: HttpMethod.patch,
-              handler: (request) => ResponseEntity.ok(
-                body: 'Response from patch-method',
-              ),
-            ),
-            Route(
-              path: '/query-method',
-              method: HttpMethod.query,
-              handler: (request) => ResponseEntity.ok(
-                body: 'Response from query-method',
-              ),
-            ),
-            Route(
-              path: '/custom-method',
-              method: const HttpMethod('custom'),
-              handler: (request) => ResponseEntity.ok(
-                body: 'Response from custom-method',
-              ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
+  setUpAll(() async {
+    await Winter.run(
+      config: ServerConfig(port: port),
+      router: WinterRouter(
+        routes: [
+          Route(
+            path: '/get-method',
+            method: HttpMethod.get,
+            handler: (request) =>
+                ResponseEntity.ok(body: 'Response from get-method'),
+          ),
+          Route(
+            path: '/post-method',
+            method: HttpMethod.post,
+            handler: (request) =>
+                ResponseEntity.ok(body: 'Response from post-method'),
+          ),
+          Route(
+            path: '/put-method',
+            method: HttpMethod.put,
+            handler: (request) =>
+                ResponseEntity.ok(body: 'Response from put-method'),
+          ),
+          Route(
+            path: '/delete-method',
+            method: HttpMethod.delete,
+            handler: (request) =>
+                ResponseEntity.ok(body: 'Response from delete-method'),
+          ),
+          Route(
+            path: '/patch-method',
+            method: HttpMethod.patch,
+            handler: (request) =>
+                ResponseEntity.ok(body: 'Response from patch-method'),
+          ),
+          Route(
+            path: '/query-method',
+            method: HttpMethod.query,
+            handler: (request) =>
+                ResponseEntity.ok(body: 'Response from query-method'),
+          ),
+          Route(
+            path: '/custom-method',
+            method: const HttpMethod('custom'),
+            handler: (request) =>
+                ResponseEntity.ok(body: 'Response from custom-method'),
+          ),
+        ],
+      ),
+    );
+  });
 
   tearDownAll(() => Winter.close(force: true));
 

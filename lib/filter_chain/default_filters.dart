@@ -26,9 +26,9 @@ class LogsFilter implements Filter {
     void Function(RequestEntity request)? logRequest,
     void Function(ResponseEntity response)? logResponse,
     void Function(Exception exception)? logErrorResponse,
-  })  : logRequest = logRequest ?? defaultLogRequest,
-        logResponse = logResponse ?? defaultLogResponse,
-        logErrorResponse = logErrorResponse ?? defaultLogErrorResponse;
+  }) : logRequest = logRequest ?? defaultLogRequest,
+       logResponse = logResponse ?? defaultLogResponse,
+       logErrorResponse = logErrorResponse ?? defaultLogErrorResponse;
 
   @override
   Future<ResponseEntity> doFilter(
@@ -38,9 +38,7 @@ class LogsFilter implements Filter {
     logRequest(request);
 
     try {
-      ResponseEntity response = await chain.doFilter(
-        request,
-      );
+      ResponseEntity response = await chain.doFilter(request);
       logResponse(response);
       return response;
     } on Exception catch (exception) {
@@ -51,9 +49,7 @@ class LogsFilter implements Filter {
 }
 
 void defaultLogRateLimiter(request, requestId) {
-  log(
-    'Rate limiter fail for id: $requestId in request: ${request.url}',
-  );
+  log('Rate limiter fail for id: $requestId in request: ${request.url}');
 }
 
 class RateLimiterFilter implements Filter {

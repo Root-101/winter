@@ -9,35 +9,33 @@ void main() {
   int port = 9022;
   String localUrl = 'http://localhost:$port';
 
-  setUpAll(
-    () async {
-      await Winter.run(
-        config: ServerConfig(port: port),
-        globalFilterConfig: FilterConfig([InterceptNotAuthRequestsFilter()]),
-        router: WinterRouter(
-          routes: [
-            Route(
-              path: '/mixed-filter/{id}',
-              filterConfig: FilterConfig([RemoveQueryParamsFilter()]),
-              method: HttpMethod.get,
-              handler: (request) => ResponseEntity.ok(
-                body:
-                    'path: ${request.pathParams}, query: ${request.queryParams}',
-              ),
+  setUpAll(() async {
+    await Winter.run(
+      config: ServerConfig(port: port),
+      globalFilterConfig: FilterConfig([InterceptNotAuthRequestsFilter()]),
+      router: WinterRouter(
+        routes: [
+          Route(
+            path: '/mixed-filter/{id}',
+            filterConfig: FilterConfig([RemoveQueryParamsFilter()]),
+            method: HttpMethod.get,
+            handler: (request) => ResponseEntity.ok(
+              body:
+                  'path: ${request.pathParams}, query: ${request.queryParams}',
             ),
-            Route(
-              path: '/mixed-filter/2/{id}',
-              method: HttpMethod.get,
-              handler: (request) => ResponseEntity.ok(
-                body:
-                    'path: ${request.pathParams}, query: ${request.queryParams}',
-              ),
+          ),
+          Route(
+            path: '/mixed-filter/2/{id}',
+            method: HttpMethod.get,
+            handler: (request) => ResponseEntity.ok(
+              body:
+                  'path: ${request.pathParams}, query: ${request.queryParams}',
             ),
-          ],
-        ),
-      );
-    },
-  );
+          ),
+        ],
+      ),
+    );
+  });
 
   tearDownAll(() => Winter.close(force: true));
 

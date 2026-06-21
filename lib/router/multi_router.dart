@@ -10,9 +10,7 @@ class MultiRouter extends AbstractWinterRouter {
 
   @override
   bool canHandle(RequestEntity request) {
-    return routes.any(
-      (element) => element.canHandle(request),
-    );
+    return routes.any((element) => element.canHandle(request));
   }
 
   @override

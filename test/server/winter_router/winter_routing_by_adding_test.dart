@@ -9,40 +9,35 @@ void main() {
   int port = 9046;
   String localUrl = 'http://localhost:$port';
 
-  setUpAll(
-    () async {
-      WinterRouter router = WinterRouter(
-        routes: [
-          Route(
-            path: '/test',
-            method: HttpMethod.get,
-            handler: (request) async {
-              return ResponseEntity.ok(body: 'Response from /test');
-            },
-          ),
-        ],
-      );
-      router.post(
-        '/custom',
-        (request) async {
-          return ResponseEntity.ok(body: 'Response from /custom');
-        },
-      );
-      router.addRoute(
+  setUpAll(() async {
+    WinterRouter router = WinterRouter(
+      routes: [
         Route(
-          path: '/.*',
-          method: HttpMethod.post,
+          path: '/test',
+          method: HttpMethod.get,
           handler: (request) async {
-            return ResponseEntity.ok(body: 'Response from any other source');
+            return ResponseEntity.ok(body: 'Response from /test');
           },
         ),
-      );
-      await Winter.run(
-        config: ServerConfig(port: port),
-        router: router,
-      );
-    },
-  );
+      ],
+    );
+    router.post('/custom', (request) async {
+      return ResponseEntity.ok(body: 'Response from /custom');
+    });
+    router.addRoute(
+      Route(
+        path: '/.*',
+        method: HttpMethod.post,
+        handler: (request) async {
+          return ResponseEntity.ok(body: 'Response from any other source');
+        },
+      ),
+    );
+    await Winter.run(
+      config: ServerConfig(port: port),
+      router: router,
+    );
+  });
 
   tearDownAll(() => Winter.close(force: true));
 
