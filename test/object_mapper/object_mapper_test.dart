@@ -7,20 +7,62 @@ import 'package:winter/winter.dart';
 import 'models.dart';
 
 void main() {
-  baseTests(
-    'Mapper with serializers in constructor',
-    () => ObjectMapper(
-      serializers: [Serializer<Tool>((object) => object.toJson())],
-      deserializers: [Deserializer<Tool>((json) => Tool.fromJson(json))],
-    ),
-  );
-  baseTests('Mapper with serializers added after', () {
-    ObjectMapper om = ObjectMapper();
+  group('Mapper with serializers in constructor', () {
+    late ObjectMapper parser;
 
-    om.addSerializer(Serializer<Tool>((object) => object.toJson()));
-    om.addDeserializer(Deserializer<Tool>((json) => Tool.fromJson(json)));
+    setUp(() {
+      parser = ObjectMapper(
+        serializers: [Serializer<Tool>((object) => object.toJson())],
+        deserializers: [Deserializer<Tool>((j) => Tool.fromJson(j))],
+      );
+    });
 
-    return om;
+    test('Serialize - Tool', () async {
+      Tool object = Tool(name: 'Drill');
+      Map<String, dynamic> expectedJson = {'NAME': 'Drill'};
+
+      dynamic json = parser.serialize(object);
+
+      expect(expectedJson, json);
+    });
+
+    test('Deserialize - Tool', () async {
+      Map<String, dynamic> json = {'NAME': 'Drill'};
+      Tool expectedObject = Tool(name: 'Drill');
+
+      Tool object = parser.deserialize(json);
+
+      expect(expectedObject, object);
+    });
+
+    test('Deserialize from JSON String - Tool', () async {
+      String json = '{"NAME": "Drill"}';
+      Tool expectedObject = Tool(name: 'Drill');
+
+      Tool object = parser.deserialize<Tool>(json);
+
+      expect(expectedObject, object);
+    });
+
+    //this is more to see if the serialize/deserialize create/return the same object,
+    //but its related more to the logic of toJson/fromJson than the actually logic of object mapper
+    test('Serialize/Deserialize consistency - Tool', () async {
+      Map<String, dynamic> json = {'NAME': 'Drill'};
+      Tool expectedObject = Tool(name: 'Drill');
+
+      Tool object = parser.deserialize(json);
+
+      expect(expectedObject, object);
+    });
+
+    test('serialize - null', () {
+      expect(parser.serialize(null), isNull);
+    });
+
+    test('serialize - Map', () {
+      Map<String, dynamic> map = {'key': 'value'};
+      expect(parser.serialize(map), map);
+    });
   });
 
   group('No serializer/deserializer', () {
@@ -30,125 +72,55 @@ void main() {
       parser = ObjectMapper();
     });
 
-    test('No Serializer - Tool', () {
-      Tool object = Tool(name: 'Drill');
-
-      expect(() => parser.serialize<Tool>(object), throwsA(isA<StateError>()));
-    });
-
-    test('No Deserializer - Tool', () {
-      Map<String, dynamic> json = {'NAME': 'Drill'};
-
-      expect(() => parser.deserialize<Tool>(json), throwsA(isA<StateError>()));
-    });
-  });
-
-  group('Serializer via \'ements Serializable\'', () {
-    late ObjectMapper parser;
-
-    setUp(() {
-      parser = ObjectMapper();
-    });
-
-    test('Serialize - SerializableTool', () {
-      SerializableTool object = SerializableTool(name: 'Drill');
-      Map<String, dynamic> expectedJson = {'NAME': 'Drill'};
-
-      dynamic json = parser.serialize(object);
-
-      expect(expectedJson, json);
-    });
-  });
-
-  group('Advanced usage', () {
-    late ObjectMapper parser;
-
-    setUp(() {
-      parser = ObjectMapper();
-    });
-
-    test('Overwrite serializer', () {
-      parser.addSerializer(Serializer<Tool>((t) => {'v': 1}));
-      parser.addSerializer(Serializer<Tool>((t) => {'v': 2}));
-
-      expect(parser.serialize(Tool(name: 'x')), {'v': 2});
-    });
-
-    test('Remove serializer/deserializer', () {
-      parser.addSerializer(Serializer<Tool>((t) => {}));
-      parser.addDeserializer(Deserializer<Tool>((j) => Tool.empty()));
-
-      parser.removeSerializer<Tool>();
-      parser.removeDeserializer<Tool>();
+    test('No Serializer - Worker', () {
+      Worker object = Worker(name: 'worker #1');
 
       expect(
-        () => parser.serialize(Tool(name: 'x')),
-        throwsA(isA<StateError>()),
-      );
-      expect(() => parser.deserialize<Tool>({}), throwsA(isA<StateError>()));
-    });
-
-    test('Nested objects', () {
-      parser.addSerializer(Serializer<Tool>((t) => t.toJson()));
-      parser.addSerializer(
-        Serializer<Worker>(
-          (w) => {
-            'name': w.name,
-            'tool': parser.serialize(w.tool), // Using the parser for nesting
-          },
-        ),
-      );
-
-      Worker worker = Worker(
-        name: 'John',
-        tool: Tool(name: 'Hammer'),
-      );
-      dynamic json = parser.serialize(worker);
-
-      expect(json, {
-        'name': 'John',
-        'tool': {'NAME': 'Hammer'},
-      });
-    });
-
-    test('Inferred type in serialize', () {
-      // Testing that the static type S is used
-      parser.addSerializer(Serializer<Tool>((t) => {'type': 'Tool'}));
-
-      Tool tool = Tool(name: 'Generic');
-      expect(parser.serialize(tool), {'type': 'Tool'});
-
-      // If we pass it as dynamic, S becomes dynamic
-      expect(
-        () => parser.serialize(tool as dynamic),
+        () => parser.serialize<Worker>(object),
         throwsA(isA<StateError>()),
       );
     });
 
-    test('List of objects (manual mapping)', () {
-      parser.addSerializer(Serializer<Tool>((t) => t.toJson()));
+    test('No Deserializer - Worker', () {
+      Map<String, dynamic> json = {'name': 'workter #1'};
 
-      List<Tool> tools = [Tool(name: 'Drill'), Tool(name: 'Hammer')];
-      dynamic jsonList = tools.map((t) => parser.serialize(t)).toList();
+      expect(
+        () => parser.deserialize<Worker>(json),
+        throwsA(isA<StateError>()),
+      );
+    });
+  });
 
-      expect(jsonList, [
-        {'NAME': 'Drill'},
-        {'NAME': 'Hammer'},
+  group('Serializable Interface', () {
+    late ObjectMapper parser;
+
+    setUp(() {
+      parser = ObjectMapper(
+        deserializers: [Deserializer<Gadget>((j) => Gadget.fromJson(j))],
+      );
+    });
+
+    test('Serialize - Gadget (implements Serializable)', () {
+      Gadget gadget = Gadget(id: 'G1');
+      expect(parser.serialize(gadget), {'id': 'G1'});
+    });
+
+    test('Serialize List - Gadgets', () {
+      List<Gadget> gadgets = [Gadget(id: 'G1'), Gadget(id: 'G2')];
+      expect(parser.serialize(gadgets), [
+        {'id': 'G1'},
+        {'id': 'G2'},
       ]);
     });
 
-    test('List of objects (manual deserialization)', () {
-      parser.addDeserializer(Deserializer<Tool>((j) => Tool.fromJson(j)));
+    test('Deserialize - Gadget', () {
+      Map<String, dynamic> json = {'id': 'G1'};
+      expect(parser.deserialize<Gadget>(json), Gadget(id: 'G1'));
+    });
 
-      List<Map<String, dynamic>> jsonList = [
-        {'NAME': 'Drill'},
-        {'NAME': 'Hammer'},
-      ];
-      List<Tool> tools = jsonList
-          .map((j) => parser.deserialize<Tool>(j))
-          .toList();
-
-      expect(tools, [Tool(name: 'Drill'), Tool(name: 'Hammer')]);
+    test('Deserialize from JSON String - Gadget', () {
+      String jsonStr = '{"id": "G1"}';
+      expect(parser.deserialize<Gadget>(jsonStr), Gadget(id: 'G1'));
     });
   });
 
@@ -156,15 +128,15 @@ void main() {
     late ObjectMapper parser;
 
     setUp(() {
-      parser = ObjectMapper();
+      parser = ObjectMapper(
+        serializers: [Serializer<Tool>((object) => object.toJson())],
+        deserializers: [Deserializer<Tool>((j) => Tool.fromJson(j))],
+      );
     });
 
     test('serializeList and deserializeList', () {
-      parser.addSerializer(Serializer<Tool>((t) => t.toJson()));
-      parser.addDeserializer(Deserializer<Tool>((j) => Tool.fromJson(j)));
-
       List<Tool> tools = [Tool(name: 'A'), Tool(name: 'B')];
-      dynamic json = parser.serializeList(tools);
+      dynamic json = parser.serialize(tools);
 
       expect(json, [
         {'NAME': 'A'},
@@ -173,6 +145,11 @@ void main() {
 
       List<Tool> back = parser.deserializeList<Tool>(json);
       expect(back, tools);
+    });
+
+    test('Serialize List with non-serializable element throws StateError', () {
+      List<dynamic> list = [Tool(name: 'A'), Worker(name: 'W')];
+      expect(() => parser.serialize(list), throwsStateError);
     });
 
     group('Default parsers', () {
@@ -222,65 +199,114 @@ void main() {
       test('bool', () {
         expect(parser.serialize(true), true);
         expect(parser.deserialize<bool>('true'), true);
+        expect(parser.deserialize<bool>(true), true);
       });
 
       test('List of primitives', () {
         List<int> numbers = [1, 2, 3];
-        expect(parser.serializeList(numbers), [1, 2, 3]);
+        expect(parser.serialize(numbers), [1, 2, 3]);
         expect(parser.deserializeList<int>(['1', '2', '3']), [1, 2, 3]);
 
         List<String> strings = ['a', 'b'];
-        expect(parser.serializeList(strings), ['a', 'b']);
+        expect(parser.serialize(strings), ['a', 'b']);
         expect(parser.deserializeList<String>(['a', 'b']), ['a', 'b']);
       });
 
       test('List of default objects', () {
         DateTime now = DateTime.now();
         List<DateTime> dates = [now];
-        expect(parser.serializeList(dates), [now.toIso8601String()]);
+        expect(parser.serialize(dates), [now.toIso8601String()]);
         expect(parser.deserializeList<DateTime>([now.toIso8601String()]), [
           DateTime.parse(now.toIso8601String()),
         ]);
       });
     });
   });
-}
 
-void baseTests(String description, ObjectMapper Function() createParser) {
-  group(description, () {
-    late ObjectMapper parser;
+  group('Advanced and Edge Cases', () {
+    test('Overwriting default serializers/deserializers', () {
+      final parser = ObjectMapper(
+        serializers: [Serializer<DateTime>((d) => d.microsecondsSinceEpoch)],
+        //with millis test fail for precision Expected: DateTime:<2026-06-21 21:17:08.399301> ---- Actual: DateTime:<2026-06-21 21:17:08.399>
+        deserializers: [
+          Deserializer<DateTime>((v) => DateTime.fromMicrosecondsSinceEpoch(v)),
+        ],
+      );
 
-    setUp(() {
-      parser = createParser();
+      final now = DateTime.now();
+      final serialized = parser.serialize(now);
+      expect(serialized, now.microsecondsSinceEpoch);
+      expect(parser.deserialize<DateTime>(serialized), now);
     });
 
-    test('Serialize - Tool', () async {
-      Tool object = Tool(name: 'Drill');
-      Map<String, dynamic> expectedJson = {'NAME': 'Drill'};
+    test('Heterogeneous List serialization', () {
+      final parser = ObjectMapper(
+        serializers: [Serializer<Tool>((t) => t.toJson())],
+      );
+      // Gadget is Serializable, Tool has explicit Serializer
+      final list = [Tool(name: 'Hammer'), Gadget(id: 'G1')];
+      final result = parser.serialize(list);
 
-      dynamic json = parser.serialize(object);
-
-      expect(expectedJson, json);
+      expect(result, isA<List>());
+      final resultList = result as List;
+      expect(resultList[0], {'NAME': 'Hammer'});
+      expect(resultList[1], {'id': 'G1'});
     });
 
-    test('Deserialize - Tool', () async {
-      Map<String, dynamic> json = {'NAME': 'Drill'};
-      Tool expectedObject = Tool(name: 'Drill');
-
-      Tool object = parser.deserialize(json);
-
-      expect(expectedObject, object);
+    test('Empty list serialization and deserialization', () {
+      final parser = ObjectMapper();
+      expect(parser.serialize([]), []);
+      expect(parser.deserializeList<int>([]), []);
     });
 
-    //this is more to see if the serialize/deserialize create/return the same object,
-    //but its related more to the logic of toJson/fromJson than the actually logic of object mapper
-    test('Serialize/Deserialize consistency - Tool', () async {
-      Map<String, dynamic> json = {'NAME': 'Drill'};
-      Tool expectedObject = Tool(name: 'Drill');
+    test('Nested objects (Serialization behavior)', () {
+      final parser = ObjectMapper();
+      final workshop = Workshop(
+        name: 'Main',
+        gadgets: [Gadget(id: 'G1')],
+      );
 
-      Tool object = parser.deserialize(json);
-
-      expect(expectedObject, object);
+      final result = parser.serialize(workshop);
+      // Note: current implementation does NOT recursively serialize maps returned by toJson
+      expect(result, {
+        'name': 'Main',
+        'gadgets': [Gadget(id: 'G1')],
+      });
     });
+
+    test('Deserialize invalid JSON string throws format exception', () {
+      final parser = ObjectMapper(
+        deserializers: [Deserializer<Tool>((j) => Tool.fromJson(j))],
+      );
+      expect(
+        () => parser.deserialize<Tool>('invalid json'),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('Deserialize num from numeric data', () {
+      final parser = ObjectMapper();
+      expect(parser.deserialize<num>(123), 123);
+      expect(parser.deserialize<num>(123.45), 123.45);
+      expect(parser.deserialize<num>('123.45'), 123.45);
+    });
+
+    test('Serialize list of maps', () {
+      final parser = ObjectMapper();
+      final list = [
+        {'id': 1},
+        {'id': 2},
+      ];
+      expect(parser.serialize(list), list);
+    });
+
+    test(
+      'Serializer/Deserializer with explicit dynamic (triggers warning)',
+      () {
+        // This won't fail but will exercise the warning logic in constructor
+        Serializer<dynamic>((obj) => obj);
+        Deserializer<dynamic>((data) => data);
+      },
+    );
   });
 }

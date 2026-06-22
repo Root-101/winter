@@ -2,80 +2,64 @@ import 'dart:convert';
 
 import 'winter.dart';
 
-class ResponseEntity extends Response {
-  Object? _body;
+class ResponseEntity<T> extends Response {
+  T? _body;
 
   ResponseEntity(
     super.statusCode, {
-    Object? body,
+    T? body,
     ObjectMapper? objectMapper,
     super.headers,
     super.encoding,
     super.context,
   }) : _body = body,
        super(
-         body: body is! Stream
-             ? body != null
-                   ? (objectMapper ?? Winter.instance.context.objectMapper)
-                         .serialize(body)
-                   : ''
-             : body,
+         body: body is String || body is Stream
+             ? body
+             : jsonEncode(
+                 (objectMapper ?? Winter.instance.context.objectMapper)
+                     .serialize(body),
+               ),
        );
 
-  T body<T>() {
+  T body() {
     return _body as T;
   }
 
-  ResponseEntity.ok({
-    Object? body,
+  static ResponseEntity ok<T>({
+    required T body,
     Map<String, /* String | List<String> */ Object>? headers,
-  }) : this(HttpStatus.ok.value, body: body, headers: headers);
+  }) {
+    return ResponseEntity<T>(HttpStatus.ok.value, body: body, headers: headers);
+  }
 
   ResponseEntity.internalServerError({
-    Object? body,
+    T? body,
     Map<String, /* String | List<String> */ Object>? headers,
-  }) : this(
-         HttpStatus.internalServerError.value,
-         body: body ?? 'Internal Server Error',
-         headers: headers,
-       );
+  }) : this(HttpStatus.internalServerError.value, body: body, headers: headers);
 
   ResponseEntity.badRequest({
-    Object? body,
+    T? body,
     Map<String, /* String | List<String> */ Object>? headers,
-  }) : this(
-         HttpStatus.badRequest.value,
-         body: body ?? 'Bad Request',
-         headers: headers,
-       );
+  }) : this(HttpStatus.badRequest.value, body: body, headers: headers);
 
   ResponseEntity.notFound({
-    Object? body,
+    T? body,
     Map<String, /* String | List<String> */ Object>? headers,
-  }) : this(
-         HttpStatus.notFound.value,
-         body: body ?? 'Not found',
-         headers: headers,
-       );
+  }) : this(HttpStatus.notFound.value, body: body, headers: headers);
 
   ResponseEntity.methodNotAllowed({
-    Object? body,
+    T? body,
     Map<String, /* String | List<String> */ Object>? headers,
-  }) : this(
-         HttpStatus.methodNotAllowed.value,
-         body: body ?? 'Method not allowed',
-         headers: headers,
-       );
+  }) : this(HttpStatus.methodNotAllowed.value, body: body, headers: headers);
 
   ResponseEntity.tooManyRequests({
-    Object? body,
+    T? body,
     int? retryAfter,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this(
          HttpStatus.tooManyRequests.value,
-         body:
-             body ??
-             'Too many requests.${retryAfter != null ? ' Please try again in $retryAfter seconds.' : ''}',
+         body: body,
          headers: {
            if (headers != null) ...headers,
            if (retryAfter != null) HttpHeaders.retryAfter: '$retryAfter',
@@ -84,7 +68,7 @@ class ResponseEntity extends Response {
 
   ResponseEntity copyWith({
     int? statusCode,
-    Object? body,
+    T? body,
     Map<String, /* String | List<String> */ Object>? headers,
     Encoding? encoding,
     Map<String, Object>? context,

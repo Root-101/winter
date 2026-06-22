@@ -31,59 +31,73 @@ class Tool {
 
 class Worker {
   String name;
-  Tool tool;
 
-  Worker({required this.name, required this.tool});
+  Worker({required this.name});
 
   factory Worker.fromJson(Map<String, dynamic> json) {
-    return Worker(
-      name: json['name'] as String,
-      tool: Tool.fromJson(json['tool'] as Map<String, dynamic>),
-    );
+    return Worker(name: json['name'] as String);
   }
 
   Map<String, dynamic> toJson() {
-    return {'name': name, 'tool': tool.toJson()};
+    return {'name': name};
   }
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is Worker &&
-          runtimeType == other.runtimeType &&
-          name == other.name &&
-          tool == other.tool;
-
-  @override
-  int get hashCode => name.hashCode ^ tool.hashCode;
-}
-
-class SerializableTool implements Serializable {
-  String? name;
-
-  SerializableTool({required this.name});
-
-  SerializableTool.empty();
-
-  factory SerializableTool.fromJson(Map<String, dynamic> json) {
-    return SerializableTool(name: json['NAME'] as String);
-  }
-
-  @override
-  Map<String, dynamic> toJson() {
-    return {'NAME': name};
-  }
-
-  @override
-  String toString() {
-    return 'SerializableTool{name: $name}';
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Tool && runtimeType == other.runtimeType && name == other.name;
+      other is Worker && runtimeType == other.runtimeType && name == other.name;
 
   @override
   int get hashCode => name.hashCode;
+}
+
+class Gadget implements Serializable {
+  final String id;
+
+  Gadget({required this.id});
+
+  @override
+  Map<String, dynamic> toJson() => {'id': id};
+
+  factory Gadget.fromJson(Map<String, dynamic> json) => Gadget(id: json['id']);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Gadget && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+}
+
+class Workshop implements Serializable {
+  final String name;
+  final List<Gadget> gadgets;
+
+  Workshop({required this.name, required this.gadgets});
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'gadgets': gadgets,
+      };
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Workshop &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          _listEquals(gadgets, other.gadgets);
+
+  @override
+  int get hashCode => name.hashCode ^ gadgets.hashCode;
+
+  bool _listEquals(List a, List b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
 }
