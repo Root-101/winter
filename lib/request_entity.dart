@@ -61,12 +61,12 @@ class RequestEntity extends Request {
   }
 
   /// Get the body of the request, it's get parsed with the ObjectMapper in the process
-  /// It's algo get cached in case the method is called multiple times
+  /// It's also get cached in case the method is called multiple times
   Future<T?> body<T>({ObjectMapper? om}) async {
     if (_cachedBody == null || _cachedBody is! T) {
       String rawString = await readAsString(encoding);
       _cachedBody = (om ?? Winter.instance.context.objectMapper).deserialize<T>(
-        jsonDecode(rawString),
+        rawString,
       );
     }
     return _cachedBody as T;
@@ -88,7 +88,7 @@ class RequestEntity extends Request {
       protocolVersion: protocolVersion,
       pathTemplate: pathTemplate,
       handlerPath: handlerPath,
-      body: body ?? _cachedBody ?? read(),
+      body: body ?? _cachedBody,
       headers: headers ?? this.headers,
       encoding: encoding ?? this.encoding,
       context: context ?? this.context,

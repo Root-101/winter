@@ -48,7 +48,7 @@ class LogsFilter implements Filter {
   }
 }
 
-void defaultLogRateLimiter(request, requestId) {
+void defaultLogRateLimiter(dynamic request, dynamic requestId) {
   log('Rate limiter fail for id: $requestId in request: ${request.url}');
 }
 

@@ -76,7 +76,7 @@ class ParentRoute extends HRoute {
   ParentRoute({required super.path, required super.routes, super.filterConfig})
     : super(
         method: const HttpMethod(''),
-        handler: (request) => ResponseEntity.ok(),
+        handler: (request) => ResponseEntity.ok(body: ''),
       );
 }
 
