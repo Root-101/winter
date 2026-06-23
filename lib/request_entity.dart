@@ -75,12 +75,14 @@ class RequestEntity extends Request {
   ///Cached body (if any)
   Object? _cachedBody;
 
-  RequestEntity copyWith({
+  ///The copy with needs to be async because if the body is not passed,
+  ///we need to read the body from the request
+  Future<RequestEntity> copyWith({
     Map<String, /* String | List<String> */ Object>? headers,
     Object? body,
     Encoding? encoding,
     Map<String, Object>? context,
-  }) {
+  }) async {
     return RequestEntity(
       method,
       requestedUri,
@@ -88,7 +90,7 @@ class RequestEntity extends Request {
       protocolVersion: protocolVersion,
       pathTemplate: pathTemplate,
       handlerPath: handlerPath,
-      body: body ?? _cachedBody,
+      body: body ?? _cachedBody ?? (await this.body()),
       headers: headers ?? this.headers,
       encoding: encoding ?? this.encoding,
       context: context ?? this.context,
