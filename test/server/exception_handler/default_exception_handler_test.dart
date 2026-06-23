@@ -35,6 +35,15 @@ void main() {
                 throw Exception('Handler for generic exception'),
           ),
 
+          Route(
+            path: '/api-exception/json',
+            method: HttpMethod.get,
+            handler: (request) => throw ApiException(
+              statusCode: 400,
+              body: {'error': 'json error', 'code': 123},
+            ),
+          ),
+
           ///The thrown exception is 'ResponseException', it's processed as a normal response but in the flow of exception
           ///This allow to stop the flow at ANY point and return a normal response
           Route(
@@ -42,6 +51,33 @@ void main() {
             method: HttpMethod.get,
             handler: (request) => throw ResponseException(
               ResponseEntity.ok(body: 'Response from exception'),
+            ),
+          ),
+
+          Route(
+            path: '/response-exception/too-many-requests',
+            method: HttpMethod.get,
+            handler: (request) => throw ResponseException(
+              ResponseEntity.tooManyRequests(
+                body: 'Too many requests',
+                retryAfter: 60,
+              ),
+            ),
+          ),
+
+          Route(
+            path: '/response-exception/not-found',
+            method: HttpMethod.get,
+            handler: (request) => throw ResponseException(
+              ResponseEntity.notFound(body: 'Resource not found'),
+            ),
+          ),
+
+          Route(
+            path: '/response-exception/method-not-allowed',
+            method: HttpMethod.get,
+            handler: (request) => throw ResponseException(
+              ResponseEntity.methodNotAllowed(body: 'Method not allowed'),
             ),
           ),
 
@@ -64,6 +100,16 @@ void main() {
               statusCode: 700,
               body: 'Generic api exception',
               headers: {'exception-header': '123456789'},
+            ),
+          ),
+
+          Route(
+            path: '/api-exception/custom',
+            method: HttpMethod.get,
+            handler: (request) => throw ApiException(
+              statusCode: 418,
+              body: 'I am a teapot',
+              headers: {'X-Teapot': 'True'},
             ),
           ),
 
@@ -102,6 +148,19 @@ void main() {
             path: '/api-exception/unprocessable',
             method: HttpMethod.get,
             handler: (request) => throw UnprocessableEntityException(),
+          ),
+          Route(
+            path: '/api-exception/validation',
+            method: HttpMethod.get,
+            handler: (request) => throw ValidationException(
+              violations: [
+                const ConstrainViolation(
+                  value: 'wrong-value',
+                  fieldName: 'email',
+                  message: 'Invalid email format',
+                ),
+              ],
+            ),
           ),
           Route(
             ///ise = Internal Server Error
@@ -146,6 +205,35 @@ void main() {
     expect(response.body, 'Response from exception');
   });
 
+  test('Test Exception: response-exception/bad-request', () async {
+    String urlToTest = '/response-exception/bad-request';
+    http.Response response = await http.get(url(urlToTest));
+    expect(response.statusCode, 400);
+    expect(response.body, 'Bad Request response from exception');
+  });
+
+  test('Test Exception: /response-exception/too-many-requests', () async {
+    String urlToTest = '/response-exception/too-many-requests';
+    http.Response response = await http.get(url(urlToTest));
+    expect(response.statusCode, 429);
+    expect(response.body, 'Too many requests');
+    expect(response.headers['retry-after'], '60');
+  });
+
+  test('Test Exception: /response-exception/not-found', () async {
+    String urlToTest = '/response-exception/not-found';
+    http.Response response = await http.get(url(urlToTest));
+    expect(response.statusCode, 404);
+    expect(response.body, 'Resource not found');
+  });
+
+  test('Test Exception: /response-exception/method-not-allowed', () async {
+    String urlToTest = '/response-exception/method-not-allowed';
+    http.Response response = await http.get(url(urlToTest));
+    expect(response.statusCode, 405);
+    expect(response.body, 'Method not allowed');
+  });
+
   test('Test Exception: /api-exception/700', () async {
     String urlToTest = '/api-exception/700';
     http.Response response = await http.get(url(urlToTest));
@@ -154,10 +242,24 @@ void main() {
     expect(response.headers['exception-header'], '123456789');
   });
 
+  test('Test Exception: /api-exception/custom', () async {
+    String urlToTest = '/api-exception/custom';
+    http.Response response = await http.get(url(urlToTest));
+    expect(response.statusCode, 418);
+    expect(response.body, 'I am a teapot');
+    expect(response.headers['x-teapot'], 'True');
+  });
+
   test('Test Exception: /api-exception/bad-request', () async {
     String urlToTest = '/api-exception/bad-request';
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 400);
+  });
+
+  test('Test Exception: /api-exception/payment-required', () async {
+    String urlToTest = '/api-exception/payment-required';
+    http.Response response = await http.get(url(urlToTest));
+    expect(response.statusCode, 402);
   });
 
   test('Test Exception: /api-exception/forbidden', () async {
@@ -188,6 +290,22 @@ void main() {
     String urlToTest = '/api-exception/unprocessable';
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 422);
+  });
+
+  test('Test Exception: /api-exception/json', () async {
+    String urlToTest = '/api-exception/json';
+    http.Response response = await http.get(url(urlToTest));
+    expect(response.statusCode, 400);
+    expect(response.body, contains('"error":"json error"'));
+    expect(response.body, contains('"code":123'));
+  });
+
+  test('Test Exception: /api-exception/validation', () async {
+    String urlToTest = '/api-exception/validation';
+    http.Response response = await http.get(url(urlToTest));
+    expect(response.statusCode, 422);
+    expect(response.body, contains('violations'));
+    expect(response.body, contains('Invalid email format'));
   });
 
   test('Test Exception: /api-exception/ise', () async {
