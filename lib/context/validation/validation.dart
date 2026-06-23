@@ -1,6 +1,8 @@
+import 'package:winter/context/context.dart';
+
 /// Class that represent a fail validation
 /// (Details and examples in docs)
-class ConstrainViolation {
+class ConstrainViolation implements Serializable {
   ///Valor con el que fallo la validacion
   final dynamic value;
 
@@ -17,6 +19,11 @@ class ConstrainViolation {
     required this.fieldName,
     required this.message,
   });
+
+  @override
+  Object? toJson() {
+    return {'value': value, 'fieldName': fieldName, 'message': message};
+  }
 
   @override
   String toString() {
