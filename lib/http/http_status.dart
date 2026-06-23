@@ -1,6 +1,5 @@
 import 'package:collection/collection.dart'; //needed for firstWhereOrNull
-
-import 'http_status_code.dart';
+import 'package:winter/winter.dart';
 
 enum HttpStatus with HttpStatusCode {
   // 1xx Informational

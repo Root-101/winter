@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../winter.dart';
+import 'package:winter/winter.dart';
 
 class FilterChain {
   int _currentFilterIndex = 0;

@@ -1,4 +1,4 @@
-import 'http_status.dart';
+import 'package:winter/winter.dart';
 
 /// Represents an HTTP response status code. Implemented by {@link HttpStatus},
 /// but defined as an interface to allow for values not in that enumeration.

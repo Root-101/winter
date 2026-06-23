@@ -1,4 +1,4 @@
-import 'winter.dart';
+import 'package:winter/winter.dart';
 
 class BuildContext {
   ///When was this context created

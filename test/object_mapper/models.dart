@@ -1,4 +1,4 @@
-import 'package:winter/context/context.dart';
+import 'package:winter/winter.dart';
 
 class Tool {
   String? name;
@@ -77,10 +77,7 @@ class Workshop implements Serializable {
   Workshop({required this.name, required this.gadgets});
 
   @override
-  Map<String, dynamic> toJson() => {
-        'name': name,
-        'gadgets': gadgets,
-      };
+  Map<String, dynamic> toJson() => {'name': name, 'gadgets': gadgets};
 
   @override
   bool operator ==(Object other) =>

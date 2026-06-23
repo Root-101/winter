@@ -57,8 +57,10 @@ void main() {
           Route(
             path: '/multiple-filters',
             method: HttpMethod.post,
-            filterConfig:
-                FilterConfig([BodyChangeFilter(), ResponseBodyChangeFilter()]),
+            filterConfig: FilterConfig([
+              BodyChangeFilter(),
+              ResponseBodyChangeFilter(),
+            ]),
             handler: (request) async {
               String? body = await request.body<String>();
               return ResponseEntity.ok(body: 'Handler received: $body');
@@ -208,8 +210,9 @@ class BodyChangeFilter implements Filter {
     FilterChain chain,
   ) async {
     String? body = await request.body<String>();
-    RequestEntity newRequest =
-        await request.copyWith(body: '${body ?? ''} modified');
+    RequestEntity newRequest = await request.copyWith(
+      body: '${body ?? ''} modified',
+    );
     return await chain.doFilter(newRequest);
   }
 }

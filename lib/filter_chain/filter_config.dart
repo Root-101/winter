@@ -1,4 +1,4 @@
-import 'filter.dart';
+import 'package:winter/winter.dart';
 
 class FilterConfig {
   final List<Filter> filters;

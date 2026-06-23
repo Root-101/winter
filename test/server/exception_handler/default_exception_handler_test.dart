@@ -304,7 +304,12 @@ void main() {
     String urlToTest = '/api-exception/validation';
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 422);
-    expect(response.body, contains('[{"value":"wrong-value","fieldName":"email","message":"Invalid email format"}]'));
+    expect(
+      response.body,
+      contains(
+        '[{"value":"wrong-value","fieldName":"email","message":"Invalid email format"}]',
+      ),
+    );
   });
 
   test('Test Exception: /api-exception/ise', () async {

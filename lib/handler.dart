@@ -1,7 +1,6 @@
 import 'dart:async';
 
-import 'request_entity.dart';
-import 'response_entity.dart';
+import 'package:winter/winter.dart';
 
 /// A function which handles a [RequestEntity].
 ///
