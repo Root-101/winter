@@ -1,8 +1,7 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-
-import 'winter.dart';
+import 'package:winter/winter.dart';
 
 abstract class AbstractWinterRouter {
   bool canHandle(RequestEntity request);
@@ -36,7 +35,7 @@ class WinterRouter extends AbstractWinterRouter {
 
   final List<Route> routes;
 
-  WinterRouter.build({
+  WinterRouter._({
     required this.routes,
     required this.basePath,
     required this.config,
@@ -47,23 +46,63 @@ class WinterRouter extends AbstractWinterRouter {
     RouterConfig? config,
     String basePath = '',
   }) {
-    List<Route> nonNullRoutes = [];
     RouterConfig nonNullConfig = config ?? RouterConfig();
 
-    for (var route in (routes ?? [])) {
-      if (isValidUri(route.path)) {
-        nonNullRoutes.add(route);
-      } else {
-        nonNullConfig.onInvalidUrl(route);
-      }
-    }
-    nonNullConfig.onLoadedRoutes(nonNullRoutes);
-
-    return WinterRouter.build(
+    WinterRouter router = WinterRouter._(
       config: nonNullConfig,
-      routes: nonNullRoutes,
+      routes: _flattenRoutes(routes ?? [], basePath, nonNullConfig),
       basePath: basePath,
     );
+    nonNullConfig.onLoadedRoutes(router.routes);
+
+    return router;
+  }
+
+  static List<Route> _flattenRoutes(
+    List<Route> routes,
+    String initialPath,
+    RouterConfig config,
+  ) {
+    List<Route> result = [];
+
+    void flattenRoutes(
+      String parentPath,
+      FilterConfig? parentFilterConfig,
+      List<Route> routes,
+    ) {
+      for (var route in routes) {
+        String fullPath = (parentPath + route.path).replaceAll(
+          RegExp(r'/+'),
+          '/',
+        );
+
+        FilterConfig? newParentFilterConfig = parentFilterConfig != null
+            ? parentFilterConfig.merge(route.filterConfig)
+            : route.filterConfig.merge(parentFilterConfig);
+
+        //if handler & method are null, it's a 'parent route'
+        if (route.handler != null && route.method != null) {
+          final currentRoute = Route(
+            path: fullPath,
+            method: route.method!,
+            handler: route.handler!,
+            filterConfig: newParentFilterConfig,
+          );
+          if (isValidUri(fullPath)) {
+            result.add(currentRoute);
+          } else {
+            config.onInvalidUrl(currentRoute);
+          }
+        }
+        if (route.routes.isNotEmpty) {
+          flattenRoutes(fullPath, newParentFilterConfig, route.routes);
+        }
+      }
+    }
+
+    flattenRoutes(initialPath, null, routes);
+
+    return result;
   }
 
   ///Return the route that will handle the request
@@ -114,7 +153,7 @@ class WinterRouter extends AbstractWinterRouter {
         ///no route matching method: 415
         return ResponseEntity.methodNotAllowed();
       } else {
-        return finalRoute.handler(request);
+        return finalRoute.handler!(request);
       }
     }
   }
@@ -241,30 +280,40 @@ class WinterRouter extends AbstractWinterRouter {
 
 class Route {
   final String path;
-  final HttpMethod method;
-  final RequestHandler handler;
+  final HttpMethod? method;
+  final RequestHandler? handler;
   final FilterConfig filterConfig;
 
-  Route._(this.path, this.method, this.handler, this.filterConfig);
+  final List<Route> routes;
 
-  Route.build({
-    required this.path,
-    required this.method,
-    required this.handler,
-    this.filterConfig = const FilterConfig([]),
-  });
+  Route._(this.path, this.method, this.handler, this.filterConfig, this.routes);
 
   factory Route({
     required String path,
-    required HttpMethod method,
-    required RequestHandler handler,
+    HttpMethod? method,
+    RequestHandler? handler,
     FilterConfig? filterConfig,
+    List<Route> routes = const [],
   }) {
     if (!path.startsWith('/')) {
       throw ArgumentError.value(
         path,
         'path',
-        'expected route to start with a slash',
+        'Expected route to start with a slash',
+      );
+    }
+    if (method == null && handler != null) {
+      throw ArgumentError.value(
+        method,
+        'method',
+        'Method can\'t be null if handler is provided',
+      );
+    }
+    if (handler == null && method != null) {
+      throw ArgumentError.value(
+        handler,
+        'handler',
+        'Handler can\'t be null if method is provided',
       );
     }
 
@@ -273,6 +322,7 @@ class Route {
       method,
       handler,
       filterConfig ?? const FilterConfig([]),
+      routes,
     );
   }
 

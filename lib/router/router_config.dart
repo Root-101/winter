@@ -1,6 +1,6 @@
-import 'dart:developer' as dev;
+import 'dart:io';
 
-import '../winter.dart';
+import 'package:winter/winter.dart';
 
 class RouterConfig {
   RouterConfig({OnInvalidUrl? onInvalidUrl, OnLoadedRoutes? onLoadedRoutes})
@@ -17,7 +17,7 @@ class DefaultOnInvalidUrl {
   static OnInvalidUrl ignore({bool log = true}) {
     return (failedRoute) {
       if (log) {
-        dev.log(
+        stdout.writeln(
           '${failedRoute.path} is not a valid URL. Excluded from routing config',
         );
       }
@@ -42,14 +42,14 @@ class DefaultOnLoadedRoutes {
 
   static OnLoadedRoutes log() {
     return (allRoutes) {
-      dev.log('');
-      dev.log('Routes:');
+      stdout.writeln('');
+      stdout.writeln('Routes:');
       for (var element in allRoutes) {
-        dev.log(
-          '${element.method.name.toUpperCase()}:    ${element.path}    ${element.filterConfig}',
+        stdout.writeln(
+          '${element.method != null ? element.method!.name.toUpperCase() : '${consoleYellowBold}PARENT$consoleReset'}:    ${element.path}    ${element.filterConfig}',
         );
       }
-      dev.log('');
+      stdout.writeln('');
     };
   }
 }
