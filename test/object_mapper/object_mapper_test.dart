@@ -76,7 +76,7 @@ void main() {
       Worker object = Worker(name: 'worker #1');
 
       expect(
-        () => parser.serialize<Worker>(object),
+        () => parser.serialize(object),
         throwsA(isA<StateError>()),
       );
     });
