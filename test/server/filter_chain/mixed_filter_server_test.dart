@@ -1,8 +1,6 @@
 @TestOn('vm')
 library;
 
-import 'dart:io';
-
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
@@ -12,7 +10,7 @@ void main() {
   String localUrl = 'http://localhost:$port';
 
   setUpAll(() async {
-    await Winter.run(
+    await Winter.start(
       config: ServerConfig(port: port),
       globalFilterConfig: FilterConfig([InterceptNotAuthRequestsFilter()]),
       router: WinterRouter(

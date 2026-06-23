@@ -5,27 +5,26 @@ import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9050;
+  int port = 9040;
 
   bool failed = false;
   setUpAll(() async {
     try {
-      await Winter.run(
+      await Winter.start(
         config: ServerConfig(port: port),
-        router: HRouter(
+        router: WinterRouter(
           config: RouterConfig(
-            onInvalidUrl: (failedRoute) {
-              throw Exception(
-                '${failedRoute.path} is not a valid URL. Failing to start app',
-              );
-            },
+            onInvalidUrl: (failedRoute) => throw Exception(
+              '${failedRoute.path} is not a valid URL. Failing to start app',
+            ),
           ),
           routes: [
-            HRoute(
-              path: '/single  -  route',
+            Route(
+              path: '/test - asdt',
               method: HttpMethod.get,
-              handler: (request) =>
-                  ResponseEntity.ok(body: 'Return from response /single-route'),
+              handler: (request) async {
+                return ResponseEntity.ok(body: 'hello world!!!');
+              },
             ),
           ],
         ),
@@ -35,6 +34,8 @@ void main() {
       failed = true;
     }
   });
+
+  tearDownAll(() => Winter.close(force: true));
 
   test('Test fail', () async {
     expect(failed, true);

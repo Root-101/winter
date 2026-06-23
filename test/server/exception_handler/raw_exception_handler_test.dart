@@ -12,7 +12,7 @@ void main() {
   ExceptionHandler exc = TestExceptionHandler();
 
   setUpAll(() async {
-    await Winter.run(
+    await Winter.start(
       config: ServerConfig(port: port),
       context: BuildContext(exceptionHandler: exc),
       router: WinterRouter(

@@ -10,7 +10,7 @@ void main() {
   String localUrl = 'http://localhost:$port';
 
   setUpAll(() async {
-    await Winter.run(
+    await Winter.start(
       config: ServerConfig(port: port),
       router: WinterRouter(
         routes: [
@@ -28,7 +28,8 @@ void main() {
           Route(
             path: '/anything.*',
             method: HttpMethod.get,
-            handler: (request) => ResponseEntity.ok(body: request.url),
+            handler: (request) =>
+                ResponseEntity.ok(body: request.url.toString()),
           ),
         ],
       ),
