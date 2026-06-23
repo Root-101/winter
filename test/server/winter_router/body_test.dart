@@ -13,6 +13,10 @@ void main() {
 
   DateTime createdAt = DateTime.now();
   ObjectMapper om = ObjectMapper(
+    serializers: [
+      Serializer<UserRequest>((object) => object.toJson()),
+      Serializer<UserResponse>((object) => object.toJson()),
+    ],
     deserializers: [
       Deserializer<UserRequest>((data) => UserRequest(email: data['email'])),
       Deserializer<UserResponse>(
@@ -20,6 +24,12 @@ void main() {
           username: data['username'],
           createdAt: DateTime.tryParse(data['createdAt']) ?? DateTime.now(),
         ),
+      ),
+      Deserializer<SerializableUser>(
+        (data) => SerializableUser(name: data['name']),
+      ),
+      Deserializer<Map<String, dynamic>>(
+        (data) => {'key': data['key'], 'nested': data['nested']},
       ),
     ],
   );
@@ -34,8 +44,6 @@ void main() {
             path: '/create-user',
             method: HttpMethod.post,
             handler: (request) async {
-              ///Note that we use the null operator (!) because its a controlled test
-              ///In other test we will validate that this elements are not null to avoid using '!'
               UserRequest requestBody = (await request.body<UserRequest>())!;
 
               ///Username will be the email without the provider
@@ -57,7 +65,7 @@ void main() {
               ///Note that we use the null operator (!) because its a controlled test
               ///In other test we will validate that this elements are not null to avoid using '!'
               List<UserRequest> requestBody = (await request
-                  .bodyList<UserRequest>())!;
+                  .body<List<UserRequest>>())!;
 
               ///Username will be the email without the provider
               ///email: `test@test.com` will be username: `test`
@@ -79,6 +87,57 @@ void main() {
               int requestBody = (await request.body<int>())!;
 
               return ResponseEntity.ok<int>(body: requestBody * requestBody);
+            },
+          ),
+          Route(
+            path: '/sqrt-list',
+            method: HttpMethod.post,
+            handler: (request) async {
+              List<int> requestBody = (await request.body<List<int>>())!;
+
+              return ResponseEntity.ok<List<int>>(
+                body: requestBody.map((e) => e * e).toList(),
+              );
+            },
+          ),
+          Route(
+            path: '/echo-map',
+            method: HttpMethod.post,
+            handler: (request) async {
+              var body = await request.body<Map<String, dynamic>>();
+              return ResponseEntity.ok(body: body);
+            },
+          ),
+          Route(
+            path: '/echo-datetime',
+            method: HttpMethod.post,
+            handler: (request) async {
+              var body = await request.body<DateTime>();
+              return ResponseEntity.ok(body: body);
+            },
+          ),
+          Route(
+            path: '/serializable',
+            method: HttpMethod.post,
+            handler: (request) async {
+              var body = await request.body<SerializableUser>();
+              return ResponseEntity.ok(body: body);
+            },
+          ),
+          Route(
+            path: '/serializable-list',
+            method: HttpMethod.post,
+            handler: (request) async {
+              var body = await request.body<List<SerializableUser>>();
+              return ResponseEntity.ok(body: body);
+            },
+          ),
+          Route(
+            path: '/unregistered',
+            method: HttpMethod.post,
+            handler: (request) async {
+              await request.body<UnregisteredType>();
+              return ResponseEntity.ok(body: 'ok');
             },
           ),
         ],
@@ -123,7 +182,7 @@ void main() {
 
     expect(response.statusCode, 200);
 
-    List<UserResponse> responseBody = om.deserializeList(
+    List<UserResponse> responseBody = om.deserialize<List<UserResponse>>(
       jsonDecode(response.body),
     );
     expect(responseBody[0].username, 'test0');
@@ -151,6 +210,104 @@ void main() {
     int responseBody = om.deserialize(response.body);
     expect(responseBody, 25);
   });
+
+  test('Send and receive body primitive list', () async {
+    String urlToTest = '/sqrt-list';
+
+    http.Response response = await http.post(
+      url(urlToTest),
+      body: jsonEncode([5, 6, 7]),
+    );
+
+    expect(response.statusCode, 200);
+
+    List<int> responseBody = om.deserialize(response.body);
+    expect(responseBody, [25, 36, 49]);
+  });
+
+  test('Send and receive Map body', () async {
+    String urlToTest = '/echo-map';
+    Map<String, dynamic> requestBody = {
+      'key': 'value',
+      'nested': {'a': 1},
+    };
+
+    http.Response response = await http.post(
+      url(urlToTest),
+      body: jsonEncode(requestBody),
+    );
+
+    expect(response.statusCode, 200);
+    expect(jsonDecode(response.body), requestBody);
+  });
+
+  test('Send and receive DateTime body', () async {
+    String urlToTest = '/echo-datetime';
+    DateTime now = DateTime.now();
+
+    http.Response response = await http.post(
+      url(urlToTest),
+      body: now.toIso8601String(),
+    );
+
+    expect(response.statusCode, 200);
+    // Use ISO string comparison to avoid precision issues if any
+    expect(
+      DateTime.parse(jsonDecode(response.body)).toIso8601String(),
+      now.toIso8601String(),
+    );
+  });
+
+  test('Send and receive Serializable body', () async {
+    String urlToTest = '/serializable';
+    SerializableUser user = SerializableUser(name: 'Adam');
+
+    http.Response response = await http.post(
+      url(urlToTest),
+      body: jsonEncode(user),
+    );
+
+    expect(response.statusCode, 200);
+    expect(jsonDecode(response.body), user.toJson());
+  });
+
+  test('Send and receive List<Serializable> body', () async {
+    String urlToTest = '/serializable-list';
+    List<SerializableUser> users = [
+      SerializableUser(name: 'Adam'),
+      SerializableUser(name: 'Eve'),
+    ];
+
+    http.Response response = await http.post(
+      url(urlToTest),
+      body: jsonEncode(users),
+    );
+
+    expect(response.statusCode, 200);
+    expect(jsonDecode(response.body), users.map((e) => e.toJson()).toList());
+  });
+
+  test('Send invalid JSON throws 500', () async {
+    String urlToTest = '/sqrt';
+
+    http.Response response = await http.post(
+      url(urlToTest),
+      body: 'not-a-json',
+    );
+
+    expect(response.statusCode, 500);
+  });
+
+  test('Request unregistered type throws 500', () async {
+    String urlToTest = '/unregistered';
+
+    http.Response response = await http.post(
+      url(urlToTest),
+      body: jsonEncode({'name': 'test'}),
+    );
+
+    expect(response.statusCode, 500);
+  });
 }
 
 class UserRequest implements Serializable {
@@ -174,4 +331,19 @@ class UserResponse implements Serializable {
   Object? toJson() {
     return {'username': username, 'createdAt': createdAt?.toIso8601String()};
   }
+}
+
+class SerializableUser implements Serializable {
+  final String name;
+
+  SerializableUser({required this.name});
+
+  @override
+  Object? toJson() => {'name': name};
+}
+
+class UnregisteredType {
+  final String name;
+
+  UnregisteredType(this.name);
 }
