@@ -10,7 +10,7 @@ void main() {
   String localUrl = 'http://localhost:$port';
 
   setUpAll(() async {
-    await Winter.run(
+    await Winter.start(
       config: ServerConfig(port: port),
       router: WinterRouter(
         routes: [
@@ -118,13 +118,4 @@ void main() {
 
     expect(response.statusCode, 404);
   });
-
-  /*//TODO: query, custom
-  test('Custom-Method', () async {
-    String urlToTest = '/custom-method';
-    http.Response response = await http.put(url(urlToTest));
-
-    expect(response.statusCode, 200);
-    expect(response.body, 'Response from custom-method');
-  });*/
 }

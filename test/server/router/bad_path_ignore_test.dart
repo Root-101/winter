@@ -1,7 +1,7 @@
 @TestOn('vm')
 library;
 
-import 'dart:developer';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
@@ -14,12 +14,13 @@ void main() {
   bool failed = false;
   setUpAll(() async {
     try {
-      await Winter.run(
+      await Winter.start(
         config: ServerConfig(port: port),
         router: WinterRouter(
           config: RouterConfig(
-            onInvalidUrl: (failedRoute) =>
-                log('${failedRoute.path} is not a valid URL. Ignoring'),
+            onInvalidUrl: (failedRoute) => stdout.writeln(
+              '${failedRoute.path} is not a valid URL. Ignoring',
+            ),
           ),
           routes: [
             Route(

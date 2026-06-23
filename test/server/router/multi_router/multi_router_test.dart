@@ -10,7 +10,7 @@ void main() {
   String localUrl = 'http://localhost:$port';
 
   setUpAll(() async {
-    await Winter.run(
+    await Winter.start(
       config: ServerConfig(port: port),
       router: MultiRouter([
         WinterRouter(
@@ -25,7 +25,7 @@ void main() {
           ],
         ),
         ServeRouter(
-          (request) => ResponseEntity.ok(body: 'Response from router #2'),
+          (request) => ResponseEntity.ok(body: 'Response from hierarchy #2'),
         ),
         WinterRouter(
           routes: [
@@ -59,7 +59,7 @@ void main() {
     http.Response response = await http.get(url(urlToTest));
 
     expect(response.statusCode, 200);
-    expect(response.body, 'Response from router #2');
+    expect(response.body, 'Response from hierarchy #2');
   });
 
   test('Test Router #2 => /other-123', () async {
@@ -67,15 +67,15 @@ void main() {
     http.Response response = await http.get(url(urlToTest));
 
     expect(response.statusCode, 200);
-    expect(response.body, 'Response from router #2');
+    expect(response.body, 'Response from hierarchy #2');
   });
 
-  //This actually call router #2 because serve handle all request and never gets to router #3
+  //This actually call hierarchy #2 because serve handle all request and never gets to hierarchy #3
   test('Test Router #3 => /users', () async {
     String urlToTest = '/users';
     http.Response response = await http.get(url(urlToTest));
 
     expect(response.statusCode, 200);
-    expect(response.body, 'Response from router #2');
+    expect(response.body, 'Response from hierarchy #2');
   });
 }

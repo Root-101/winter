@@ -11,7 +11,7 @@ void main() {
     String localUrl = 'http://localhost:$port';
 
     setUpAll(() async {
-      await Winter.run(
+      await Winter.start(
         config: ServerConfig(port: port),
         router: WinterRouter(
           routes: [
@@ -124,7 +124,7 @@ void main() {
     String localUrl = 'http://localhost:$port';
 
     setUpAll(() async {
-      await Winter.run(
+      await Winter.start(
         config: ServerConfig(port: port),
         globalFilterConfig: FilterConfig([GlobalHeaderFilter()]),
         router: WinterRouter(

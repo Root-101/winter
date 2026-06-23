@@ -35,7 +35,7 @@ void main() {
   );
 
   setUpAll(() async {
-    await Winter.run(
+    await Winter.start(
       config: ServerConfig(port: port),
       context: BuildContext(objectMapper: om),
       router: WinterRouter(

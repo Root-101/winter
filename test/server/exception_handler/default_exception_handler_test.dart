@@ -10,7 +10,7 @@ void main() {
   String localUrl = 'http://localhost:$port';
 
   setUpAll(() async {
-    await Winter.run(
+    await Winter.start(
       config: ServerConfig(port: port),
       router: WinterRouter(
         routes: [
@@ -304,8 +304,7 @@ void main() {
     String urlToTest = '/api-exception/validation';
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 422);
-    expect(response.body, contains('violations'));
-    expect(response.body, contains('Invalid email format'));
+    expect(response.body, contains('[{"value":"wrong-value","fieldName":"email","message":"Invalid email format"}]'));
   });
 
   test('Test Exception: /api-exception/ise', () async {

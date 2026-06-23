@@ -33,7 +33,7 @@ void main() {
         },
       ),
     );
-    await Winter.run(
+    await Winter.start(
       config: ServerConfig(port: port),
       router: router,
     );
