@@ -63,23 +63,14 @@ class Deserializer<T> {
 class ObjectMapper {
   static final List<Serializer> _defaultSerializers = [
     Serializer<DateTime>((object) => object.toIso8601String()),
-    Serializer<DateTime?>((object) => object?.toIso8601String()),
     Serializer<Duration>((object) => object.inMilliseconds),
-    Serializer<Duration?>((object) => object?.inMilliseconds),
     Serializer<Uri>((object) => object.toString()),
-    Serializer<Uri?>((object) => object?.toString()),
     Serializer<RegExp>((object) => object.pattern),
-    Serializer<RegExp?>((object) => object?.pattern),
     Serializer<String>((object) => object),
-    Serializer<String?>((object) => object),
     Serializer<num>((object) => object),
-    Serializer<num?>((object) => object),
     Serializer<int>((object) => object),
-    Serializer<int?>((object) => object),
     Serializer<double>((object) => object),
-    Serializer<double?>((object) => object),
     Serializer<bool>((object) => object),
-    Serializer<bool?>((object) => object),
   ];
 
   static final List<Deserializer> _defaultDeserializers = [
@@ -130,11 +121,7 @@ class ObjectMapper {
     if (object is Map) {
       return object;
     }
-    //if primitive => serialize with defaults
-    Serializer? serializer = _serializers[S];
-    if (serializer != null) {
-      return serializer.serializer(object);
-    } else if (object is Serializable) {
+    if (object is Serializable) {
       //if Serializable => serialize
       return object.toJson();
     } else if (object is List) {
@@ -144,20 +131,35 @@ class ObjectMapper {
           return e;
         }
 
-        Serializer? serializer = _serializers[e.runtimeType];
-        if (serializer != null) {
-          //if element is primitive => serialize with defaults
-          Object? obj = serializer.serializer(e);
-          return obj;
-        } else if (e is Serializable) {
+        if (e is Serializable) {
           //if element is Serializable => serialize
           return e.toJson();
         } else {
-          throw StateError(
-            'Element ${e.runtimeType} in List need to implement the Serializable interface',
-          );
+          Serializer? serializer = _serializers[e.runtimeType];
+          if (serializer != null) {
+            return serializer.serializer(e);
+          } else {
+            Serializer? nonNullSerializer =
+                _serializers[_extractElementType(e.runtimeType)];
+            if (nonNullSerializer != null) {
+              return nonNullSerializer.serializer(object);
+            }
+          }
         }
+        throw StateError(
+          'Element ${e.runtimeType} in List need to implement the Serializable interface',
+        );
       }).toList();
+    } else {
+      Serializer? serializer = _serializers[S];
+      if (serializer != null) {
+        return serializer.serializer(object);
+      } else {
+        Serializer? nonNullSerializer = _serializers[_extractElementType(S)];
+        if (nonNullSerializer != null) {
+          return nonNullSerializer.serializer(object);
+        }
+      }
     }
 
     throw StateError(
@@ -190,17 +192,34 @@ class ObjectMapper {
 
   /// Extrae el tipo E de un tipo List<E> buscando en los tipos registrados
   Type _extractElementType(Type type) {
-    final s = type.toString();
-    if (!s.startsWith('List<')) return type;
-    final innerName = s.substring(5, s.length - 1);
+    var cleanTypeName = type.toString();
 
-    return _deserializers.keys.firstWhere(
-      (k) => k.toString() == innerName,
+    // 1. Si termina en '?', se lo removemos para obtener el tipo no-nullable (T? -> T)
+    if (cleanTypeName.endsWith('?')) {
+      cleanTypeName = cleanTypeName.substring(0, cleanTypeName.length - 1);
+    }
+
+    // 2. Si es una lista, extraemos lo que está dentro de List<...>
+    if (cleanTypeName.startsWith('List<') && cleanTypeName.endsWith('>')) {
+      cleanTypeName = cleanTypeName.substring(5, cleanTypeName.length - 1);
+      // Por si acaso el tipo de adentro era nullable también (ej: List<User?>)
+      if (cleanTypeName.endsWith('?')) {
+        cleanTypeName = cleanTypeName.substring(0, cleanTypeName.length - 1);
+      }
+    }
+
+    // 3. Buscamos el nombre limpio en tus mapas de registros
+    final targetKey = _deserializers.keys.firstWhere(
+      (k) => k.toString() == cleanTypeName,
       orElse: () => _serializers.keys.firstWhere(
-        (k) => k.toString() == innerName,
-        orElse: () => dynamic,
+        (k) => k.toString() == cleanTypeName,
+        orElse: () => throw StateError(
+          'No serializer/deserializer found for type: <$cleanTypeName>',
+        ),
       ),
     );
+
+    return targetKey;
   }
 
   bool _isPrimitiveDeserializer(Type type) {
