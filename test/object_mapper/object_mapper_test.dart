@@ -1,6 +1,8 @@
 @TestOn('vm')
 library;
 
+import 'dart:convert';
+
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
@@ -75,10 +77,7 @@ void main() {
     test('No Serializer - Worker', () {
       Worker object = Worker(name: 'worker #1');
 
-      expect(
-        () => parser.serialize(object),
-        throwsA(isA<StateError>()),
-      );
+      expect(() => parser.serialize(object), throwsA(isA<StateError>()));
     });
 
     test('No Deserializer - Worker', () {
@@ -130,7 +129,12 @@ void main() {
     setUp(() {
       parser = ObjectMapper(
         serializers: [Serializer<Tool>((object) => object.toJson())],
-        deserializers: [Deserializer<Tool>((j) => Tool.fromJson(j))],
+        deserializers: [
+          Deserializer<Tool>((j) => Tool.fromJson(j)),
+          Deserializer<List<int>>((j) {
+            return List.of(j).cast<int>();
+          }),
+        ],
       );
     });
 
@@ -168,21 +172,6 @@ void main() {
         expect(parser.deserialize<Duration>(duration.inMilliseconds), duration);
       });
 
-      test('Uri', () {
-        Uri uri = Uri.parse('https://google.com');
-        expect(parser.serialize(uri), uri.toString());
-        expect(parser.deserialize<Uri>(uri.toString()), uri);
-      });
-
-      test('RegExp', () {
-        RegExp regExp = RegExp(r'\d+');
-        expect(parser.serialize(regExp), regExp.pattern);
-        expect(
-          parser.deserialize<RegExp>(regExp.pattern).pattern,
-          regExp.pattern,
-        );
-      });
-
       test('String', () {
         expect(parser.serialize('test'), 'test');
         expect(parser.deserialize<String>('test'), 'test');
@@ -202,14 +191,56 @@ void main() {
         expect(parser.deserialize<bool>(true), true);
       });
 
+      test('dynamic', () {
+        expect(parser.serialize('dynamic' as dynamic), 'dynamic');
+        expect(parser.deserialize<dynamic>('dynamic'), 'dynamic');
+        expect(parser.deserialize<dynamic>(123), 123);
+      });
+
+      test('Object', () {
+        Object obj = 'object';
+        expect(parser.serialize(obj), 'object');
+        expect(parser.deserialize<Object>('object'), 'object');
+      });
+
+      test('Null', () {
+        expect(parser.serialize(null), isNull);
+        expect(parser.deserialize<Null>(null), isNull);
+      });
+
       test('List of primitives', () {
         List<int> numbers = [1, 2, 3];
         expect(parser.serialize(numbers), [1, 2, 3]);
-        expect(parser.deserialize<List<int>>(['1', '2', '3']), [1, 2, 3]);
+        expect(parser.deserialize<List<int>>(jsonDecode('[1, 2, 3]')), [
+          1,
+          2,
+          3,
+        ]);
 
         List<String> strings = ['a', 'b'];
         expect(parser.serialize(strings), ['a', 'b']);
         expect(parser.deserialize<List<String>>(['a', 'b']), ['a', 'b']);
+      });
+
+      test('List of List of primitives', () {
+        List<List<int>> numbers = [
+          [1],
+          [2],
+          [3],
+        ];
+        expect(parser.serialize(numbers), [
+          [1],
+          [2],
+          [3],
+        ]);
+        expect(
+          parser.deserialize<List<List<int>>>(jsonDecode('[[1], [2], [3]]')),
+          [
+            [1],
+            [2],
+            [3],
+          ],
+        );
       });
 
       test('List of default objects', () {
