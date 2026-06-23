@@ -27,7 +27,7 @@ class ResponseEntity<T> extends Response {
   }
 
   static ResponseEntity ok<T>({
-    required T body,
+    T? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) {
     return ResponseEntity<T>(HttpStatus.ok.value, body: body, headers: headers);
