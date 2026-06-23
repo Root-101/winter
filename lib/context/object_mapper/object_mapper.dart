@@ -71,6 +71,9 @@ class ObjectMapper {
     Serializer<int>((object) => object),
     Serializer<double>((object) => object),
     Serializer<bool>((object) => object),
+    Serializer<dynamic>((object) => object),
+    Serializer<Object>((object) => object),
+    Serializer<Null>((object) => object),
   ];
 
   static final List<Deserializer> _defaultDeserializers = [
@@ -85,6 +88,9 @@ class ObjectMapper {
     Deserializer<int>((value) => int.parse(value.toString())),
     Deserializer<double>((value) => double.parse(value.toString())),
     Deserializer<bool>((value) => bool.parse(value.toString())),
+    Deserializer<dynamic>((value) => value),
+    Deserializer<Object>((value) => value),
+    Deserializer<Null>((value) => value),
   ];
 
   final Map<Type, Serializer> _serializers = {};
@@ -119,7 +125,7 @@ class ObjectMapper {
       return null;
     }
     if (object is Map) {
-      return object;
+      return object.map((k, v) => MapEntry(serialize(k), serialize(v)));
     }
     if (object is Serializable) {
       //if Serializable => serialize
@@ -128,22 +134,17 @@ class ObjectMapper {
       //if list, same:
       return object.map((e) {
         if (e is Map) {
-          return e;
+          return e.map((k, v) => MapEntry(serialize(k), serialize(v)));
         }
 
         if (e is Serializable) {
           //if element is Serializable => serialize
           return e.toJson();
         } else {
-          Serializer? serializer = _serializers[e.runtimeType];
+          Serializer? serializer =
+              _serializers[_extractElementType(e.runtimeType)];
           if (serializer != null) {
             return serializer.serializer(e);
-          } else {
-            Serializer? nonNullSerializer =
-                _serializers[_extractElementType(e.runtimeType)];
-            if (nonNullSerializer != null) {
-              return nonNullSerializer.serializer(object);
-            }
           }
         }
         throw StateError(
@@ -151,14 +152,9 @@ class ObjectMapper {
         );
       }).toList();
     } else {
-      Serializer? serializer = _serializers[S];
+      Serializer? serializer = _serializers[_extractElementType(S)];
       if (serializer != null) {
         return serializer.serializer(object);
-      } else {
-        Serializer? nonNullSerializer = _serializers[_extractElementType(S)];
-        if (nonNullSerializer != null) {
-          return nonNullSerializer.serializer(object);
-        }
       }
     }
 
@@ -168,8 +164,11 @@ class ObjectMapper {
   }
 
   S deserialize<S>(dynamic data) {
-    final Deserializer? deserializer = _deserializers[S];
+    if (data is S) {
+      return data;
+    }
 
+    final Deserializer? deserializer = _deserializers[S];
     if (deserializer != null) {
       final targetData = (data is String && !_isPrimitiveDeserializer(S))
           ? jsonDecode(data)
@@ -200,8 +199,12 @@ class ObjectMapper {
     }
 
     // 2. Si es una lista, extraemos lo que está dentro de List<...>
-    if (cleanTypeName.startsWith('List<') && cleanTypeName.endsWith('>')) {
-      cleanTypeName = cleanTypeName.substring(5, cleanTypeName.length - 1);
+    if (cleanTypeName.startsWith('List<') &&
+        (cleanTypeName.endsWith('>') || cleanTypeName.endsWith('>?'))) {
+      cleanTypeName = cleanTypeName.substring(
+        5, // 'List<'.lenght
+        cleanTypeName.lastIndexOf('>'),
+      );
       // Por si acaso el tipo de adentro era nullable también (ej: List<User?>)
       if (cleanTypeName.endsWith('?')) {
         cleanTypeName = cleanTypeName.substring(0, cleanTypeName.length - 1);
