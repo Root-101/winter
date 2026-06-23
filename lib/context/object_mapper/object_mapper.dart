@@ -55,8 +55,6 @@ class ObjectMapper {
   static final List<Serializer> _defaultSerializers = [
     Serializer<DateTime>((obj) => obj.toIso8601String()),
     Serializer<Duration>((obj) => obj.inMilliseconds),
-    Serializer<Uri>((obj) => obj.toString()),
-    Serializer<RegExp>((obj) => obj.pattern),
     Serializer<String>((obj) => obj),
     Serializer<num>((obj) => obj),
     Serializer<int>((obj) => obj),
@@ -64,7 +62,6 @@ class ObjectMapper {
     Serializer<bool>((obj) => obj),
     Serializer<dynamic>((obj) => obj),
     Serializer<Object>((obj) => obj),
-    Serializer<Null>((obj) => obj),
   ];
 
   static final List<Deserializer> _defaultDeserializers = [
@@ -72,8 +69,6 @@ class ObjectMapper {
     Deserializer<Duration>(
       (v) => Duration(milliseconds: int.parse(v.toString())),
     ),
-    Deserializer<Uri>((v) => Uri.parse(v.toString())),
-    Deserializer<RegExp>((v) => RegExp(v.toString())),
     Deserializer<String>((v) => v as String),
     Deserializer<num>((v) => num.parse(v.toString())),
     Deserializer<int>((v) => int.parse(v.toString())),
@@ -81,7 +76,6 @@ class ObjectMapper {
     Deserializer<bool>((v) => bool.parse(v.toString())),
     Deserializer<dynamic>((v) => v),
     Deserializer<Object>((v) => v),
-    Deserializer<Null>((v) => v),
   ];
 
   final Map<Type, Serializer> _serializers = {};
@@ -114,7 +108,7 @@ class ObjectMapper {
   }
 
   /// Recursively serializes [object] to a JSON-compatible representation.
-  Object? serialize<S>(S object) {
+  Object? serialize(Object? object) {
     //if null => null
     if (object == null) {
       return null;
@@ -128,33 +122,18 @@ class ObjectMapper {
     } else if (object is List) {
       //if list, same:
       return object.map((e) {
-        if (e is Map) {
-          return e.map((k, v) => MapEntry(serialize(k), serialize(v)));
-        }
-
-        if (e is Serializable) {
-          //if element is Serializable => serialize
-          return e.toJson();
-        } else {
-          Serializer? serializer =
-              _serializers[_extractElementType(e.runtimeType)];
-          if (serializer != null) {
-            return serializer.serializer(e);
-          }
-        }
-        throw StateError(
-          'Element ${e.runtimeType} in List need to implement the Serializable interface',
-        );
+        return serialize(e);
       }).toList();
     } else {
-      Serializer? serializer = _serializers[_extractElementType(S)];
+      Serializer? serializer =
+          _serializers[_extractElementType(object.runtimeType)];
       if (serializer != null) {
         return serializer.serializer(object);
       }
     }
 
     throw StateError(
-      '${S.toString()} need to implement the Serializable interface',
+      '${object.runtimeType} need to implement the Serializable interface',
     );
   }
 
@@ -171,7 +150,7 @@ class ObjectMapper {
     }
 
     if (S.isList) {
-      final elementType = _extractElementType(S);
+      final elementType = _extractListElementType(S);
       final elementDeserializer = _deserializers[elementType];
 
       if (elementDeserializer != null) {
@@ -179,12 +158,33 @@ class ObjectMapper {
         return elementDeserializer.deserializeList(rawList) as S;
       }
     }
+    if (S.isMap) {
+      throw StateError(
+        '<Map> deserialization is not supported. Convert the map to a class and add the deserializer manually',
+      );
+      /*({Type key, Type value}) types = _extractMapElementTypes(S);
+
+      final keyDeserializer = _deserializers[types.key];
+      final valueDeserializer = _deserializers[types.value];
+
+      if (keyDeserializer != null && valueDeserializer != null) {
+        final Map rawMap = data is String ? jsonDecode(data) : (data as Map);
+        //error: type '_Map<dynamic, dynamic>' is not a subtype of type 'Map<String, dynamic>' in type cast
+        return rawMap.map(
+              (key, value) => MapEntry(
+                keyDeserializer.deserializer(key),
+                valueDeserializer.deserializer(value),
+              ),
+            )
+            as S;
+      }*/
+    }
 
     throw StateError('No deserializer found for type: <$S>');
   }
 
   /// Extracts the element type from a List type or identifies the registered type.
-  Type _extractElementType(Type type) {
+  Type _extractListElementType(Type type) {
     var typeName = type.toString();
 
     // 1. Remove nullability (T? -> T)
@@ -213,11 +213,76 @@ class ObjectMapper {
     );
   }
 
+  /// Extracts the element types from a Map type or identifies the registered type.
+  ({Type key, Type value}) _extractMapElementTypes(Type type) {
+    Type findType(String typeName) {
+      // 3. Find the registered type by name matching
+      return _deserializers.keys.firstWhere(
+        (k) => k.toString() == typeName,
+        orElse: () => _serializers.keys.firstWhere(
+          (k) => k.toString() == typeName,
+          orElse: () => throw StateError(
+            'No serializer/deserializer found for type: <$typeName>',
+          ),
+        ),
+      );
+    }
+
+    var typeName = type.toString();
+
+    // 1. Remove nullability (T? -> T)
+    if (typeName.endsWith('?')) {
+      typeName = typeName.substring(0, typeName.length - 1);
+    }
+    List<String> types = [];
+
+    // 2. If it's a list, extract the inner type (List<T> -> T)
+    if (typeName.startsWith('Map<') && typeName.endsWith('>')) {
+      typeName = typeName.substring(4, typeName.length - 1);
+      types = typeName.split(',');
+      // Handle nested nullability (Map<T?, T?> -> T, T)
+      if (types[0].endsWith('?')) {
+        types[0] = types[0].substring(0, types[0].length - 1);
+      }
+      if (types[1].endsWith('?')) {
+        types[1] = types[1].substring(0, types[1].length - 1);
+      }
+    }
+    return (key: findType(types[0].trim()), value: findType(types[1].trim()));
+  }
+
+  /// Extracts the element type from a List type or identifies the registered type.
+  Type _extractElementType(Type type) {
+    var typeName = type.toString();
+
+    // 1. Remove nullability (T? -> T)
+    if (typeName.endsWith('?')) {
+      typeName = typeName.substring(0, typeName.length - 1);
+    }
+
+    // 3. Find the registered type by name matching
+    return _deserializers.keys.firstWhere(
+      (k) => k.toString() == typeName,
+      orElse: () => _serializers.keys.firstWhere(
+        (k) => k.toString() == typeName,
+        orElse: () => throw StateError(
+          'No serializer/deserializer found for type: <$typeName>',
+        ),
+      ),
+    );
+  }
+
   bool _isPrimitive(Type type) {
     return _defaultDeserializers.any((element) => element.type == type);
   }
 }
 
 extension ListTypeExtension on Type {
-  bool get isList => toString().startsWith('List<');
+  bool get isList =>
+      toString().startsWith('List<') &&
+      (toString().endsWith('>') || toString().endsWith('>?'));
+
+  bool get isMap =>
+      toString().startsWith('Map<') &&
+      (toString().endsWith('>') || toString().endsWith('>?'));
 }
