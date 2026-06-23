@@ -1,96 +1,87 @@
 import 'dart:convert';
 import 'dart:io';
 
+/// Interface for objects that can be converted to JSON.
 abstract class Serializable {
   Object? toJson();
 }
 
-const yellowBold = '\x1B[1;33m';
-const reset = '\x1B[0m';
+const _yellowBold = '\x1B[1;33m';
+const _reset = '\x1B[0m';
 
-class Serializer<T> {
+/// Common base for Serializers and Deserializers to handle type inference warnings.
+abstract class _MapperEntity<T> {
   final Type type;
-  final Object? Function(dynamic object) serializer;
 
-  Serializer(Object? Function(T object) serializer)
-    : type = T,
-      serializer = ((dynamic object) => serializer(object as T)) {
-    if (type.toString() == 'dynamic') {
+  _MapperEntity() : type = T {
+    if (T == dynamic) {
       stdout.writeln(
         '\n'
-        '$yellowBold'
-        'WARNING: Unable to infer Serializer type. '
-        'The serializer was registered as "dynamic", which usually happens when '
+        '$_yellowBold'
+        'WARNING: Unable to infer type for $runtimeType. '
+        'The registry was made as "dynamic", which usually happens when '
         'the generic type argument is omitted. '
         'Declare it explicitly, for example: '
-        'Serializer<YOUR-EXPLICIT-TYPE>((object) => object.toJson())'
-        '$reset'
+        '$runtimeType<YOUR_TYPE>((value) => ...)'
+        '$_reset'
         '\n',
       );
     }
   }
 }
 
-class Deserializer<T> {
-  final Type type;
-  final T Function(dynamic data) deserializer;
-  final List<T> Function(dynamic data) listDeserializer;
+class Serializer<T> extends _MapperEntity<T> {
+  final Object? Function(dynamic object) serializer;
 
-  Deserializer(this.deserializer)
-    : type = T,
-      listDeserializer = ((dynamic data) {
-        if (data is List) {
-          return data.map((e) => deserializer(e)).toList();
-        }
-        throw StateError('Can\'t deserialize a List that is not a list');
-      }) {
-    if (type.toString() == 'dynamic') {
-      stdout.writeln(
-        '\n'
-        '$yellowBold'
-        'WARNING: Unable to infer Deserializer type. '
-        'The deserializer was registered as "dynamic", which usually happens when '
-        'the generic type argument is omitted. '
-        'Declare it explicitly, for example: '
-        'Deserializer<YOUR-EXPLICIT-TYPE>((object) => object.toJson())'
-        '$reset'
-        '\n',
-      );
+  Serializer(Object? Function(T object) serializer)
+    : serializer = ((dynamic object) => serializer(object as T));
+}
+
+class Deserializer<T> extends _MapperEntity<T> {
+  final T Function(dynamic data) deserializer;
+
+  Deserializer(this.deserializer);
+
+  /// Helper to deserialize a list of elements using this deserializer.
+  List<T> deserializeList(dynamic data) {
+    if (data is List) {
+      return data.map((e) => deserializer(e)).toList();
     }
+    throw StateError('Cannot deserialize a List from non-list elements');
   }
 }
 
 class ObjectMapper {
   static final List<Serializer> _defaultSerializers = [
-    Serializer<DateTime>((object) => object.toIso8601String()),
-    Serializer<Duration>((object) => object.inMilliseconds),
-    Serializer<Uri>((object) => object.toString()),
-    Serializer<RegExp>((object) => object.pattern),
-    Serializer<String>((object) => object),
-    Serializer<num>((object) => object),
-    Serializer<int>((object) => object),
-    Serializer<double>((object) => object),
-    Serializer<bool>((object) => object),
-    Serializer<dynamic>((object) => object),
-    Serializer<Object>((object) => object),
-    Serializer<Null>((object) => object),
+    Serializer<DateTime>((obj) => obj.toIso8601String()),
+    Serializer<Duration>((obj) => obj.inMilliseconds),
+    Serializer<Uri>((obj) => obj.toString()),
+    Serializer<RegExp>((obj) => obj.pattern),
+    Serializer<String>((obj) => obj),
+    Serializer<num>((obj) => obj),
+    Serializer<int>((obj) => obj),
+    Serializer<double>((obj) => obj),
+    Serializer<bool>((obj) => obj),
+    Serializer<dynamic>((obj) => obj),
+    Serializer<Object>((obj) => obj),
+    Serializer<Null>((obj) => obj),
   ];
 
   static final List<Deserializer> _defaultDeserializers = [
-    Deserializer<DateTime>((value) => DateTime.parse(value.toString())),
+    Deserializer<DateTime>((v) => DateTime.parse(v.toString())),
     Deserializer<Duration>(
-      (value) => Duration(milliseconds: int.parse(value.toString())),
+      (v) => Duration(milliseconds: int.parse(v.toString())),
     ),
-    Deserializer<Uri>((value) => Uri.parse(value.toString())),
-    Deserializer<RegExp>((value) => RegExp(value.toString())),
-    Deserializer<String>((value) => value as String),
-    Deserializer<num>((value) => num.parse(value.toString())),
-    Deserializer<int>((value) => int.parse(value.toString())),
-    Deserializer<double>((value) => double.parse(value.toString())),
-    Deserializer<bool>((value) => bool.parse(value.toString())),
-    Deserializer<dynamic>((value) => value),
-    Deserializer<Object>((value) => value),
-    Deserializer<Null>((value) => value),
+    Deserializer<Uri>((v) => Uri.parse(v.toString())),
+    Deserializer<RegExp>((v) => RegExp(v.toString())),
+    Deserializer<String>((v) => v as String),
+    Deserializer<num>((v) => num.parse(v.toString())),
+    Deserializer<int>((v) => int.parse(v.toString())),
+    Deserializer<double>((v) => double.parse(v.toString())),
+    Deserializer<bool>((v) => bool.parse(v.toString())),
+    Deserializer<dynamic>((v) => v),
+    Deserializer<Object>((v) => v),
+    Deserializer<Null>((v) => v),
   ];
 
   final Map<Type, Serializer> _serializers = {};
@@ -100,25 +91,29 @@ class ObjectMapper {
     List<Serializer>? serializers,
     List<Deserializer>? deserializers,
   }) {
-    _serializers.addAll(
-      Map.fromEntries(_defaultSerializers.map((e) => MapEntry(e.type, e))),
-    );
-    _deserializers.addAll(
-      Map.fromEntries(_defaultDeserializers.map((e) => MapEntry(e.type, e))),
-    );
-
+    _registerDefaults();
     if (serializers != null) {
-      _serializers.addAll(
-        Map.fromEntries(serializers.map((e) => MapEntry(e.type, e))),
-      );
+      for (var s in serializers) {
+        _serializers[s.type] = s;
+      }
     }
     if (deserializers != null) {
-      _deserializers.addAll(
-        Map.fromEntries(deserializers.map((e) => MapEntry(e.type, e))),
-      );
+      for (var d in deserializers) {
+        _deserializers[d.type] = d;
+      }
     }
   }
 
+  void _registerDefaults() {
+    for (var s in _defaultSerializers) {
+      _serializers[s.type] = s;
+    }
+    for (var d in _defaultDeserializers) {
+      _deserializers[d.type] = d;
+    }
+  }
+
+  /// Recursively serializes [object] to a JSON-compatible representation.
   Object? serialize<S>(S object) {
     //if null => null
     if (object == null) {
@@ -163,14 +158,13 @@ class ObjectMapper {
     );
   }
 
+  /// Deserializes [data] into an instance of type [S].
   S deserialize<S>(dynamic data) {
-    if (data is S) {
-      return data;
-    }
+    if (data is S) return data;
 
-    final Deserializer? deserializer = _deserializers[S];
+    final deserializer = _deserializers[S];
     if (deserializer != null) {
-      final targetData = (data is String && !_isPrimitiveDeserializer(S))
+      final targetData = (data is String && !_isPrimitive(S))
           ? jsonDecode(data)
           : data;
       return (deserializer as Deserializer<S>).deserializer(targetData);
@@ -182,50 +176,44 @@ class ObjectMapper {
 
       if (elementDeserializer != null) {
         final List rawList = data is String ? jsonDecode(data) : (data as List);
-        return elementDeserializer.listDeserializer(rawList) as S;
+        return elementDeserializer.deserializeList(rawList) as S;
       }
     }
 
     throw StateError('No deserializer found for type: <$S>');
   }
 
-  /// Extrae el tipo E de un tipo List<E> buscando en los tipos registrados
+  /// Extracts the element type from a List type or identifies the registered type.
   Type _extractElementType(Type type) {
-    var cleanTypeName = type.toString();
+    var typeName = type.toString();
 
-    // 1. Si termina en '?', se lo removemos para obtener el tipo no-nullable (T? -> T)
-    if (cleanTypeName.endsWith('?')) {
-      cleanTypeName = cleanTypeName.substring(0, cleanTypeName.length - 1);
+    // 1. Remove nullability (T? -> T)
+    if (typeName.endsWith('?')) {
+      typeName = typeName.substring(0, typeName.length - 1);
     }
 
-    // 2. Si es una lista, extraemos lo que está dentro de List<...>
-    if (cleanTypeName.startsWith('List<') &&
-        (cleanTypeName.endsWith('>') || cleanTypeName.endsWith('>?'))) {
-      cleanTypeName = cleanTypeName.substring(
-        5, // 'List<'.lenght
-        cleanTypeName.lastIndexOf('>'),
-      );
-      // Por si acaso el tipo de adentro era nullable también (ej: List<User?>)
-      if (cleanTypeName.endsWith('?')) {
-        cleanTypeName = cleanTypeName.substring(0, cleanTypeName.length - 1);
+    // 2. If it's a list, extract the inner type (List<T> -> T)
+    if (typeName.startsWith('List<') && typeName.endsWith('>')) {
+      typeName = typeName.substring(5, typeName.length - 1);
+      // Handle nested nullability (List<T?> -> T)
+      if (typeName.endsWith('?')) {
+        typeName = typeName.substring(0, typeName.length - 1);
       }
     }
 
-    // 3. Buscamos el nombre limpio en tus mapas de registros
-    final targetKey = _deserializers.keys.firstWhere(
-      (k) => k.toString() == cleanTypeName,
+    // 3. Find the registered type by name matching
+    return _deserializers.keys.firstWhere(
+      (k) => k.toString() == typeName,
       orElse: () => _serializers.keys.firstWhere(
-        (k) => k.toString() == cleanTypeName,
+        (k) => k.toString() == typeName,
         orElse: () => throw StateError(
-          'No serializer/deserializer found for type: <$cleanTypeName>',
+          'No serializer/deserializer found for type: <$typeName>',
         ),
       ),
     );
-
-    return targetKey;
   }
 
-  bool _isPrimitiveDeserializer(Type type) {
+  bool _isPrimitive(Type type) {
     return _defaultDeserializers.any((element) => element.type == type);
   }
 }
