@@ -34,8 +34,16 @@ class Serializer<T> {
 class Deserializer<T> {
   final Type type;
   final T Function(dynamic data) deserializer;
+  final List<T> Function(dynamic data) listDeserializer;
 
-  Deserializer(this.deserializer) : type = T {
+  Deserializer(this.deserializer)
+    : type = T,
+      listDeserializer = ((dynamic data) {
+        if (data is List) {
+          return data.map((e) => deserializer(e)).toList();
+        }
+        throw StateError('Can\'t deserialize a List that is not a list');
+      }) {
     if (type.toString() == 'dynamic') {
       stdout.writeln(
         '\n'
@@ -89,7 +97,6 @@ class ObjectMapper {
   ];
 
   final Map<Type, Serializer> _serializers = {};
-
   final Map<Type, Deserializer> _deserializers = {};
 
   ObjectMapper({
@@ -159,29 +166,48 @@ class ObjectMapper {
   }
 
   S deserialize<S>(dynamic data) {
-    Type type = S;
-    Deserializer? deserializer = _deserializers[type];
+    final Deserializer? deserializer = _deserializers[S];
+
     if (deserializer != null) {
-      if (data is String) {
-        if (_isPrimitiveDeserializer(type)) {
-          return (deserializer as Deserializer<S>).deserializer(data);
-        } else {
-          return (deserializer as Deserializer<S>).deserializer(
-            jsonDecode(data),
-          );
-        }
-      } else {
-        return (deserializer as Deserializer<S>).deserializer(data);
+      final targetData = (data is String && !_isPrimitiveDeserializer(S))
+          ? jsonDecode(data)
+          : data;
+      return (deserializer as Deserializer<S>).deserializer(targetData);
+    }
+
+    if (S.isList) {
+      final elementType = _extractElementType(S);
+      final elementDeserializer = _deserializers[elementType];
+
+      if (elementDeserializer != null) {
+        final List rawList = data is String ? jsonDecode(data) : (data as List);
+        return elementDeserializer.listDeserializer(rawList) as S;
       }
     }
-    throw StateError('No deserializer found for type: <${S.toString()}>');
+
+    throw StateError('No deserializer found for type: <$S>');
+  }
+
+  /// Extrae el tipo E de un tipo List<E> buscando en los tipos registrados
+  Type _extractElementType(Type type) {
+    final s = type.toString();
+    if (!s.startsWith('List<')) return type;
+    final innerName = s.substring(5, s.length - 1);
+
+    return _deserializers.keys.firstWhere(
+      (k) => k.toString() == innerName,
+      orElse: () => _serializers.keys.firstWhere(
+        (k) => k.toString() == innerName,
+        orElse: () => dynamic,
+      ),
+    );
   }
 
   bool _isPrimitiveDeserializer(Type type) {
     return _defaultDeserializers.any((element) => element.type == type);
   }
+}
 
-  List<S> deserializeList<S>(dynamic json) {
-    return (json as List<dynamic>).map((e) => deserialize<S>(e)).toList();
-  }
+extension ListTypeExtension on Type {
+  bool get isList => toString().startsWith('List<');
 }

@@ -143,7 +143,7 @@ void main() {
         {'NAME': 'B'},
       ]);
 
-      List<Tool> back = parser.deserializeList<Tool>(json);
+      List<Tool> back = parser.deserialize<List<Tool>>(json);
       expect(back, tools);
     });
 
@@ -205,18 +205,18 @@ void main() {
       test('List of primitives', () {
         List<int> numbers = [1, 2, 3];
         expect(parser.serialize(numbers), [1, 2, 3]);
-        expect(parser.deserializeList<int>(['1', '2', '3']), [1, 2, 3]);
+        expect(parser.deserialize<List<int>>(['1', '2', '3']), [1, 2, 3]);
 
         List<String> strings = ['a', 'b'];
         expect(parser.serialize(strings), ['a', 'b']);
-        expect(parser.deserializeList<String>(['a', 'b']), ['a', 'b']);
+        expect(parser.deserialize<List<String>>(['a', 'b']), ['a', 'b']);
       });
 
       test('List of default objects', () {
         DateTime now = DateTime.now();
         List<DateTime> dates = [now];
         expect(parser.serialize(dates), [now.toIso8601String()]);
-        expect(parser.deserializeList<DateTime>([now.toIso8601String()]), [
+        expect(parser.deserialize<List<DateTime>>([now.toIso8601String()]), [
           DateTime.parse(now.toIso8601String()),
         ]);
       });
@@ -256,7 +256,7 @@ void main() {
     test('Empty list serialization and deserialization', () {
       final parser = ObjectMapper();
       expect(parser.serialize([]), []);
-      expect(parser.deserializeList<int>([]), []);
+      expect(parser.deserialize<List<int>>([]), []);
     });
 
     test('Nested objects (Serialization behavior)', () {
