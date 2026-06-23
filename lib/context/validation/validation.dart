@@ -1,4 +1,4 @@
-import 'package:winter/context/context.dart';
+import 'package:winter/winter.dart';
 
 /// Class that represent a fail validation
 /// (Details and examples in docs)

@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'winter.dart';
+import 'package:winter/winter.dart';
 
 class ResponseEntity<T> extends Response {
   T? _body;

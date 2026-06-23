@@ -1,13 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:winter/winter.dart';
+
 /// Interface for objects that can be converted to JSON.
 abstract class Serializable {
   Object? toJson();
 }
-
-const _yellowBold = '\x1B[1;33m';
-const _reset = '\x1B[0m';
 
 /// Common base for Serializers and Deserializers to handle type inference warnings.
 abstract class _MapperEntity<T> {
@@ -17,13 +16,13 @@ abstract class _MapperEntity<T> {
     if (T == dynamic) {
       stdout.writeln(
         '\n'
-        '$_yellowBold'
+        '$consoleYellowBold'
         'WARNING: Unable to infer type for $runtimeType. '
         'The registry was made as "dynamic", which usually happens when '
         'the generic type argument is omitted. '
         'Declare it explicitly, for example: '
         '$runtimeType<YOUR_TYPE>((value) => ...)'
-        '$_reset'
+        '$consoleReset'
         '\n',
       );
     }
@@ -60,7 +59,7 @@ class ObjectMapper {
     Serializer<int>((obj) => obj),
     Serializer<double>((obj) => obj),
     Serializer<bool>((obj) => obj),
-    Serializer<dynamic>((obj) => obj),
+    //Serializer<dynamic>((obj) => obj),
     Serializer<Object>((obj) => obj),
   ];
 
@@ -74,7 +73,7 @@ class ObjectMapper {
     Deserializer<int>((v) => int.parse(v.toString())),
     Deserializer<double>((v) => double.parse(v.toString())),
     Deserializer<bool>((v) => bool.parse(v.toString())),
-    Deserializer<dynamic>((v) => v),
+    //Deserializer<dynamic>((v) => v),
     Deserializer<Object>((v) => v),
   ];
 

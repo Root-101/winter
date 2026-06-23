@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:developer';
 import 'dart:io';
 
 import 'package:shelf/shelf_io.dart' as shelf_io;
-
-import 'winter.dart';
+import 'package:winter/winter.dart';
 
 ///Dependency Injection: easy access to the current dependency injection instance
 DependencyInjection get di => Winter.instance.context.dependencyInjection;
@@ -39,10 +37,10 @@ class Winter {
     required this.config,
     required this.router,
     required this.globalFilterConfig,
-    required HttpServer rawServer,
-  }) : _rawServer = rawServer;
+    required this._rawServer,
+  });
 
-  static Future<Winter> run({
+  static Future<Winter> start({
     BuildContext? context,
     ServerConfig? config,
     AbstractWinterRouter? router,
@@ -83,7 +81,7 @@ class Winter {
 
     final endTime = DateTime.now();
     double timeDiff = endTime.difference(startTime).inMilliseconds / 1000;
-    log('Server started on port ${rawServer.port} ($timeDiff sec)');
+    stdout.writeln('Server started on port ${rawServer.port} ($timeDiff sec)');
 
     return nextRunningServer;
   }
@@ -99,7 +97,7 @@ class Winter {
       if (onAlreadyStarted != null) {
         onAlreadyStarted();
       } else {
-        log('Server already started');
+        stdout.writeln('Server already started');
       }
     }
   }
@@ -142,11 +140,9 @@ class Winter {
 
       return await filterChain.doFilter(requestEntity);
     } on Exception catch (error, stackTrace) {
-      return Winter.instance.context.exceptionHandler.call(
-        requestEntity,
-        error,
-        stackTrace,
-      );
+      return eh.call(requestEntity, error, stackTrace);
+    } on Error catch (error, _) {
+      return ResponseEntity.internalServerError(body: error.toString());
     }
   }
 }

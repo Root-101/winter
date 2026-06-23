@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'winter.dart';
+import 'package:winter/winter.dart';
 
 class RequestEntity extends Request {
   Map<String, String>? _pathParams;

@@ -1,20 +1,20 @@
 import 'dart:async';
-import 'dart:developer';
+import 'dart:io';
 
-import '../winter.dart';
+import 'package:winter/winter.dart';
 
 void defaultLogRequest(RequestEntity request) {
-  log('REQUEST: Method: ${request.method} => URL: ${request.url}');
+  stdout.writeln('REQUEST: Method: ${request.method} => URL: ${request.url}');
 }
 
 void defaultLogResponse(ResponseEntity response) {
-  log(
+  stdout.writeln(
     'RESPONSE: Status code: ${response.statusCode} => Body: ${response.body()?.toString()}',
   );
 }
 
 void defaultLogErrorResponse(Exception exception) {
-  log('ERROR in RESPONSE: ${exception.toString()}');
+  stdout.writeln('ERROR in RESPONSE: ${exception.toString()}');
 }
 
 class LogsFilter implements Filter {
@@ -49,7 +49,9 @@ class LogsFilter implements Filter {
 }
 
 void defaultLogRateLimiter(dynamic request, dynamic requestId) {
-  log('Rate limiter fail for id: $requestId in request: ${request.url}');
+  stdout.writeln(
+    'Rate limiter fail for id: $requestId in request: ${request.url}',
+  );
 }
 
 class RateLimiterFilter implements Filter {
