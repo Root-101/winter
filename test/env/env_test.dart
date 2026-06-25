@@ -9,7 +9,7 @@ void main() {
     late Env env;
 
     setUp(() {
-      env = Env({'START': 'start'});
+      env = Env(env: {'START': 'start'});
       env.put('Test', 'test');
     });
 
@@ -53,17 +53,20 @@ void main() {
 
     test('initializes with Platform.environment', () {
       // PATH is generally available on all platforms
-      expect(env.find('PATH') ?? env.find('Path') ?? env.find('path'), isNotNull);
+      expect(
+        env.find('PATH') ?? env.find('Path') ?? env.find('path'),
+        isNotNull,
+      );
     });
 
     test('constructor merges Platform.environment and provided map', () {
       // Overriding a potential existing env var
-      final customEnv = Env({'PATH': 'custom_path'});
+      final customEnv = Env(env: {'PATH': 'custom_path'});
       expect(customEnv.find('PATH'), 'custom_path');
     });
 
     test('find returns the first match when case-insensitive', () {
-      final customEnv = Env({'abc': 'value1', 'ABC': 'value2'});
+      final customEnv = Env(env: {'abc': 'value1', 'ABC': 'value2'});
       // In Dart, LinkedHashMap preserves insertion order.
       // So 'abc' should be found first.
       expect(customEnv.find('AbC', caseSensitive: false), 'value1');
