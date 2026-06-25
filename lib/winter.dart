@@ -5,6 +5,7 @@ export 'package:string_scanner/string_scanner.dart';
 
 export 'build_context.dart';
 export 'context/context.dart';
+export 'env/env.dart';
 export 'filter_chain/filter.dart';
 export 'handler.dart';
 export 'http/http.dart';
