@@ -7,8 +7,8 @@ class Env {
 
   Env._(this._env);
 
-  factory Env(Map<String, String> env) {
-    return Env._({...Platform.environment, ...env});
+  factory Env({Map<String, String>? env}) {
+    return Env._({...Platform.environment, ...(env ?? {})});
   }
 
   Map<String, String> get all => Map.from(_env);

@@ -13,6 +13,8 @@ ObjectMapper get om => Winter.instance.context.objectMapper;
 ///Exception Handler: easy access to the current exception handler instance
 ExceptionHandler get eh => Winter.instance.context.exceptionHandler;
 
+Env get env => Winter.instance.context.env;
+
 class Winter {
   static Winter get instance {
     if (_server == null) {
