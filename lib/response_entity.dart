@@ -14,7 +14,9 @@ class ResponseEntity<T> extends Response {
     super.context,
   }) : _body = body,
        super(
-         body: body is String || body is Stream
+         body: body == null
+             ? null
+             : body is String || body is Stream
              ? body
              : jsonEncode(
                  (objectMapper ?? Winter.instance.context.objectMapper)
