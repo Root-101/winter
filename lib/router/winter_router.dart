@@ -58,18 +58,14 @@ class WinterRouter extends AbstractWinterRouter {
     return router;
   }
 
-  static List<Route> _flattenRoutes(
-    List<Route> routes,
-    String initialPath,
-    RouterConfig config,
-  ) {
+  static List<Route> _flattenRoutes(List<Route> routes,
+      String initialPath,
+      RouterConfig config,) {
     List<Route> result = [];
 
-    void flattenRoutes(
-      String parentPath,
-      FilterConfig? parentFilterConfig,
-      List<Route> routes,
-    ) {
+    void flattenRoutes(String parentPath,
+        FilterConfig? parentFilterConfig,
+        List<Route> routes,) {
       for (var route in routes) {
         String fullPath = (parentPath + route.path).replaceAll(
           RegExp(r'/+'),
@@ -121,7 +117,7 @@ class WinterRouter extends AbstractWinterRouter {
     } else {
       ///there is some route, check method (get, post, put...)
       return matchedRoutes.firstWhereOrNull(
-        (element) => element.method == HttpMethod(request.method),
+            (element) => element.method == HttpMethod(request.method),
       );
     }
   }
@@ -147,7 +143,7 @@ class WinterRouter extends AbstractWinterRouter {
     } else {
       ///there is some route, check method (get, post, put...)
       Route? finalRoute = matchedRoutes.firstWhereOrNull(
-        (element) => element.method == HttpMethod(request.method),
+            (element) => element.method == HttpMethod(request.method),
       );
       if (finalRoute == null) {
         ///no route matching method: 415
@@ -159,118 +155,6 @@ class WinterRouter extends AbstractWinterRouter {
   }
 
   void addRoute(Route route) => routes.add(route);
-
-  void add(
-    String path,
-    HttpMethod method,
-    RequestHandler handler, {
-    FilterConfig? filterConfig,
-  }) => routes.add(
-    Route(
-      path: path,
-      method: method,
-      handler: handler,
-      filterConfig: filterConfig,
-    ),
-  );
-
-  void get(String path, RequestHandler handler, {FilterConfig? filterConfig}) =>
-      routes.add(
-        Route(
-          path: path,
-          method: HttpMethod.get,
-          handler: handler,
-          filterConfig: filterConfig,
-        ),
-      );
-
-  void query(
-    String path,
-    RequestHandler handler, {
-    FilterConfig? filterConfig,
-  }) => routes.add(
-    Route(
-      path: path,
-      method: HttpMethod.query,
-      handler: handler,
-      filterConfig: filterConfig,
-    ),
-  );
-
-  void post(
-    String path,
-    RequestHandler handler, {
-    FilterConfig? filterConfig,
-  }) => routes.add(
-    Route(
-      path: path,
-      method: HttpMethod.post,
-      handler: handler,
-      filterConfig: filterConfig,
-    ),
-  );
-
-  void put(String path, RequestHandler handler, {FilterConfig? filterConfig}) =>
-      routes.add(
-        Route(
-          path: path,
-          method: HttpMethod.put,
-          handler: handler,
-          filterConfig: filterConfig,
-        ),
-      );
-
-  void patch(
-    String path,
-    RequestHandler handler, {
-    FilterConfig? filterConfig,
-  }) => routes.add(
-    Route(
-      path: path,
-      method: HttpMethod.patch,
-      handler: handler,
-      filterConfig: filterConfig,
-    ),
-  );
-
-  void delete(
-    String path,
-    RequestHandler handler, {
-    FilterConfig? filterConfig,
-  }) => routes.add(
-    Route(
-      path: path,
-      method: HttpMethod.delete,
-      handler: handler,
-      filterConfig: filterConfig,
-    ),
-  );
-
-  void head(
-    String path,
-    RequestHandler handler, {
-    FilterConfig? filterConfig,
-  }) => routes.add(
-    Route(
-      path: path,
-      method: HttpMethod.head,
-      handler: handler,
-      filterConfig: filterConfig,
-    ),
-  );
-
-  void options(
-    String path,
-    RequestHandler handler, {
-    FilterConfig? filterConfig,
-  }) => routes.add(
-    Route(
-      path: path,
-      method: HttpMethod.options,
-      handler: handler,
-      filterConfig: filterConfig,
-    ),
-  );
 
   @override
   String toString() {
@@ -326,10 +210,120 @@ class Route {
     );
   }
 
+  ///Create a prent route, a route without method nor handler
+  ///Designed to be acommon ancestor to it's childs
+  factory Route.parent({
+    required String path,
+    FilterConfig? filterConfig,
+    List<Route> routes = const [],
+  }) {
+    return Route(
+      path: path,
+      method: null,
+      handler: null,
+      filterConfig: filterConfig,
+      routes: routes,
+    );
+  }
+
+  factory Route.get({
+    required String path,
+    RequestHandler? handler,
+    FilterConfig? filterConfig,
+    List<Route> routes = const [],
+  }) {
+    return Route(
+      path: path,
+      method: HttpMethod.get,
+      handler: handler,
+      filterConfig: filterConfig,
+      routes: routes,
+    );
+  }
+
+  factory Route.query({
+    required String path,
+    RequestHandler? handler,
+    FilterConfig? filterConfig,
+    List<Route> routes = const [],
+  }) {
+    return Route(
+      path: path,
+      method: HttpMethod.query,
+      handler: handler,
+      filterConfig: filterConfig,
+      routes: routes,
+    );
+  }
+
+  factory Route.post({
+    required String path,
+    RequestHandler? handler,
+    FilterConfig? filterConfig,
+    List<Route> routes = const [],
+  }) {
+    return Route(
+      path: path,
+      method: HttpMethod.post,
+      handler: handler,
+      filterConfig: filterConfig,
+      routes: routes,
+    );
+  }
+
+  factory Route.put({
+    required String path,
+    RequestHandler? handler,
+    FilterConfig? filterConfig,
+    List<Route> routes = const [],
+  }) {
+    return Route(
+      path: path,
+      method: HttpMethod.put,
+      handler: handler,
+      filterConfig: filterConfig,
+      routes: routes,
+    );
+  }
+
+  factory Route.patch({
+    required String path,
+    RequestHandler? handler,
+    FilterConfig? filterConfig,
+    List<Route> routes = const [],
+  }) {
+    return Route(
+      path: path,
+      method: HttpMethod.patch,
+      handler: handler,
+      filterConfig: filterConfig,
+      routes: routes,
+    );
+  }
+
+  factory Route.delete({
+    required String path,
+    RequestHandler? handler,
+    FilterConfig? filterConfig,
+    List<Route> routes = const [],
+  }) {
+    return Route(
+      path: path,
+      method: HttpMethod.delete,
+      handler: handler,
+      filterConfig: filterConfig,
+      routes: routes,
+    );
+  }
+
   bool match(String rawActualUrl) {
     /// Clean up urls, remove query params
-    String templateUrlPath = path.split('?').first;
-    String actualUrlPath = rawActualUrl.split('?').first;
+    String templateUrlPath = path
+        .split('?')
+        .first;
+    String actualUrlPath = rawActualUrl
+        .split('?')
+        .first;
 
     /// Create a regular expression to find path parameters in the template
     final RegExp pathParamPattern = RegExp(r'{([^}]+)}');
@@ -337,7 +331,7 @@ class Route {
     /// Create a regular expression to capture the corresponding values in the actual URL
     String regexPattern = templateUrlPath.replaceAllMapped(
       pathParamPattern,
-      (match) => r'([^/?]+)',
+          (match) => r'([^/?]+)',
     );
 
     /// Add start and end

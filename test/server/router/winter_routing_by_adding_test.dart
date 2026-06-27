@@ -21,9 +21,14 @@ void main() {
         ),
       ],
     );
-    router.post('/custom', (request) async {
-      return ResponseEntity.ok(body: 'Response from /custom');
-    });
+    router.addRoute(
+      Route.post(
+        path: '/custom',
+        handler: (request) async {
+          return ResponseEntity.ok(body: 'Response from /custom');
+        },
+      ),
+    );
     router.addRoute(
       Route(
         path: '/.*',
