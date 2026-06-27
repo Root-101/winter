@@ -110,6 +110,7 @@ void main() {
     http.Response response = await http.post(url(urlToTest));
 
     expect(response.statusCode, 405);
+    expect(response.body, '');
   });
 
   test('404: Not found', () async {
@@ -117,5 +118,6 @@ void main() {
     http.Response response = await http.get(url(urlToTest));
 
     expect(response.statusCode, 404);
+    expect(response.body, '');
   });
 }
