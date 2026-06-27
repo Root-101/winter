@@ -109,13 +109,27 @@ Map<String, String> _extractPathParams(String templateUrl, String actualUrl) {
   final RegExp pathParamPattern = RegExp(r'{([^}]+)}');
 
   /// Create a regular expression to capture the corresponding values in the actual URL
+  int pIndex = 0;
   String regexPattern = templateUrlPath.replaceAllMapped(
     pathParamPattern,
-    (match) => r'([^/?]+)',
+    (match) {
+      String content = match.group(1)!;
+      String regex = content.contains('|')
+          ? content.split('|').skip(1).join('|')
+          : r'([^/?]+)';
+      return '(?<p${pIndex++}>$regex)';
+    },
   );
 
   /// Add the start (^) and optional end ($) to ensure a complete match
-  regexPattern = '^$regexPattern';
+  regexPattern = '^$regexPattern\$';
+
+  /// Make .* and .+ non-greedy by default if they are not already.
+  /// This allows segments separated by literal slashes to match as expected
+  /// when using regex in the path.
+  regexPattern = regexPattern
+      .replaceAll(RegExp(r'\.\*(?!\?)'), '.*?')
+      .replaceAll(RegExp(r'\.\+(?!\?)'), '.+?');
 
   /// Finding the values of the route parameters in the actual URL
   final RegExpMatch? matchUrl = RegExp(regexPattern).firstMatch(actualUrlPath);
@@ -123,14 +137,18 @@ Map<String, String> _extractPathParams(String templateUrl, String actualUrl) {
   /// Create empty map to storage possible values
   Map<String, String> pathParam = {};
 
+  if (matchUrl == null) return pathParam;
+
   /// Get all matches
   Iterable<RegExpMatch> matches = pathParamPattern.allMatches(templateUrlPath);
 
   /// Get every path-param for every match
-  int index = 1;
+  pIndex = 0;
   for (final RegExpMatch match in matches) {
-    String paramName = match.group(1)!;
-    String paramValue = matchUrl?.group(index++) ?? '';
+    String content = match.group(1)!;
+    String paramName = content.split('|').first;
+    String groupName = 'p${pIndex++}';
+    String paramValue = matchUrl.namedGroup(groupName) ?? '';
     pathParam[paramName] = paramValue;
   }
 

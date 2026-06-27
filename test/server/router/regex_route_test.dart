@@ -31,6 +31,18 @@ void main() {
             handler: (request) =>
                 ResponseEntity.ok(body: request.url.toString()),
           ),
+          Route(
+            path: '/param-regex/{key|.*}',
+            method: HttpMethod.get,
+            handler: (request) =>
+                ResponseEntity.ok(body: request.pathParams['key']!),
+          ),
+          Route(
+            path: '/param-multi-regex.*/{key|.*}',
+            method: HttpMethod.get,
+            handler: (request) =>
+                ResponseEntity.ok(body: request.pathParams['key']!),
+          ),
         ],
       ),
     );
@@ -106,5 +118,26 @@ void main() {
     http.Response response = await http.get(url(urlToTest));
 
     expect(response.statusCode, 404);
+  });
+
+  test('Test param regex url', () async {
+    String urlToTest = '/param-regex/test/123/test.jpg';
+    http.Response response = await http.get(url(urlToTest));
+
+    expect(response.statusCode, 200);
+    expect(response.body, 'test/123/test.jpg');
+  });
+
+  test('Test param multi regex url', () async {
+    String urlToTest1 = '/param-multi-regex/multi/test.jpg';
+    http.Response response1 = await http.get(url(urlToTest1));
+
+    expect(response1.statusCode, 200);
+    expect(response1.body, 'multi/test.jpg');
+
+    String urlToTest2 = '/param-multi-regex-2/multi-2/test-2.jpg';
+    http.Response response2 = await http.get(url(urlToTest2));
+    expect(response2.statusCode, 200);
+    expect(response2.body, 'multi-2/test-2.jpg');
   });
 }
