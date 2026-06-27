@@ -212,7 +212,7 @@ class ObjectMapper {
     );
   }
 
-  /// Extracts the element types from a Map type or identifies the registered type.
+  /*/// Extracts the element types from a Map type or identifies the registered type.
   ({Type key, Type value}) _extractMapElementTypes(Type type) {
     Type findType(String typeName) {
       // 3. Find the registered type by name matching
@@ -248,7 +248,7 @@ class ObjectMapper {
       }
     }
     return (key: findType(types[0].trim()), value: findType(types[1].trim()));
-  }
+  }*/
 
   /// Extracts the element type from a List type or identifies the registered type.
   Type _extractElementType(Type type) {
