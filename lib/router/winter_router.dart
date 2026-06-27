@@ -58,14 +58,18 @@ class WinterRouter extends AbstractWinterRouter {
     return router;
   }
 
-  static List<Route> _flattenRoutes(List<Route> routes,
-      String initialPath,
-      RouterConfig config,) {
+  static List<Route> _flattenRoutes(
+    List<Route> routes,
+    String initialPath,
+    RouterConfig config,
+  ) {
     List<Route> result = [];
 
-    void flattenRoutes(String parentPath,
-        FilterConfig? parentFilterConfig,
-        List<Route> routes,) {
+    void flattenRoutes(
+      String parentPath,
+      FilterConfig? parentFilterConfig,
+      List<Route> routes,
+    ) {
       for (var route in routes) {
         String fullPath = (parentPath + route.path).replaceAll(
           RegExp(r'/+'),
@@ -117,7 +121,7 @@ class WinterRouter extends AbstractWinterRouter {
     } else {
       ///there is some route, check method (get, post, put...)
       return matchedRoutes.firstWhereOrNull(
-            (element) => element.method == HttpMethod(request.method),
+        (element) => element.method == HttpMethod(request.method),
       );
     }
   }
@@ -143,7 +147,7 @@ class WinterRouter extends AbstractWinterRouter {
     } else {
       ///there is some route, check method (get, post, put...)
       Route? finalRoute = matchedRoutes.firstWhereOrNull(
-            (element) => element.method == HttpMethod(request.method),
+        (element) => element.method == HttpMethod(request.method),
       );
       if (finalRoute == null) {
         ///no route matching method: 415
@@ -228,7 +232,7 @@ class Route {
 
   factory Route.get({
     required String path,
-    RequestHandler? handler,
+    required RequestHandler handler,
     FilterConfig? filterConfig,
     List<Route> routes = const [],
   }) {
@@ -243,7 +247,7 @@ class Route {
 
   factory Route.query({
     required String path,
-    RequestHandler? handler,
+    required RequestHandler handler,
     FilterConfig? filterConfig,
     List<Route> routes = const [],
   }) {
@@ -258,7 +262,7 @@ class Route {
 
   factory Route.post({
     required String path,
-    RequestHandler? handler,
+    required RequestHandler handler,
     FilterConfig? filterConfig,
     List<Route> routes = const [],
   }) {
@@ -273,7 +277,7 @@ class Route {
 
   factory Route.put({
     required String path,
-    RequestHandler? handler,
+    required RequestHandler handler,
     FilterConfig? filterConfig,
     List<Route> routes = const [],
   }) {
@@ -288,7 +292,7 @@ class Route {
 
   factory Route.patch({
     required String path,
-    RequestHandler? handler,
+    required RequestHandler handler,
     FilterConfig? filterConfig,
     List<Route> routes = const [],
   }) {
@@ -303,7 +307,7 @@ class Route {
 
   factory Route.delete({
     required String path,
-    RequestHandler? handler,
+    required RequestHandler handler,
     FilterConfig? filterConfig,
     List<Route> routes = const [],
   }) {
@@ -318,25 +322,35 @@ class Route {
 
   bool match(String rawActualUrl) {
     /// Clean up urls, remove query params
-    String templateUrlPath = path
-        .split('?')
-        .first;
-    String actualUrlPath = rawActualUrl
-        .split('?')
-        .first;
+    String templateUrlPath = path.split('?').first;
+    String actualUrlPath = rawActualUrl.split('?').first;
 
     /// Create a regular expression to find path parameters in the template
     final RegExp pathParamPattern = RegExp(r'{([^}]+)}');
 
     /// Create a regular expression to capture the corresponding values in the actual URL
+    int pIndex = 0;
     String regexPattern = templateUrlPath.replaceAllMapped(
       pathParamPattern,
-          (match) => r'([^/?]+)',
+      (match) {
+        String content = match.group(1)!;
+        String regex = content.contains('|')
+            ? content.split('|').skip(1).join('|')
+            : r'([^/?]+)';
+        return '(?<p${pIndex++}>$regex)';
+      },
     );
 
     /// Add start and end
     /// Same as '^$regexPattern\$' => '^something$'
     regexPattern = r'^' + regexPattern + r'$';
+
+    /// Make .* and .+ non-greedy by default if they are not already.
+    /// This allows segments separated by literal slashes to match as expected
+    /// when using regex in the path.
+    regexPattern = regexPattern
+        .replaceAll(RegExp(r'\.\*(?!\?)'), '.*?')
+        .replaceAll(RegExp(r'\.\+(?!\?)'), '.+?');
 
     /// Check if url match
     return RegExp(regexPattern).hasMatch(actualUrlPath);
