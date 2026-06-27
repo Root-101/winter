@@ -33,15 +33,20 @@ class ResponseEntity<T> extends Response {
     return ResponseEntity<T>(HttpStatus.ok.value, body: body, headers: headers);
   }
 
-  ResponseEntity.internalServerError({
-    T? body,
-    Map<String, /* String | List<String> */ Object>? headers,
-  }) : this(HttpStatus.internalServerError.value, body: body, headers: headers);
-
   ResponseEntity.badRequest({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this(HttpStatus.badRequest.value, body: body, headers: headers);
+
+  ResponseEntity.unauthorized({
+    T? body,
+    Map<String, /* String | List<String> */ Object>? headers,
+  }) : this(HttpStatus.unauthorized.value, body: body, headers: headers);
+
+  ResponseEntity.forbidden({
+    T? body,
+    Map<String, /* String | List<String> */ Object>? headers,
+  }) : this(HttpStatus.forbidden.value, body: body, headers: headers);
 
   ResponseEntity.notFound({
     T? body,
@@ -65,6 +70,11 @@ class ResponseEntity<T> extends Response {
            if (retryAfter != null) HttpHeaders.retryAfter: '$retryAfter',
          },
        );
+
+  ResponseEntity.internalServerError({
+    T? body,
+    Map<String, /* String | List<String> */ Object>? headers,
+  }) : this(HttpStatus.internalServerError.value, body: body, headers: headers);
 
   ResponseEntity copyWith({
     int? statusCode,
