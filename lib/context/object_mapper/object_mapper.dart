@@ -16,14 +16,13 @@ abstract class _MapperEntity<T> {
     if (T == dynamic) {
       stdout.writeln(
         '\n'
-        '$consoleYellowBold'
-        'WARNING: Unable to infer type for $runtimeType. '
-        'The registry was made as "dynamic", which usually happens when '
-        'the generic type argument is omitted. '
-        'Declare it explicitly, for example: '
-        '$runtimeType<YOUR_TYPE>((value) => ...)'
-        '$consoleReset'
-        '\n',
+                'WARNING: Unable to infer type for $runtimeType. '
+                'The registry was made as "dynamic", which usually happens when '
+                'the generic type argument is omitted. '
+                'Declare it explicitly, for example: '
+                '$runtimeType<YOUR_TYPE>((value) => ...)'
+                '\n'
+            .stylize(bold: true, color: ConsoleColor.yellow),
       );
     }
   }
