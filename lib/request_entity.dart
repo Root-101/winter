@@ -2,10 +2,30 @@ import 'dart:convert';
 
 import 'package:winter/winter.dart';
 
+class RequestRoutingContext {
+  final String path;
+  final String key;
+  final HttpMethod method;
+
+  RequestRoutingContext({
+    required this.path,
+    required this.key,
+    required this.method,
+  });
+}
+
 class RequestEntity extends Request {
+  static const String _routingContextKey = 'winter.route.context';
+
   Map<String, String>? _pathParams;
   Map<String, String>? _queryParams;
-  String? _pathTemplate;
+
+  ///Override default implementation of context since the default one is an unmodified map and we are gonna use it for adding info in security, routing...
+  @override
+  Map<String, Object> context = {};
+
+  RequestRoutingContext? get routingContext =>
+      context[_routingContextKey] as RequestRoutingContext?;
 
   RequestEntity(
     super.method,
@@ -16,13 +36,21 @@ class RequestEntity extends Request {
     super.url,
     super.body,
     super.encoding,
-    super.context,
-    String? pathTemplate,
+    Map<String, Object>? context,
   }) {
-    _queryParams = _extractQueryParams(requestedUri.toString());
-    if (pathTemplate != null) {
-      setUpPathParams(pathTemplate);
+    this.context.addAll(context ?? {});
+
+    //if this context include the routing, we re-extract the params
+    RequestRoutingContext? newRoutingContext =
+        this.context[_routingContextKey] as RequestRoutingContext?;
+    if (newRoutingContext != null) {
+      _pathParams = _extractPathParams(
+        routingContext!.path,
+        requestedUri.toString(),
+      );
     }
+
+    _queryParams = _extractQueryParams(requestedUri.toString());
   }
 
   HttpMethod get httpMethod => HttpMethod(method);
@@ -31,33 +59,19 @@ class RequestEntity extends Request {
 
   Map<String, String> get pathParams => _pathParams ?? {};
 
-  String? get pathTemplate => _pathTemplate;
+  void setRoutingContext(RequestRoutingContext requestRoutingContext) {
+    if (routingContext != null) {
+      throw StateError(
+        'A routing context already configured for this request. Old: Key: ${routingContext!.key} Method: ${routingContext?.method.name ?? 'PARENT'} Path: ${routingContext!.path}. NEW: Key: ${requestRoutingContext.key} Method: ${requestRoutingContext.method.name} Path: ${requestRoutingContext.path}',
+      );
+    }
 
-  ///The path params need to be initialized with a template
-  ///For the url:
-  ///   /user/adam/details
-  ///
-  ///A possible template could be:
-  ///   /user/{name}/details
-  ///
-  /// With this set-up the path params will be: {id: 1234}
-  ///
-  /// But the same url (/user/adam/details), with the template:
-  ///   /user/adam/{action}
-  ///
-  /// Will give the params: {action: details}
-  ///
-  /// Or with the template:
-  ///   /user/{name}/{action}
-  ///
-  /// Will give the params: {name: adam, action: details}
-  ///
-  /// Basically at the time of the request is first made, this template is not available,
-  /// only after the route is selected with the template o is manually configured,
-  /// only after this the path params are configured, any other case the params will be an empty map
-  void setUpPathParams(String template) {
-    _pathTemplate = template;
-    _pathParams = _extractPathParams(template, requestedUri.toString());
+    context[_routingContextKey] = requestRoutingContext;
+
+    _pathParams = _extractPathParams(
+      routingContext!.path,
+      requestedUri.toString(),
+    );
   }
 
   /// Get the body of the request, it's get parsed with the ObjectMapper in the process
@@ -65,7 +79,7 @@ class RequestEntity extends Request {
   Future<T?> body<T>({ObjectMapper? om}) async {
     if (_cachedBody == null || _cachedBody is! T) {
       String rawString = await readAsString(encoding);
-      _cachedBody = (om ?? Winter.instance.context.objectMapper).deserialize<T>(
+      _cachedBody = (om ?? Winter.context.objectMapper).deserialize<T>(
         rawString,
       );
     }
@@ -88,7 +102,6 @@ class RequestEntity extends Request {
       requestedUri,
       url: url,
       protocolVersion: protocolVersion,
-      pathTemplate: pathTemplate,
       handlerPath: handlerPath,
       body: body ?? _cachedBody ?? (await this.body()),
       headers: headers ?? this.headers,
@@ -98,6 +111,28 @@ class RequestEntity extends Request {
   }
 }
 
+///The path params need to be initialized with a 'template'
+///For the url:
+///   /user/adam/details
+///
+///A possible template could be:
+///   /user/{name}/details
+///
+/// With this set-up the path params will be: {name: adam}
+///
+/// But the same url (/user/adam/details), with the template:
+///   /user/adam/{action}
+///
+/// Will give the params: {action: details}
+///
+/// Or with the template:
+///   /user/{name}/{action}
+///
+/// Will give the params: {name: adam, action: details}
+///
+/// Basically at the time of the request is first made, this template is not available,
+/// only after the route is selected with the template o is manually configured,
+/// only after this the path params are configured, any other case the params will be an empty map
 Map<String, String> _extractPathParams(String templateUrl, String actualUrl) {
   actualUrl = Uri.parse(actualUrl).path; //remove http(s)://domain.com
 
@@ -110,16 +145,15 @@ Map<String, String> _extractPathParams(String templateUrl, String actualUrl) {
 
   /// Create a regular expression to capture the corresponding values in the actual URL
   int pIndex = 0;
-  String regexPattern = templateUrlPath.replaceAllMapped(
-    pathParamPattern,
-    (match) {
-      String content = match.group(1)!;
-      String regex = content.contains('|')
-          ? content.split('|').skip(1).join('|')
-          : r'([^/?]+)';
-      return '(?<p${pIndex++}>$regex)';
-    },
-  );
+  String regexPattern = templateUrlPath.replaceAllMapped(pathParamPattern, (
+    match,
+  ) {
+    String content = match.group(1)!;
+    String regex = content.contains('|')
+        ? content.split('|').skip(1).join('|')
+        : r'([^/?]+)';
+    return '(?<p${pIndex++}>$regex)';
+  });
 
   /// Add the start (^) and optional end ($) to ensure a complete match
   regexPattern = '^$regexPattern\$';
