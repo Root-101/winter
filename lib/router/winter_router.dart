@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
 
 import 'package:collection/collection.dart';
+import 'package:crypto/crypto.dart';
 import 'package:winter/winter.dart';
 
 abstract class AbstractWinterRouter {
@@ -63,7 +66,7 @@ class WinterRouter extends AbstractWinterRouter {
     String initialPath,
     RouterConfig config,
   ) {
-    List<Route> result = [];
+    List<Route> rawResult = [];
 
     void flattenRoutes(
       String parentPath,
@@ -84,12 +87,13 @@ class WinterRouter extends AbstractWinterRouter {
         if (route.handler != null && route.method != null) {
           final currentRoute = Route(
             path: fullPath,
+            key: route.key,
             method: route.method!,
             handler: route.handler!,
             filterConfig: newParentFilterConfig,
           );
           if (isValidUri(fullPath)) {
-            result.add(currentRoute);
+            rawResult.add(currentRoute);
           } else {
             config.onInvalidUrl(currentRoute);
           }
@@ -101,6 +105,18 @@ class WinterRouter extends AbstractWinterRouter {
     }
 
     flattenRoutes(initialPath, null, routes);
+
+    List<Route> result = [];
+    Set<String> seenKeys = {};
+
+    for (var route in rawResult) {
+      if (seenKeys.contains(route.key)) {
+        config.onDuplicatedRoute(route);
+      } else {
+        seenKeys.add(route.key);
+        result.add(route);
+      }
+    }
 
     return result;
   }
@@ -174,10 +190,20 @@ class Route {
 
   final List<Route> routes;
 
-  Route._(this.path, this.method, this.handler, this.filterConfig, this.routes);
+  final String key;
+
+  Route._({
+    required this.path,
+    required this.key,
+    required this.method,
+    required this.handler,
+    required this.filterConfig,
+    required this.routes,
+  });
 
   factory Route({
     required String path,
+    String? key,
     HttpMethod? method,
     RequestHandler? handler,
     FilterConfig? filterConfig,
@@ -206,11 +232,12 @@ class Route {
     }
 
     return Route._(
-      path,
-      method,
-      handler,
-      filterConfig ?? const FilterConfig([]),
-      routes,
+      path: path,
+      key: key ?? _generateRouteKey(path, method),
+      method: method,
+      handler: handler,
+      filterConfig: filterConfig ?? const FilterConfig([]),
+      routes: routes,
     );
   }
 
@@ -218,11 +245,13 @@ class Route {
   ///Designed to be acommon ancestor to it's childs
   factory Route.parent({
     required String path,
+    String? key,
     FilterConfig? filterConfig,
     List<Route> routes = const [],
   }) {
     return Route(
       path: path,
+      key: key,
       method: null,
       handler: null,
       filterConfig: filterConfig,
@@ -233,11 +262,13 @@ class Route {
   factory Route.get({
     required String path,
     required RequestHandler handler,
+    String? key,
     FilterConfig? filterConfig,
     List<Route> routes = const [],
   }) {
     return Route(
       path: path,
+      key: key,
       method: HttpMethod.get,
       handler: handler,
       filterConfig: filterConfig,
@@ -248,11 +279,13 @@ class Route {
   factory Route.query({
     required String path,
     required RequestHandler handler,
+    String? key,
     FilterConfig? filterConfig,
     List<Route> routes = const [],
   }) {
     return Route(
       path: path,
+      key: key,
       method: HttpMethod.query,
       handler: handler,
       filterConfig: filterConfig,
@@ -263,11 +296,13 @@ class Route {
   factory Route.post({
     required String path,
     required RequestHandler handler,
+    String? key,
     FilterConfig? filterConfig,
     List<Route> routes = const [],
   }) {
     return Route(
       path: path,
+      key: key,
       method: HttpMethod.post,
       handler: handler,
       filterConfig: filterConfig,
@@ -278,11 +313,13 @@ class Route {
   factory Route.put({
     required String path,
     required RequestHandler handler,
+    String? key,
     FilterConfig? filterConfig,
     List<Route> routes = const [],
   }) {
     return Route(
       path: path,
+      key: key,
       method: HttpMethod.put,
       handler: handler,
       filterConfig: filterConfig,
@@ -293,11 +330,13 @@ class Route {
   factory Route.patch({
     required String path,
     required RequestHandler handler,
+    String? key,
     FilterConfig? filterConfig,
     List<Route> routes = const [],
   }) {
     return Route(
       path: path,
+      key: key,
       method: HttpMethod.patch,
       handler: handler,
       filterConfig: filterConfig,
@@ -308,11 +347,13 @@ class Route {
   factory Route.delete({
     required String path,
     required RequestHandler handler,
+    String? key,
     FilterConfig? filterConfig,
     List<Route> routes = const [],
   }) {
     return Route(
       path: path,
+      key: key,
       method: HttpMethod.delete,
       handler: handler,
       filterConfig: filterConfig,
@@ -330,16 +371,15 @@ class Route {
 
     /// Create a regular expression to capture the corresponding values in the actual URL
     int pIndex = 0;
-    String regexPattern = templateUrlPath.replaceAllMapped(
-      pathParamPattern,
-      (match) {
-        String content = match.group(1)!;
-        String regex = content.contains('|')
-            ? content.split('|').skip(1).join('|')
-            : r'([^/?]+)';
-        return '(?<p${pIndex++}>$regex)';
-      },
-    );
+    String regexPattern = templateUrlPath.replaceAllMapped(pathParamPattern, (
+      match,
+    ) {
+      String content = match.group(1)!;
+      String regex = content.contains('|')
+          ? content.split('|').skip(1).join('|')
+          : r'([^/?]+)';
+      return '(?<p${pIndex++}>$regex)';
+    });
 
     /// Add start and end
     /// Same as '^$regexPattern\$' => '^something$'
@@ -360,4 +400,13 @@ class Route {
   String toString() {
     return 'Route{path: $path, method: $method, handler: $handler, filterConfig: $filterConfig}';
   }
+}
+
+String _generateRouteKey(String path, HttpMethod? method, {int length = 12}) {
+  String rawKey = '$path${method == null ? '' : '-${method.name}'}';
+
+  var bytes = utf8.encode(rawKey);
+  String hash = sha256.convert(bytes).toString();
+
+  return hash.substring(0, min(length, hash.length));
 }
