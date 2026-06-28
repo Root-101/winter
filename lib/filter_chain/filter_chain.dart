@@ -7,13 +7,18 @@ class FilterChain {
   final List<Filter> _filters;
 
   FilterChain(List<Filter> filters, RequestHandler requestHandler)
-    : _filters = List.of([...filters, BaseFilter(requestHandler)]);
+    : _filters = List.of([...filters, _RequestHandlerFilter(requestHandler)]);
 
   FutureOr<ResponseEntity> doFilter(RequestEntity request) async {
     if (_currentFilterIndex < _filters.length) {
       final filter = _filters[_currentFilterIndex];
       _currentFilterIndex++;
-      return await filter.doFilter(request, this);
+
+      if (filter.shouldFilter(request)) {
+        return await filter.doFilter(request, this);
+      } else {
+        return await doFilter(request);
+      }
     } else {
       return ResponseEntity.internalServerError(
         body: 'Filter chain ended without a response',
@@ -24,18 +29,22 @@ class FilterChain {
 
 abstract class Filter {
   FutureOr<ResponseEntity> doFilter(RequestEntity request, FilterChain chain);
+
+  bool shouldFilter(RequestEntity request) {
+    return true;
+  }
 }
 
-class BaseFilter implements Filter {
-  final RequestHandler _baseHandler;
+class _RequestHandlerFilter extends Filter {
+  final RequestHandler _handler;
 
-  BaseFilter(this._baseHandler);
+  _RequestHandlerFilter(this._handler);
 
   @override
   FutureOr<ResponseEntity> doFilter(
     RequestEntity request,
     FilterChain chain,
   ) async {
-    return await _baseHandler(request);
+    return await _handler(request);
   }
 }

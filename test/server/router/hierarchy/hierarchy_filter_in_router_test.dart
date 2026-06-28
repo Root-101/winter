@@ -73,7 +73,7 @@ void main() {
   });
 }
 
-class AddHeaderFilter implements Filter {
+class AddHeaderFilter extends Filter {
   final String name;
   final String value;
 

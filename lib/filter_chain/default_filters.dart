@@ -17,12 +17,12 @@ void defaultLogErrorResponse(Exception exception) {
   stdout.writeln('ERROR in RESPONSE: ${exception.toString()}');
 }
 
-class LogsFilter implements Filter {
+class LogsFilter extends Filter {
   final void Function(RequestEntity request) logRequest;
   final void Function(ResponseEntity response) logResponse;
   final void Function(Exception exception) logErrorResponse;
 
-  const LogsFilter({
+  LogsFilter({
     void Function(RequestEntity request)? logRequest,
     void Function(ResponseEntity response)? logResponse,
     void Function(Exception exception)? logErrorResponse,
@@ -54,12 +54,12 @@ void defaultLogRateLimiter(dynamic request, dynamic requestId) {
   );
 }
 
-class RateLimiterFilter implements Filter {
+class RateLimiterFilter extends Filter {
   final RateLimiter rateLimiter;
   final FutureOr<String> Function(RequestEntity request) onRequest;
   final void Function(RequestEntity request, String requestId)? log;
 
-  const RateLimiterFilter({
+  RateLimiterFilter({
     required this.onRequest,
     required this.rateLimiter,
     this.log = defaultLogRateLimiter,

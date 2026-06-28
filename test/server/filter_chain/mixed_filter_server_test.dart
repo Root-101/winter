@@ -179,7 +179,7 @@ void main() {
   });
 }
 
-class InterceptNotAuthRequestsFilter implements Filter {
+class InterceptNotAuthRequestsFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -195,7 +195,7 @@ class InterceptNotAuthRequestsFilter implements Filter {
   }
 }
 
-class RemoveQueryParamsFilter implements Filter {
+class RemoveQueryParamsFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -207,7 +207,7 @@ class RemoveQueryParamsFilter implements Filter {
   }
 }
 
-class AddCustomHeaderFilter implements Filter {
+class AddCustomHeaderFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -220,7 +220,7 @@ class AddCustomHeaderFilter implements Filter {
   }
 }
 
-class ShortCircuitFilter implements Filter {
+class ShortCircuitFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -230,7 +230,7 @@ class ShortCircuitFilter implements Filter {
   }
 }
 
-class AppendToHeaderFilter implements Filter {
+class AppendToHeaderFilter extends Filter {
   final String value;
 
   AppendToHeaderFilter(this.value);
@@ -248,7 +248,7 @@ class AppendToHeaderFilter implements Filter {
   }
 }
 
-class PostFilter implements Filter {
+class PostFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
