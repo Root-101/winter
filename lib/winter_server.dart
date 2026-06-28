@@ -5,20 +5,25 @@ import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:winter/winter.dart';
 
 ///Dependency Injection: easy access to the current dependency injection instance
-DependencyInjection get di => Winter.instance.context.dependencyInjection;
+DependencyInjection get di => Winter.context.dependencyInjection;
 
 ///Dependency Injection: easy access to the current object mapper instance
-ObjectMapper get om => Winter.instance.context.objectMapper;
+ObjectMapper get om => Winter.context.objectMapper;
 
 ///Exception Handler: easy access to the current exception handler instance
-ExceptionHandler get eh => Winter.instance.context.exceptionHandler;
+ExceptionHandler get eh => Winter.context.exceptionHandler;
 
-Env get env => Winter.instance.context.env;
+Env get env => Winter.context.env;
 
 class Winter {
+  static BuildContext _context = BuildContext();
+
+  /// Access to the global context, available even before starting the server.
+  static BuildContext get context => _context;
+
   static Winter get instance {
     if (_server == null) {
-      throw StateError('Server has\'t starter yet. Try starting one first.');
+      throw StateError('Server hasn\'t started yet. Try starting one first.');
     }
     return _server!;
   }
@@ -27,20 +32,23 @@ class Winter {
 
   static bool get isRunning => _server != null;
 
-  final BuildContext context;
+  final BuildContext serverContext;
   final ServerConfig config;
   final AbstractWinterRouter router;
   final FilterConfig globalFilterConfig;
 
   final HttpServer _rawServer;
 
+  ///When was this server started
+  final DateTime timestamp;
+
   Winter._({
-    required this.context,
+    required this.serverContext,
     required this.config,
     required this.router,
     required this.globalFilterConfig,
     required this._rawServer,
-  });
+  }) : timestamp = DateTime.now();
 
   static Future<Winter> start({
     BuildContext? context,
@@ -49,12 +57,15 @@ class Winter {
     FilterConfig? globalFilterConfig,
   }) async {
     if (isRunning) {
-      throw StateError('Server already starter');
+      throw StateError('Server already started');
     }
 
     final startTime = DateTime.now();
 
-    BuildContext nonNullContext = context ?? BuildContext();
+    if (context != null) {
+      _context = context;
+    }
+
     ServerConfig nonNullConfig = config ?? ServerConfig();
     AbstractWinterRouter nonNullRouter = router ?? WinterRouter();
     FilterConfig nonNullGlobalFilterConfig =
@@ -72,7 +83,7 @@ class Winter {
     );
 
     Winter nextRunningServer = Winter._(
-      context: nonNullContext,
+      serverContext: _context,
       config: nonNullConfig,
       router: nonNullRouter,
       globalFilterConfig: nonNullGlobalFilterConfig,
@@ -99,7 +110,7 @@ class Winter {
       if (onAlreadyStarted != null) {
         onAlreadyStarted();
       } else {
-        stdout.writeln('Server already started');
+        stdout.writeln('Server not running');
       }
     }
   }
@@ -131,7 +142,13 @@ class Winter {
           routeFilterConfig = router.handlerRoute(requestEntity)?.filterConfig;
 
           ///set-up path params
-          requestEntity.setUpPathParams(route.path);
+          requestEntity.setRoutingContext(
+            RequestRoutingContext(
+              path: route.path,
+              key: route.key,
+              method: route.method!,
+            ),
+          );
         }
       }
 
