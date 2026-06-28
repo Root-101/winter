@@ -119,7 +119,7 @@ void main() {
   });
 }
 
-class RemoveQueryParamsFilter implements Filter {
+class RemoveQueryParamsFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -131,7 +131,7 @@ class RemoveQueryParamsFilter implements Filter {
   }
 }
 
-class AddGlobalHeaderFilter implements Filter {
+class AddGlobalHeaderFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -144,7 +144,7 @@ class AddGlobalHeaderFilter implements Filter {
   }
 }
 
-class InterceptFilter implements Filter {
+class InterceptFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -157,7 +157,7 @@ class InterceptFilter implements Filter {
   }
 }
 
-class BlockFilter implements Filter {
+class BlockFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -173,7 +173,7 @@ class BlockFilter implements Filter {
   }
 }
 
-class LocalFilter implements Filter {
+class LocalFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,

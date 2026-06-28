@@ -152,7 +152,7 @@ void main() {
 }
 
 ///This filter remove the path & query params of the request
-class RemoveQueryParamsFilter implements Filter {
+class RemoveQueryParamsFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -164,7 +164,7 @@ class RemoveQueryParamsFilter implements Filter {
   }
 }
 
-class AuthFilter implements Filter {
+class AuthFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -177,7 +177,7 @@ class AuthFilter implements Filter {
   }
 }
 
-class AddResponseHeaderFilter implements Filter {
+class AddResponseHeaderFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -190,7 +190,7 @@ class AddResponseHeaderFilter implements Filter {
   }
 }
 
-class AppendHeaderFilter implements Filter {
+class AppendHeaderFilter extends Filter {
   final String name;
   final String value;
 
@@ -214,7 +214,7 @@ class AppendHeaderFilter implements Filter {
   }
 }
 
-class GlobalHeaderFilter implements Filter {
+class GlobalHeaderFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -227,7 +227,7 @@ class GlobalHeaderFilter implements Filter {
   }
 }
 
-class ModifyRequestFilter implements Filter {
+class ModifyRequestFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -240,7 +240,7 @@ class ModifyRequestFilter implements Filter {
   }
 }
 
-class ErrorFilter implements Filter {
+class ErrorFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,

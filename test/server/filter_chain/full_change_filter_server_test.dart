@@ -12,9 +12,34 @@ void main() {
   setUpAll(() async {
     await Winter.start(
       config: ServerConfig(port: port),
-      globalFilterConfig: FilterConfig([FullChangeFilterFilter()]),
+      globalFilterConfig: FilterConfig([
+        FullChangeFilterFilter(),
+        KeyFilter(),
+        PathFilter(),
+      ]),
       router: WinterRouter(
         routes: [
+          Route(
+            path: '/key-filter-active',
+            key: 'special-key',
+            method: HttpMethod.get,
+            handler: (request) async => ResponseEntity.ok(),
+          ),
+          Route(
+            path: '/key-filter-inactive',
+            method: HttpMethod.get,
+            handler: (request) async => ResponseEntity.ok(),
+          ),
+          Route(
+            path: '/path-filter-active',
+            method: HttpMethod.get,
+            handler: (request) async => ResponseEntity.ok(),
+          ),
+          Route(
+            path: '/path-filter-inactive',
+            method: HttpMethod.get,
+            handler: (request) async => ResponseEntity.ok(),
+          ),
           Route(
             path: '/full-change-filter',
             method: HttpMethod.post,
@@ -178,9 +203,33 @@ void main() {
     expect(response.statusCode, 400);
     expect(response.body, 'Invalid params');
   });
+
+  test('Test shouldFilter with Key', () async {
+    // Active
+    http.Response response = await http.get(url('/key-filter-active'));
+    expect(response.statusCode, 200);
+    expect(response.headers['key-filter-executed'], 'true');
+
+    // Inactive
+    response = await http.get(url('/key-filter-inactive'));
+    expect(response.statusCode, 200);
+    expect(response.headers['key-filter-executed'], isNull);
+  });
+
+  test('Test shouldFilter with Path', () async {
+    // Active
+    http.Response response = await http.get(url('/path-filter-active'));
+    expect(response.statusCode, 200);
+    expect(response.headers['path-filter-executed'], 'true');
+
+    // Inactive
+    response = await http.get(url('/path-filter-inactive'));
+    expect(response.statusCode, 200);
+    expect(response.headers['path-filter-executed'], isNull);
+  });
 }
 
-class FullChangeFilterFilter implements Filter {
+class FullChangeFilterFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -203,7 +252,7 @@ class FullChangeFilterFilter implements Filter {
   }
 }
 
-class BodyChangeFilter implements Filter {
+class BodyChangeFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -217,7 +266,7 @@ class BodyChangeFilter implements Filter {
   }
 }
 
-class EarlyResponseFilter implements Filter {
+class EarlyResponseFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -227,7 +276,7 @@ class EarlyResponseFilter implements Filter {
   }
 }
 
-class ResponseBodyChangeFilter implements Filter {
+class ResponseBodyChangeFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -238,7 +287,7 @@ class ResponseBodyChangeFilter implements Filter {
   }
 }
 
-class ExceptionFilter implements Filter {
+class ExceptionFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -248,7 +297,7 @@ class ExceptionFilter implements Filter {
   }
 }
 
-class DoubleCallFilter implements Filter {
+class DoubleCallFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -259,7 +308,7 @@ class DoubleCallFilter implements Filter {
   }
 }
 
-class ParamCheckFilter implements Filter {
+class ParamCheckFilter extends Filter {
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
@@ -270,5 +319,41 @@ class ParamCheckFilter implements Filter {
       return await chain.doFilter(request);
     }
     return ResponseEntity.badRequest(body: 'Invalid params');
+  }
+}
+
+class KeyFilter extends Filter {
+  @override
+  bool shouldFilter(RequestEntity request) {
+    return request.routingContext?.key == 'special-key';
+  }
+
+  @override
+  Future<ResponseEntity> doFilter(
+    RequestEntity request,
+    FilterChain chain,
+  ) async {
+    ResponseEntity response = await chain.doFilter(request);
+    return response.copyWith(
+      headers: {...response.headers, 'key-filter-executed': 'true'},
+    );
+  }
+}
+
+class PathFilter extends Filter {
+  @override
+  bool shouldFilter(RequestEntity request) {
+    return request.requestedUri.path.endsWith('-active');
+  }
+
+  @override
+  Future<ResponseEntity> doFilter(
+    RequestEntity request,
+    FilterChain chain,
+  ) async {
+    ResponseEntity response = await chain.doFilter(request);
+    return response.copyWith(
+      headers: {...response.headers, 'path-filter-executed': 'true'},
+    );
   }
 }
