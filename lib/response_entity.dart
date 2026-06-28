@@ -19,8 +19,7 @@ class ResponseEntity<T> extends Response {
              : body is String || body is Stream
              ? body
              : jsonEncode(
-                 (objectMapper ?? Winter.instance.context.objectMapper)
-                     .serialize(body),
+                 (objectMapper ?? Winter.context.objectMapper).serialize(body),
                ),
        );
 
@@ -78,14 +77,14 @@ class ResponseEntity<T> extends Response {
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this(HttpStatus.internalServerError.value, body: body, headers: headers);
 
-  ResponseEntity copyWith({
+  ResponseEntity<T> copyWith({
     int? statusCode,
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
     Encoding? encoding,
     Map<String, Object>? context,
   }) {
-    return ResponseEntity(
+    return ResponseEntity<T>(
       statusCode ?? this.statusCode,
       body: body ?? _body,
       headers: headers ?? this.headers,
