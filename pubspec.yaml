@@ -18,6 +18,9 @@ dependencies:
   string_scanner: 1.4.1
   http_parser: 4.1.2
 
+  #for security
+  crypto: 3.0.7
+
 dev_dependencies:
   http: 1.6.0
   lints: 6.1.0
