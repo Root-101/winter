@@ -3,53 +3,105 @@ import 'dart:convert';
 import 'package:winter/winter.dart';
 
 class ResponseEntity<T> extends Response {
-  T? _body;
+  final T? _bodyValue;
 
   ResponseEntity(
-    super.statusCode, {
+    int statusCode, {
     T? body,
     ObjectMapper? objectMapper,
     Map<String, /* String | List<String> */ Object>? headers,
-    super.encoding,
-    super.context,
-  }) : _body = body,
-       super(
-         body: body == null
-             ? null
-             : body is String || body is Stream
-             ? body
-             : jsonEncode(
-                 (objectMapper ?? Winter.context.objectMapper).serialize(body),
-               ),
-         headers: {
-           ...?headers,
-           if (body != null &&
-               !(headers?.keys.any(
-                     (key) =>
-                         key.toLowerCase() ==
-                         HttpHeaders.contentType.toLowerCase(),
-                   ) ??
-                   false))
-             if (body is Stream)
-               HttpHeaders.contentType:
-                   MediaType.applicationOctetStream.mimeType
-             else if (body is! String)
-               HttpHeaders.contentType: (statusCode >= 400)
-                   ? MediaType.applicationProblemJson.mimeType
-                   : MediaType.applicationJson.mimeType,
-         },
+    Encoding? encoding,
+    Map<String, Object>? context,
+  }) : this._(
+         statusCode,
+         body,
+         _resolveBody(body, objectMapper),
+         headers,
+         encoding,
+         context,
        );
 
-  T body() {
-    return _body as T;
+  ResponseEntity._(
+    super.statusCode,
+    this._bodyValue,
+    Object? resolvedBody,
+    Map<String, /* String | List<String> */ Object>? headers,
+    Encoding? encoding,
+    Map<String, Object>? context,
+  ) : super(
+        body: resolvedBody,
+        headers: _resolveHeaders(
+          statusCode,
+          _bodyValue,
+          resolvedBody,
+          headers,
+          encoding: encoding,
+        ),
+        encoding: encoding,
+        context: context,
+      );
+
+  /// Resuelve el cuerpo de la respuesta según su tipo.
+  static Object? _resolveBody(Object? body, ObjectMapper? objectMapper) {
+    if (body == null || body is String || body is Stream) return body;
+
+    final mapper = objectMapper ?? Winter.context.objectMapper;
+    return jsonEncode(mapper.serialize(body));
   }
 
-  static ResponseEntity ok<T>({
+  /// Resuelve los encabezados, aplicando Content-Type y Content-Length automáticos si corresponde.
+  static Map<String, Object>? _resolveHeaders(
+    int statusCode,
+    Object? originalBody,
+    Object? resolvedBody,
+    Map<String, /* String | List<String> */ Object>? headers, {
+    Encoding? encoding,
+  }) {
+    final Map<String, Object> resolved = {...?headers};
+
+    if (resolvedBody == null) {
+      return resolved.isEmpty ? null : resolved;
+    }
+
+    final hasContentType = resolved.keys.any(
+      (k) => k.toLowerCase() == HttpHeaders.contentType.toLowerCase(),
+    );
+
+    if (!hasContentType) {
+      if (originalBody is Stream) {
+        resolved[HttpHeaders.contentType] =
+            MediaType.applicationOctetStream.mimeType;
+      } else if (originalBody is String) {
+        resolved[HttpHeaders.contentType] = MediaType.textPlain.mimeType;
+      } else {
+        resolved[HttpHeaders.contentType] = (statusCode >= 400)
+            ? MediaType.applicationProblemJson.mimeType
+            : MediaType.applicationJson.mimeType;
+      }
+    }
+
+    final hasContentLength = resolved.keys.any(
+      (k) => k.toLowerCase() == HttpHeaders.contentLength.toLowerCase(),
+    );
+
+    if (!hasContentLength) {
+      if (resolvedBody is String) {
+        resolved[HttpHeaders.contentLength] = (encoding ?? utf8)
+            .encode(resolvedBody)
+            .length
+            .toString();
+      }
+    }
+
+    return resolved;
+  }
+
+  T body() => _bodyValue as T;
+
+  static ResponseEntity<T> ok<T>({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
-  }) {
-    return ResponseEntity<T>(HttpStatus.ok.value, body: body, headers: headers);
-  }
+  }) => ResponseEntity<T>(HttpStatus.ok.value, body: body, headers: headers);
 
   ResponseEntity.badRequest({
     T? body,
@@ -84,7 +136,7 @@ class ResponseEntity<T> extends Response {
          HttpStatus.tooManyRequests.value,
          body: body,
          headers: {
-           if (headers != null) ...headers,
+           ...?headers,
            if (retryAfter != null) HttpHeaders.retryAfter: '$retryAfter',
          },
        );
@@ -103,7 +155,7 @@ class ResponseEntity<T> extends Response {
   }) {
     return ResponseEntity<T>(
       statusCode ?? this.statusCode,
-      body: body ?? _body,
+      body: body ?? _bodyValue,
       headers: headers ?? this.headers,
       encoding: encoding ?? this.encoding,
       context: context ?? this.context,
