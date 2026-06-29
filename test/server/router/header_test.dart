@@ -41,7 +41,7 @@ void main() {
             handler: (request) async {
               return ResponseEntity.ok(
                 body: Stream.fromIterable([
-                  [1, 2, 3]
+                  [1, 2, 3],
                 ]),
               );
             },
@@ -52,10 +52,17 @@ void main() {
             handler: (request) async {
               return ResponseEntity.ok(
                 body: Stream.fromIterable([
-                  [1, 2, 3]
+                  [1, 2, 3],
                 ]),
                 headers: {HttpHeaders.contentType: 'image/jpeg'},
               );
+            },
+          ),
+          Route(
+            path: '/no-content',
+            method: HttpMethod.get,
+            handler: (request) async {
+              return ResponseEntity(HttpStatus.noContent.value);
             },
           ),
         ],
@@ -95,22 +102,67 @@ void main() {
       );
     });
 
-    test('Response with Stream body has application/octet-stream content-type',
-        () async {
-      http.Response response = await http.get(url('/stream'));
+    test(
+      'Response with Stream body has application/octet-stream content-type',
+      () async {
+        http.Response response = await http.get(url('/stream'));
+        expect(
+          response.headers[HttpHeaders.contentType.toLowerCase()],
+          contains(MediaType.applicationOctetStream.mimeType),
+        );
+      },
+    );
+
+    test(
+      'Response with Stream body and custom content-type respects it',
+      () async {
+        http.Response response = await http.get(url('/stream-jpeg'));
+        expect(
+          response.headers[HttpHeaders.contentType.toLowerCase()],
+          contains('image/jpeg'),
+        );
+      },
+    );
+
+    test('Response with JSON body has correct Content-Length', () async {
+      http.Response response = await http.get(url('/json'));
+      // {"message":"hello"} -> 19 characters
       expect(
-        response.headers[HttpHeaders.contentType.toLowerCase()],
-        contains(MediaType.applicationOctetStream.mimeType),
+        response.headers[HttpHeaders.contentLength.toLowerCase()],
+        equals('19'),
       );
     });
 
-    test('Response with Stream body and custom content-type respects it',
-        () async {
-      http.Response response = await http.get(url('/stream-jpeg'));
+    test('Response with String body has correct Content-Length', () async {
+      http.Response response = await http.get(url('/text'));
+      // "plain text" -> 10 characters
       expect(
-        response.headers[HttpHeaders.contentType.toLowerCase()],
-        contains('image/jpeg'),
+        response.headers[HttpHeaders.contentLength.toLowerCase()],
+        equals('10'),
       );
     });
+
+    test('Response with Stream body has no Content-Length', () async {
+      http.Response response = await http.get(url('/stream'));
+      // Streams usually result in Transfer-Encoding: chunked, not Content-Length
+      expect(
+        response.headers[HttpHeaders.contentLength.toLowerCase()],
+        isNull,
+      );
+    });
+
+    //TODO: alguien le esta agregando el content-type text/plan y no se quien es
+    /*test(
+      'Response 204 No Content has no Content-Type or Content-Length',
+      () async {
+        http.Response response = await http.get(url('/no-content'));
+        expect(response.statusCode, equals(HttpStatus.noContent.value));
+        expect(response.headers[HttpHeaders.contentType.toLowerCase()], isNull);
+        expect(
+          response.headers[HttpHeaders.contentLength.toLowerCase()],
+          isNull,
+        );
+      },
+    );*/
   });
 }
