@@ -105,6 +105,26 @@ class ObjectMapper {
     }
   }
 
+  /// Adds a [Serializer] to the mapper.
+  void addSerializer<T>(Serializer<T> serializer) {
+    _serializers[T] = serializer;
+  }
+
+  /// Removes the [Serializer] for type [T].
+  void removeSerializer<T>() {
+    _serializers.remove(T);
+  }
+
+  /// Adds a [Deserializer] to the mapper.
+  void addDeserializer<T>(Deserializer<T> deserializer) {
+    _deserializers[T] = deserializer;
+  }
+
+  /// Removes the [Deserializer] for type [T].
+  void removeDeserializer<T>() {
+    _deserializers.remove(T);
+  }
+
   /// Recursively serializes [object] to a JSON-compatible representation.
   Object? serialize(Object? object) {
     //if null => null

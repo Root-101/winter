@@ -340,4 +340,42 @@ void main() {
       },
     );
   });
+
+  group('Add and Remove Serializers/Deserializers', () {
+    late ObjectMapper parser;
+
+    setUp(() {
+      parser = ObjectMapper();
+    });
+
+    test('Add and remove Serializer', () {
+      Tool tool = Tool(name: 'Hammer');
+
+      // Should fail initially
+      expect(() => parser.serialize(tool), throwsA(isA<StateError>()));
+
+      // Add serializer
+      parser.addSerializer<Tool>(Serializer<Tool>((t) => t.toJson()));
+      expect(parser.serialize(tool), {'NAME': 'Hammer'});
+
+      // Remove serializer
+      parser.removeSerializer<Tool>();
+      expect(() => parser.serialize(tool), throwsA(isA<StateError>()));
+    });
+
+    test('Add and remove Deserializer', () {
+      Map<String, dynamic> json = {'NAME': 'Hammer'};
+
+      // Should fail initially
+      expect(() => parser.deserialize<Tool>(json), throwsA(isA<StateError>()));
+
+      // Add deserializer
+      parser.addDeserializer<Tool>(Deserializer<Tool>((j) => Tool.fromJson(j)));
+      expect(parser.deserialize<Tool>(json), Tool(name: 'Hammer'));
+
+      // Remove deserializer
+      parser.removeDeserializer<Tool>();
+      expect(() => parser.deserialize<Tool>(json), throwsA(isA<StateError>()));
+    });
+  });
 }
