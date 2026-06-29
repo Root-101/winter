@@ -80,6 +80,9 @@ class MediaType {
   /// The media type's MIME type.
   String get mimeType => '$type/$subtype';
 
+  @override
+  String toString() => mimeType;
+
   const MediaType(this.type, this.subtype, {Map<String, String>? parameters})
     : parameters = parameters ?? const {};
 
