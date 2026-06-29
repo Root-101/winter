@@ -21,14 +21,15 @@ class Winter {
   /// Access to the global context, available even before starting the server.
   static BuildContext get context => _context;
 
-  static Winter get instance {
+  static Winter? _server;
+
+  /// Access to the global server, It needs to be started in order to access it
+  static Winter get server {
     if (_server == null) {
       throw StateError('Server hasn\'t started yet. Try starting one first.');
     }
     return _server!;
   }
-
-  static Winter? _server;
 
   static bool get isRunning => _server != null;
 
@@ -104,7 +105,7 @@ class Winter {
     void Function()? onAlreadyStarted,
   }) async {
     if (isRunning) {
-      await instance._rawServer.close(force: force);
+      await server._rawServer.close(force: force);
       _server = null;
     } else {
       if (onAlreadyStarted != null) {

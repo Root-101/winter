@@ -4,13 +4,21 @@ class BuildContext {
   ///When was this context created
   final DateTime timestamp;
 
-  final ObjectMapper objectMapper;
+  ObjectMapper _objectMapper;
 
-  final ExceptionHandler exceptionHandler;
+  ObjectMapper get objectMapper => _objectMapper;
 
-  final DependencyInjection dependencyInjection;
+  ExceptionHandler _exceptionHandler;
 
-  final Env env;
+  ExceptionHandler get exceptionHandler => _exceptionHandler;
+
+  DependencyInjection _dependencyInjection;
+
+  DependencyInjection get dependencyInjection => _dependencyInjection;
+
+  Env _env;
+
+  Env get env => _env;
 
   BuildContext({
     ObjectMapper? objectMapper,
@@ -18,8 +26,28 @@ class BuildContext {
     DependencyInjection? dependencyInjection,
     Env? env,
   }) : timestamp = DateTime.now(),
-       objectMapper = objectMapper ?? ObjectMapper(),
-       exceptionHandler = exceptionHandler ?? SimpleExceptionHandler(),
-       dependencyInjection = dependencyInjection ?? DependencyInjection(),
-       env = env ?? Env();
+       _objectMapper = objectMapper ?? ObjectMapper(),
+       _exceptionHandler = exceptionHandler ?? SimpleExceptionHandler(),
+       _dependencyInjection = dependencyInjection ?? DependencyInjection(),
+       _env = env ?? Env();
+
+  void setUp({
+    ObjectMapper? objectMapper,
+    ExceptionHandler? exceptionHandler,
+    DependencyInjection? dependencyInjection,
+    Env? env,
+  }) {
+    if (objectMapper != null) {
+      _objectMapper = objectMapper;
+    }
+    if (exceptionHandler != null) {
+      _exceptionHandler = exceptionHandler;
+    }
+    if (dependencyInjection != null) {
+      _dependencyInjection = dependencyInjection;
+    }
+    if (env != null) {
+      _env = env;
+    }
+  }
 }
