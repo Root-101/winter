@@ -9,7 +9,7 @@ class ResponseEntity<T> extends Response {
     super.statusCode, {
     T? body,
     ObjectMapper? objectMapper,
-    super.headers,
+    Map<String, /* String | List<String> */ Object>? headers,
     super.encoding,
     super.context,
   }) : _body = body,
@@ -21,6 +21,23 @@ class ResponseEntity<T> extends Response {
              : jsonEncode(
                  (objectMapper ?? Winter.context.objectMapper).serialize(body),
                ),
+         headers: {
+           ...?headers,
+           if (body != null &&
+               !(headers?.keys.any(
+                     (key) =>
+                         key.toLowerCase() ==
+                         HttpHeaders.contentType.toLowerCase(),
+                   ) ??
+                   false))
+             if (body is Stream)
+               HttpHeaders.contentType:
+                   MediaType.applicationOctetStream.mimeType
+             else if (body is! String)
+               HttpHeaders.contentType: (statusCode >= 400)
+                   ? MediaType.applicationProblemJson.mimeType
+                   : MediaType.applicationJson.mimeType,
+         },
        );
 
   T body() {

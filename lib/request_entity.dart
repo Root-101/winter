@@ -20,7 +20,7 @@ class RequestEntity extends Request {
   Map<String, String>? _pathParams;
   Map<String, String>? _queryParams;
 
-  ///Override default implementation of context since the default one is an unmodified map and we are gonna use it for adding info in security, routing...
+  ///Override default implementation of context since the default is an unmodified map and we are gonna use it for adding info like security, routing...
   @override
   Map<String, Object> context = {};
 
