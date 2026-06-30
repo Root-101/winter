@@ -2,20 +2,8 @@ import 'dart:convert';
 
 import 'package:winter/winter.dart';
 
-class RequestRoutingContext {
-  final String path;
-  final String key;
-  final HttpMethod method;
-
-  RequestRoutingContext({
-    required this.path,
-    required this.key,
-    required this.method,
-  });
-}
-
 class RequestEntity extends Request {
-  static const String _routingContextKey = 'winter.route.context';
+  static const String _routingContextKey = 'winter.context.route';
 
   Map<String, String>? _pathParams;
   Map<String, String>? _queryParams;
@@ -108,6 +96,16 @@ class RequestEntity extends Request {
       encoding: encoding ?? this.encoding,
       context: context ?? this.context,
     );
+  }
+
+  @override
+  Request change({
+    Map<String, /* String | List<String> */ Object?>? headers,
+    Map<String, Object?>? context,
+    String? path,
+    Object? body,
+  }) {
+    throw UnimplementedError();
   }
 }
 
