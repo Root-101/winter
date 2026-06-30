@@ -161,4 +161,13 @@ class ResponseEntity<T> extends Response {
       context: context ?? this.context,
     );
   }
+
+  @override
+  Response change({
+    Map<String, /* String | List<String> */ Object?>? headers,
+    Map<String, Object?>? context,
+    Object? body,
+  }) {
+    throw UnimplementedError();
+  }
 }
