@@ -12,6 +12,7 @@ export 'http/http.dart';
 export 'request_entity.dart';
 export 'response_entity.dart';
 export 'router/router.dart';
+export 'security/security.dart';
 export 'server_config.dart';
 export 'utils/utils.dart';
 export 'winter_server.dart';
