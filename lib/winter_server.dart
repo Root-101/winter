@@ -56,6 +56,7 @@ class Winter {
     ServerConfig? config,
     AbstractWinterRouter? router,
     FilterConfig? globalFilterConfig,
+    bool shared = false,
   }) async {
     if (isRunning) {
       throw StateError('Server already started');
@@ -79,6 +80,7 @@ class Winter {
         globalFilterConfig: nonNullGlobalFilterConfig,
         request: request,
       ),
+      shared: shared,
       nonNullConfig.ip,
       nonNullConfig.port,
     );
