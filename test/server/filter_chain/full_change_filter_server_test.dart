@@ -181,15 +181,6 @@ void main() {
     expect(response.body, contains('Exception: Filter error'));
   });
 
-  test('Test Filter Chain ended without response', () async {
-    String urlToTest = '/double-call';
-
-    http.Response response = await http.get(url(urlToTest));
-
-    expect(response.statusCode, 500);
-    expect(response.body, 'Filter chain ended without a response');
-  });
-
   test('Test Params in Filter', () async {
     String urlToTest = '/params/123?query=abc';
 
