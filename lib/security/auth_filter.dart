@@ -33,4 +33,9 @@ class AuthFilter extends Filter {
   bool shouldFilter(RequestEntity request) {
     return _shouldFilter?.call(request) ?? super.shouldFilter(request);
   }
+
+  @override
+  String toString() {
+    return 'AuthFilter{authenticated: $authenticated, rules: $rules, shouldFilter: ${_shouldFilter != null ? 'custom' : 'all'}';
+  }
 }
