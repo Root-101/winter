@@ -346,5 +346,22 @@ void main() {
       expect(rule.evaluate(superUser), true);
       expect(rule.evaluate(normal), false);
     });
+
+    test('Rule toString representation', () {
+      final rule = hasPermission('user.create')
+          .and(hasRole('User').andd().hasRole('SuperUser'));
+
+      expect(
+        rule.toString(),
+        'hasPermission(user.create) && (hasRole(User) && hasRole(SuperUser))',
+      );
+
+      final rule2 = hasRole('Admin').orr().hasRole('User').andd().hasPermission('read');
+      
+      expect(
+        rule2.toString(),
+        '(hasRole(Admin) || hasRole(User)) && hasPermission(read)',
+      );
+    });
   });
 }

@@ -16,6 +16,11 @@ abstract class AuthorizationRule {
   const AuthorizationRule();
 
   bool evaluate(Authentication authentication);
+
+  String _toExpression();
+
+  @override
+  String toString() => _toExpression();
 }
 
 class RoleRule extends AuthorizationRule {
@@ -27,6 +32,9 @@ class RoleRule extends AuthorizationRule {
   bool evaluate(Authentication authentication) {
     return authentication.roles.contains(role);
   }
+
+  @override
+  String _toExpression() => 'hasRole($role)';
 }
 
 class PermissionRule extends AuthorizationRule {
@@ -38,6 +46,9 @@ class PermissionRule extends AuthorizationRule {
   bool evaluate(Authentication authentication) {
     return authentication.permissions.contains(permission);
   }
+
+  @override
+  String _toExpression() => 'hasPermission($permission)';
 }
 
 class AuthorityRule extends AuthorizationRule {
@@ -49,6 +60,9 @@ class AuthorityRule extends AuthorizationRule {
   bool evaluate(Authentication authentication) {
     return authentication.authorities.contains(authority);
   }
+
+  @override
+  String _toExpression() => 'hasAuthority($authority)';
 }
 
 class AndRule extends AuthorizationRule {
@@ -61,6 +75,9 @@ class AndRule extends AuthorizationRule {
   bool evaluate(Authentication authentication) {
     return left.evaluate(authentication) && right.evaluate(authentication);
   }
+
+  @override
+  String _toExpression() => '(${left._toExpression()} && ${right._toExpression()})';
 }
 
 class OrRule extends AuthorizationRule {
@@ -73,6 +90,9 @@ class OrRule extends AuthorizationRule {
   bool evaluate(Authentication authentication) {
     return left.evaluate(authentication) || right.evaluate(authentication);
   }
+
+  @override
+  String _toExpression() => '(${left._toExpression()} || ${right._toExpression()})';
 }
 
 class RuleBuilder extends AuthorizationRule {
@@ -82,6 +102,18 @@ class RuleBuilder extends AuthorizationRule {
 
   @override
   bool evaluate(authentication) => _rule.evaluate(authentication);
+
+  @override
+  String _toExpression() => _rule._toExpression();
+
+  @override
+  String toString() {
+    final res = _toExpression();
+    if (res.startsWith('(') && res.endsWith(')')) {
+      return res.substring(1, res.length - 1);
+    }
+    return res;
+  }
 
   RuleBuilder and(AuthorizationRule other) {
     _rule = AndRule(_rule, other);
