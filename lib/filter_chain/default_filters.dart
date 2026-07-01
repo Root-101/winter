@@ -47,39 +47,3 @@ class LogsFilter extends Filter {
     }
   }
 }
-
-void defaultLogRateLimiter(dynamic request, dynamic requestId) {
-  stdout.writeln(
-    'Rate limiter fail for id: $requestId in request: ${request.url}',
-  );
-}
-
-class RateLimiterFilter extends Filter {
-  final RateLimiter rateLimiter;
-  final FutureOr<String> Function(RequestEntity request) onRequest;
-  final void Function(RequestEntity request, String requestId)? log;
-
-  RateLimiterFilter({
-    required this.onRequest,
-    required this.rateLimiter,
-    this.log = defaultLogRateLimiter,
-  });
-
-  @override
-  Future<ResponseEntity> doFilter(
-    RequestEntity request,
-    FilterChain chain,
-  ) async {
-    String requestId = await onRequest(request);
-    if (rateLimiter.allowRequest(requestId)) {
-      return await chain.doFilter(request);
-    } else {
-      if (log != null) {
-        log!(request, requestId);
-      }
-      return ResponseEntity.tooManyRequests(
-        retryAfter: rateLimiter.window.inSeconds,
-      );
-    }
-  }
-}
