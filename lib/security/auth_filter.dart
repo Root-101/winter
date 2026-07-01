@@ -3,8 +3,9 @@ import 'package:winter/winter.dart';
 class AuthFilter extends Filter {
   final bool authenticated;
   final RuleBuilder? rules;
+  final bool Function(RequestEntity)? _shouldFilter;
 
-  AuthFilter({this.authenticated = true, this.rules});
+  AuthFilter({this.authenticated = true, this.rules, this._shouldFilter});
 
   @override
   Future<ResponseEntity> doFilter(
@@ -26,5 +27,10 @@ class AuthFilter extends Filter {
     }
 
     return chain.doFilter(request);
+  }
+
+  @override
+  bool shouldFilter(RequestEntity request) {
+    return _shouldFilter?.call(request) ?? super.shouldFilter(request);
   }
 }
