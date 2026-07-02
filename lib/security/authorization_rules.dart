@@ -77,7 +77,8 @@ class AndRule extends AuthorizationRule {
   }
 
   @override
-  String _toExpression() => '(${left._toExpression()} && ${right._toExpression()})';
+  String _toExpression() =>
+      '(${left._toExpression()} && ${right._toExpression()})';
 }
 
 class OrRule extends AuthorizationRule {
@@ -92,11 +93,12 @@ class OrRule extends AuthorizationRule {
   }
 
   @override
-  String _toExpression() => '(${left._toExpression()} || ${right._toExpression()})';
+  String _toExpression() =>
+      '(${left._toExpression()} || ${right._toExpression()})';
 }
 
 class RuleBuilder extends AuthorizationRule {
-  AuthorizationRule _rule;
+  final AuthorizationRule _rule;
 
   RuleBuilder(this._rule);
 
@@ -115,67 +117,11 @@ class RuleBuilder extends AuthorizationRule {
     return res;
   }
 
-  RuleBuilder and(AuthorizationRule other) {
-    _rule = AndRule(_rule, other);
-    return this;
+  RuleBuilder operator &(AuthorizationRule other) {
+    return RuleBuilder(AndRule(_rule, other));
   }
 
-  RuleBuilder or(AuthorizationRule other) {
-    _rule = OrRule(_rule, other);
-    return this;
-  }
-
-  PendingAnd andd() => PendingAnd(this);
-
-  PendingOr orr() => PendingOr(this);
-
-  void _appendAnd(AuthorizationRule rule) {
-    _rule = AndRule(_rule, rule);
-  }
-
-  void _appendOr(AuthorizationRule rule) {
-    _rule = OrRule(_rule, rule);
-  }
-}
-
-class PendingAnd {
-  final RuleBuilder builder;
-
-  PendingAnd(this.builder);
-
-  RuleBuilder hasRole(String role) {
-    builder._appendAnd(RoleRule(role));
-    return builder;
-  }
-
-  RuleBuilder hasPermission(String permission) {
-    builder._appendAnd(PermissionRule(permission));
-    return builder;
-  }
-
-  RuleBuilder hasAuthority(String authority) {
-    builder._appendAnd(AuthorityRule(authority));
-    return builder;
-  }
-}
-
-class PendingOr {
-  final RuleBuilder builder;
-
-  PendingOr(this.builder);
-
-  RuleBuilder hasRole(String role) {
-    builder._appendOr(RoleRule(role));
-    return builder;
-  }
-
-  RuleBuilder hasPermission(String permission) {
-    builder._appendOr(PermissionRule(permission));
-    return builder;
-  }
-
-  RuleBuilder hasAuthority(String authority) {
-    builder._appendOr(AuthorityRule(authority));
-    return builder;
+  RuleBuilder operator |(AuthorizationRule other) {
+    return RuleBuilder(OrRule(_rule, other));
   }
 }
