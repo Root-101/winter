@@ -59,7 +59,7 @@ void main() {
             method: HttpMethod.get,
             filterConfig: FilterConfig([
               AuthFilter(
-                rules: hasRole('admin').andd().hasPermission('user.delete'),
+                rules: hasRole('admin') & hasPermission('user.delete'),
               ),
             ]),
             handler: (request) async => ResponseEntity.ok(),
@@ -69,7 +69,7 @@ void main() {
             key: 'with-or-rules-key',
             method: HttpMethod.get,
             filterConfig: FilterConfig([
-              AuthFilter(rules: hasRole('guest').orr().hasRole('admin')),
+              AuthFilter(rules: hasRole('guest') | hasRole('admin')),
             ]),
             handler: (request) async => ResponseEntity.ok(),
           ),
@@ -79,7 +79,7 @@ void main() {
             method: HttpMethod.get,
             filterConfig: FilterConfig([
               AuthFilter(
-                rules: hasRole('admin').andd().hasPermission('user.update'),
+                rules: hasRole('admin') & hasPermission('user.update'),
               ),
             ]),
             handler: (request) async => ResponseEntity.ok(),
