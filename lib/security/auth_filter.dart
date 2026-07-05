@@ -16,20 +16,28 @@ class AuthFilter extends Filter {
 
     if (authenticated && !securityContext.isAuthenticated) {
       if (securityContext.authentication == null) {
-        return ResponseEntity.unauthorized();
+        return build401(request);
       }
-      return ResponseEntity.forbidden();
+      return build403(request);
     }
 
     if (rules != null) {
       final authentication =
           securityContext.authentication ?? Authentication.anonymous();
       if (!rules!.evaluate(authentication)) {
-        return ResponseEntity.forbidden();
+        return build403(request);
       }
     }
 
     return chain.doFilter(request);
+  }
+
+  ResponseEntity build401(RequestEntity request) {
+    return ResponseEntity.unauthorized();
+  }
+
+  ResponseEntity build403(RequestEntity request) {
+    return ResponseEntity.forbidden();
   }
 
   @override
