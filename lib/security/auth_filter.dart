@@ -15,7 +15,10 @@ class AuthFilter extends Filter {
     final securityContext = request.securityContext;
 
     if (authenticated && !securityContext.isAuthenticated) {
-      return ResponseEntity.unauthorized();
+      if (securityContext.authentication == null) {
+        return ResponseEntity.unauthorized();
+      }
+      return ResponseEntity.forbidden();
     }
 
     if (rules != null) {
