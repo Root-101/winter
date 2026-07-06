@@ -37,6 +37,7 @@ class Winter {
   final ServerConfig config;
   final AbstractWinterRouter router;
   final FilterConfig globalFilterConfig;
+  final SecurityConfig securityConfig;
 
   final HttpServer _rawServer;
 
@@ -48,6 +49,7 @@ class Winter {
     required this.config,
     required this.router,
     required this.globalFilterConfig,
+    required this.securityConfig,
     required this._rawServer,
   }) : timestamp = DateTime.now();
 
@@ -56,6 +58,7 @@ class Winter {
     ServerConfig? config,
     AbstractWinterRouter? router,
     FilterConfig? globalFilterConfig,
+    SecurityConfig? securityConfig,
     bool shared = false,
   }) async {
     if (isRunning) {
@@ -68,10 +71,29 @@ class Winter {
       _context = context;
     }
 
-    ServerConfig nonNullConfig = config ?? ServerConfig();
-    AbstractWinterRouter nonNullRouter = router ?? WinterRouter();
-    FilterConfig nonNullGlobalFilterConfig =
-        globalFilterConfig ?? const FilterConfig([]);
+    ServerConfig nonNullConfig =
+        config ?? di.tryFind<ServerConfig>() ?? ServerConfig();
+    di.put(nonNullConfig);
+
+    AbstractWinterRouter nonNullRouter =
+        router ?? di.tryFind<WinterRouter>() ?? WinterRouter();
+    di.put(nonNullRouter);
+
+    SecurityConfig nonNullSecurityConfig =
+        securityConfig ?? di.tryFind<SecurityConfig>() ?? SecurityConfig();
+    di.put(nonNullSecurityConfig);
+
+    List<Filter> filters = [];
+
+    // Check for CORS configuration in SecurityConfig
+    final corsConfig = nonNullSecurityConfig.cors();
+    if (corsConfig != null) {
+      filters.insert(0, CorsFilter(config: corsConfig));
+    }
+
+    filters.addAll(globalFilterConfig?.filters ?? []);
+
+    FilterConfig nonNullGlobalFilterConfig = FilterConfig(filters);
 
     HttpServer rawServer = await shelf_io.serve(
       poweredByHeader: 'Winter-Server',
@@ -90,6 +112,7 @@ class Winter {
       config: nonNullConfig,
       router: nonNullRouter,
       globalFilterConfig: nonNullGlobalFilterConfig,
+      securityConfig: nonNullSecurityConfig,
       rawServer: rawServer,
     );
 
@@ -142,7 +165,7 @@ class Winter {
 
         if (route != null) {
           ///set-up the filter config from route
-          routeFilterConfig = router.handlerRoute(requestEntity)?.filterConfig;
+          routeFilterConfig = route.filterConfig;
 
           ///set-up path params
           requestEntity.setRoutingContext(
