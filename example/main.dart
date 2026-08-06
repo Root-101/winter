@@ -7,7 +7,7 @@ void main() async {
       config: RouterConfig(onLoadedRoutes: DefaultOnLoadedRoutes.log()),
       routes: [
         Route.get(
-          path: '/hello-wold',
+          path: '/hello',
           handler: (request) {
             return ResponseEntity.ok(body: 'Hello World');
           },
