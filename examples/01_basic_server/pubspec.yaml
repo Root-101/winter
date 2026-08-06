@@ -1,0 +1,15 @@
+name: basic_server
+description: A basic server example using Winter framework.
+publish_to: 'none'
+version: 1.0.0
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  winter:
+    path: ../../
+
+dev_dependencies:
+  http: ^1.1.0
+  test: ^1.24.0
