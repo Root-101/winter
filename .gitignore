@@ -7,3 +7,6 @@ pubspec.lock
 winter_framework.iml
 
 lib/example
+lib/examples/01_basic_server/.dart_tool
+lib/examples/02_routing/.dart_tool
+lib/examples/03_auth_security/.dart_tool
