@@ -39,13 +39,13 @@ class CorsFilter extends Filter {
   Map<String, String> _getCorsHeaders(RequestEntity request) {
     final headers = <String, String>{};
 
-    final origin =
-        request.headers[HttpHeaders.origin] ??
-        request.headers[HttpHeaders.origin];
+    final origin = request.headers[HttpHeaders.origin];
+
+    if (origin == null) return headers;
 
     if (config.allowedOrigins.contains('*')) {
       headers[HttpHeaders.accessControlAllowOrigin] = '*';
-    } else if (origin != null && config.allowedOrigins.contains(origin)) {
+    } else if (config.allowedOrigins.contains(origin)) {
       headers[HttpHeaders.accessControlAllowOrigin] = origin;
       headers[HttpHeaders.vary] = HttpHeaders.origin;
     }
