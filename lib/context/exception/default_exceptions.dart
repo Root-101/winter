@@ -25,10 +25,10 @@ class BadRequestException extends ApiException {
 }
 
 /// exception for 401
-class ForbiddenException extends ApiException {
+class UnauthorizedException extends ApiException {
   static final HttpStatus status = HttpStatus.unauthorized;
 
-  ForbiddenException({Object? body, super.headers})
+  UnauthorizedException({Object? body, super.headers})
     : super(body: body ?? status.reasonPhrase, statusCode: status.value);
 }
 
@@ -41,10 +41,10 @@ class PaymentRequiredException extends ApiException {
 }
 
 /// exception for 403
-class UnauthorizedException extends ApiException {
+class ForbiddenException extends ApiException {
   static final HttpStatus status = HttpStatus.forbidden;
 
-  UnauthorizedException({Object? body, super.headers})
+  ForbiddenException({Object? body, super.headers})
     : super(body: body ?? status.reasonPhrase, statusCode: status.value);
 }
 
