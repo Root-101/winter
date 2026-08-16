@@ -7,10 +7,11 @@ class RouterConfig {
     OnInvalidUrl? onInvalidUrl,
     OnLoadedRoutes? onLoadedRoutes,
     OnDuplicatedRoute? onDuplicatedRoute,
-  }) : onInvalidUrl = onInvalidUrl ?? DefaultOnInvalidUrl.ignore(),
-       onLoadedRoutes = onLoadedRoutes ?? DefaultOnLoadedRoutes.ignore(),
-       onDuplicatedRoute =
-           onDuplicatedRoute ?? DefaultOnDuplicatedRoute.ignore();
+  })
+      : onInvalidUrl = onInvalidUrl ?? DefaultOnInvalidUrl.ignore(),
+        onLoadedRoutes = onLoadedRoutes ?? DefaultOnLoadedRoutes.ignore(),
+        onDuplicatedRoute =
+            onDuplicatedRoute ?? DefaultOnDuplicatedRoute.ignore();
 
   final OnInvalidUrl onInvalidUrl;
   final OnLoadedRoutes onLoadedRoutes;
@@ -24,7 +25,8 @@ class DefaultOnInvalidUrl {
     return (failedRoute) {
       if (log) {
         stdout.writeln(
-          '${failedRoute.path} is not a valid URL. Excluded from routing config',
+          '${failedRoute
+              .path} is not a valid URL. Excluded from routing config',
         );
       }
     };
@@ -46,7 +48,9 @@ class DefaultOnDuplicatedRoute {
     return (duplicatedRoute) {
       if (log) {
         stdout.writeln(
-          'Key: ${duplicatedRoute.key} / Method: ${duplicatedRoute.method?.name ?? 'PARENT'} / Path: ${duplicatedRoute.path} => is a duplicated route. Excluded from routing config',
+          'Key: ${duplicatedRoute.key} / Method: ${duplicatedRoute.method
+              ?.name ?? 'PARENT'} / Path: ${duplicatedRoute
+              .path} => is a duplicated route. Excluded from routing config',
         );
       }
     };
@@ -71,7 +75,7 @@ class DefaultOnLoadedRoutes {
   static OnLoadedRoutes log() {
     return (allRoutes) {
       stdout.writeln('');
-      stdout.writeln('Routes:');
+      stdout.writeln('Routes log start --------------------------------------');
 
       final int defaultPad = 5;
       // 1. Encontramos dinámicamente las longitudes máximas
@@ -110,11 +114,15 @@ class DefaultOnLoadedRoutes {
         final formattedPath = element.path.padRight(maxPathLen + defaultPad);
         final formattedFilters = '${element.filterConfig}';
 
-        stdout.writeln(
-          'Key: ${formattedKey.stylize(bold: true)}  Method: ${formattedMethod.stylize(bold: true)}  Path: ${formattedPath.stylize(bold: true)}  Filters: ${formattedFilters.stylize(bold: true)}',
-        );
+        stdout.writeln('Key: ${formattedKey.stylize(bold: true)}',);
+        stdout.writeln('Method: ${formattedMethod.stylize(bold: true)}',);
+        stdout.writeln('Path: ${formattedPath.stylize(bold: true)}',);
+        stdout.writeln('Filters:',);
+        stdout.writeln('${formattedFilters.stylize(bold: true)}',);
+        stdout.writeln('',);
       }
-      stdout.writeln('');
+
+      stdout.writeln('Routes log end ----------------------------------------');
     };
   }
 }
