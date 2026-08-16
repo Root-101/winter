@@ -8,10 +8,8 @@ class AuthFilter extends Filter {
   AuthFilter({this.authenticated = true, this.rules, this._shouldFilter});
 
   @override
-  Future<ResponseEntity> doFilter(
-    RequestEntity request,
-    FilterChain chain,
-  ) async {
+  Future<ResponseEntity> doFilter(RequestEntity request,
+      FilterChain chain,) async {
     final securityContext = request.securityContext;
 
     if (authenticated && !securityContext.isAuthenticated) {
@@ -47,6 +45,7 @@ class AuthFilter extends Filter {
 
   @override
   String toString() {
-    return 'AuthFilter{authenticated: $authenticated, rules: $rules, shouldFilter: ${_shouldFilter != null ? 'custom' : 'all'}';
+    return 'AuthFilter{authenticated: $authenticated, rules: $rules, shouldFilter: ${_shouldFilter !=
+        null ? 'custom' : 'all'}}';
   }
 }

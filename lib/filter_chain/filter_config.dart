@@ -15,6 +15,7 @@ class FilterConfig {
 
   @override
   String toString() {
-    return '$filters';
+    if (filters.isEmpty) return '[]';
+    return filters.map((f) => ' - $f').join('\n');
   }
 }
