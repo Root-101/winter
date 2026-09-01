@@ -2,41 +2,6 @@ import 'dart:convert';
 
 import 'package:winter/winter.dart';
 
-extension ParseableRequestEntity on RequestEntity {
-  /// Get the body of the request, it's get parsed with the ObjectMapper in the process
-  /// It's also get cached in case the method is called multiple times
-  Future<T?> body<T>({ObjectMapper? om}) async {
-    if (_cachedBody == null || _cachedBody is! T) {
-      String rawString = await readAsString(encoding);
-      _cachedBody = (om ?? Winter.context.objectMapper).deserialize<T>(
-        rawString,
-      );
-    }
-    return _cachedBody as T;
-  }
-
-  ///The copy with needs to be async because if the body is not passed,
-  ///we need to read the body from the request
-  Future<RequestEntity> copyWith({
-    Map<String, /* String | List<String> */ Object>? headers,
-    Object? body,
-    Encoding? encoding,
-    Map<String, Object>? context,
-  }) async {
-    return RequestEntity(
-      method,
-      requestedUri,
-      url: url,
-      protocolVersion: protocolVersion,
-      handlerPath: handlerPath,
-      body: body ?? _cachedBody ?? (await this.body()),
-      headers: headers ?? this.headers,
-      encoding: encoding ?? this.encoding,
-      context: context ?? this.context,
-    );
-  }
-}
-
 class RequestEntity extends Request {
   static const String _routingContextKey = 'winter.context.route';
 
@@ -46,9 +11,6 @@ class RequestEntity extends Request {
   ///Override default implementation of context since the default is an unmodified map and we are gonna use it for adding info like security, routing...
   @override
   Map<String, Object> context = {};
-
-  ///Cached body (if any)
-  Object? _cachedBody;
 
   RequestRoutingContext? get routingContext =>
       context[_routingContextKey] as RequestRoutingContext?;
@@ -100,6 +62,21 @@ class RequestEntity extends Request {
     );
   }
 
+  ///Cached body (if any)
+  Object? _cachedBody;
+
+  /// Get the body of the request, it's get parsed with the ObjectMapper in the process
+  /// It's also get cached in case the method is called multiple times
+  Future<T?> body<T>({ObjectMapper? om}) async {
+    if (_cachedBody == null || _cachedBody is! T) {
+      String rawString = await readAsString(encoding);
+      _cachedBody = (om ?? Winter.context.objectMapper).deserialize<T>(
+        rawString,
+      );
+    }
+    return _cachedBody as T;
+  }
+
   ///The copy with needs to be async because if the body is not passed,
   ///we need to read the body from the request
   Future<RequestEntity> copyWith({
@@ -108,7 +85,17 @@ class RequestEntity extends Request {
     Encoding? encoding,
     Map<String, Object>? context,
   }) async {
-    throw UnimplementedError();
+    return RequestEntity(
+      method,
+      requestedUri,
+      url: url,
+      protocolVersion: protocolVersion,
+      handlerPath: handlerPath,
+      body: body ?? _cachedBody ?? (await this.body()),
+      headers: headers ?? this.headers,
+      encoding: encoding ?? this.encoding,
+      context: context ?? this.context,
+    );
   }
 
   @override
