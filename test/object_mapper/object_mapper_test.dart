@@ -305,16 +305,6 @@ void main() {
       });
     });
 
-    test('Deserialize invalid JSON string throws format exception', () {
-      final parser = ObjectMapper(
-        deserializers: [Deserializer<Tool>((j) => Tool.fromJson(j))],
-      );
-      expect(
-        () => parser.deserialize<Tool>('invalid json'),
-        throwsA(isA<FormatException>()),
-      );
-    });
-
     test('Deserialize num from numeric data', () {
       final parser = ObjectMapper();
       expect(parser.deserialize<num>(123), 123);
@@ -339,6 +329,70 @@ void main() {
         Deserializer<dynamic>((data) => data);
       },
     );
+  });
+
+  group('Exception Handling', () {
+    late ObjectMapper parser;
+
+    setUp(() {
+      parser = ObjectMapper();
+    });
+
+    test('SerializationException - Serializer throws Exception', () {
+      parser.addSerializer<Tool>(
+        Serializer<Tool>((t) => throw Exception('Serialization failed')),
+      );
+      expect(
+        () => parser.serialize(Tool(name: 'Hammer')),
+        throwsA(isA<SerializationException>()),
+      );
+    });
+
+    test('SerializationException - Serializer throws Error', () {
+      parser.addSerializer<Tool>(
+        Serializer<Tool>((t) => throw ArgumentError('Invalid argument')),
+      );
+      expect(
+        () => parser.serialize(Tool(name: 'Hammer')),
+        throwsA(isA<SerializationException>()),
+      );
+    });
+
+    test('DeserializationException - Deserializer throws Exception', () {
+      parser.addDeserializer<Tool>(
+        Deserializer<Tool>((j) => throw Exception('Deserialization failed')),
+      );
+      expect(
+        () => parser.deserialize<Tool>({'NAME': 'Hammer'}),
+        throwsA(isA<DeserializationException>()),
+      );
+    });
+
+    test('DeserializationException - Deserializer throws Error', () {
+      parser.addDeserializer<Tool>(
+        Deserializer<Tool>((j) => throw ArgumentError('Invalid argument')),
+      );
+      expect(
+        () => parser.deserialize<Tool>({'NAME': 'Hammer'}),
+        throwsA(isA<DeserializationException>()),
+      );
+    });
+
+    test('DeserializationFormatException - Invalid JSON String', () {
+      parser.addDeserializer<Tool>(Deserializer<Tool>((j) => Tool.fromJson(j)));
+      expect(
+        () => parser.deserialize<Tool>('invalid json'),
+        throwsA(isA<DeserializationFormatException>()),
+      );
+    });
+
+    test('StateError is rethrown when no serializer found', () {
+      expect(() => parser.serialize(Worker(name: 'W')), throwsStateError);
+    });
+
+    test('StateError is rethrown when no deserializer found', () {
+      expect(() => parser.deserialize<Worker>({}), throwsStateError);
+    });
   });
 
   group('Add and Remove Serializers/Deserializers', () {

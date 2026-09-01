@@ -15,7 +15,9 @@ class SimpleExceptionHandler extends ExceptionHandler {
     Exception exception,
     StackTrace stackTrace,
   ) async {
-    if (exception is ResponseException) {
+    if (exception is ObjectMapperException) {
+      return ResponseEntity.badRequest(body: exception.message);
+    } else if (exception is ResponseException) {
       return exception.responseEntity;
     } else if (exception is ValidationException) {
       return ResponseEntity(

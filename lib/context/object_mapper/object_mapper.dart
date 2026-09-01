@@ -127,60 +127,73 @@ class ObjectMapper {
 
   /// Recursively serializes [object] to a JSON-compatible representation.
   Object? serialize(Object? object) {
-    //if null => null
-    if (object == null) {
-      return null;
-    }
-    if (object is Map) {
-      return object.map((k, v) => MapEntry(serialize(k), serialize(v)));
-    }
-    if (object is Serializable) {
-      //if Serializable => serialize
-      return object.toJson();
-    } else if (object is List) {
-      //if list, same:
-      return object.map((e) {
-        return serialize(e);
-      }).toList();
-    } else {
-      Serializer? serializer =
-          _serializers[_extractElementType(object.runtimeType)];
-      if (serializer != null) {
-        return serializer.serializer(object);
+    try {
+      //if null => null
+      if (object == null) {
+        return null;
       }
-    }
+      if (object is Map) {
+        return object.map((k, v) => MapEntry(serialize(k), serialize(v)));
+      }
+      if (object is Serializable) {
+        //if Serializable => serialize
+        return object.toJson();
+      } else if (object is List) {
+        //if list, same:
+        return object.map((e) {
+          return serialize(e);
+        }).toList();
+      } else {
+        Serializer? serializer =
+            _serializers[_extractElementType(object.runtimeType)];
+        if (serializer != null) {
+          return serializer.serializer(object);
+        }
+      }
 
-    throw StateError(
-      '${object.runtimeType} need to implement the Serializable interface',
-    );
+      throw StateError(
+        '${object.runtimeType} need to implement the Serializable interface',
+      );
+    } on ApiException {
+      rethrow;
+    } on StateError {
+      rethrow;
+    } on Exception catch (e) {
+      throw SerializationException(e.toString());
+    } on Error catch (e) {
+      throw SerializationException(e.toString());
+    }
   }
 
   /// Deserializes [data] into an instance of type [S].
   S deserialize<S>(dynamic data) {
-    if (data is S) return data;
+    try {
+      if (data is S) return data;
 
-    final deserializer = _deserializers[S];
-    if (deserializer != null) {
-      final targetData = (data is String && !_isPrimitive(S))
-          ? jsonDecode(data)
-          : data;
-      return (deserializer as Deserializer<S>).deserializer(targetData);
-    }
-
-    if (S.isList) {
-      final elementType = _extractListElementType(S);
-      final elementDeserializer = _deserializers[elementType];
-
-      if (elementDeserializer != null) {
-        final List rawList = data is String ? jsonDecode(data) : (data as List);
-        return elementDeserializer.deserializeList(rawList) as S;
+      final deserializer = _deserializers[S];
+      if (deserializer != null) {
+        final targetData = (data is String && !_isPrimitive(S))
+            ? jsonDecode(data)
+            : data;
+        return (deserializer as Deserializer<S>).deserializer(targetData);
       }
-    }
-    if (S.isMap) {
-      throw StateError(
-        '<Map> deserialization is not supported. Convert the map to a class and add the deserializer manually',
-      );
-      /*({Type key, Type value}) types = _extractMapElementTypes(S);
+
+      if (S.isList) {
+        final elementType = _extractListElementType(S);
+        final elementDeserializer = _deserializers[elementType];
+
+        if (elementDeserializer != null) {
+          final List rawList = data is String
+              ? jsonDecode(data)
+              : (data as List);
+          return elementDeserializer.deserializeList(rawList) as S;
+        }
+      }
+      if (S.isMap) {
+        throw StateError(
+          '<Map> deserialization is not supported. Convert the map to a class and add the deserializer manually',
+        );
+        /*({Type key, Type value}) types = _extractMapElementTypes(S);
 
       final keyDeserializer = _deserializers[types.key];
       final valueDeserializer = _deserializers[types.value];
@@ -196,9 +209,22 @@ class ObjectMapper {
             )
             as S;
       }*/
-    }
+      }
 
-    throw StateError('No deserializer found for type: <$S>');
+      throw StateError('No deserializer found for type: <$S>');
+    } on ApiException {
+      rethrow;
+    } on StateError {
+      rethrow;
+    } on FormatException catch (e) {
+      throw DeserializationFormatException(
+        e.toString().replaceAll('FormatException:', '').trim(),
+      );
+    } on Exception catch (e) {
+      throw DeserializationException(e.toString());
+    } on Error catch (e) {
+      throw DeserializationException(e.toString());
+    }
   }
 
   /// Extracts the element type from a List type or identifies the registered type.
@@ -303,4 +329,42 @@ extension ListTypeExtension on Type {
   bool get isMap =>
       toString().startsWith('Map<') &&
       (toString().endsWith('>') || toString().endsWith('>?'));
+}
+
+class ObjectMapperException implements Exception {
+  final String message;
+
+  ObjectMapperException(this.message);
+
+  @override
+  String toString() {
+    return 'ObjectMapperException{message: ${message.replaceAll('\n', '\\n')}';
+  }
+}
+
+class SerializationException extends ObjectMapperException {
+  SerializationException(super.message);
+
+  @override
+  String toString() {
+    return 'SerializationException{message: ${message.replaceAll('\n', '\\n')}';
+  }
+}
+
+class DeserializationException extends ObjectMapperException {
+  DeserializationException(super.message);
+
+  @override
+  String toString() {
+    return 'DeserializationException{message: ${message.replaceAll('\n', '\\n')}';
+  }
+}
+
+class DeserializationFormatException extends DeserializationException {
+  DeserializationFormatException(super.message);
+
+  @override
+  String toString() {
+    return 'DeserializationFormatException{message: ${message.replaceAll('\n', '\\n')}';
+  }
 }
