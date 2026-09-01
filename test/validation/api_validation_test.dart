@@ -56,9 +56,6 @@ void main() {
             method: HttpMethod.post,
             handler: (request) async {
               final loginRequest = await request.body<LoginRequest>();
-              if (loginRequest == null) {
-                throw BadRequestException(body: 'Body is required');
-              }
               loginRequest.validate().throwOnFailure();
 
               return ResponseEntity.ok(body: 'Login successful');

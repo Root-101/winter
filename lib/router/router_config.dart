@@ -118,7 +118,7 @@ class DefaultOnLoadedRoutes {
         stdout.writeln('Method: ${formattedMethod.stylize(bold: true)}',);
         stdout.writeln('Path: ${formattedPath.stylize(bold: true)}',);
         stdout.writeln('Filters:',);
-        stdout.writeln('${formattedFilters.stylize(bold: true)}',);
+        stdout.writeln(formattedFilters.stylize(bold: true),);
         stdout.writeln('',);
       }
 

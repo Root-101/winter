@@ -43,9 +43,7 @@ class RoutingServer {
             path: '/users',
             handler: (request) async {
               final user = await request.body<User>();
-              if (user == null) {
-                throw BadRequestException(body: {'error': 'Invalid user data'});
-              }
+
               final service = di.find<UserService>();
               return ResponseEntity.ok(body: service.create(user));
             },
@@ -55,9 +53,7 @@ class RoutingServer {
             handler: (request) async {
               final id = int.tryParse(request.pathParams['id'] ?? '') ?? 0;
               final userUpdates = await request.body<User>();
-              if (userUpdates == null) {
-                throw BadRequestException(body: {'error': 'Invalid user data'});
-              }
+
               final service = di.find<UserService>();
               return ResponseEntity.ok(body: service.update(id, userUpdates));
             },
