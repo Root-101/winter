@@ -62,6 +62,12 @@ class ConstraintValidatorContext {
   String toString() {
     return 'ConstraintValidatorContext{_violations: $_violations}';
   }
+
+  void throwOnFailure() {
+    if (!isValid) {
+      throw ValidationException(violations: violations);
+    }
+  }
 }
 
 /// Class that represent a fail validation
