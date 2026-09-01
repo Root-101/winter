@@ -6,7 +6,7 @@ import 'dart:convert';
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
-import 'models.dart';
+import 'object_mapper_models.dart';
 
 void main() {
   group('Mapper with serializers in constructor', () {
