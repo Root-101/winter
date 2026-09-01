@@ -75,7 +75,7 @@ class DefaultOnLoadedRoutes {
   static OnLoadedRoutes log() {
     return (allRoutes) {
       stdout.writeln('');
-      stdout.writeln('Routes log start --------------------------------------');
+      stdout.writeln('Routes log start ======================================');
 
       final int defaultPad = 5;
       // 1. Encontramos dinámicamente las longitudes máximas
@@ -122,7 +122,8 @@ class DefaultOnLoadedRoutes {
         stdout.writeln('',);
       }
 
-      stdout.writeln('Routes log end ----------------------------------------');
+      stdout.writeln('Routes log end ========================================');
+      stdout.writeln('');
     };
   }
 }
