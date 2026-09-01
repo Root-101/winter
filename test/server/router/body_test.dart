@@ -44,7 +44,7 @@ void main() {
             path: '/create-user',
             method: HttpMethod.post,
             handler: (request) async {
-              UserRequest requestBody = (await request.body<UserRequest>())!;
+              UserRequest requestBody = await request.body<UserRequest>();
 
               ///Username will be the email without the provider
               ///email: `test@test.com` will be username: `test`
@@ -64,8 +64,8 @@ void main() {
             handler: (request) async {
               ///Note that we use the null operator (!) because its a controlled test
               ///In other test we will validate that this elements are not null to avoid using '!'
-              List<UserRequest> requestBody = (await request
-                  .body<List<UserRequest>>())!;
+              List<UserRequest> requestBody = await request
+                  .body<List<UserRequest>>();
 
               ///Username will be the email without the provider
               ///email: `test@test.com` will be username: `test`
@@ -84,7 +84,7 @@ void main() {
             path: '/sqrt',
             method: HttpMethod.post,
             handler: (request) async {
-              int requestBody = (await request.body<int>())!;
+              int requestBody = await request.body<int>();
 
               return ResponseEntity.ok<int>(body: requestBody * requestBody);
             },
@@ -93,7 +93,7 @@ void main() {
             path: '/sqrt-list',
             method: HttpMethod.post,
             handler: (request) async {
-              List<int> requestBody = (await request.body<List<int>>())!;
+              List<int> requestBody = await request.body<List<int>>();
 
               return ResponseEntity.ok<List<int>>(
                 body: requestBody.map((e) => e * e).toList(),

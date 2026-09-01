@@ -126,7 +126,7 @@ void main() {
     test('should handle different clients independently', () async {
       filter = RateLimiterFilter.fromRateLimiter(
         rateLimiter: RateLimiter(1, const Duration(seconds: 1)),
-        onRequest: (req) => req.headers['X-User-ID'] as String? ?? 'anonymous',
+        onRequest: (req) => req.headers['X-User-ID'] ?? 'anonymous',
       );
 
       final request1 = RequestEntity(

@@ -251,7 +251,7 @@ class BodyChangeFilter extends Filter {
   ) async {
     String? body = await request.body<String>();
     RequestEntity newRequest = await request.copyWith(
-      body: '${body ?? ''} modified',
+      body: '$body modified',
     );
     return await chain.doFilter(newRequest);
   }

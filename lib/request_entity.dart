@@ -67,7 +67,7 @@ class RequestEntity extends Request {
 
   /// Get the body of the request, it's get parsed with the ObjectMapper in the process
   /// It's also get cached in case the method is called multiple times
-  Future<T?> body<T>({ObjectMapper? om}) async {
+  Future<T> body<T>({ObjectMapper? om}) async {
     if (_cachedBody == null || _cachedBody is! T) {
       String rawString = await readAsString(encoding);
       _cachedBody = (om ?? Winter.context.objectMapper).deserialize<T>(
