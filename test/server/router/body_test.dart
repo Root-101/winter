@@ -295,7 +295,7 @@ void main() {
       body: 'not-a-json',
     );
 
-    expect(response.statusCode, 500);
+    expect(response.statusCode, 400);
   });
 
   test('Request unregistered type throws 500', () async {
