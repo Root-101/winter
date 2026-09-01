@@ -265,13 +265,13 @@ void main() {
   test('Test Exception: /api-exception/forbidden', () async {
     String urlToTest = '/api-exception/forbidden';
     http.Response response = await http.get(url(urlToTest));
-    expect(response.statusCode, 401);
+    expect(response.statusCode, 403);
   });
 
   test('Test Exception: /api-exception/unauthorized', () async {
     String urlToTest = '/api-exception/unauthorized';
     http.Response response = await http.get(url(urlToTest));
-    expect(response.statusCode, 403);
+    expect(response.statusCode, 401);
   });
 
   test('Test Exception: /api-exception/not-found', () async {
