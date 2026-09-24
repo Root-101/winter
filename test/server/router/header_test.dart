@@ -54,7 +54,7 @@ void main() {
                 body: Stream.fromIterable([
                   [1, 2, 3],
                 ]),
-                headers: {HttpHeaders.contentType: 'image/jpeg'},
+                headers: {HttpHeader.contentType: 'image/jpeg'},
               );
             },
           ),
@@ -62,7 +62,7 @@ void main() {
             path: '/no-content',
             method: HttpMethod.get,
             handler: (request) async {
-              return ResponseEntity(HttpStatus.noContent.value);
+              return ResponseEntity(StatusCode.noContent.value);
             },
           ),
         ],
@@ -78,7 +78,7 @@ void main() {
     test('Response with JSON body has application/json content-type', () async {
       http.Response response = await http.get(url('/json'));
       expect(
-        response.headers[HttpHeaders.contentType.toLowerCase()],
+        response.headers[HttpHeader.contentType.toLowerCase()],
         contains(MediaType.applicationJson.mimeType),
       );
     });
@@ -88,7 +88,7 @@ void main() {
       () async {
         http.Response response = await http.get(url('/problem'));
         expect(
-          response.headers[HttpHeaders.contentType.toLowerCase()],
+          response.headers[HttpHeader.contentType.toLowerCase()],
           contains(MediaType.applicationProblemJson.mimeType),
         );
       },
@@ -97,7 +97,7 @@ void main() {
     test('Response with String body has text/plain content-type', () async {
       http.Response response = await http.get(url('/text'));
       expect(
-        response.headers[HttpHeaders.contentType.toLowerCase()],
+        response.headers[HttpHeader.contentType.toLowerCase()],
         contains(MediaType.textPlain.mimeType),
       );
     });
@@ -107,7 +107,7 @@ void main() {
       () async {
         http.Response response = await http.get(url('/stream'));
         expect(
-          response.headers[HttpHeaders.contentType.toLowerCase()],
+          response.headers[HttpHeader.contentType.toLowerCase()],
           contains(MediaType.applicationOctetStream.mimeType),
         );
       },
@@ -118,7 +118,7 @@ void main() {
       () async {
         http.Response response = await http.get(url('/stream-jpeg'));
         expect(
-          response.headers[HttpHeaders.contentType.toLowerCase()],
+          response.headers[HttpHeader.contentType.toLowerCase()],
           contains('image/jpeg'),
         );
       },
@@ -128,7 +128,7 @@ void main() {
       http.Response response = await http.get(url('/json'));
       // {"message":"hello"} -> 19 characters
       expect(
-        response.headers[HttpHeaders.contentLength.toLowerCase()],
+        response.headers[HttpHeader.contentLength.toLowerCase()],
         equals('19'),
       );
     });
@@ -137,7 +137,7 @@ void main() {
       http.Response response = await http.get(url('/text'));
       // "plain text" -> 10 characters
       expect(
-        response.headers[HttpHeaders.contentLength.toLowerCase()],
+        response.headers[HttpHeader.contentLength.toLowerCase()],
         equals('10'),
       );
     });
@@ -145,10 +145,7 @@ void main() {
     test('Response with Stream body has no Content-Length', () async {
       http.Response response = await http.get(url('/stream'));
       // Streams usually result in Transfer-Encoding: chunked, not Content-Length
-      expect(
-        response.headers[HttpHeaders.contentLength.toLowerCase()],
-        isNull,
-      );
+      expect(response.headers[HttpHeader.contentLength.toLowerCase()], isNull);
     });
 
     //TODO: alguien le esta agregando el content-type text/plan y no se quien es
@@ -156,10 +153,10 @@ void main() {
       'Response 204 No Content has no Content-Type or Content-Length',
       () async {
         http.Response response = await http.get(url('/no-content'));
-        expect(response.statusCode, equals(HttpStatus.noContent.value));
-        expect(response.headers[HttpHeaders.contentType.toLowerCase()], isNull);
+        expect(response.statusCode, equals(StatusCode.noContent.value));
+        expect(response.headers[HttpHeader.contentType.toLowerCase()], isNull);
         expect(
-          response.headers[HttpHeaders.contentLength.toLowerCase()],
+          response.headers[HttpHeader.contentLength.toLowerCase()],
           isNull,
         );
       },

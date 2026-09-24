@@ -23,7 +23,7 @@ class LoginRequest implements Validatable, Serializable {
 }
 
 void main() {
-  int port = 9045;
+  int port = 9056;
   String localUrl = 'http://localhost:$port';
 
   ObjectMapper om = ObjectMapper(
@@ -94,7 +94,7 @@ void main() {
 
       expect(response.statusCode, 422);
 
-      final List violationsRaw = jsonDecode(response.body);
+      final List violationsRaw = jsonDecode(response.body) as List;
       final violations = om.deserialize<List<ConstrainViolation>>(
         violationsRaw,
       );
@@ -113,7 +113,7 @@ void main() {
 
       expect(response.statusCode, 422);
 
-      final List violationsRaw = jsonDecode(response.body);
+      final List violationsRaw = jsonDecode(response.body) as List;
       final violations = om.deserialize<List<ConstrainViolation>>(
         violationsRaw,
       );

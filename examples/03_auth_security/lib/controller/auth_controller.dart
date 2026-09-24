@@ -11,14 +11,8 @@ class AuthController {
     return Route.parent(
       path: '/',
       routes: [
-        Route.post(
-          path: '/register',
-          handler: register,
-        ),
-        Route.post(
-          path: '/login',
-          handler: login,
-        ),
+        Route.post(path: '/register', handler: register),
+        Route.post(path: '/login', handler: login),
       ],
     );
   }

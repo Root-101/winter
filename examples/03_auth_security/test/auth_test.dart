@@ -26,7 +26,8 @@ void main() {
       if (response.statusCode != 200) {
         throw Exception('Login failed for $email');
       }
-      return jsonDecode(response.body)['token'];
+      return (jsonDecode(response.body) as Map<String, dynamic>)['token']
+          as String;
     }
 
     group('Public Routes', () {
@@ -139,7 +140,7 @@ void main() {
         );
 
         expect(response.statusCode, equals(200));
-        final List users = jsonDecode(response.body);
+        final List users = jsonDecode(response.body) as List;
         expect(users.length, greaterThanOrEqualTo(2));
       });
 
@@ -205,11 +206,8 @@ void main() {
           body: 'not-a-json',
           headers: {'Content-Type': 'application/json'},
         );
-        // ObjectMapper or controller should catch this
-        expect(
-          response.statusCode,
-          equals(500),
-        ); // Default error handler for JSON parse error
+        // The default exception handler maps the JSON parse error to a 400
+        expect(response.statusCode, equals(400));
       });
     });
   });

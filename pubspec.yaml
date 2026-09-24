@@ -1,27 +1,24 @@
 name: winter
 description: This project is designed to create server side apps the simplest way possible, and reduce the learning curve in backend development.
-version: 0.0.7
+version: 0.1.0
 repository: https://github.com/Root-101/winter
 
 environment:
   sdk: ^3.12.0
 
 dependencies:
-  args: 2.7.0
-  shelf: 1.4.2
-  shelf_multipart: 2.0.1
+  shelf: ^1.4.2
 
   #Utils
-  collection: 1.19.1
+  collection: ^1.19.1
 
   #For media type parsing
-  string_scanner: 1.4.1
-  http_parser: 4.1.2
+  http_parser: ^4.1.2
 
-  #for security
-  crypto: 3.0.7
+  #For the route keys
+  crypto: ^3.0.7
 
 dev_dependencies:
-  http: 1.6.0
-  lints: 6.1.0
-  test: 1.31.1
+  http: ^1.6.0
+  lints: ^6.1.0
+  test: ^1.31.1

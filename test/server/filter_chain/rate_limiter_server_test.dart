@@ -42,16 +42,19 @@ void main() {
 
     Uri url(String path) => Uri.parse(localUrl + path);
 
-    test('should allow requests within limit and return headers',
-        () async {
-      final response1 = await http
-          .get(url('/limited'), headers: {'x-client-id': 'test-client-1'});
+    test('should allow requests within limit and return headers', () async {
+      final response1 = await http.get(
+        url('/limited'),
+        headers: {'x-client-id': 'test-client-1'},
+      );
       expect(response1.statusCode, 200);
       expect(response1.headers['x-ratelimit-limit'], '2');
       expect(response1.headers['x-ratelimit-remaining'], '1');
 
-      final response2 = await http
-          .get(url('/limited'), headers: {'x-client-id': 'test-client-1'});
+      final response2 = await http.get(
+        url('/limited'),
+        headers: {'x-client-id': 'test-client-1'},
+      );
       expect(response2.statusCode, 200);
       expect(response2.headers['x-ratelimit-remaining'], '0');
     });
@@ -64,28 +67,33 @@ void main() {
       await http.get(url('/limited'), headers: {'x-client-id': clientId});
 
       // Tercera petición bloqueada
-      final response =
-          await http.get(url('/limited'), headers: {'x-client-id': clientId});
+      final response = await http.get(
+        url('/limited'),
+        headers: {'x-client-id': clientId},
+      );
       expect(response.statusCode, 429);
       expect(response.headers['retry-after'], isNotNull);
       expect(response.headers['x-ratelimit-remaining'], '0');
     });
 
-    test('should handle independent clients based on header',
-        () async {
+    test('should handle independent clients based on header', () async {
       final clientA = 'client-a';
       final clientB = 'client-b';
 
       // Agotar cliente A
       await http.get(url('/limited'), headers: {'x-client-id': clientA});
       await http.get(url('/limited'), headers: {'x-client-id': clientA});
-      final resA =
-          await http.get(url('/limited'), headers: {'x-client-id': clientA});
+      final resA = await http.get(
+        url('/limited'),
+        headers: {'x-client-id': clientA},
+      );
       expect(resA.statusCode, 429);
 
       // Cliente B debe seguir teniendo acceso
-      final resB =
-          await http.get(url('/limited'), headers: {'x-client-id': clientB});
+      final resB = await http.get(
+        url('/limited'),
+        headers: {'x-client-id': clientB},
+      );
       expect(resB.statusCode, 200);
       expect(resB.headers['x-ratelimit-remaining'], '1');
     });
@@ -98,8 +106,7 @@ void main() {
       }
     });
 
-    test('should allow requests again after window expires',
-        () async {
+    test('should allow requests again after window expires', () async {
       final clientId = 'test-client-3';
 
       // Agotar el límite
@@ -107,10 +114,12 @@ void main() {
       await http.get(url('/limited'), headers: {'x-client-id': clientId});
 
       // Esperar a que expire la ventana (configurada a 2 segundos)
-      await Future.delayed(const Duration(milliseconds: 2100));
+      await Future<void>.delayed(const Duration(milliseconds: 2100));
 
-      final response =
-          await http.get(url('/limited'), headers: {'x-client-id': clientId});
+      final response = await http.get(
+        url('/limited'),
+        headers: {'x-client-id': clientId},
+      );
       expect(response.statusCode, 200);
       expect(response.headers['x-ratelimit-remaining'], '1');
     });

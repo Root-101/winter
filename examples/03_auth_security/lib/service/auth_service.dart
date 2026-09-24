@@ -21,11 +21,7 @@ class AuthService {
 
     return {
       'token': token,
-      'user': {
-        'id': user.id,
-        'name': user.name,
-        'email': user.email,
-      }
+      'user': {'id': user.id, 'name': user.name, 'email': user.email},
     };
   }
 

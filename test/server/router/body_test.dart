@@ -18,15 +18,18 @@ void main() {
       Serializer<UserResponse>((object) => object.toJson()),
     ],
     deserializers: [
-      Deserializer<UserRequest>((data) => UserRequest(email: data['email'])),
+      Deserializer<UserRequest>(
+        (data) => UserRequest(email: data['email'] as String?),
+      ),
       Deserializer<UserResponse>(
         (data) => UserResponse.build(
-          username: data['username'],
-          createdAt: DateTime.tryParse(data['createdAt']) ?? DateTime.now(),
+          username: data['username'] as String?,
+          createdAt:
+              DateTime.tryParse(data['createdAt'] as String) ?? DateTime.now(),
         ),
       ),
       Deserializer<SerializableUser>(
-        (data) => SerializableUser(name: data['name']),
+        (data) => SerializableUser(name: data['name'] as String),
       ),
       Deserializer<Map<String, dynamic>>(
         (data) => {'key': data['key'], 'nested': data['nested']},
@@ -86,7 +89,7 @@ void main() {
             handler: (request) async {
               int requestBody = await request.body<int>();
 
-              return ResponseEntity.ok<int>(body: requestBody * requestBody);
+              return ResponseEntity<int>.ok(body: requestBody * requestBody);
             },
           ),
           Route(
@@ -95,7 +98,7 @@ void main() {
             handler: (request) async {
               List<int> requestBody = await request.body<List<int>>();
 
-              return ResponseEntity.ok<List<int>>(
+              return ResponseEntity<List<int>>.ok(
                 body: requestBody.map((e) => e * e).toList(),
               );
             },
@@ -253,7 +256,7 @@ void main() {
     expect(response.statusCode, 200);
     // Use ISO string comparison to avoid precision issues if any
     expect(
-      DateTime.parse(jsonDecode(response.body)).toIso8601String(),
+      DateTime.parse(jsonDecode(response.body) as String).toIso8601String(),
       now.toIso8601String(),
     );
   });

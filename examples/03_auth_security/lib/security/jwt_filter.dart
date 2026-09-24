@@ -10,7 +10,7 @@ class JwtFilter extends Filter {
     RequestEntity request,
     FilterChain chain,
   ) async {
-    final authHeader = request.headers[HttpHeaders.authorization];
+    final authHeader = request.headers[HttpHeader.authorization];
 
     if (authHeader != null && authHeader.startsWith('Bearer ')) {
       final token = authHeader.substring(7);
@@ -20,8 +20,8 @@ class JwtFilter extends Filter {
         request.securityContext.setAuthentication(
           Authentication(
             principal: payload['sub'],
-            roles: Set.from(payload['roles'] ?? []),
-            permissions: Set.from(payload['permissions'] ?? []),
+            roles: Set.from(payload['roles'] as List? ?? []),
+            permissions: Set.from(payload['permissions'] as List? ?? []),
           ),
         );
       }

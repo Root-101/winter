@@ -2,6 +2,8 @@ import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
+  validationFixesTests();
+
   group('ConstraintValidator Individual Methods Tests', () {
     group('notNull()', () {
       test('Success when value is not null', () {
@@ -320,6 +322,72 @@ void main() {
       );
       expect(cvc.toString(), contains('f'));
       expect(cvc.toString(), contains('m'));
+    });
+  });
+}
+
+void validationFixesTests() {
+  group('email() accepted formats', () {
+    for (final email in [
+      'user+tag@domain.com',
+      'first.last@sub.domain.co',
+      'user@domain.photography',
+      'user_name-1@my-domain.museum',
+    ]) {
+      test('Valid: $email', () {
+        final cvc = ConstraintValidatorContext();
+        cvc.buildValidator('test').email().validate(email);
+        expect(cvc.isValid, isTrue);
+      });
+    }
+
+    for (final email in [
+      'user@domain',
+      'user@-domain.com',
+      'user@domain-.com',
+      'user name@domain.com',
+    ]) {
+      test('Invalid: $email', () {
+        final cvc = ConstraintValidatorContext();
+        cvc.buildValidator('test').email().validate(email);
+        expect(cvc.isValid, isFalse);
+      });
+    }
+  });
+
+  group('Sensitive fields', () {
+    test('The value of a sensitive field is never exposed', () {
+      final cvc = ConstraintValidatorContext();
+      cvc
+          .buildValidator('password', sensitive: true)
+          .size(min: 8)
+          .validate('secret');
+
+      final violation = cvc.violations.single;
+      expect(violation.value, isNull);
+      expect(violation.toJson(), isNot(contains('value')));
+      expect(violation.toJson(), containsPair('fieldName', 'password'));
+      expect(violation.toString(), isNot(contains('secret')));
+    });
+
+    test('Sensitive stays hidden when merged with a prefix', () {
+      final inner = ConstraintValidatorContext();
+      inner
+          .buildValidator('password', sensitive: true)
+          .size(min: 8)
+          .validate('secret');
+
+      final outer = ConstraintValidatorContext()..merge(inner, prefix: 'user');
+
+      expect(outer.violations.single.fieldName, 'user.password');
+      expect(outer.violations.single.toJson(), isNot(contains('value')));
+    });
+
+    test('Non sensitive fields still include the value', () {
+      final cvc = ConstraintValidatorContext();
+      cvc.buildValidator('name').size(min: 8).validate('short');
+
+      expect(cvc.violations.single.toJson(), containsPair('value', 'short'));
     });
   });
 }

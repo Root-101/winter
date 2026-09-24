@@ -1,0 +1,166 @@
+import 'dart:convert';
+
+import 'package:winter/src/router/path_template.dart';
+import 'package:winter/winter.dart';
+
+class RequestEntity extends Request {
+  static const String _routingContextKey = 'winter.context.route';
+
+  Map<String, String>? _pathParams;
+  Map<String, String>? _queryParams;
+
+  ///Override default implementation of context since the default is an unmodified map and we are gonna use it for adding info like security, routing...
+  final Map<String, Object> _context = {};
+
+  @override
+  Map<String, Object> get context => _context;
+
+  RequestRoutingContext? get routingContext =>
+      context[_routingContextKey] as RequestRoutingContext?;
+
+  RequestEntity(
+    super.method,
+    super.requestedUri, {
+    super.protocolVersion,
+    super.headers,
+    super.handlerPath,
+    super.url,
+    super.body,
+    super.encoding,
+    Map<String, Object>? context,
+  }) {
+    this.context.addAll(context ?? {});
+
+    //if this context include the routing, we re-extract the params
+    RequestRoutingContext? newRoutingContext =
+        this.context[_routingContextKey] as RequestRoutingContext?;
+    if (newRoutingContext != null) {
+      _pathParams = _extractPathParams(
+        routingContext!.path,
+        requestedUri.toString(),
+      );
+    }
+
+    _queryParams = _extractQueryParams(requestedUri.toString());
+  }
+
+  HttpMethod get httpMethod => HttpMethod(method);
+
+  Map<String, String> get queryParams => _queryParams ?? {};
+
+  Map<String, String> get pathParams => _pathParams ?? {};
+
+  void setRoutingContext(RequestRoutingContext requestRoutingContext) {
+    if (routingContext != null) {
+      throw StateError(
+        'A routing context already configured for this request. Old: Key: ${routingContext!.key} Method: ${routingContext?.method.name ?? 'PARENT'} Path: ${routingContext!.path}. NEW: Key: ${requestRoutingContext.key} Method: ${requestRoutingContext.method.name} Path: ${requestRoutingContext.path}',
+      );
+    }
+
+    context[_routingContextKey] = requestRoutingContext;
+
+    _pathParams = _extractPathParams(
+      routingContext!.path,
+      requestedUri.toString(),
+    );
+  }
+
+  ///Cached raw body, the request stream can only be read once.
+  ///It's a Future (not a String) so concurrent calls share the same read
+  Future<String>? _rawBody;
+
+  Future<String> _readRawBody() => _rawBody ??= readAsString(encoding);
+
+  /// Get the body of the request, it's get parsed with the ObjectMapper in the process
+  /// The raw body is cached, so this method can be called multiple times (even with different types)
+  /// Note: after calling it, [read] & [readAsString] can't be used (the stream is already consumed)
+  Future<T> body<T>({ObjectMapper? om}) async {
+    String rawString = await _readRawBody();
+    return (om ?? Winter.context.objectMapper).deserialize<T>(rawString);
+  }
+
+  ///The copy with needs to be async because if the body is not passed,
+  ///we need to read the body from the request
+  Future<RequestEntity> copyWith({
+    Map<String, /* String | List<String> */ Object>? headers,
+    Object? body,
+    Encoding? encoding,
+    Map<String, Object>? context,
+  }) async {
+    return RequestEntity(
+      method,
+      requestedUri,
+      url: url,
+      protocolVersion: protocolVersion,
+      handlerPath: handlerPath,
+      body: body ?? (await _readRawBody()),
+      headers: headers ?? this.headers,
+      encoding: encoding ?? this.encoding,
+      context: context ?? this.context,
+    );
+  }
+
+  @override
+  Request change({
+    Map<String, /* String | List<String> */ Object?>? headers,
+    Map<String, Object?>? context,
+    String? path,
+    Object? body,
+  }) {
+    throw UnimplementedError();
+  }
+}
+
+///The path params need to be initialized with a 'template'
+///For the url:
+///   /user/adam/details
+///
+///A possible template could be:
+///   /user/{name}/details
+///
+/// With this set-up the path params will be: {name: adam}
+///
+/// But the same url (/user/adam/details), with the template:
+///   /user/adam/{action}
+///
+/// Will give the params: {action: details}
+///
+/// Or with the template:
+///   /user/{name}/{action}
+///
+/// Will give the params: {name: adam, action: details}
+///
+/// Basically at the time of the request is first made, this template is not available,
+/// only after the route is selected with the template o is manually configured,
+/// only after this the path params are configured, any other case the params will be an empty map
+Map<String, String> _extractPathParams(String templateUrl, String actualUrl) {
+  actualUrl = Uri.parse(actualUrl).path; //remove http(s)://domain.com
+
+  return PathTemplate.of(templateUrl)
+      .extract(actualUrl)
+      .map((key, value) => MapEntry(key, _decodePathParam(value)));
+}
+
+/// Decode the percent-encoding of a path param (`John%20Doe` => `John Doe`)
+/// If the value is not a valid encoding, it's returned as it is
+String _decodePathParam(String value) {
+  try {
+    return Uri.decodeComponent(value);
+  } catch (_) {
+    return value;
+  }
+}
+
+/// Extract query params from the url
+///
+/// In the case of the url:
+/// http(s)://domain.com/some-url?id=5&name=adam
+///
+/// The query params will be:
+/// { id: 5, name: adam}
+Map<String, String> _extractQueryParams(String actualUrl) {
+  Uri uri = Uri.parse(actualUrl);
+
+  ///wrapped in a Map.of to avoid unmodifiable map
+  return Map.of(uri.queryParameters);
+}

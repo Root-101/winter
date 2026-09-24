@@ -7,7 +7,7 @@ import 'package:winter/winter.dart';
 
 void main() {
   group('Test Route key', () {
-    int port = 9080;
+    int port = 9070;
     String localUrl = 'http://localhost:$port';
 
     setUp(() async {

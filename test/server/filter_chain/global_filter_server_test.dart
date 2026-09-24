@@ -165,7 +165,7 @@ class BlockFilter extends Filter {
   ) async {
     if (request.headers['x-block'] == 'true') {
       return ResponseEntity(
-        HttpStatus.unauthorized.value,
+        StatusCode.unauthorized.value,
         body: 'Blocked by filter',
       );
     }

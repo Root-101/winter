@@ -31,7 +31,7 @@ class User implements Serializable {
     name: json['name'] as String,
     email: json['email'] as String,
     password: json['password'] as String? ?? '',
-    roles: Set.from(json['roles'] ?? []),
-    permissions: Set.from(json['permissions'] ?? []),
+    roles: Set.from(json['roles'] as List? ?? []),
+    permissions: Set.from(json['permissions'] as List? ?? []),
   );
 }

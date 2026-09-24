@@ -16,7 +16,6 @@ microservices while maintaining a low learning curve.
     - [Dependency Injection](#3.2)
     - [Filter Chain (Middleware)](#3.3)
     - [Validation & Error Handling](#3.4)
-    - [Annotation-Based Configuration](#3.5)
 4. [Security & Utilities](#4)
 5. [Future Roadmap](#5)
 6. [Contributing](#6)
@@ -37,6 +36,10 @@ build backend services using Dart with a familiar architectural pattern (DI, Fil
 ---
 
 ## <a name="2"></a> Getting Started
+
+### Requirements
+
+Dart SDK `>= 3.12`. To work on this repository, the SDK version is pinned with [FVM](https://fvm.app) (`.fvmrc`): run the commands with `fvm dart` (e.g. `fvm dart test`).
 
 ### Installation
 
@@ -92,11 +95,6 @@ and data transformation.
 Built-in mechanisms to validate incoming data and a centralized exception handling system to ensure
 consistent API responses.
 
-### <a name="3.5"></a> 5. Annotation-Based Configuration
-
-Leverage Dart's metadata to configure your server declaratively, reducing boilerplate code (inspired
-by Spring's Decorators).
-
 ---
 
 ## <a name="4"></a> Security & Utilities
@@ -114,3 +112,4 @@ by Spring's Decorators).
 - [ ] Multipart/File Upload support.
 - [ ] WebSockets integration.
 - [ ] Automated Package Scanning for configuration.
+- [ ] Annotation-Based Configuration (declarative server setup inspired by Spring).

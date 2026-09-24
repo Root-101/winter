@@ -15,7 +15,9 @@ void main() {
     setUp(() {
       parser = ObjectMapper(
         serializers: [Serializer<Tool>((object) => object.toJson())],
-        deserializers: [Deserializer<Tool>((j) => Tool.fromJson(j))],
+        deserializers: [
+          Deserializer<Tool>((j) => Tool.fromJson(j as Map<String, dynamic>)),
+        ],
       );
     });
 
@@ -95,7 +97,11 @@ void main() {
 
     setUp(() {
       parser = ObjectMapper(
-        deserializers: [Deserializer<Gadget>((j) => Gadget.fromJson(j))],
+        deserializers: [
+          Deserializer<Gadget>(
+            (j) => Gadget.fromJson(j as Map<String, dynamic>),
+          ),
+        ],
       );
     });
 
@@ -130,9 +136,9 @@ void main() {
       parser = ObjectMapper(
         serializers: [Serializer<Tool>((object) => object.toJson())],
         deserializers: [
-          Deserializer<Tool>((j) => Tool.fromJson(j)),
+          Deserializer<Tool>((j) => Tool.fromJson(j as Map<String, dynamic>)),
           Deserializer<List<int>>((j) {
-            return List.of(j).cast<int>();
+            return List<int>.from(j as List);
           }),
         ],
       );
@@ -260,7 +266,9 @@ void main() {
         serializers: [Serializer<DateTime>((d) => d.microsecondsSinceEpoch)],
         //with millis test fail for precision Expected: DateTime:<2026-06-21 21:17:08.399301> ---- Actual: DateTime:<2026-06-21 21:17:08.399>
         deserializers: [
-          Deserializer<DateTime>((v) => DateTime.fromMicrosecondsSinceEpoch(v)),
+          Deserializer<DateTime>(
+            (v) => DateTime.fromMicrosecondsSinceEpoch(v as int),
+          ),
         ],
       );
 
@@ -286,8 +294,8 @@ void main() {
 
     test('Empty list serialization and deserialization', () {
       final parser = ObjectMapper();
-      expect(parser.serialize([]), []);
-      expect(parser.deserialize<List<int>>([]), []);
+      expect(parser.serialize(<Object>[]), <Object>[]);
+      expect(parser.deserialize<List<int>>(<int>[]), <int>[]);
     });
 
     test('Nested objects (Serialization behavior)', () {
@@ -379,7 +387,9 @@ void main() {
     });
 
     test('DeserializationFormatException - Invalid JSON String', () {
-      parser.addDeserializer<Tool>(Deserializer<Tool>((j) => Tool.fromJson(j)));
+      parser.addDeserializer<Tool>(
+        Deserializer<Tool>((j) => Tool.fromJson(j as Map<String, dynamic>)),
+      );
       expect(
         () => parser.deserialize<Tool>('invalid json'),
         throwsA(isA<DeserializationFormatException>()),
@@ -391,7 +401,101 @@ void main() {
     });
 
     test('StateError is rethrown when no deserializer found', () {
-      expect(() => parser.deserialize<Worker>({}), throwsStateError);
+      expect(
+        () => parser.deserialize<Worker>(<String, dynamic>{}),
+        throwsStateError,
+      );
+    });
+  });
+
+  group('Map deserialization', () {
+    late ObjectMapper parser;
+
+    setUp(() {
+      parser = ObjectMapper(
+        deserializers: [
+          Deserializer<Tool>((j) => Tool.fromJson(j as Map<String, dynamic>)),
+        ],
+      );
+    });
+
+    test('Map<String, dynamic> from JSON String', () {
+      final result = parser.deserialize<Map<String, dynamic>>(
+        '{"a":1,"b":{"c":[1,2]}}',
+      );
+      expect(result, {
+        'a': 1,
+        'b': {
+          'c': [1, 2],
+        },
+      });
+    });
+
+    test('Raw Map and Map<String, Object?> from JSON String', () {
+      expect(parser.deserialize<Map>('{"a":1}'), {'a': 1});
+      expect(parser.deserialize<Map<String, Object?>>('{"a":null}'), {
+        'a': null,
+      });
+    });
+
+    test('Map<String, dynamic> from an already decoded Map', () {
+      final Map<dynamic, dynamic> data = {'a': 1};
+      expect(parser.deserialize<Map<String, dynamic>>(data), {'a': 1});
+    });
+
+    test('Map<String, int> deserializes every value', () {
+      final result = parser.deserialize<Map<String, int>>('{"a":1,"b":"2"}');
+      expect(result, isA<Map<String, int>>());
+      expect(result, {'a': 1, 'b': 2});
+    });
+
+    test('Map<String, Tool> uses the registered deserializer', () {
+      final result = parser.deserialize<Map<String, Tool>>(
+        '{"first":{"NAME":"Hammer"},"second":{"NAME":"Drill"}}',
+      );
+      expect(result, isA<Map<String, Tool>>());
+      expect(result, {
+        'first': Tool(name: 'Hammer'),
+        'second': Tool(name: 'Drill'),
+      });
+    });
+
+    test('JSON array for a Map type throws DeserializationException', () {
+      expect(
+        () => parser.deserialize<Map<String, dynamic>>('[1,2]'),
+        throwsA(isA<DeserializationException>()),
+      );
+    });
+
+    test('Invalid JSON throws DeserializationFormatException', () {
+      expect(
+        () => parser.deserialize<Map<String, dynamic>>('{not-json'),
+        throwsA(isA<DeserializationFormatException>()),
+      );
+    });
+
+    test(
+      'Invalid value for Map<String, int> throws DeserializationException',
+      () {
+        expect(
+          () => parser.deserialize<Map<String, int>>('{"a":"x"}'),
+          throwsA(isA<DeserializationException>()),
+        );
+      },
+    );
+
+    test('Non String keys throw StateError', () {
+      expect(
+        () => parser.deserialize<Map<int, String>>('{"1":"a"}'),
+        throwsStateError,
+      );
+    });
+
+    test('Values without deserializer throw StateError', () {
+      expect(
+        () => parser.deserialize<Map<String, Worker>>('{"a":{}}'),
+        throwsStateError,
+      );
     });
   });
 
@@ -424,7 +528,9 @@ void main() {
       expect(() => parser.deserialize<Tool>(json), throwsA(isA<StateError>()));
 
       // Add deserializer
-      parser.addDeserializer<Tool>(Deserializer<Tool>((j) => Tool.fromJson(j)));
+      parser.addDeserializer<Tool>(
+        Deserializer<Tool>((j) => Tool.fromJson(j as Map<String, dynamic>)),
+      );
       expect(parser.deserialize<Tool>(json), Tool(name: 'Hammer'));
 
       // Remove deserializer

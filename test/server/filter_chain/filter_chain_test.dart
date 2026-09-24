@@ -68,13 +68,100 @@ void main() {
       expect(await response.readAsString(), contains('Stopped by filter'));
     });
   });
+
+  group('FilterChain Exception Handling Tests', () {
+    test(
+      'Exception thrown by the handler is converted before reaching the outer filters',
+      () async {
+        final seenStatus = <int>[];
+        final chain = FilterChain(
+          [StatusRecordingFilter(seenStatus)],
+          (request) => throw NotFoundException(),
+          exceptionHandler: SimpleExceptionHandler(),
+        );
+
+        final request = RequestEntity('GET', Uri.parse('http://localhost/'));
+        final response = await chain.doFilter(request);
+
+        expect(response.statusCode, 404);
+        expect(seenStatus, equals([404]));
+      },
+    );
+
+    test(
+      'Exception thrown by a filter is converted before reaching the outer filters',
+      () async {
+        final log = <String>[];
+        final seenStatus = <int>[];
+        final chain = FilterChain(
+          [
+            StatusRecordingFilter(seenStatus, order: 1),
+            ThrowingFilter(order: 2),
+            LoggingFilter('after-throwing', log, order: 3),
+          ],
+          (request) {
+            log.add('handler');
+            return ResponseEntity.ok();
+          },
+          exceptionHandler: SimpleExceptionHandler(),
+        );
+
+        final request = RequestEntity('GET', Uri.parse('http://localhost/'));
+        final response = await chain.doFilter(request);
+
+        expect(response.statusCode, 401);
+        expect(seenStatus, equals([401]));
+        expect(log, isEmpty);
+      },
+    );
+
+    test('Without exception handler the exception is propagated', () async {
+      final seenStatus = <int>[];
+      final chain = FilterChain([
+        StatusRecordingFilter(seenStatus),
+      ], (request) => throw NotFoundException());
+
+      final request = RequestEntity('GET', Uri.parse('http://localhost/'));
+
+      await expectLater(
+        () async => await chain.doFilter(request),
+        throwsA(isA<NotFoundException>()),
+      );
+      expect(seenStatus, isEmpty);
+    });
+  });
+}
+
+class StatusRecordingFilter extends Filter {
+  final List<int> seenStatus;
+
+  StatusRecordingFilter(this.seenStatus, {super.order});
+
+  @override
+  FutureOr<ResponseEntity> doFilter(
+    RequestEntity request,
+    FilterChain chain,
+  ) async {
+    final response = await chain.doFilter(request);
+    seenStatus.add(response.statusCode);
+    return response;
+  }
+}
+
+class ThrowingFilter extends Filter {
+  ThrowingFilter({super.order});
+
+  @override
+  FutureOr<ResponseEntity> doFilter(RequestEntity request, FilterChain chain) {
+    throw UnauthorizedException();
+  }
 }
 
 class StoppingFilter extends Filter {
   final String name;
   final List<String> log;
 
-  StoppingFilter(this.name, this.log, {int order = 0}) : super(order: order);
+  StoppingFilter(this.name, this.log, {super.order});
 
   @override
   FutureOr<ResponseEntity> doFilter(
@@ -90,7 +177,7 @@ class LoggingFilter extends Filter {
   final String name;
   final List<String> log;
 
-  LoggingFilter(this.name, this.log, {int order = 0}) : super(order: order);
+  LoggingFilter(this.name, this.log, {super.order});
 
   @override
   FutureOr<ResponseEntity> doFilter(
