@@ -7,13 +7,8 @@ class User implements Serializable {
   User({required this.id, required this.name});
 
   @override
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-      };
+  Map<String, dynamic> toJson() => {'id': id, 'name': name};
 
-  factory User.fromJson(Map<String, dynamic> json) => User(
-        id: json['id'] as int,
-        name: json['name'] as String,
-      );
+  factory User.fromJson(Map<String, dynamic> json) =>
+      User(id: json['id'] as int, name: json['name'] as String);
 }

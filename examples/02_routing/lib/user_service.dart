@@ -12,7 +12,8 @@ class UserService {
   User getById(int id) {
     return _users.firstWhere(
       (u) => u.id == id,
-      orElse: () => throw NotFoundException(body: {'error': 'User $id not found'}),
+      orElse: () =>
+          throw NotFoundException(body: {'error': 'User $id not found'}),
     );
   }
 
@@ -40,9 +41,6 @@ class UserService {
 
   void reset() {
     _users.clear();
-    _users.addAll([
-      User(id: 1, name: 'Alice'),
-      User(id: 2, name: 'Bob'),
-    ]);
+    _users.addAll([User(id: 1, name: 'Alice'), User(id: 2, name: 'Bob')]);
   }
 }

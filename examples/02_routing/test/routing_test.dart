@@ -20,7 +20,7 @@ void main() {
       final response = await http.get(Uri.parse('$baseUrl/users'));
 
       expect(response.statusCode, equals(200));
-      final List users = jsonDecode(response.body);
+      final List users = jsonDecode(response.body) as List;
       expect(users, hasLength(2));
     });
 
@@ -49,7 +49,7 @@ void main() {
       );
 
       expect(response.statusCode, equals(200));
-      
+
       // Verify with GET
       final getResponse = await http.get(Uri.parse('$baseUrl/users/3'));
       expect(jsonDecode(getResponse.body)['name'], equals('Charlie'));

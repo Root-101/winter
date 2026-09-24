@@ -178,7 +178,8 @@ void main() {
     http.Response response = await http.get(url(urlToTest));
 
     expect(response.statusCode, 500);
-    expect(response.body, contains('Exception: Filter error'));
+    expect(response.body, 'Internal Server Error');
+    expect(response.body, isNot(contains('Filter error')));
   });
 
   test('Test Params in Filter', () async {
@@ -250,9 +251,7 @@ class BodyChangeFilter extends Filter {
     FilterChain chain,
   ) async {
     String? body = await request.body<String>();
-    RequestEntity newRequest = await request.copyWith(
-      body: '$body modified',
-    );
+    RequestEntity newRequest = await request.copyWith(body: '$body modified');
     return await chain.doFilter(newRequest);
   }
 }

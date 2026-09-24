@@ -59,7 +59,8 @@ class Gadget implements Serializable {
   @override
   Map<String, dynamic> toJson() => {'id': id};
 
-  factory Gadget.fromJson(Map<String, dynamic> json) => Gadget(id: json['id']);
+  factory Gadget.fromJson(Map<String, dynamic> json) =>
+      Gadget(id: json['id'] as String);
 
   @override
   bool operator ==(Object other) =>

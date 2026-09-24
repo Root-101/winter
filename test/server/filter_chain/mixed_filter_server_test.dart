@@ -6,7 +6,7 @@ import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9022;
+  int port = 9067;
   String localUrl = 'http://localhost:$port';
 
   setUpAll(() async {
@@ -80,7 +80,7 @@ void main() {
         expect(response.statusCode, 401);
         expect(
           response.body,
-          'Request need the ${HttpHeaders.authorization} header',
+          'Request need the ${HttpHeader.authorization} header',
         );
       },
     );
@@ -96,7 +96,7 @@ void main() {
   });
 
   group('Mixed Filter Tests (Global + Route)', () {
-    final authHeaders = {HttpHeaders.authorization: 'Bearer 123456'};
+    final authHeaders = {HttpHeader.authorization: 'Bearer 123456'};
 
     test(
       'Should remove params when RemoveQueryParamsFilter is present',
@@ -123,7 +123,7 @@ void main() {
   });
 
   group('Advanced Filter Tests', () {
-    final authHeaders = {HttpHeaders.authorization: 'Bearer 123456'};
+    final authHeaders = {HttpHeader.authorization: 'Bearer 123456'};
 
     test('Should add custom header to request via filter', () async {
       http.Response response = await http.get(
@@ -173,7 +173,7 @@ void main() {
           headers: authHeaders,
         );
         expect(response.statusCode, 200);
-        expect(response.body, contains('path: {id: hello%20world}, query: {}'));
+        expect(response.body, contains('path: {id: hello world}, query: {}'));
       },
     );
   });
@@ -185,10 +185,10 @@ class InterceptNotAuthRequestsFilter extends Filter {
     RequestEntity request,
     FilterChain chain,
   ) async {
-    if (!request.headers.containsKey(HttpHeaders.authorization)) {
+    if (!request.headers.containsKey(HttpHeader.authorization)) {
       return ResponseEntity(
         401,
-        body: 'Request need the ${HttpHeaders.authorization} header',
+        body: 'Request need the ${HttpHeader.authorization} header',
       );
     }
     return await chain.doFilter(request);

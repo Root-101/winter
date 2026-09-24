@@ -21,7 +21,7 @@ void main() {
             handler: (request) => ResponseEntity.ok(body: 'Hello world!!!'),
           ),
 
-          ///Exception is thrown and because is a custom exception the response will be a 500 with the message of the exception
+          ///Exception is thrown and because is a custom exception the response will be a generic 500 (the message is only logged)
           Route(
             path: '/custom-exception',
             method: HttpMethod.get,
@@ -188,14 +188,16 @@ void main() {
     String urlToTest = '/custom-exception';
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 500);
-    expect(response.body, 'Handler for custom exception');
+    expect(response.body, 'Internal Server Error');
+    expect(response.body, isNot(contains('Handler for custom exception')));
   });
 
   test('Test Exception: generic-exception', () async {
     String urlToTest = '/generic-exception';
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 500);
-    expect(response.body, 'Exception: Handler for generic exception');
+    expect(response.body, 'Internal Server Error');
+    expect(response.body, isNot(contains('Handler for generic exception')));
   });
 
   test('Test Exception: response-exception/ok', () async {

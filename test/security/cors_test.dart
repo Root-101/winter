@@ -49,7 +49,7 @@ void main() {
         final response = await http.get(Uri.parse('$localUrl/test'));
         expect(response.statusCode, 200);
         expect(
-          response.headers.containsKey(HttpHeaders.accessControlAllowOrigin),
+          response.headers.containsKey(HttpHeader.accessControlAllowOrigin),
           isFalse,
         );
       },
@@ -72,12 +72,12 @@ void main() {
 
       final response = await http.get(
         Uri.parse('$localUrl/test'),
-        headers: {HttpHeaders.origin: 'http://localhost:3000'},
+        headers: {HttpHeader.origin: 'http://localhost:3000'},
       );
       expect(response.statusCode, 200);
       // http package headers are lowercase
       expect(
-        response.headers[HttpHeaders.accessControlAllowOrigin.toLowerCase()],
+        response.headers[HttpHeader.accessControlAllowOrigin.toLowerCase()],
         '*',
       );
     });
@@ -102,18 +102,18 @@ void main() {
         'OPTIONS',
         Uri.parse('$localUrl/test'),
       );
-      request.headers.add(HttpHeaders.accessControlRequestMethod, 'GET');
-      request.headers.add(HttpHeaders.origin, 'http://localhost:3000');
+      request.headers.add(HttpHeader.accessControlRequestMethod, 'GET');
+      request.headers.add(HttpHeader.origin, 'http://localhost:3000');
       final response = await request.close();
 
       expect(response.statusCode, 200);
-      expect(response.headers.value(HttpHeaders.accessControlAllowOrigin), '*');
+      expect(response.headers.value(HttpHeader.accessControlAllowOrigin), '*');
       expect(
-        response.headers.value(HttpHeaders.accessControlAllowMethods),
+        response.headers.value(HttpHeader.accessControlAllowMethods),
         contains('GET'),
       );
       expect(
-        response.headers.value(HttpHeaders.accessControlAllowMethods),
+        response.headers.value(HttpHeader.accessControlAllowMethods),
         contains('POST'),
       );
     });
@@ -139,48 +139,48 @@ void main() {
         Uri.parse('$localUrl/test'),
       );
       preflightRequest.headers.add(
-        HttpHeaders.accessControlRequestMethod,
+        HttpHeader.accessControlRequestMethod,
         'POST',
       );
-      preflightRequest.headers.add(HttpHeaders.origin, 'https://example.com');
+      preflightRequest.headers.add(HttpHeader.origin, 'https://example.com');
       final preflightResponse = await preflightRequest.close();
 
       expect(preflightResponse.statusCode, 200);
       expect(
-        preflightResponse.headers.value(HttpHeaders.accessControlAllowOrigin),
+        preflightResponse.headers.value(HttpHeader.accessControlAllowOrigin),
         'https://example.com',
       );
       expect(
-        preflightResponse.headers.value(HttpHeaders.accessControlAllowMethods),
+        preflightResponse.headers.value(HttpHeader.accessControlAllowMethods),
         'GET, POST',
       );
       expect(
-        preflightResponse.headers.value(HttpHeaders.accessControlAllowHeaders),
+        preflightResponse.headers.value(HttpHeader.accessControlAllowHeaders),
         isNotNull,
       );
       expect(
         preflightResponse.headers.value(
-          HttpHeaders.accessControlAllowCredentials,
+          HttpHeader.accessControlAllowCredentials,
         ),
         'true',
       );
       expect(
-        preflightResponse.headers.value(HttpHeaders.accessControlMaxAge),
+        preflightResponse.headers.value(HttpHeader.accessControlMaxAge),
         '3600',
       );
 
       // Actual request
       final response = await http.post(
         Uri.parse('$localUrl/test'),
-        headers: {HttpHeaders.origin: 'https://example.com'},
+        headers: {HttpHeader.origin: 'https://example.com'},
       );
       expect(response.statusCode, 200);
       expect(
-        response.headers[HttpHeaders.accessControlAllowOrigin.toLowerCase()],
+        response.headers[HttpHeader.accessControlAllowOrigin.toLowerCase()],
         'https://example.com',
       );
       expect(
-        response.headers[HttpHeaders.accessControlAllowCredentials
+        response.headers[HttpHeader.accessControlAllowCredentials
             .toLowerCase()],
         'true',
       );
@@ -203,11 +203,11 @@ void main() {
 
       final response = await http.get(
         Uri.parse('$localUrl/test'),
-        headers: {HttpHeaders.origin: 'https://malicious.com'},
+        headers: {HttpHeader.origin: 'https://malicious.com'},
       );
       expect(response.statusCode, 200);
       expect(
-        response.headers.containsKey(HttpHeaders.accessControlAllowOrigin),
+        response.headers.containsKey(HttpHeader.accessControlAllowOrigin),
         isFalse,
       );
     });
