@@ -1,0 +1,6 @@
+greetings:
+  hello: 'Hola, {name}'
+orders:
+  created: 'Pedido {id} creado'
+  notFound: 'Pedido {id} no encontrado'
+  productRequired: 'Elige un producto'

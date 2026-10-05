@@ -1,0 +1,21 @@
+# Generates lib/i18n/messages.g.dart from the YAML files: run `dart run slang` after any change.
+base_locale: en
+# A key missing in a non-base locale is a compile error in the generated code
+fallback_strategy: none
+input_directory: lib/i18n
+input_file_pattern: .i18n.yaml
+# `{name}` like ARB/ICU instead of the default `$name`
+string_interpolation: braces
+output_directory: lib/i18n
+output_file_name: messages.g.dart
+flutter_integration: false
+# No global LocaleSettings: the language of each request comes from `requestLocale`
+locale_handling: false
+translation_class_visibility: public
+lazy: false
+enum_name: AppLocale
+class_name: AppMessages
+timestamp: false
+statistics: false
+format:
+  enabled: true

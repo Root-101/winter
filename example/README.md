@@ -23,6 +23,12 @@ This directory contains independent examples demonstrating the core features and
     - d) **RBAC & Permissions**: Advanced authorization using complex `AuthorizationRules`.
     - e) **Security Context**: Managing authenticated principals via global filters.
 
+4.  **[04_i18n](./04_i18n)**: Responses in the language of the request.
+    - a) **slang + YAML**: Typed translations generated from `*.i18n.yaml` with `dart run slang`.
+    - b) **`requestLocale`**: A `t` getter reads the language of the request in progress from any code (validators, services, handlers).
+    - c) **Translated validations**: A 422 mixes the texts of the app and of Winter in the same language.
+    - d) **In-memory tests**: `WinterTestClient` and `RequestScope.run`.
+
 ## How to run an example
 
 Each example is a standalone Dart project. To run one:
