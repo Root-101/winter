@@ -4,7 +4,9 @@ class User implements Serializable {
   final int id;
   final String name;
   final String email;
-  final String password;
+
+  ///Never the plain password, see [PasswordHasher]
+  final String passwordHash;
   final Set<String> roles;
   final Set<String> permissions;
 
@@ -12,7 +14,7 @@ class User implements Serializable {
     required this.id,
     required this.name,
     required this.email,
-    required this.password,
+    required this.passwordHash,
     this.roles = const {},
     this.permissions = const {},
   });
@@ -30,7 +32,7 @@ class User implements Serializable {
     id: json['id'] as int,
     name: json['name'] as String,
     email: json['email'] as String,
-    password: json['password'] as String? ?? '',
+    passwordHash: json['passwordHash'] as String? ?? '',
     roles: Set.from(json['roles'] as List? ?? []),
     permissions: Set.from(json['permissions'] as List? ?? []),
   );

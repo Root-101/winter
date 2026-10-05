@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:auth_security_example/auth_security_example.dart';
+import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
@@ -156,16 +157,28 @@ void main() {
       });
 
       test('DELETE /users/{id} succeeds for admin', () async {
+        // Delete a user created by this test, so the other tests don't depend on the order
+        final registered = await http.post(
+          Uri.parse('$baseUrl/register'),
+          body: jsonEncode({
+            'name': 'To Delete',
+            'email': 'to-delete@example.com',
+            'password': 'password123',
+          }),
+        );
+        final id = (jsonDecode(registered.body) as Map<String, dynamic>)['id'];
         final token = await login('admin@example.com', 'adminpassword');
 
-        // We use ID 2 because ID 1 is the admin themselves in our mock list
         final response = await http.delete(
-          Uri.parse('$baseUrl/users/2'),
+          Uri.parse('$baseUrl/users/$id'),
           headers: {'Authorization': 'Bearer $token'},
         );
 
         expect(response.statusCode, equals(200));
-        expect(jsonDecode(response.body)['email'], equals('user@example.com'));
+        expect(
+          jsonDecode(response.body)['email'],
+          equals('to-delete@example.com'),
+        );
       });
 
       test('DELETE /users/{id} returns 404 for non-existent user', () async {
@@ -181,21 +194,91 @@ void main() {
     });
 
     group('Security Rules Edge Cases', () {
-      test('Admin with user role can access /me', () async {
-        // Admin also has 'user' role implicitly or via configuration?
-        // In our UserService, Admin has 'admin' role.
-        // Let's check if our filter permits it.
-        final token = await login('admin@example.com', 'adminpassword');
+      test(
+        'Roles are not hierarchical: an admin without the user role gets 403 on /me',
+        () async {
+          // /me requires the 'user' role and the admin only has 'admin'
+          final token = await login('admin@example.com', 'adminpassword');
 
-        final response = await http.get(
-          Uri.parse('$baseUrl/me'),
-          headers: {'Authorization': 'Bearer $token'},
+          final response = await http.get(
+            Uri.parse('$baseUrl/me'),
+            headers: {'Authorization': 'Bearer $token'},
+          );
+
+          expect(response.statusCode, equals(403));
+        },
+      );
+    });
+
+    group('Password & token security', () {
+      test('Passwords are stored hashed, never in plain text', () {
+        final admin = di.find<UserService>().getByEmail('admin@example.com')!;
+
+        expect(admin.passwordHash, startsWith(r'pbkdf2_sha256$'));
+        expect(admin.passwordHash, isNot(contains('adminpassword')));
+        expect(admin.toJson(), isNot(contains('passwordHash')));
+      });
+
+      test('Login with an unknown email fails like a wrong password', () async {
+        final response = await http.post(
+          Uri.parse('$baseUrl/login'),
+          body: jsonEncode({'email': 'nobody@example.com', 'password': 'x'}),
         );
 
-        // Note: Currently UserController requires 'user' role for /me.
-        // If admin doesn't have 'user' role, this will fail.
-        // Most systems allow Admin to access User routes.
-        expect(response.statusCode, anyOf(equals(200), equals(403)));
+        expect(response.statusCode, 401);
+      });
+
+      test('Tokens expire after one hour', () async {
+        final token = await login('admin@example.com', 'adminpassword');
+        final payload = JWT.decode(token).payload as Map<String, dynamic>;
+
+        expect((payload['exp'] as int) - (payload['iat'] as int), 3600);
+      });
+
+      test('An expired token is rejected', () async {
+        final expiredToken = di.find<JwtService>().generateToken({
+          'sub': 1,
+          'roles': ['admin'],
+          'permissions': ['user.list'],
+        }, expiresIn: const Duration(seconds: -1));
+
+        final response = await http.get(
+          Uri.parse('$baseUrl/users'),
+          headers: {'Authorization': 'Bearer $expiredToken'},
+        );
+
+        expect(response.statusCode, 401);
+      });
+    });
+
+    test('UserService never reuses the id of a deleted user', () {
+      final service = UserService(PasswordHasher(iterations: 1000));
+      final first = service.create('A', 'a@example.com', 'password');
+      service.delete(first.id);
+
+      final second = service.create('B', 'b@example.com', 'password');
+
+      expect(second.id, isNot(first.id));
+      expect(service.getAll().map((user) => user.id).toSet(), hasLength(3));
+    });
+
+    group('PasswordHasher', () {
+      final hasher = PasswordHasher(iterations: 1000);
+
+      test('verify accepts the right password and rejects the wrong one', () {
+        final hash = hasher.hash('secret');
+
+        expect(hasher.verify('secret', hash), isTrue);
+        expect(hasher.verify('Secret', hash), isFalse);
+      });
+
+      test('The same password gets a different hash (random salt)', () {
+        expect(hasher.hash('secret'), isNot(hasher.hash('secret')));
+      });
+
+      test('Malformed hashes are rejected', () {
+        expect(hasher.verify('secret', 'secret'), isFalse);
+        expect(hasher.verify('secret', r'md5$1$a$b'), isFalse);
       });
     });
 

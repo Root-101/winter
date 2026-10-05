@@ -29,7 +29,7 @@ Each example is a standalone Dart project. To run one:
 
 1.  Navigate to the example directory:
     ```bash
-    cd examples/01_basic_server
+    cd example/01_basic_server
     ```
 2.  Get dependencies:
     ```bash

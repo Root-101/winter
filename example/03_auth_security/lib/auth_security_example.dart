@@ -4,6 +4,7 @@ export 'main.dart';
 export 'model/user_model.dart';
 export 'security/jwt_filter.dart';
 export 'security/jwt_service.dart';
+export 'security/password_hasher.dart';
 export 'service/auth_service.dart';
 export 'service/user_service.dart';
 export 'controller/auth_controller.dart';
