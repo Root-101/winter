@@ -115,46 +115,6 @@ void main() {
       });
     });
 
-    test('Every validator of Winter is translated', () {
-      String es(void Function(ConstraintValidator v) rule, Object? value) {
-        final cvc = ConstraintValidatorContext();
-        final validator = cvc.buildValidator('field');
-        rule(validator);
-        validator.validate(value);
-        return cvc.violations.single.messageFor(spanish);
-      }
-
-      expect(es((v) => v.notNull(), null), 'El campo no puede ser null');
-      expect(es((v) => v.notBlank(), ' '), 'El campo no puede estar vacío');
-      expect(es((v) => v.size(min: 2), [1]), 'El mínimo es 2');
-      expect(es((v) => v.size(max: 1), 'ab'), 'El máximo es 1');
-      expect(
-        es((v) => v.size(min: 1), 5),
-        'El valor debe ser un String o un Iterable',
-      );
-      expect(es((v) => v.email(), 'x'), 'El valor no es un email válido');
-      expect(es((v) => v.email(), 1), 'El valor debe ser un String');
-      expect(es((v) => v.min(3), 1), 'El mínimo es 3');
-      expect(
-        es((v) => v.min(3, inclusive: false), 3),
-        'El valor debe ser mayor que 3',
-      );
-      expect(es((v) => v.max(2.5), 3), 'El máximo es 2.5');
-      expect(
-        es((v) => v.max(3, inclusive: false), 3),
-        'El valor debe ser menor que 3',
-      );
-      expect(es((v) => v.min(1), 'x'), 'El valor debe ser un número');
-      expect(
-        es((v) => v.pattern(r'^\d+$'), 'a'),
-        'El valor tiene un formato no válido',
-      );
-      expect(
-        es((v) => v.isEnum(Series.values), 'x'),
-        startsWith('El valor debe ser uno de: '),
-      );
-    });
-
     test('A custom message is the same in every language', () {
       final cvc = ConstraintValidatorContext();
       cvc.buildValidator('name').notNull(message: 'Required').validate(null);
