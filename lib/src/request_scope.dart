@@ -17,7 +17,12 @@ class RequestScope {
   /// Shared with `request.securityContext`: the same object for the request and its changes
   final RequestSecurityContext securityContext;
 
-  RequestScope({required this.securityContext});
+  /// The same as `request.locale`: chosen from the `Accept-Language` of the request
+  final WinterLocale locale;
+
+  /// Without [locale], the fallback of `Winter.context.localeConfig`
+  RequestScope({required this.securityContext, WinterLocale? locale})
+    : locale = locale ?? Winter.context.localeConfig.fallback;
 
   /// The scope of the request in progress, or null outside a request
   static RequestScope? get current => Zone.current[_zoneKey] as RequestScope?;
@@ -34,6 +39,11 @@ class RequestScope {
 /// The same object as `request.securityContext`.
 RequestSecurityContext? get requestSecurityContext =>
     RequestScope.current?.securityContext;
+
+/// Locale of the request in progress (the same as `request.locale`),
+/// or the fallback of `Winter.context.localeConfig` outside a request.
+WinterLocale get requestLocale =>
+    RequestScope.current?.locale ?? Winter.context.localeConfig.fallback;
 
 /// User of the request in progress, set by a filter with `request.securityContext.setAuthentication`.
 /// Null outside a request or when nobody set it.
