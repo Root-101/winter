@@ -70,6 +70,19 @@ void main() {
     expect(() => MediaType.parse('not a media type'), throwsFormatException);
   });
 
+  test(
+    'ResponseEntity with DateTime & enums inside toJson is valid JSON',
+    () async {
+      final response = ResponseEntity.ok(body: _Order());
+
+      expect(response.headers['content-type'], 'application/json');
+      expect(
+        await response.readAsString(),
+        '{"at":"2026-01-01T00:00:00.000Z","status":"paid","tags":["a"]}',
+      );
+    },
+  );
+
   test('ApiException has a readable toString', () {
     final exception = NotFoundException(body: 'User not found');
 
@@ -84,4 +97,15 @@ void main() {
 
     expect(called, isTrue);
   });
+}
+
+enum _Status { paid }
+
+class _Order implements Serializable {
+  @override
+  Object? toJson() => {
+    'at': DateTime.utc(2026),
+    'status': _Status.paid,
+    'tags': {'a'},
+  };
 }
