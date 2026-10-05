@@ -9,6 +9,7 @@ export 'src/http/http.dart';
 export 'src/i18n/i18n.dart';
 export 'src/logging/logger.dart';
 export 'src/request_entity.dart';
+export 'src/request_scope.dart';
 export 'src/response_entity.dart';
 export 'src/router/router.dart';
 export 'src/security/security.dart';
