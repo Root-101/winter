@@ -24,18 +24,25 @@ class BuildContext {
 
   WinterLogger get logger => _logger;
 
+  LocaleConfig _localeConfig;
+
+  ///Languages of the responses, used by `request.locale`
+  LocaleConfig get localeConfig => _localeConfig;
+
   BuildContext({
     ObjectMapper? objectMapper,
     ExceptionHandler? exceptionHandler,
     DependencyInjection? dependencyInjection,
     Env? env,
     WinterLogger? logger,
+    LocaleConfig? localeConfig,
   }) : timestamp = DateTime.now(),
        _logger = logger ?? const ConsoleLogger(),
        _objectMapper = objectMapper ?? ObjectMapper(),
        _exceptionHandler = exceptionHandler ?? SimpleExceptionHandler(),
        _dependencyInjection = dependencyInjection ?? DependencyInjection(),
-       _env = env ?? Env();
+       _env = env ?? Env(),
+       _localeConfig = localeConfig ?? LocaleConfig();
 
   void setUp({
     ObjectMapper? objectMapper,
@@ -43,6 +50,7 @@ class BuildContext {
     DependencyInjection? dependencyInjection,
     Env? env,
     WinterLogger? logger,
+    LocaleConfig? localeConfig,
   }) {
     if (objectMapper != null) {
       _objectMapper = objectMapper;
@@ -58,6 +66,9 @@ class BuildContext {
     }
     if (logger != null) {
       _logger = logger;
+    }
+    if (localeConfig != null) {
+      _localeConfig = localeConfig;
     }
   }
 }

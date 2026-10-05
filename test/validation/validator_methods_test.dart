@@ -96,14 +96,14 @@ void main() {
         final cvc = ConstraintValidatorContext();
         cvc.buildValidator('test').size(min: 5).validate('abc');
         expect(cvc.isValid, isFalse);
-        expect(cvc.violations.first.message, contains('at least 5 characters'));
+        expect(cvc.violations.first.message, contains('The minimum is 5'));
       });
 
       test('Failure too long (String)', () {
         final cvc = ConstraintValidatorContext();
         cvc.buildValidator('test').size(max: 2).validate('abc');
         expect(cvc.isValid, isFalse);
-        expect(cvc.violations.first.message, contains('at most 2 characters'));
+        expect(cvc.violations.first.message, contains('The maximum is 2'));
       });
 
       test('Success within bounds (List)', () {
@@ -116,7 +116,7 @@ void main() {
         final cvc = ConstraintValidatorContext();
         cvc.buildValidator('test').size(max: 1).validate([1, 2]);
         expect(cvc.isValid, isFalse);
-        expect(cvc.violations.first.message, contains('at most 1 items'));
+        expect(cvc.violations.first.message, contains('The maximum is 1'));
       });
 
       test('Exact size success', () {

@@ -6,6 +6,7 @@ export 'src/env/env.dart';
 export 'src/filter_chain/filter.dart';
 export 'src/handler.dart';
 export 'src/http/http.dart';
+export 'src/i18n/i18n.dart';
 export 'src/logging/logger.dart';
 export 'src/request_entity.dart';
 export 'src/response_entity.dart';

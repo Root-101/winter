@@ -1,10 +1,18 @@
+import 'package:winter/src/i18n/winter_messages.dart';
 import 'package:winter/winter.dart';
 
 class _ValidationRule {
-  final String? Function(dynamic) validator;
+  final LocalizedText? Function(dynamic) validator;
+
+  ///False for rules with a fixed message ([ConstraintValidator.addRule]): their violation has no `localizedMessage`
+  final bool localized;
   final bool stopOnFailure;
 
-  _ValidationRule(this.validator, {this.stopOnFailure = false});
+  _ValidationRule(
+    this.validator, {
+    required this.localized,
+    this.stopOnFailure = false,
+  });
 }
 
 class ConstraintValidator {
@@ -24,19 +32,40 @@ class ConstraintValidator {
     String? Function(dynamic) validator, {
     bool stopOnFailure = false,
   }) {
-    _rules.add(_ValidationRule(validator, stopOnFailure: stopOnFailure));
+    _rules.add(
+      _ValidationRule(
+        (value) {
+          final String? message = validator(value);
+          return message == null ? null : (_) => message;
+        },
+        localized: false,
+        stopOnFailure: stopOnFailure,
+      ),
+    );
+  }
+
+  /// Like [addRule], but the message is translated when the response is built (see [LocalizedText]).
+  /// The violation keeps the English text in `message` (for logs) and the function in `localizedMessage`.
+  void addLocalizedRule(
+    LocalizedText? Function(dynamic) validator, {
+    bool stopOnFailure = false,
+  }) {
+    _rules.add(
+      _ValidationRule(validator, localized: true, stopOnFailure: stopOnFailure),
+    );
   }
 
   /// Executes all registered rules against the [value].
   void validate(dynamic value) {
     for (var rule in _rules) {
-      final error = rule.validator(value);
+      final LocalizedText? error = rule.validator(value);
       if (error != null) {
         cvc.addViolation(
           ConstrainViolation(
             value: sensitive ? null : value,
             fieldName: propertyName,
-            message: error,
+            message: error(WinterLocale.english),
+            localizedMessage: rule.localized ? error : null,
             sensitive: sensitive,
           ),
         );
@@ -49,10 +78,11 @@ class ConstraintValidator {
 extension NotNullValidator on ConstraintValidator {
   /// Validates that the value is not null.
   /// If [stopOnFailure] is true, the validation process for this field will stop if the value is null.
+  /// A custom [message] is used as is, in every language.
   ConstraintValidator notNull({String? message, bool stopOnFailure = true}) {
-    addRule((value) {
+    addLocalizedRule((value) {
       if (value == null) {
-        return message ?? 'The field $propertyName cannot be null';
+        return _text(message, (m) => m.errors.validations.notNull);
       }
       return null;
     }, stopOnFailure: stopOnFailure);
@@ -64,10 +94,10 @@ extension NotBlankValidator on ConstraintValidator {
   /// Validates that the string value is not empty or composed only of whitespace.
   /// If [stopOnFailure] is true, the validation process for this field will stop if the value is blank.
   ConstraintValidator notBlank({String? message, bool stopOnFailure = false}) {
-    addRule((value) {
+    addLocalizedRule((value) {
       if (value == null) return null;
       if (value is! String || value.trim().isEmpty) {
-        return message ?? 'The field $propertyName cannot be blank';
+        return _text(message, (m) => m.errors.validations.notBlank);
       }
       return null;
     }, stopOnFailure: stopOnFailure);
@@ -83,35 +113,31 @@ extension SizeValidator on ConstraintValidator {
     String? message,
     bool stopOnFailure = false,
   }) {
-    addRule((value) {
+    addLocalizedRule((value) {
       if (value == null) return null;
+      final int length;
       if (value is String) {
-        if (min != null && value.length < min) {
-          return message ??
-              'The field $propertyName must be at least $min characters long';
-        }
-        if (max != null && value.length > max) {
-          return message ??
-              'The field $propertyName must be at most $max characters long';
-        }
+        length = value.length;
       } else if (value is Iterable) {
-        if (min != null && value.length < min) {
-          return message ??
-              'The field $propertyName must have at least $min items';
-        }
-        if (max != null && value.length > max) {
-          return message ??
-              'The field $propertyName must have at most $max items';
-        }
+        length = value.length;
       } else {
-        return message ??
-            'The field $propertyName must be a String or Iterable';
+        return _text(message, (m) => m.errors.validations.size.invalidType);
+      }
+      if (min != null && length < min) {
+        return _text(message, (m) => m.errors.validations.size.min(value: min));
+      }
+      if (max != null && length > max) {
+        return _text(message, (m) => m.errors.validations.size.max(value: max));
       }
       return null;
     }, stopOnFailure: stopOnFailure);
     return this;
   }
 }
+
+/// The custom [message] of the user (same in every language) or the translated message of Winter
+LocalizedText _text(String? message, String Function(WinterMessages) text) =>
+    message != null ? (_) => message : (locale) => text(winterMessages(locale));
 
 /// Same rules as the HTML5 spec (WHATWG) for `<input type="email">`, but requiring a dot in the domain:
 /// - local part: letters, digits and the special characters allowed by the spec (so `user+tag@x.com` is valid)
@@ -125,13 +151,13 @@ final RegExp _emailRegex = RegExp(
 extension EmailValidator on ConstraintValidator {
   /// Validates that the value is a valid email.
   ConstraintValidator email({String? message, bool stopOnFailure = false}) {
-    addRule((value) {
+    addLocalizedRule((value) {
       if (value == null) return null;
       if (value is! String) {
-        return message ?? 'The field $propertyName must be a String';
+        return _text(message, (m) => m.errors.validations.type.string);
       }
       if (!_emailRegex.hasMatch(value)) {
-        return message ?? 'The field $propertyName is not a valid email';
+        return _text(message, (m) => m.errors.validations.email);
       }
       return null;
     }, stopOnFailure: stopOnFailure);
@@ -149,15 +175,19 @@ extension MinValidator on ConstraintValidator {
     bool inclusive = true,
     bool stopOnFailure = false,
   }) {
-    addRule((value) {
+    addLocalizedRule((value) {
       if (value == null) return null;
       if (value is! num) {
-        return message ?? 'The field $propertyName must be a number';
+        return _text(message, (m) => m.errors.validations.type.number);
       }
       final isInvalid = inclusive ? (value < min) : (value <= min);
       if (isInvalid) {
-        final operator = inclusive ? 'at least' : 'greater than';
-        return message ?? 'The field $propertyName must be $operator $min';
+        return _text(
+          message,
+          (m) => inclusive
+              ? m.errors.validations.min.inclusive(value: min)
+              : m.errors.validations.min.exclusive(value: min),
+        );
       }
       return null;
     }, stopOnFailure: stopOnFailure);
@@ -175,15 +205,19 @@ extension MaxValidator on ConstraintValidator {
     bool inclusive = true,
     bool stopOnFailure = false,
   }) {
-    addRule((value) {
+    addLocalizedRule((value) {
       if (value == null) return null;
       if (value is! num) {
-        return message ?? 'The field $propertyName must be a number';
+        return _text(message, (m) => m.errors.validations.type.number);
       }
       final isInvalid = inclusive ? (value > max) : (value >= max);
       if (isInvalid) {
-        final operator = inclusive ? 'at most' : 'less than';
-        return message ?? 'The field $propertyName must be $operator $max';
+        return _text(
+          message,
+          (m) => inclusive
+              ? m.errors.validations.max.inclusive(value: max)
+              : m.errors.validations.max.exclusive(value: max),
+        );
       }
       return null;
     }, stopOnFailure: stopOnFailure);
@@ -198,13 +232,13 @@ extension PatternValidator on ConstraintValidator {
     String? message,
     bool stopOnFailure = false,
   }) {
-    addRule((value) {
+    addLocalizedRule((value) {
       if (value == null) return null;
       if (value is! String) {
-        return message ?? 'The field $propertyName must be a String';
+        return _text(message, (m) => m.errors.validations.type.string);
       }
       if (!RegExp(pattern.toString()).hasMatch(value)) {
-        return message ?? 'The field $propertyName has an invalid format';
+        return _text(message, (m) => m.errors.validations.pattern);
       }
       return null;
     }, stopOnFailure: stopOnFailure);
@@ -235,7 +269,7 @@ extension EnumValidator on ConstraintValidator {
     String? message,
     bool stopOnFailure = false,
   }) {
-    addRule((value) {
+    addLocalizedRule((value) {
       if (value == null) return null;
 
       final resolvedValues = values
@@ -244,7 +278,10 @@ extension EnumValidator on ConstraintValidator {
 
       if (!resolvedValues.contains(value)) {
         final allowed = resolvedValues.join(', ');
-        return message ?? 'The field $propertyName must be one of: $allowed';
+        return _text(
+          message,
+          (m) => m.errors.validations.isEnum(values: allowed),
+        );
       }
       return null;
     }, stopOnFailure: stopOnFailure);

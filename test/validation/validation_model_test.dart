@@ -46,7 +46,7 @@ void main() {
         cvc.violations.any(
           (v) =>
               v.fieldName == 'username' &&
-              v.message.contains('at least 3 characters'),
+              v.message.contains('The minimum is 3'),
         ),
         isTrue,
       );
@@ -65,7 +65,7 @@ void main() {
         cvc.violations.any(
           (v) =>
               v.fieldName == 'password' &&
-              v.message.contains('at least 8 characters'),
+              v.message.contains('The minimum is 8'),
         ),
         isTrue,
       );

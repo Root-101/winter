@@ -1,0 +1,20 @@
+errors:
+  validations:
+    type:
+      string: 'El valor debe ser un String'
+      number: 'El valor debe ser un número'
+    notNull: 'El campo no puede ser null'
+    notBlank: 'El campo no puede estar vacío'
+    size:
+      min: 'El mínimo es {value}'
+      max: 'El máximo es {value}'
+      invalidType: 'El valor debe ser un String o un Iterable'
+    min:
+      inclusive: 'El mínimo es {value}'
+      exclusive: 'El valor debe ser mayor que {value}'
+    max:
+      inclusive: 'El máximo es {value}'
+      exclusive: 'El valor debe ser menor que {value}'
+    email: 'El valor no es un email válido'
+    pattern: 'El valor tiene un formato no válido'
+    isEnum: 'El valor debe ser uno de: {values}'

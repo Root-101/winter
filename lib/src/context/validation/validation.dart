@@ -84,8 +84,12 @@ class ConstrainViolation implements Serializable {
   ///the name will be the concatenation of every field-name from the root to the specific field
   final String fieldName;
 
-  ///Message of the failed validation
+  ///Message of the failed validation, always in English (it's the one in logs and `toString`)
   final String message;
+
+  ///Translated message, resolved with the locale of the request when the response is built.
+  ///Null when the message is the same in every language (custom message, `addRule`).
+  final LocalizedText? localizedMessage;
 
   ///If true, the value is hidden (not included in the json nor in the toString)
   final bool sensitive;
@@ -94,19 +98,36 @@ class ConstrainViolation implements Serializable {
     required this.value,
     required this.fieldName,
     required this.message,
+    this.localizedMessage,
     this.sensitive = false,
   });
 
+  /// [message] for [locale]
+  String messageFor(WinterLocale locale) =>
+      localizedMessage?.call(locale) ?? message;
+
+  /// A copy with the [message] in [locale] and without `localizedMessage`
+  ConstrainViolation localize(WinterLocale locale) => ConstrainViolation(
+    value: value,
+    fieldName: fieldName,
+    message: messageFor(locale),
+    sensitive: sensitive,
+  );
+
+  /// A new [message] without a new [localizedMessage] drops the old translation
   ConstrainViolation copyWith({
     dynamic value,
     String? fieldName,
     String? message,
+    LocalizedText? localizedMessage,
     bool? sensitive,
   }) {
     return ConstrainViolation(
       value: value ?? this.value,
       fieldName: fieldName ?? this.fieldName,
       message: message ?? this.message,
+      localizedMessage:
+          localizedMessage ?? (message == null ? this.localizedMessage : null),
       sensitive: sensitive ?? this.sensitive,
     );
   }
