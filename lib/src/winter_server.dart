@@ -178,6 +178,8 @@ class Winter {
       nextRunningServer._signalSubscriptions = _watchShutdownSignals();
     }
 
+    warnLocalesWithoutWinterMessages(_context.localeConfig);
+
     final endTime = DateTime.now();
     double timeDiff = endTime.difference(startTime).inMilliseconds / 1000;
     logger.info('Server started on port ${rawServer.port} ($timeDiff sec)');

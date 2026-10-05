@@ -66,7 +66,7 @@ AppMessages get t => appMessages(requestLocale); // a getter, never a `final`
 cvc.buildValidator('prefix')
     .notNull(message: t.errors.validations.prefixRequired)
     .validate(prefix);
-throw ApiException(StatusCode.unauthorized, t.errors.signature.invalid);
+throw UnauthorizedException(body: t.errors.signature.invalid);
 ```
 
 - *Before*: a validator stored a `LocalizedText` (`String Function(WinterLocale)`) and the exception
@@ -91,7 +91,8 @@ throw ApiException(StatusCode.unauthorized, t.errors.signature.invalid);
 
 - `ConstrainViolation.message` is in the **language of the request**, also in logs and `toString`
   (before it was always English).
-- `addRule` and `custom()` receive whatever text the rule returns; translate it with `requestLocale`.
+- `addRule` and `custom()` receive whatever text the rule returns; translate it with
+  `requestLocale`.
 - `LocaleConfig` lives in the `BuildContext` (not in `ServerConfig`) so `WinterTestClient` and
   `buildHandler` see it without starting a server. By default it only supports English, so an
   existing app does not start answering in Spanish until it opts in.
@@ -103,6 +104,10 @@ throw ApiException(StatusCode.unauthorized, t.errors.signature.invalid);
 - The texts do not include the field name; it is already in `fieldName` of the response.
 - `Vary` is added by the server after the whole chain, so the filters don't see it in the response.
   Reading the language only to log it also adds it (harmless, it only lowers the cache hit rate).
+- An app can support a language that Winter doesn't translate (ex: `fr`): its own texts come in
+  French but the validation messages of Winter fall back to English, so a 422 can mix both.
+  `Winter.start` logs a warning listing those languages (`localesWithoutWinterMessages`, a region
+  counts as its language). The fix is a custom `message:` or a new `*.i18n.yaml` in Winter.
 - What is **not** translated, on purpose: the default bodies of the HTTP errors (`Bad Request`,
   `Not Found`...) are the standard reason phrases, like the error codes; the messages of
   `DeserializationException` (400) and similar are technical, for the developer of the client.
