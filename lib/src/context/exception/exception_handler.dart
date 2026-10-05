@@ -1,5 +1,3 @@
-import 'dart:io' show stderr;
-
 import 'package:winter/winter.dart';
 
 abstract class ExceptionHandler {
@@ -17,8 +15,10 @@ void defaultLogUnhandledError(
   Object error,
   StackTrace stackTrace,
 ) {
-  stderr.writeln(
-    'UNHANDLED ERROR in ${request.method} ${request.requestedUri.path}: $error\n$stackTrace',
+  logger.error(
+    'Unhandled error in ${request.method} ${request.requestedUri.path}',
+    error: error,
+    stackTrace: stackTrace,
   );
 }
 

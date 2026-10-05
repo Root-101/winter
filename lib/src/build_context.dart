@@ -20,12 +20,18 @@ class BuildContext {
 
   Env get env => _env;
 
+  WinterLogger _logger;
+
+  WinterLogger get logger => _logger;
+
   BuildContext({
     ObjectMapper? objectMapper,
     ExceptionHandler? exceptionHandler,
     DependencyInjection? dependencyInjection,
     Env? env,
+    WinterLogger? logger,
   }) : timestamp = DateTime.now(),
+       _logger = logger ?? const ConsoleLogger(),
        _objectMapper = objectMapper ?? ObjectMapper(),
        _exceptionHandler = exceptionHandler ?? SimpleExceptionHandler(),
        _dependencyInjection = dependencyInjection ?? DependencyInjection(),
@@ -36,6 +42,7 @@ class BuildContext {
     ExceptionHandler? exceptionHandler,
     DependencyInjection? dependencyInjection,
     Env? env,
+    WinterLogger? logger,
   }) {
     if (objectMapper != null) {
       _objectMapper = objectMapper;
@@ -48,6 +55,9 @@ class BuildContext {
     }
     if (env != null) {
       _env = env;
+    }
+    if (logger != null) {
+      _logger = logger;
     }
   }
 }
