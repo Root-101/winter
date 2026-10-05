@@ -12,5 +12,6 @@ export 'src/response_entity.dart';
 export 'src/router/router.dart';
 export 'src/security/security.dart';
 export 'src/server_config.dart';
+export 'src/testing/winter_test_client.dart';
 export 'src/utils/utils.dart';
 export 'src/winter_server.dart';
