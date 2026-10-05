@@ -71,7 +71,7 @@ void main() {
     final response = await http.put(url('/users/42'));
 
     expect(response.statusCode, 405);
-    expect(response.headers['allow'], 'GET, DELETE');
+    expect(response.headers['allow'], 'GET, DELETE, HEAD');
   });
 
   test('405 from another router of the MultiRouter includes Allow', () async {
