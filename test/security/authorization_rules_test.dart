@@ -94,13 +94,16 @@ void main() {
       },
     );
 
-    test('role >> User && role >> SuperUser)', () async {
-      final rule =
-          hasRole('User') & (hasPermission('user.edit') | hasPermission(''));
-      bool response = rule.evaluate(authentication);
+    test(
+      'role >> User && (permission >> user.edit || permission >> "")',
+      () async {
+        final rule =
+            hasRole('User') & (hasPermission('user.edit') | hasPermission(''));
+        bool response = rule.evaluate(authentication);
 
-      expect(response, true);
-    });
+        expect(response, true);
+      },
+    );
 
     test(
       'permission >> user.create && (role >> User || role >> Admin)',
@@ -125,64 +128,48 @@ void main() {
       },
     );
 
-    test(
-      '(role >> User && permission >> user.create) || (role >> Admin && permission >> user.delete)',
-      () async {
-        final rule =
-            (hasRole('User') & hasPermission('user.create')) |
-            (hasRole('Admin') & hasPermission('user.delete'));
-        bool response = rule.evaluate(authentication);
+    test('(role >> User && permission >> user.create) || (role >> Admin && permission >> user.delete)', () async {
+      final rule =
+          (hasRole('User') & hasPermission('user.create')) |
+          (hasRole('Admin') & hasPermission('user.delete'));
+      bool response = rule.evaluate(authentication);
 
-        expect(response, true);
-      },
-    );
+      expect(response, true);
+    });
 
-    test(
-      'Complex mismatch: (role >> Admin || role >> Guest) && permission >> user.create',
-      () async {
-        final rule =
-            (hasRole('Admin') | hasRole('Guest')) &
-            hasPermission('user.create');
-        bool response = rule.evaluate(authentication);
+    test('Complex mismatch: (role >> Admin || role >> Guest) && permission >> user.create', () async {
+      final rule =
+          (hasRole('Admin') | hasRole('Guest')) & hasPermission('user.create');
+      bool response = rule.evaluate(authentication);
 
-        expect(response, false);
-      },
-    );
+      expect(response, false);
+    });
 
-    test(
-      'Triple OR with success: role >> Admin || role >> User || role >> SuperUser',
-      () async {
-        final rule = hasRole('Admin') | hasRole('User') | hasRole('SuperUser');
-        bool response = rule.evaluate(authentication);
+    test('Triple OR with success: role >> Admin || role >> User || role >> SuperUser', () async {
+      final rule = hasRole('Admin') | hasRole('User') | hasRole('SuperUser');
+      bool response = rule.evaluate(authentication);
 
-        expect(response, true);
-      },
-    );
+      expect(response, true);
+    });
 
-    test(
-      'Nested complex logic: (role >> User && (permission >> user.create || permission >> user.delete)) && role >> SuperUser',
-      () async {
-        final rule =
-            (hasRole('User') &
-                (hasPermission('user.create') | hasPermission('user.delete'))) &
-            hasRole('SuperUser');
-        bool response = rule.evaluate(authentication);
+    test('Nested complex logic: (role >> User && (permission >> user.create || permission >> user.delete)) && role >> SuperUser', () async {
+      final rule =
+          (hasRole('User') &
+              (hasPermission('user.create') | hasPermission('user.delete'))) &
+          hasRole('SuperUser');
+      bool response = rule.evaluate(authentication);
 
-        expect(response, true);
-      },
-    );
+      expect(response, true);
+    });
 
-    test(
-      'Multiple levels: ((role >> User && user.create) || (role >> Admin)) && role >> SuperUser',
-      () async {
-        final rule =
-            (hasRole('User') & hasPermission('user.create')) |
-            (hasRole('Admin') & hasRole('SuperUser'));
-        bool response = rule.evaluate(authentication);
+    test('Multiple levels: ((role >> User && user.create) || (role >> Admin)) && role >> SuperUser', () async {
+      final rule =
+          (hasRole('User') & hasPermission('user.create')) |
+          (hasRole('Admin') & hasRole('SuperUser'));
+      bool response = rule.evaluate(authentication);
 
-        expect(response, true);
-      },
-    );
+      expect(response, true);
+    });
 
     test('Anonymous user should fail rules', () async {
       final anonymous = Authentication.anonymous();
@@ -207,14 +194,11 @@ void main() {
       expect(hasAuthority('user.delete').evaluate(authentication), false);
     });
 
-    test(
-      'Complex mixed chaining: role >> User && (role >> Admin || permission >> user.edit)',
-      () async {
-        final rule =
-            hasRole('User') & (hasRole('Admin') | hasPermission('user.edit'));
-        expect(rule.evaluate(authentication), true);
-      },
-    );
+    test('Complex mixed chaining: role >> User && (role >> Admin || permission >> user.edit)', () async {
+      final rule =
+          hasRole('User') & (hasRole('Admin') | hasPermission('user.edit'));
+      expect(rule.evaluate(authentication), true);
+    });
 
     test('Deeply nested logic: ((A || B) && (C || D))', () async {
       // (Admin || User) && (user.delete || user.edit)
@@ -225,15 +209,12 @@ void main() {
       expect(rule.evaluate(authentication), true);
     });
 
-    test(
-      'Triple AND failure: role >> User && permission >> user.create && role >> Admin',
-      () async {
-        final rule =
-            hasRole('User') & hasPermission('user.create') & hasRole('Admin');
+    test('Triple AND failure: role >> User && permission >> user.create && role >> Admin', () async {
+      final rule =
+          hasRole('User') & hasPermission('user.create') & hasRole('Admin');
 
-        expect(rule.evaluate(authentication), false);
-      },
-    );
+      expect(rule.evaluate(authentication), false);
+    });
 
     test('Authority matching mixed set (roles and permissions)', () async {
       final rule = hasAuthority('user.create') & hasAuthority('SuperUser');

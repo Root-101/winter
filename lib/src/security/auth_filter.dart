@@ -13,19 +13,20 @@ class AuthFilter extends Filter {
     FilterChain chain,
   ) async {
     final securityContext = request.securityContext;
+    final bool isAuthenticated = securityContext.isAuthenticated;
 
-    if (authenticated && !securityContext.isAuthenticated) {
-      if (securityContext.authentication == null) {
-        return build401(request);
-      }
-      return build403(request);
+    ///401: nobody (or an authentication with `authenticated: false`) is logged in
+    if (authenticated && !isAuthenticated) {
+      return build401(request);
     }
 
     if (rules != null) {
       final authentication =
           securityContext.authentication ?? Authentication.anonymous();
       if (!rules!.evaluate(authentication)) {
-        return build403(request);
+        ///An anonymous user may get access by logging in (401),
+        ///a logged in user without the needed roles/permissions can't (403)
+        return isAuthenticated ? build403(request) : build401(request);
       }
     }
 

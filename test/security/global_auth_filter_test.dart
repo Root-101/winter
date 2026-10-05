@@ -27,7 +27,7 @@ void main() {
         AuthFilter(
           authenticated: true,
           shouldFilter: (request) {
-            // Whitelist: No aplicar AuthFilter global a la ruta pública
+            // Whitelist: the global AuthFilter is not applied to the public route
             String? routeKey = request.routingContext?.key;
             List<String> whiteList = ['public-route'];
             return !whiteList.contains(routeKey);
@@ -54,7 +54,7 @@ void main() {
             path: '/admin',
             key: 'admin-route',
             method: HttpMethod.get,
-            // Filtro específico de ruta para verificar el rol ADMIN
+            // Route filter to check the ADMIN role
             filterConfig: FilterConfig([AuthFilter(rules: hasRole('ADMIN'))]),
             handler: (request) async =>
                 ResponseEntity.ok(body: 'Admin Content'),
@@ -88,7 +88,7 @@ void main() {
 
       test('Access /admin with USER role returns 403 (Forbidden)', () async {
         final response = await http.get(url('/admin'), headers: userHeaders);
-        // El usuario está autenticado pero no tiene el rol ADMIN
+        // The user is authenticated but does not have the ADMIN role
         expect(response.statusCode, 403);
       });
 
@@ -96,7 +96,7 @@ void main() {
         'Access /admin without headers returns 401 (Unauthorized)',
         () async {
           final response = await http.get(url('/admin'));
-          // El AuthFilter global falla antes de llegar al filtro de rol
+          // The global AuthFilter fails before reaching the role filter
           expect(response.statusCode, 401);
         },
       );
