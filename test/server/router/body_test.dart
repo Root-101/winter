@@ -290,7 +290,7 @@ void main() {
     expect(jsonDecode(response.body), users.map((e) => e.toJson()).toList());
   });
 
-  test('Send invalid JSON throws 500', () async {
+  test('Send invalid JSON returns 400', () async {
     String urlToTest = '/sqrt';
 
     http.Response response = await http.post(

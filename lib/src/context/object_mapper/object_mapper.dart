@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:winter/winter.dart';
 
 /// Interface for objects that can be converted to JSON.
@@ -14,15 +14,12 @@ abstract class _MapperEntity<T> {
 
   _MapperEntity() : type = T {
     if (T == dynamic) {
-      stdout.writeln(
-        '\n'
-                'WARNING: Unable to infer type for $runtimeType. '
-                'The registry was made as "dynamic", which usually happens when '
-                'the generic type argument is omitted. '
-                'Declare it explicitly, for example: '
-                '$runtimeType<YOUR_TYPE>((value) => ...)'
-                '\n'
-            .stylize(bold: true, color: ConsoleColor.yellow),
+      logger.warning(
+        'Unable to infer type for $runtimeType. '
+        'The registry was made as "dynamic", which usually happens when '
+        'the generic type argument is omitted. '
+        'Declare it explicitly, for example: '
+        '${runtimeType.toString().split('<').first}<YOUR_TYPE>((value) => ...)',
       );
     }
   }
@@ -39,6 +36,29 @@ class Deserializer<T> extends _MapperEntity<T> {
   final T Function(dynamic data) deserializer;
 
   Deserializer(this.deserializer);
+
+  /// Deserializer for a JSON object, [fromJson] receives the already checked map:
+  ///
+  /// ```dart
+  /// Deserializer<User>.json(User.fromJson)
+  /// ```
+  ///
+  /// If the data is not a JSON object, a [DeserializationException] (400) is thrown.
+  ///
+  /// Declare the type explicitly inside a list (`[Deserializer<User>.json(User.fromJson)]`),
+  /// otherwise the type of the list wins and it's registered as `dynamic`.
+  Deserializer.json(T Function(Map<String, dynamic> json) fromJson)
+    : deserializer = ((dynamic data) => fromJson(_asJsonObject<T>(data)));
+
+  static Map<String, dynamic> _asJsonObject<T>(dynamic data) {
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) {
+      return data.map((key, value) => MapEntry(key.toString(), value));
+    }
+    throw DeserializationException(
+      'Expected a JSON object for type <$T> but got: ${data.runtimeType}',
+    );
+  }
 
   /// Helper to deserialize a list of elements using this deserializer.
   List<T> deserializeList(dynamic data) {
@@ -130,7 +150,11 @@ class ObjectMapper {
     _deserializers.remove(T);
   }
 
-  /// Recursively serializes [object] to a JSON-compatible representation.
+  /// Recursively serializes [object] to a JSON-compatible representation
+  /// (null, String, num, bool, List & Map with String keys).
+  ///
+  /// The result of [Serializable.toJson] and of the registered serializers is also serialized,
+  /// so they can return maps with any serializable value (DateTime, enums, other objects...).
   Object? serialize(Object? object) {
     try {
       //if null => null
@@ -138,30 +162,35 @@ class ObjectMapper {
         return null;
       }
       if (object is Map) {
-        return object.map((k, v) => MapEntry(serialize(k), serialize(v)));
+        return object.map(
+          (k, v) => MapEntry(_serializeMapKey(k), serialize(v)),
+        );
       }
       if (object is Serializable) {
-        //if Serializable => serialize
-        return object.toJson();
-      } else if (object is List) {
-        //if list, same:
-        return object.map((e) {
-          return serialize(e);
-        }).toList();
-      } else {
-        ///Direct lookup first (most of the cases), the search by type name is much slower
-        Serializer? serializer =
-            _serializers[object.runtimeType] ??
-            _serializers[_extractElementType(object.runtimeType)];
-        if (serializer != null) {
-          return serializer.serializer(object);
-        }
+        //if Serializable => serialize (and its result too)
+        return _serializeResult(object.toJson(), object);
+      }
+      if (object is Iterable) {
+        //List, Set... => List
+        return object.map(serialize).toList();
+      }
+
+      Serializer? serializer = _serializers[object.runtimeType];
+      if (serializer != null) {
+        return _serializeResult(serializer.serializer(object), object);
+      }
+
+      //Enums without a custom serializer => its name
+      if (object is Enum) {
+        return object.name;
       }
 
       throw StateError(
         '${object.runtimeType} need to implement the Serializable interface',
       );
     } on ApiException {
+      rethrow;
+    } on ObjectMapperException {
       rethrow;
     } on StateError {
       rethrow;
@@ -170,6 +199,33 @@ class ObjectMapper {
     } on Error catch (e) {
       throw SerializationException(e.toString());
     }
+  }
+
+  /// Serialize the value returned by a serializer or a `toJson`.
+  /// A primitive (or the same object, like the default serializers do) is already JSON-compatible.
+  Object? _serializeResult(Object? result, Object original) {
+    if (result == null ||
+        result is String ||
+        result is num ||
+        result is bool ||
+        identical(result, original)) {
+      return result;
+    }
+    return serialize(result);
+  }
+
+  /// JSON object keys must be Strings
+  String _serializeMapKey(Object? key) {
+    final serializedKey = serialize(key);
+    if (serializedKey is String) return serializedKey;
+    if (serializedKey == null ||
+        serializedKey is num ||
+        serializedKey is bool) {
+      return '$serializedKey';
+    }
+    throw SerializationException(
+      "Map key of type ${key.runtimeType} can't be converted to a JSON key (String)",
+    );
   }
 
   /// Deserializes [data] into an instance of type [S].
@@ -234,7 +290,7 @@ class ObjectMapper {
   }
 
   /// Extracts the element type from a List type or identifies the registered type.
-  Type _extractListElementType(Type type) {
+  Type? _extractListElementType(Type type) {
     var typeName = type.toString();
 
     // 1. Remove nullability (T? -> T)
@@ -251,15 +307,9 @@ class ObjectMapper {
       }
     }
 
-    // 3. Find the registered type by name matching
-    return _deserializers.keys.firstWhere(
+    // 3. Find the registered type by name matching (null if there is no deserializer)
+    return _deserializers.keys.firstWhereOrNull(
       (k) => k.toString() == typeName,
-      orElse: () => _serializers.keys.firstWhere(
-        (k) => k.toString() == typeName,
-        orElse: () => throw StateError(
-          'No serializer/deserializer found for type: <$typeName>',
-        ),
-      ),
     );
   }
 
@@ -301,27 +351,6 @@ class ObjectMapper {
       (k) => k.toString() == valueTypeName,
       orElse: () => throw StateError(
         'No deserializer found for the values of type: <$type>',
-      ),
-    );
-  }
-
-  /// Extracts the element type from a List type or identifies the registered type.
-  Type _extractElementType(Type type) {
-    var typeName = type.toString();
-
-    // 1. Remove nullability (T? -> T)
-    if (typeName.endsWith('?')) {
-      typeName = typeName.substring(0, typeName.length - 1);
-    }
-
-    // 3. Find the registered type by name matching
-    return _deserializers.keys.firstWhere(
-      (k) => k.toString() == typeName,
-      orElse: () => _serializers.keys.firstWhere(
-        (k) => k.toString() == typeName,
-        orElse: () => throw StateError(
-          'No serializer/deserializer found for type: <$typeName>',
-        ),
       ),
     );
   }

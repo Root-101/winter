@@ -7,6 +7,7 @@ import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 import 'object_mapper_models.dart';
+import 'other_library/tool.dart' as other;
 
 void main() {
   group('Mapper with serializers in constructor', () {
@@ -48,15 +49,14 @@ void main() {
       expect(expectedObject, object);
     });
 
-    //this is more to see if the serialize/deserialize create/return the same object,
-    //but its related more to the logic of toJson/fromJson than the actually logic of object mapper
-    test('Serialize/Deserialize consistency - Tool', () async {
-      Map<String, dynamic> json = {'NAME': 'Drill'};
-      Tool expectedObject = Tool(name: 'Drill');
+    test('Serialize/Deserialize round trip (through a JSON string) - Tool', () {
+      final original = Tool(name: 'Drill');
 
-      Tool object = parser.deserialize(json);
+      final json = jsonEncode(parser.serialize(original));
+      final restored = parser.deserialize<Tool>(json);
 
-      expect(expectedObject, object);
+      expect(restored, original);
+      expect(restored, isNot(same(original)));
     });
 
     test('serialize - null', () {
@@ -306,10 +306,12 @@ void main() {
       );
 
       final result = parser.serialize(workshop);
-      // Note: current implementation does NOT recursively serialize maps returned by toJson
+      // The map returned by toJson is also serialized (recursively)
       expect(result, {
         'name': 'Main',
-        'gadgets': [Gadget(id: 'G1')],
+        'gadgets': [
+          {'id': 'G1'},
+        ],
       });
     });
 
@@ -329,14 +331,19 @@ void main() {
       expect(parser.serialize(list), list);
     });
 
-    test(
-      'Serializer/Deserializer with explicit dynamic (triggers warning)',
-      () {
-        // This won't fail but will exercise the warning logic in constructor
-        Serializer<dynamic>((obj) => obj);
-        Deserializer<dynamic>((data) => data);
-      },
-    );
+    test('Serializer/Deserializer registered as dynamic log a warning', () {
+      final warnings = <String>[];
+      Winter.context.setUp(logger: _MemoryLogger(warnings));
+      addTearDown(() => Winter.context.setUp(logger: const ConsoleLogger()));
+
+      Serializer<dynamic>((obj) => obj);
+      Deserializer<dynamic>((data) => data);
+      Serializer<Tool>((tool) => tool.toJson());
+
+      expect(warnings, hasLength(2));
+      expect(warnings.first, contains('Serializer<YOUR_TYPE>'));
+      expect(warnings.last, contains('Deserializer<YOUR_TYPE>'));
+    });
   });
 
   group('Exception Handling', () {
@@ -404,6 +411,211 @@ void main() {
       expect(
         () => parser.deserialize<Worker>(<String, dynamic>{}),
         throwsStateError,
+      );
+    });
+  });
+
+  group('Serialization of common types', () {
+    late ObjectMapper parser;
+
+    setUp(() {
+      parser = ObjectMapper();
+    });
+
+    test('toJson with DateTime, enums and objects inside is serialized', () {
+      final result = parser.serialize(
+        _Event(DateTime.utc(2026), _Color.red, [Gadget(id: 'G1')]),
+      );
+
+      expect(result, {
+        'at': '2026-01-01T00:00:00.000Z',
+        'color': 'red',
+        'gadgets': [
+          {'id': 'G1'},
+        ],
+      });
+      expect(() => jsonEncode(result), returnsNormally);
+    });
+
+    test('Result of a custom serializer is serialized', () {
+      parser.addSerializer<Tool>(
+        Serializer<Tool>((t) => {'name': t.name, 'at': DateTime.utc(2026)}),
+      );
+
+      expect(parser.serialize(Tool(name: 'Hammer')), {
+        'name': 'Hammer',
+        'at': '2026-01-01T00:00:00.000Z',
+      });
+    });
+
+    test(
+      'Enums are serialized by name (unless a serializer is registered)',
+      () {
+        expect(parser.serialize(_Color.red), 'red');
+
+        parser.addSerializer<_Color>(Serializer<_Color>((c) => c.index));
+        expect(parser.serialize(_Color.red), 0);
+      },
+    );
+
+    test('Sets and other iterables are serialized as lists', () {
+      expect(parser.serialize({1, 2}), [1, 2]);
+      expect(parser.serialize([1, 2].map((e) => e * 2)), [2, 4]);
+    });
+
+    test('Map keys are converted to Strings', () {
+      expect(parser.serialize({1: 'a', true: 'b', _Color.red: 'c'}), {
+        '1': 'a',
+        'true': 'b',
+        'red': 'c',
+      });
+    });
+
+    test('Map keys that are not JSON keys throw SerializationException', () {
+      expect(
+        () => parser.serialize({
+          [1]: 'a',
+        }),
+        throwsA(isA<SerializationException>()),
+      );
+    });
+
+    test('Unknown classes still throw StateError', () {
+      expect(() => parser.serialize(Worker(name: 'W')), throwsStateError);
+    });
+  });
+
+  group('Edge cases', () {
+    late ObjectMapper parser;
+
+    setUp(() {
+      parser = ObjectMapper(
+        serializers: [Serializer<Tool>((tool) => tool.toJson())],
+        deserializers: [Deserializer<Tool>.json(Tool.fromJson)],
+      );
+    });
+
+    test('A class with the same name in another library is not serialized', () {
+      expect(() => parser.serialize(other.Tool('x')), throwsStateError);
+    });
+
+    test('Nullable list types', () {
+      expect(parser.deserialize<List<int>?>('[1, 2]'), [1, 2]);
+      expect(parser.deserialize<List<Tool?>>('[{"NAME":"A"}]'), [
+        Tool(name: 'A'),
+      ]);
+    });
+
+    test('An ApiException thrown by a (de)serializer is not wrapped', () {
+      parser
+        ..addDeserializer<Worker>(
+          Deserializer<Worker>(
+            (data) => throw BadRequestException(body: 'bad'),
+          ),
+        )
+        ..addSerializer<Worker>(
+          Serializer<Worker>((worker) => throw ConflictException()),
+        );
+
+      expect(
+        () => parser.deserialize<Worker>('{}'),
+        throwsA(isA<BadRequestException>()),
+      );
+      expect(
+        () => parser.serialize(Worker(name: 'W')),
+        throwsA(isA<ConflictException>()),
+      );
+    });
+
+    test('Map values with generics are parsed (Map<String, List<int>>)', () {
+      expect(
+        () => parser.deserialize<Map<String, List<int>>>('{"a":[1]}'),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('Map<String, List<int>>'),
+          ),
+        ),
+      );
+    });
+
+    test('Nullable map value types', () {
+      expect(parser.deserialize<Map<String, int?>>('{"a":1}'), {'a': 1});
+      expect(parser.deserialize<Map<String, int>?>('{"a":1}'), {'a': 1});
+    });
+
+    test('A list of a type without deserializer throws StateError', () {
+      expect(
+        () => parser.deserialize<List<Worker>>('[{"name":"W"}]'),
+        throwsStateError,
+      );
+    });
+
+    test('deserializeList with data that is not a list throws StateError', () {
+      expect(
+        () => Deserializer<int>((v) => v as int).deserializeList('no'),
+        throwsStateError,
+      );
+    });
+
+    test('Exceptions toString include the type and the message (one line)', () {
+      // The new line of the message is escaped, so the log is a single line
+      expect(
+        ObjectMapperException('a\nb').toString(),
+        r'ObjectMapperException{message: a\nb',
+      );
+      expect(SerializationException('m').toString(), contains('Serialization'));
+      expect(
+        DeserializationException('m').toString(),
+        contains('DeserializationException'),
+      );
+      expect(
+        DeserializationFormatException('m').toString(),
+        contains('DeserializationFormatException'),
+      );
+    });
+  });
+
+  group('Deserializer.json', () {
+    late ObjectMapper parser;
+
+    setUp(() {
+      parser = ObjectMapper(
+        deserializers: [Deserializer<Tool>.json(Tool.fromJson)],
+      );
+    });
+
+    test('The type is inferred from fromJson', () {
+      expect(Deserializer.json(Tool.fromJson).type, Tool);
+    });
+
+    test('Deserializes a JSON object (String or already decoded map)', () {
+      expect(
+        parser.deserialize<Tool>('{"NAME":"Hammer"}'),
+        Tool(name: 'Hammer'),
+      );
+      expect(
+        parser.deserialize<Tool>(<dynamic, dynamic>{'NAME': 'Drill'}),
+        Tool(name: 'Drill'),
+      );
+    });
+
+    test('Works for lists', () {
+      expect(parser.deserialize<List<Tool>>('[{"NAME":"A"},{"NAME":"B"}]'), [
+        Tool(name: 'A'),
+        Tool(name: 'B'),
+      ]);
+    });
+
+    test('Data that is not a JSON object throws DeserializationException', () {
+      expect(
+        () => parser.deserialize<Tool>('"just a string"'),
+        throwsA(isA<DeserializationException>()),
+      );
+      expect(
+        () => parser.deserialize<List<Tool>>('[1, 2]'),
+        throwsA(isA<DeserializationException>()),
       );
     });
   });
@@ -538,4 +750,33 @@ void main() {
       expect(() => parser.deserialize<Tool>(json), throwsA(isA<StateError>()));
     });
   });
+}
+
+enum _Color { red }
+
+class _Event implements Serializable {
+  final DateTime at;
+  final _Color color;
+  final List<Gadget> gadgets;
+
+  _Event(this.at, this.color, this.gadgets);
+
+  @override
+  Object? toJson() => {'at': at, 'color': color, 'gadgets': gadgets};
+}
+
+class _MemoryLogger extends WinterLogger {
+  final List<String> warnings;
+
+  _MemoryLogger(this.warnings);
+
+  @override
+  void log(
+    LogLevel level,
+    String message, {
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    if (level == LogLevel.warning) warnings.add(message);
+  }
 }
