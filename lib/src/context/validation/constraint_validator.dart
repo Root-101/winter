@@ -1,4 +1,3 @@
-import 'package:winter/src/i18n/winter_messages.dart';
 import 'package:winter/winter.dart';
 
 class _ValidationRule {
