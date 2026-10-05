@@ -18,6 +18,11 @@ dependencies:
   #For the route keys
   crypto: ^3.0.7
 
+  #i18n: typed translations generated from the ARB files in lib/src/i18n (`dart run slang`)
+  slang: ^4.19.0
+  #Imported by the code that slang generates
+  intl: '>=0.18.1 <2.0.0'
+
 dev_dependencies:
   http: ^1.6.0
   lints: ^6.1.0

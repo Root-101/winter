@@ -53,7 +53,7 @@ void main() {
               .having(
                 (e) => e.violations.single.message,
                 'message',
-                'The field tags must have at least 2 items',
+                'The minimum is 2',
               )
               .having((e) => e.toString(), 'toString', contains('tags')),
         ),

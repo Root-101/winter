@@ -1,0 +1,34 @@
+# Base locale: the parameter types are declared here ({value: int}), the other locales only need the text.
+# After any change run `fvm dart run slang` and commit the generated messages*.g.dart.
+# Quote the texts: `{value: int}` has a `: ` that YAML would read as a map.
+# The texts don't include the field name: it's already in the `fieldName` of the violation.
+errors:
+  validations:
+    # The value has the wrong type (email() & pattern() need a String, min() & max() a number)
+    type:
+      string: 'The value must be a String'
+      number: 'The value must be a number'
+    # ConstraintValidator.notNull()
+    notNull: 'The field cannot be null'
+    # ConstraintValidator.notBlank(): empty or only whitespace
+    notBlank: 'The field cannot be blank'
+    # ConstraintValidator.size(): the same text for Strings (length) and Iterables (items)
+    size:
+      min: 'The minimum is {value: int}'
+      max: 'The maximum is {value: int}'
+      # The value is neither a String nor an Iterable
+      invalidType: 'The value must be a String or Iterable'
+    # ConstraintValidator.min(): `inclusive` (>=, default) or `exclusive` (>)
+    min:
+      inclusive: 'The minimum is {value: num}'
+      exclusive: 'The value must be greater than {value: num}'
+    # ConstraintValidator.max(): `inclusive` (<=, default) or `exclusive` (<)
+    max:
+      inclusive: 'The maximum is {value: num}'
+      exclusive: 'The value must be less than {value: num}'
+    # ConstraintValidator.email()
+    email: 'The value is not a valid email'
+    # ConstraintValidator.pattern()
+    pattern: 'The value has an invalid format'
+    # ConstraintValidator.isEnum(): `values` is the list of allowed values, joined with ', '
+    isEnum: 'The value must be one of: {values: String}'
