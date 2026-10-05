@@ -48,10 +48,12 @@ class Env {
 
     // ---- NUMBERS ----
     if (T == num || T == int || T == double) {
-      num? parsedNum = num.tryParse(cleanValue);
+      ///int is strict: '3.7' is an error, it's never truncated to 3
+      num? parsedNum = T == int
+          ? int.tryParse(cleanValue)
+          : num.tryParse(cleanValue);
       if (parsedNum == null) throw wrongTypeError(cleanValue, T);
 
-      if (T == int) return parsedNum.toInt() as T;
       if (T == double) return parsedNum.toDouble() as T;
       return parsedNum as T;
     }

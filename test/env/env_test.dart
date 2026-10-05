@@ -127,10 +127,53 @@ void main() {
         expect(() => env.find<int>('NOT_A_NUMBER'), throwsStateError);
       });
 
+      test('find int with decimals is an error (never truncated)', () {
+        env.put('TIMEOUT', '3.7');
+        expect(() => env.find<int>('TIMEOUT'), throwsStateError);
+        expect(env.find<double>('TIMEOUT'), 3.7);
+        expect(env.find<num>('TIMEOUT'), 3.7);
+      });
+
       test('find throws StateError for unsupported type', () {
         env.put('NOW', 'now');
         expect(() => env.find<DateTime>('NOW'), throwsStateError);
       });
+    });
+  });
+
+  group('Env parsing errors & lists', () {
+    final env = Env(
+      env: {
+        'BOOL': 'yes',
+        'BOOLS': 'true, false',
+        'NUMS': '1, 2.5',
+        'BAD_INTS': '1, x',
+      },
+    );
+
+    test('a bool must be true or false', () {
+      expect(() => env.find<bool>('BOOL'), throwsStateError);
+    });
+
+    test('List<bool> & List<num>', () {
+      expect(env.find<List<bool>>('BOOLS'), [true, false]);
+      expect(env.find<List<num>>('NUMS'), [1, 2.5]);
+    });
+
+    test('a list with an invalid item is an error', () {
+      expect(() => env.find<List<int>>('BAD_INTS'), throwsStateError);
+    });
+
+    test('required: true fails when the env is missing (or blank)', () {
+      expect(
+        () => env.find<String>('MISSING', required: true),
+        throwsStateError,
+      );
+      expect(env.find<String>('MISSING'), isNull);
+    });
+
+    test('an unsupported type is an error', () {
+      expect(() => env.find<DateTime>('BOOL'), throwsStateError);
     });
   });
 }
