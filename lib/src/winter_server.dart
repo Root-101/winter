@@ -358,9 +358,10 @@ class Winter {
     );
 
     ///Created now and not lazily, so the request, its changes (`change` copies the context)
-    ///and the scope share the same security context
+    ///and the scope share the same security context and locale
     final RequestScope scope = RequestScope(
       securityContext: requestEntity.securityContext,
+      locale: requestEntity.locale,
     );
     return RequestScope.run(
       scope,
