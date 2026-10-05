@@ -1,3 +1,26 @@
+* 0.1.0:
+    * **DATE** :date: : Unreleased.
+    * **Breaking** :warning: : Code moved to `lib/src/`, import only `package:winter/winter.dart`. `winter.dart` no longer re-exports `shelf_multipart`, `string_scanner` nor `http_parser` internals (`shelf` is still exported).
+    * **Breaking** :warning: : `HttpHeaders` => `HttpHeader` and `HttpStatus` => `StatusCode`, so they no longer shadow the `dart:io` classes.
+    * **Breaking** :warning: : `ResponseEntity.ok` is a named constructor (`ResponseEntity.ok<int>(...)` => `ResponseEntity<int>.ok(...)`).
+    * **Breaking** :warning: : A 500 never exposes the error, it's logged instead. `SerializationException` is a 500 (it was a 400).
+    * **Breaking** :warning: : `LogsFilter` never logs bodies nor query params. `logResponse` receives the request, the response & the duration; `logErrorResponse` was removed.
+    * **Breaking** :warning: : `AuthFilter` returns 401 (not 403) when nobody is authenticated.
+    * **Breaking** :warning: : `ServerConfig.maxBodySize` (default 10 MB) rejects bigger bodies with a 413.
+    * **Security** :lock: : Route filters (including `AuthFilter`) are applied inside a `MultiRouter`.
+    * **Security** :lock: : CORS with `'*'` & credentials echoes the origin. Errors thrown by filters or handlers keep the CORS headers.
+    * **Security** :lock: : `RequestEntity.clientIp()` (ignores `X-Forwarded-For` unless `trustedProxies` is set), used by default in `RateLimiterFilter`. `buildValidator(name, sensitive: true)` hides the value in the violations.
+    * **Router** :twisted_rightwards_arrows: : Fix: nested routes with the same relative path in different parents were dropped. Static routes have priority, path params are url-decoded, trailing slashes are ignored, a lone `.` is literal, HEAD uses the GET route and 405 includes `Allow`. `MultiRouter` returns 404/405 instead of 500. `addRoute` applies the `basePath` & the validations.
+    * **Router** :twisted_rightwards_arrows: : ~25x faster routing (route regex compiled once, see `benchmark/`).
+    * **Server** :rocket: : Graceful shutdown on SIGINT/SIGTERM (`ServerConfig.handleSignals`, `shutdownTimeout`, `onShutdown`), `Winter.shutdown()` & `Winter.close(timeout:)`.
+    * **Testing** :test_tube: : `Winter.buildHandler` & `WinterTestClient`: test the whole pipeline in memory, without ports.
+    * **Logging** :memo: : Every log goes through `WinterLogger` (`logger`, default `ConsoleLogger` with levels), replaceable in the `BuildContext`.
+    * **Request** :inbox_tray: : `body<T>()` can be called many times. `change()` is implemented for `RequestEntity` & `ResponseEntity` (shelf middlewares).
+    * **Object Mapper** :card_file_box: : `Map` deserialization, `Deserializer<T>.json(fromJson)`, recursive serialization of `toJson()` results, enums, `Set` & non String map keys.
+    * **Dependency Injection** :syringe: : Every instance has its own dependencies, `Winter.close()` restores the ones registered by `Winter.start()`.
+    * **Rate Limiter** :stopwatch: : Inactive ids are purged automatically, `X-RateLimit-Reset` is the time until a new slot.
+    * **General** :hammer_and_wrench: : Email validator accepts `+` & long TLDs, `Env.find<int>` is strict, `MediaType` values are `const`, `ApiException.toString()`, analyzer with `strict-casts` & `strict-inference`, examples moved to `example/` (secure auth example: hashed passwords, expiring JWT).
+
 * 0.0.7:
     * **DATE** :date: : 2024-10-29.
     * **General** :hammer_and_wrench: : Update min sdk version to ^3.4.0
