@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:winter/winter.dart';
 
 class RouterConfig {
@@ -23,7 +21,7 @@ class DefaultOnInvalidUrl {
   static OnInvalidUrl ignore({bool log = true}) {
     return (failedRoute) {
       if (log) {
-        stdout.writeln(
+        logger.warning(
           '${failedRoute.path} is not a valid URL. Excluded from routing config',
         );
       }
@@ -45,7 +43,7 @@ class DefaultOnDuplicatedRoute {
   static OnDuplicatedRoute ignore({bool log = true}) {
     return (duplicatedRoute) {
       if (log) {
-        stdout.writeln(
+        logger.warning(
           'Key: ${duplicatedRoute.key} / Method: ${duplicatedRoute.method?.name ?? 'PARENT'} / Path: ${duplicatedRoute.path} => is a duplicated route. Excluded from routing config',
         );
       }
@@ -70,8 +68,8 @@ class DefaultOnLoadedRoutes {
 
   static OnLoadedRoutes log() {
     return (allRoutes) {
-      stdout.writeln('');
-      stdout.writeln('Routes log start ======================================');
+      final StringBuffer log = StringBuffer()
+        ..writeln('Routes log start ======================================');
 
       final int defaultPad = 5;
       // 1. Find the max length of every column
@@ -110,16 +108,17 @@ class DefaultOnLoadedRoutes {
         final formattedPath = element.path.padRight(maxPathLen + defaultPad);
         final formattedFilters = '${element.filterConfig}';
 
-        stdout.writeln('Key: ${formattedKey.stylize(bold: true)}');
-        stdout.writeln('Method: ${formattedMethod.stylize(bold: true)}');
-        stdout.writeln('Path: ${formattedPath.stylize(bold: true)}');
-        stdout.writeln('Filters:');
-        stdout.writeln(formattedFilters.stylize(bold: true));
-        stdout.writeln('');
+        log
+          ..writeln('Key: ${formattedKey.stylize(bold: true)}')
+          ..writeln('Method: ${formattedMethod.stylize(bold: true)}')
+          ..writeln('Path: ${formattedPath.stylize(bold: true)}')
+          ..writeln('Filters:')
+          ..writeln(formattedFilters.stylize(bold: true))
+          ..writeln('');
       }
 
-      stdout.writeln('Routes log end ========================================');
-      stdout.writeln('');
+      log.write('Routes log end ========================================');
+      logger.info(log.toString());
     };
   }
 }

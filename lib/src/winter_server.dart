@@ -15,6 +15,9 @@ ExceptionHandler get eh => Winter.context.exceptionHandler;
 
 Env get env => Winter.context.env;
 
+///Logger: easy access to the current logger instance
+WinterLogger get logger => Winter.context.logger;
+
 class Winter {
   static BuildContext _context = BuildContext();
 
