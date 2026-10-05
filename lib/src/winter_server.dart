@@ -357,6 +357,27 @@ class Winter {
       url: request.url,
     );
 
+    ///Created now and not lazily, so the request, its changes (`change` copies the context)
+    ///and the scope share the same security context
+    final RequestScope scope = RequestScope(
+      securityContext: requestEntity.securityContext,
+    );
+    return RequestScope.run(
+      scope,
+      () => _runPipeline(
+        requestEntity: requestEntity,
+        router: router,
+        globalFilterConfig: globalFilterConfig,
+      ),
+    );
+  }
+
+  /// Routing, filters and handler of [requestEntity], with the exception handler
+  static Future<Response> _runPipeline({
+    required RequestEntity requestEntity,
+    required AbstractWinterRouter router,
+    required FilterConfig globalFilterConfig,
+  }) async {
     try {
       FilterConfig? routeFilterConfig;
       Route? route = router.resolveRoute(requestEntity);

@@ -63,16 +63,9 @@ class Authentication<T> {
 extension RequestSecurityContextX on RequestEntity {
   static const String _securityContextKey = 'winter.context.security';
 
-  RequestSecurityContext get securityContext {
-    RequestSecurityContext? currentContext =
-        context[_securityContextKey] as RequestSecurityContext?;
-    if (currentContext != null) {
-      return currentContext;
-    } else {
-      RequestSecurityContext newContext = RequestSecurityContext.empty();
-      context[_securityContextKey] = newContext;
-
-      return context[_securityContextKey] as RequestSecurityContext;
-    }
-  }
+  /// Security context of this request, created the first time.
+  /// The server creates it before the filters, so the changes of the request share it.
+  RequestSecurityContext get securityContext =>
+      context.putIfAbsent(_securityContextKey, RequestSecurityContext.empty)
+          as RequestSecurityContext;
 }
