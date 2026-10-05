@@ -95,7 +95,12 @@ class RequestEntity extends Request {
   ///It's a Future (not a String) so concurrent calls share the same read
   Future<String>? _rawBody;
 
-  Future<String> _readRawBody() => _rawBody ??= readAsString(encoding);
+  ///The raw body once it's read, needed by [change] (which is sync)
+  String? _rawBodyValue;
+
+  Future<String> _readRawBody() =>
+      _rawBody ??= readAsString(encoding)
+          .then((value) => _rawBodyValue = value);
 
   /// Get the body of the request, it's get parsed with the ObjectMapper in the process
   /// The raw body is cached, so this method can be called multiple times (even with different types)
@@ -126,14 +131,32 @@ class RequestEntity extends Request {
     );
   }
 
+  ///Same as [Request.change] (used by shelf middlewares) but returns a [RequestEntity].
+  ///If the body was already read with [body], the new request reuses it.
   @override
-  Request change({
+  RequestEntity change({
     Map<String, /* String | List<String> */ Object?>? headers,
     Map<String, Object?>? context,
     String? path,
     Object? body,
   }) {
-    throw UnimplementedError();
+    final Request changed = super.change(
+      headers: headers,
+      context: context,
+      path: path,
+      body: body ?? _rawBodyValue,
+    );
+    return RequestEntity(
+      changed.method,
+      changed.requestedUri,
+      protocolVersion: changed.protocolVersion,
+      headers: changed.headersAll,
+      handlerPath: changed.handlerPath,
+      url: changed.url,
+      body: changed.read(),
+      encoding: changed.encoding,
+      context: changed.context,
+    );
   }
 }
 

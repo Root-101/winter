@@ -3,52 +3,46 @@ import 'package:winter/winter.dart';
 
 void main() {
   group('RequestEntity copyWith', () {
-    test(
-      'should return an object with identical fields when no parameters are provided',
-      () async {
-        final uri = Uri.parse('http://localhost/test?q=1');
-        final original = RequestEntity(
-          'POST',
-          uri,
-          headers: {'content-type': 'text/plain', 'x-custom': 'value'},
-          context: {'auth': 'token123'},
-          body: 'hello world',
-        );
+    test('should return an object with identical fields when no parameters are provided', () async {
+      final uri = Uri.parse('http://localhost/test?q=1');
+      final original = RequestEntity(
+        'POST',
+        uri,
+        headers: {'content-type': 'text/plain', 'x-custom': 'value'},
+        context: {'auth': 'token123'},
+        body: 'hello world',
+      );
 
-        // Ensure body is read and cached
-        await original.body<String>();
+      // Ensure body is read and cached
+      await original.body<String>();
 
-        final copy = await original.copyWith();
+      final copy = await original.copyWith();
 
-        // Check basic Request fields
-        expect(copy.method, equals(original.method));
-        expect(copy.requestedUri, equals(original.requestedUri));
-        expect(copy.headers, equals(original.headers));
-        expect(copy.url, equals(original.url));
-        expect(copy.handlerPath, equals(original.handlerPath));
-        expect(copy.protocolVersion, equals(original.protocolVersion));
-        expect(copy.encoding, equals(original.encoding));
+      // Check basic Request fields
+      expect(copy.method, equals(original.method));
+      expect(copy.requestedUri, equals(original.requestedUri));
+      expect(copy.headers, equals(original.headers));
+      expect(copy.url, equals(original.url));
+      expect(copy.handlerPath, equals(original.handlerPath));
+      expect(copy.protocolVersion, equals(original.protocolVersion));
+      expect(copy.encoding, equals(original.encoding));
 
-        // Check RequestEntity specific fields
-        expect(copy.context, equals(original.context));
-        expect(
-          copy.context,
-          isNot(same(original.context)),
-          reason: 'Context should be a new map instance',
-        );
+      // Check RequestEntity specific fields
+      expect(copy.context, equals(original.context));
+      expect(
+        copy.context,
+        isNot(same(original.context)),
+        reason: 'Context should be a new map instance',
+      );
 
-        // Check body
-        expect(
-          await copy.body<String>(),
-          equals(await original.body<String>()),
-        );
+      // Check body
+      expect(await copy.body<String>(), equals(await original.body<String>()));
 
-        // Check derived fields
-        expect(copy.queryParams, equals(original.queryParams));
-        expect(copy.pathParams, equals(original.pathParams));
-        expect(copy.httpMethod.name, equals(original.httpMethod.name));
-      },
-    );
+      // Check derived fields
+      expect(copy.queryParams, equals(original.queryParams));
+      expect(copy.pathParams, equals(original.pathParams));
+      expect(copy.httpMethod.name, equals(original.httpMethod.name));
+    });
 
     test('should copy routing context and recalculate path params', () async {
       final original = RequestEntity(
@@ -137,30 +131,27 @@ void main() {
   });
 
   group('ResponseEntity copyWith', () {
-    test(
-      'should return an object with identical fields when no parameters are provided',
-      () {
-        final original = ResponseEntity<Map>(
-          200,
-          body: {'id': 1},
-          headers: {'content-type': 'application/json'},
-          context: {'cache': true},
-        );
+    test('should return an object with identical fields when no parameters are provided', () {
+      final original = ResponseEntity<Map>(
+        200,
+        body: {'id': 1},
+        headers: {'content-type': 'application/json'},
+        context: {'cache': true},
+      );
 
-        final copy = original.copyWith();
+      final copy = original.copyWith();
 
-        expect(copy, isA<ResponseEntity<Map>>());
-        expect(copy.statusCode, equals(original.statusCode));
-        expect(copy.headers, equals(original.headers));
-        expect(copy.context, equals(original.context));
-        expect(copy.encoding, equals(original.encoding));
-        expect(copy.body(), equals(original.body()));
+      expect(copy, isA<ResponseEntity<Map>>());
+      expect(copy.statusCode, equals(original.statusCode));
+      expect(copy.headers, equals(original.headers));
+      expect(copy.context, equals(original.context));
+      expect(copy.encoding, equals(original.encoding));
+      expect(copy.body(), equals(original.body()));
 
-        // Verification of deep equality for body if it's a map
-        expect(copy.body(), isA<Map>());
-        expect(copy.body()['id'], equals(1));
-      },
-    );
+      // Verification of deep equality for body if it's a map
+      expect(copy.body(), isA<Map>());
+      expect(copy.body()['id'], equals(1));
+    });
 
     test('should allow overriding fields', () {
       final original = ResponseEntity.ok(body: 'old');
@@ -176,6 +167,43 @@ void main() {
       expect(copy.body(), equals('new'));
       expect(copy.headers['x-res'], equals('val'));
       expect(copy.context['modified'], isTrue);
+    });
+  });
+
+  group('RequestEntity routing context', () {
+    test('it can only be set once', () {
+      final request = RequestEntity('GET', Uri.parse('http://x/users/1'));
+      final context = RequestRoutingContext(
+        path: '/users/{id}',
+        key: 'user',
+        method: HttpMethod.get,
+      );
+      request.setRoutingContext(context);
+
+      expect(() => request.setRoutingContext(context), throwsStateError);
+    });
+
+    test('a template that does not match the url gives no path params', () {
+      final request = RequestEntity('GET', Uri.parse('http://x/items/1'));
+      request.setRoutingContext(
+        RequestRoutingContext(
+          path: '/users/{id}',
+          key: 'user',
+          method: HttpMethod.get,
+        ),
+      );
+
+      expect(request.pathParams, isEmpty);
+    });
+
+    test('query params', () {
+      final request = RequestEntity(
+        'GET',
+        Uri.parse('http://x/search?q=dart&page=2'),
+      );
+
+      expect(request.queryParams, {'q': 'dart', 'page': '2'});
+      expect(request.httpMethod, HttpMethod.get);
     });
   });
 }
