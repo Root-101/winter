@@ -95,9 +95,8 @@ class WinterRouter extends AbstractWinterRouter {
       List<Route> routes,
     ) {
       for (var route in routes) {
-        String fullPath = (parentPath + route.path).replaceAll(
-          RegExp(r'/+'),
-          '/',
+        String fullPath = normalizePath(
+          (parentPath + route.path).replaceAll(RegExp(r'/+'), '/'),
         );
 
         FilterConfig? newParentFilterConfig = parentFilterConfig != null
@@ -108,7 +107,11 @@ class WinterRouter extends AbstractWinterRouter {
         if (route.handler != null && route.method != null) {
           final currentRoute = Route(
             path: fullPath,
-            key: route.key,
+
+            ///A generated key is re-generated with the full path, otherwise two children
+            ///with the same relative path (`/users` + `/{id}`, `/items` + `/{id}`) get the same key
+            ///and the second one is dropped as duplicated
+            key: route._hasCustomKey ? route.key : null,
             method: route.method!,
             handler: route.handler!,
             filterConfig: newParentFilterConfig,
@@ -155,10 +158,20 @@ class WinterRouter extends AbstractWinterRouter {
   ///A static route (without params or regex) has priority over the others, so
   ///`/users/me` wins over `/users/{id}` no matter the declaration order.
   ///Between routes of the same kind, the first declared wins.
+  ///
+  ///A HEAD request without a HEAD route is handled by the GET route of the path
+  ///(the server sends the headers without the body).
   Route? handlerRoute(RequestEntity request) {
     HttpMethod method = HttpMethod(request.method);
     String urlPath = '/${request.url.path}';
 
+    return _findRoute(method, urlPath) ??
+        (method == HttpMethod.head
+            ? _findRoute(HttpMethod.get, urlPath)
+            : null);
+  }
+
+  Route? _findRoute(HttpMethod method, String urlPath) {
     ///Filter by method first, it's much cheaper than matching the path regex
     List<Route> candidates = routes
         .where((element) => element.method == method && element.match(urlPath))
@@ -169,10 +182,16 @@ class WinterRouter extends AbstractWinterRouter {
   }
 
   ///Methods allowed for the path of the request (empty if no route match the path)
+  ///HEAD is allowed wherever GET is
   Set<HttpMethod> allowedMethods(RequestEntity request) {
-    return _routesMatchingPath(
-      request,
-    ).map((element) => element.method).nonNulls.toSet();
+    Set<HttpMethod> methods = _routesMatchingPath(request)
+        .map((element) => element.method)
+        .nonNulls
+        .toSet();
+    if (methods.contains(HttpMethod.get)) {
+      methods.add(HttpMethod.head);
+    }
+    return methods;
   }
 
   @override
@@ -210,7 +229,20 @@ class WinterRouter extends AbstractWinterRouter {
     );
   }
 
-  void addRoute(Route route) => routes.add(route);
+  ///Add a route (and its children) with the same rules as the constructor:
+  ///the [basePath] is applied, invalid urls & duplicated routes go to the [config] callbacks
+  void addRoute(Route route) {
+    final Set<String> existingKeys = routes
+        .map((element) => element.key)
+        .toSet();
+    for (final newRoute in _flattenRoutes([route], basePath, config)) {
+      if (existingKeys.add(newRoute.key)) {
+        routes.add(newRoute);
+      } else {
+        config.onDuplicatedRoute(newRoute);
+      }
+    }
+  }
 
   @override
   String toString() {
@@ -228,6 +260,9 @@ class Route {
 
   final String key;
 
+  ///True if the key was provided by the user (not generated from the path & method)
+  final bool _hasCustomKey;
+
   Route._({
     required this.path,
     required this.key,
@@ -235,6 +270,7 @@ class Route {
     required this.handler,
     required this.filterConfig,
     required this.routes,
+    required this._hasCustomKey,
   });
 
   factory Route({
@@ -270,6 +306,7 @@ class Route {
     return Route._(
       path: path,
       key: key ?? _generateRouteKey(path, method),
+      hasCustomKey: key != null,
       method: method,
       handler: handler,
       // Not const, so filters can be added later with `FilterConfig.add`

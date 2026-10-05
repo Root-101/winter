@@ -20,40 +20,57 @@ class PathTemplate {
       _cache[path] ??= PathTemplate._compile(path);
 
   factory PathTemplate._compile(String path) {
-    /// Remove query params (if any)
-    String templatePath = path.split('?').first;
+    /// Remove query params (if any) and the trailing slash
+    String templatePath = normalizePath(path.split('?').first);
 
-    /// Replace every path param by a named group with its regex
+    /// Replace every path param by a named group with its regex,
+    /// the literal parts between them are kept as regex but with their dots escaped
     List<String> paramNames = [];
-    String regexPattern = templatePath.replaceAllMapped(_paramPattern, (match) {
+    StringBuffer buffer = StringBuffer('^');
+    int lastEnd = 0;
+    for (final match in _paramPattern.allMatches(templatePath)) {
+      buffer.write(
+        _escapeLiteralDots(templatePath.substring(lastEnd, match.start)),
+      );
+
       String content = match.group(1)!;
       String regex = content.contains('|')
           ? content.split('|').skip(1).join('|')
           : r'([^/?]+)';
       paramNames.add(content.split('|').first);
-      return '(?<p${paramNames.length - 1}>$regex)';
-    });
+      buffer.write('(?<p${paramNames.length - 1}>$regex)');
 
-    /// Add start and end to ensure a complete match
-    regexPattern = '^$regexPattern\$';
+      lastEnd = match.end;
+    }
+    buffer.write(_escapeLiteralDots(templatePath.substring(lastEnd)));
+    buffer.write(r'$');
 
     /// Make .* and .+ non-greedy by default if they are not already.
     /// This allows segments separated by literal slashes to match as expected
     /// when using regex in the path.
-    regexPattern = regexPattern
+    String regexPattern = buffer
+        .toString()
         .replaceAll(RegExp(r'\.\*(?!\?)'), '.*?')
         .replaceAll(RegExp(r'\.\+(?!\?)'), '.+?');
 
     return PathTemplate._(RegExp(regexPattern), List.unmodifiable(paramNames));
   }
 
+  /// A dot alone is a literal dot (`/file.json` doesn't match `/fileXjson`),
+  /// only `.*`, `.+`, `.?` & `.{n}` (and already escaped dots) are kept as regex
+  static String _escapeLiteralDots(String literal) =>
+      literal.replaceAll(RegExp(r'(?<!\\)\.(?![*+?{])'), r'\.');
+
   /// True if [urlPath] (without domain, query params are ignored) match this template
-  bool match(String urlPath) => _regex.hasMatch(urlPath.split('?').first);
+  bool match(String urlPath) =>
+      _regex.hasMatch(normalizePath(urlPath.split('?').first));
 
   /// Raw (not decoded) value of every path param in [urlPath],
   /// empty if the url doesn't match this template
   Map<String, String> extract(String urlPath) {
-    final RegExpMatch? match = _regex.firstMatch(urlPath.split('?').first);
+    final RegExpMatch? match = _regex.firstMatch(
+      normalizePath(urlPath.split('?').first),
+    );
     if (match == null) return {};
 
     return {
@@ -61,4 +78,14 @@ class PathTemplate {
         _paramNames[i]: match.namedGroup('p$i') ?? '',
     };
   }
+}
+
+/// Remove the trailing slash of a path (`/users/` => `/users`), except for the root (`/`).
+/// So a route match its path with or without the trailing slash.
+String normalizePath(String path) {
+  String normalized = path;
+  while (normalized.length > 1 && normalized.endsWith('/')) {
+    normalized = normalized.substring(0, normalized.length - 1);
+  }
+  return normalized;
 }
