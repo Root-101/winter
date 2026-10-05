@@ -16,16 +16,21 @@ class RateLimiter {
   final Map<String, Queue<DateTime>> _requestsLog = {};
 
   /// Last time the inactive ids were purged automatically.
-  DateTime _lastPurge = DateTime.now();
+  late DateTime _lastPurge = _clock();
 
-  RateLimiter(this.maxRequests, this.window);
+  /// Source of the current time, `DateTime.now` by default.
+  /// Tests can pass a fake clock to control the time without waiting.
+  final DateTime Function() _clock;
+
+  RateLimiter(this.maxRequests, this.window, {DateTime Function()? clock})
+    : _clock = clock ?? DateTime.now;
 
   /// Checks if a request from [requestId] is allowed.
   ///
   /// If the request is allowed, it is automatically recorded.
   /// Returns `true` if the request is within limits, `false` otherwise.
   bool allowRequest(String requestId) {
-    final now = DateTime.now();
+    final now = _clock();
     _autoPurge(now);
     final logs = _getAndCleanLogs(requestId, now);
 
@@ -42,7 +47,7 @@ class RateLimiter {
   ///
   /// Returns [Duration.zero] if a request would be allowed immediately.
   Duration getWaitDuration(String requestId) {
-    final now = DateTime.now();
+    final now = _clock();
     final logs = _getAndCleanLogs(requestId, now);
 
     if (logs.length < maxRequests) {
@@ -62,7 +67,7 @@ class RateLimiter {
   ///
   /// Returns [Duration.zero] if there are no requests in the current window.
   Duration getResetDuration(String requestId) {
-    final now = DateTime.now();
+    final now = _clock();
     final logs = _getAndCleanLogs(requestId, now);
 
     if (logs.isEmpty) {
@@ -76,7 +81,7 @@ class RateLimiter {
   /// Returns the number of requests remaining for the given [requestId]
   /// within the current window.
   int getRemaining(String requestId) {
-    final now = DateTime.now();
+    final now = _clock();
     final logs = _getAndCleanLogs(requestId, now);
     final remaining = maxRequests - logs.length;
     return remaining > 0 ? remaining : 0;
@@ -100,7 +105,7 @@ class RateLimiter {
   ///
   /// If [threshold] is not provided, it defaults to twice the [window].
   void purgeInactive({Duration? threshold}) {
-    final now = DateTime.now();
+    final now = _clock();
     final limit = threshold ?? (window * 2);
 
     _requestsLog.removeWhere((id, logs) {

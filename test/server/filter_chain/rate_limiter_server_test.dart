@@ -5,6 +5,9 @@ import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
+/// A clock controlled by the test, so the window can expire without waiting
+DateTime _now = DateTime.utc(2026);
+
 void main() {
   group('Rate Limiter Server Tests', () {
     const int port = 9026;
@@ -18,9 +21,12 @@ void main() {
             Route(
               path: '/limited',
               filterConfig: FilterConfig([
-                RateLimiterFilter(
-                  maxRequests: 2,
-                  window: const Duration(seconds: 2),
+                RateLimiterFilter.fromRateLimiter(
+                  rateLimiter: RateLimiter(
+                    2,
+                    const Duration(seconds: 2),
+                    clock: () => _now,
+                  ),
                   onRequest: (request) =>
                       request.headers['x-client-id'] ?? 'default',
                 ),
@@ -62,11 +68,11 @@ void main() {
     test('should block requests exceeding limit with 429', () async {
       final clientId = 'test-client-2';
 
-      // Agotar el límite
+      // Use the whole limit
       await http.get(url('/limited'), headers: {'x-client-id': clientId});
       await http.get(url('/limited'), headers: {'x-client-id': clientId});
 
-      // Tercera petición bloqueada
+      // Third request blocked
       final response = await http.get(
         url('/limited'),
         headers: {'x-client-id': clientId},
@@ -109,12 +115,12 @@ void main() {
     test('should allow requests again after window expires', () async {
       final clientId = 'test-client-3';
 
-      // Agotar el límite
+      // Use the whole limit
       await http.get(url('/limited'), headers: {'x-client-id': clientId});
       await http.get(url('/limited'), headers: {'x-client-id': clientId});
 
-      // Esperar a que expire la ventana (configurada a 2 segundos)
-      await Future<void>.delayed(const Duration(milliseconds: 2100));
+      // The window (2 seconds) expires
+      _now = _now.add(const Duration(milliseconds: 2100));
 
       final response = await http.get(
         url('/limited'),

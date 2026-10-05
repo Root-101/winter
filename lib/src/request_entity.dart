@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show HttpConnectionInfo;
 
 import 'package:winter/src/router/path_template.dart';
 import 'package:winter/winter.dart';
@@ -45,6 +46,31 @@ class RequestEntity extends Request {
   }
 
   HttpMethod get httpMethod => HttpMethod(method);
+
+  ///IP address of the client (null if unknown, ex: a request built in a test).
+  ///
+  ///By default it's the address of the connection, `X-Forwarded-For` is ignored because
+  ///any client can send it with a fake IP (ex: to bypass a rate limiter).
+  ///Behind proxies, set [trustedProxies] to how many proxies (that you control) add
+  ///their entry to `X-Forwarded-For`: the entry added by the last of them is the client.
+  String? clientIp({int trustedProxies = 0}) {
+    final connectionIp =
+        (context['shelf.io.connection_info'] as HttpConnectionInfo?)
+            ?.remoteAddress
+            .address;
+    if (trustedProxies <= 0) return connectionIp;
+
+    final forwardedFor = headers[HttpHeader.xForwardedFor];
+    if (forwardedFor == null) return connectionIp;
+
+    final ips = forwardedFor
+        .split(',')
+        .map((ip) => ip.trim())
+        .where((ip) => ip.isNotEmpty)
+        .toList();
+    final index = ips.length - trustedProxies;
+    return index >= 0 ? ips[index] : connectionIp;
+  }
 
   Map<String, String> get queryParams => _queryParams ?? {};
 

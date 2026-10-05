@@ -1,12 +1,12 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:winter/winter.dart';
 
 /// A filter that limits the number of requests a client can make within a given time window.
 ///
 /// It uses a [RateLimiter] to track requests and can be configured to identify
-/// clients based on a custom [onRequest] function.
+/// clients based on a custom [onRequest] function (by default, the IP of the client:
+/// behind proxies use `onRequest: (request) => request.clientIp(trustedProxies: 1) ?? 'unknown'`).
 class RateLimiterFilter extends Filter {
   /// The underlying rate limiter implementation.
   final RateLimiter rateLimiter;
@@ -20,13 +20,13 @@ class RateLimiterFilter extends Filter {
   RateLimiterFilter({
     required int maxRequests,
     required Duration window,
-    required this.onRequest,
+    this.onRequest = clientIpRequestId,
     this.log = defaultLogRateLimiter,
   }) : rateLimiter = RateLimiter(maxRequests, window);
 
   RateLimiterFilter.fromRateLimiter({
     required this.rateLimiter,
-    required this.onRequest,
+    this.onRequest = clientIpRequestId,
     this.log = defaultLogRateLimiter,
   });
 
@@ -74,8 +74,14 @@ class RateLimiterFilter extends Filter {
       (duration.inMicroseconds / Duration.microsecondsPerSecond).ceil();
 }
 
-void defaultLogRateLimiter(dynamic request, dynamic requestId) {
-  stdout.writeln(
-    'Rate limiter fail for id: $requestId in request: ${request.url}',
+/// Debug level: under an attack there is one log per rejected request,
+/// at info level it would flood the logs
+void defaultLogRateLimiter(RequestEntity request, String requestId) {
+  logger.debug(
+    'Rate limit exceeded for id: $requestId in ${request.method} ${request.requestedUri.path}',
   );
 }
+
+/// Identify the client by its IP (the address of the connection, see [RequestEntity.clientIp])
+String clientIpRequestId(RequestEntity request) =>
+    request.clientIp() ?? 'unknown';
