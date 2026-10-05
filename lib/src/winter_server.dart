@@ -358,12 +358,13 @@ class Winter {
     );
 
     ///Created now and not lazily, so the request, its changes (`change` copies the context)
-    ///and the scope share the same security context and locale
+    ///and the scope share the same security context and locale.
+    ///(Outside the zone yet: reading `request.locale` here doesn't mark the scope)
     final RequestScope scope = RequestScope(
       securityContext: requestEntity.securityContext,
       locale: requestEntity.locale,
     );
-    return RequestScope.run(
+    final Response response = await RequestScope.run(
       scope,
       () => _runPipeline(
         requestEntity: requestEntity,
@@ -371,6 +372,13 @@ class Winter {
         globalFilterConfig: globalFilterConfig,
       ),
     );
+
+    ///Some code used the language of the request, so the response depends on it
+    ///(only if the app answers in more than one language)
+    if (scope.localeRead && Winter.context.localeConfig.supported.length > 1) {
+      return addVary(response, HttpHeader.acceptLanguage);
+    }
+    return response;
   }
 
   /// Routing, filters and handler of [requestEntity], with the exception handler
@@ -422,6 +430,22 @@ class Winter {
       return internalServerErrorResponse();
     }
   }
+}
+
+/// Add [header] to the `Vary` of [response] (a comma separated list), unless it's already there or `*`
+Response addVary(Response response, String header) {
+  final String? current = response.headers[HttpHeader.vary];
+  if (current == null || current.trim().isEmpty) {
+    return response.change(headers: {HttpHeader.vary: header});
+  }
+
+  final Iterable<String> values = current
+      .split(',')
+      .map((v) => v.trim().toLowerCase());
+  if (values.contains('*') || values.contains(header.toLowerCase())) {
+    return response;
+  }
+  return response.change(headers: {HttpHeader.vary: '$current, $header'});
 }
 
 /// Fail (with a [PayloadTooLargeException], a 413) when the body is bigger than [maxBytes].

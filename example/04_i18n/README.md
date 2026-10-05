@@ -40,8 +40,9 @@ Answers in the language of each request (`Accept-Language`), with typed translat
 - **Handler**: `t.greetings.hello(name: requestAuthentication!.name)` uses both the language and
   the user of the request.
 
-A response translated by the app adds `Vary: Accept-Language`, so caches keep one copy per
-language (Winter adds it to its 422 by itself).
+Every response whose code read the language (`t`, `requestLocale` or `request.locale`) gets
+`Vary: Accept-Language` automatically, so caches keep one copy per language. A response that never
+reads it (e.g. `GET /orders/1` when the order exists) does not vary.
 
 ## Routes
 

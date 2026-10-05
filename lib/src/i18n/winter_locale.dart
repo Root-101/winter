@@ -115,20 +115,3 @@ class LocaleConfig {
     return [for (final i in indexes) entries[i].$1];
   }
 }
-
-extension RequestLocaleX on RequestEntity {
-  static const String _localeKey = 'winter.context.locale';
-
-  /// Locale of this request, chosen from its `Accept-Language` with `Winter.context.localeConfig`.
-  /// Calculated the first time and cached in the request context.
-  WinterLocale get locale {
-    final WinterLocale? cached = context[_localeKey] as WinterLocale?;
-    if (cached != null) return cached;
-
-    final WinterLocale resolved = Winter.context.localeConfig.resolve(
-      headers[HttpHeader.acceptLanguage],
-    );
-    context[_localeKey] = resolved;
-    return resolved;
-  }
-}

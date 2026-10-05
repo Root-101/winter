@@ -15,8 +15,12 @@ decision changes, update it here.
 - The texts live in `lib/src/i18n/en.i18n.yaml` and `es.i18n.yaml`; `fvm dart run slang` generates
   `messages*.g.dart` (config in `slang.yaml`), which is versioned.
 - A validator builds its text with `requestLocale` (the locale of the request in progress, see
-  below), and `SimpleExceptionHandler` adds `Vary: Accept-Language` to the 422 when the app answers
-  in more than one language.
+  below), and `SimpleExceptionHandler` only serializes it.
+- **`Vary: Accept-Language` is automatic**: reading `requestLocale` or `request.locale` during a
+  request marks its `RequestScope` (`localeRead`), and the server adds the header to that response
+  when the app answers in more than one language. It is merged with any other `Vary` (`Origin` of
+  CORS) and never duplicated. The app doesn't have to remember it, and a response that never reads
+  the language (a fixed text, a 200 without texts) stays cacheable for every language.
 
 **Why `slang`.**
 
@@ -97,9 +101,8 @@ throw ApiException(StatusCode.unauthorized, t.errors.signature.invalid);
 - `size` uses the same text for Strings (length) and Iterables (items): "The minimum is 3", the
   same as `min()`.
 - The texts do not include the field name; it is already in `fieldName` of the response.
-- Every 422 adds `Vary: Accept-Language` when `localeConfig.supported` has more than one language,
-  even if its texts are fixed (harmless, it only lowers the cache hit rate). Other responses that an
-  app translates with `requestLocale` must add it themselves.
+- `Vary` is added by the server after the whole chain, so the filters don't see it in the response.
+  Reading the language only to log it also adds it (harmless, it only lowers the cache hit rate).
 - What is **not** translated, on purpose: the default bodies of the HTTP errors (`Bad Request`,
   `Not Found`...) are the standard reason phrases, like the error codes; the messages of
   `DeserializationException` (400) and similar are technical, for the developer of the client.

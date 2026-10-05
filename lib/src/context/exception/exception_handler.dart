@@ -50,16 +50,12 @@ class SimpleExceptionHandler extends ExceptionHandler {
     } else if (exception is ResponseException) {
       return exception.responseEntity;
     } else if (exception is ValidationException) {
-      ///The messages are in the language of the request, so caches must vary on it
-      ///(only if the app answers in more than one language)
-      final bool translated = Winter.context.localeConfig.supported.length > 1;
+      ///The messages are already in the language of the request
+      ///(reading it adds `Vary: Accept-Language`, see `RequestScope.localeRead`)
       return ResponseEntity(
         exception.statusCode,
         body: om.serialize(exception.violations),
-        headers: {
-          ...?exception.headers,
-          if (translated) HttpHeader.vary: HttpHeader.acceptLanguage,
-        },
+        headers: exception.headers,
       );
     } else if (exception is ApiException) {
       return ResponseEntity(
