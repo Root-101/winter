@@ -17,15 +17,26 @@ class RequestScope {
   /// Shared with `request.securityContext`: the same object for the request and its changes
   final RequestSecurityContext securityContext;
 
-  /// The same as `request.locale`: chosen from the `Accept-Language` of the request
-  final WinterLocale locale;
+  final WinterLocale _locale;
+  bool _localeRead = false;
 
   /// Without [securityContext], an empty one.
   /// Without [locale], the fallback of `Winter.context.localeConfig`.
   RequestScope({RequestSecurityContext? securityContext, WinterLocale? locale})
     : securityContext =
           securityContext ?? RequestSecurityContext<dynamic>.empty(),
-      locale = locale ?? Winter.context.localeConfig.fallback;
+      _locale = locale ?? Winter.context.localeConfig.fallback;
+
+  /// The same as `request.locale`: chosen from the `Accept-Language` of the request.
+  /// Reading it marks the response as dependent on the language ([localeRead]).
+  WinterLocale get locale {
+    _localeRead = true;
+    return _locale;
+  }
+
+  /// True once some code read the language of the request (`requestLocale` or `request.locale`).
+  /// Then the server adds `Vary: Accept-Language` to the response, so caches keep one copy per language.
+  bool get localeRead => _localeRead;
 
   /// The scope of the request in progress, or null outside a request
   static RequestScope? get current => Zone.current[_zoneKey] as RequestScope?;
@@ -55,3 +66,24 @@ WinterLocale get requestLocale =>
 /// keeps seeing this user.
 Authentication? get requestAuthentication =>
     requestSecurityContext?.authentication;
+
+extension RequestLocaleX on RequestEntity {
+  static const String _localeKey = 'winter.context.locale';
+
+  /// Locale of this request, chosen from its `Accept-Language` with `Winter.context.localeConfig`.
+  /// Calculated the first time and cached in the request context.
+  ///
+  /// Like `requestLocale`, reading it inside a request adds `Vary: Accept-Language` to the response.
+  WinterLocale get locale {
+    RequestScope.current?._localeRead = true;
+
+    final WinterLocale? cached = context[_localeKey] as WinterLocale?;
+    if (cached != null) return cached;
+
+    final WinterLocale resolved = Winter.context.localeConfig.resolve(
+      headers[HttpHeader.acceptLanguage],
+    );
+    context[_localeKey] = resolved;
+    return resolved;
+  }
+}

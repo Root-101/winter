@@ -91,6 +91,13 @@ void main() {
       expect(response.headers[HttpHeader.vary], HttpHeader.acceptLanguage);
     });
 
+    test('Found: nothing reads the language, so no Vary', () async {
+      await client.post('/orders', body: {'product': 'book', 'quantity': 2});
+      final response = await client.get('/orders/1', headers: lang('es'));
+      expect(response.json, {'product': 'book', 'quantity': 2});
+      expect(response.headers[HttpHeader.vary], isNull);
+    });
+
     test('404 in English', () async {
       final response = await client.get('/orders/7');
       expect(response.body, 'Order 7 not found');

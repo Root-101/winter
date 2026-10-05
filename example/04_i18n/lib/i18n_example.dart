@@ -47,11 +47,8 @@ class OrderService {
   OrderRequest find(int id) {
     final order = _orders[id];
     if (order == null) {
-      throw NotFoundException(
-        body: t.orders.notFound(id: id),
-        //The body depends on the language, so caches must vary on it
-        headers: {HttpHeader.vary: HttpHeader.acceptLanguage},
-      );
+      //`t` reads the language of the request: Winter adds `Vary: Accept-Language` by itself
+      throw NotFoundException(body: t.orders.notFound(id: id));
     }
     return order;
   }
@@ -88,7 +85,6 @@ class I18nServer {
         filterConfig: FilterConfig([HeaderAuthFilter(), AuthFilter()]),
         handler: (request) => ResponseEntity.ok(
           body: t.greetings.hello(name: requestAuthentication!.name),
-          headers: {HttpHeader.vary: HttpHeader.acceptLanguage},
         ),
       ),
       Route.post(
