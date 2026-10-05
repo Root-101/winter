@@ -7,13 +7,16 @@ void main() async {
 class AuthServer {
   static Future start({int port = 8080}) async {
     // 1. Setup DI
-    final userService = UserService();
+    final passwordHasher = PasswordHasher();
+    di.put(passwordHasher);
+
+    final userService = UserService(passwordHasher);
     di.put(userService);
 
     final jwtService = JwtService();
     di.put(jwtService);
 
-    final authService = AuthService(di.find(), di.find());
+    final authService = AuthService(di.find(), di.find(), di.find());
     di.put(authService);
 
     // 2. Controllers
@@ -21,19 +24,11 @@ class AuthServer {
     final userController = UserController(userService: userService);
 
     // 3. Setup Object Mapping
+    om.addDeserializer(Deserializer<User>.json(User.fromJson));
     om.addDeserializer(
-      Deserializer<User>((json) => User.fromJson(json as Map<String, dynamic>)),
+      Deserializer<RegisterRequest>.json(RegisterRequest.fromJson),
     );
-    om.addDeserializer(
-      Deserializer<RegisterRequest>(
-        (json) => RegisterRequest.fromJson(json as Map<String, dynamic>),
-      ),
-    );
-    om.addDeserializer(
-      Deserializer<LoginRequest>(
-        (json) => LoginRequest.fromJson(json as Map<String, dynamic>),
-      ),
-    );
+    om.addDeserializer(Deserializer<LoginRequest>.json(LoginRequest.fromJson));
 
     await Winter.start(
       config: ServerConfig(port: port),

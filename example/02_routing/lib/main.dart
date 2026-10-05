@@ -16,7 +16,7 @@ class RoutingServer {
     di.put(userService);
 
     Winter.context.objectMapper.addDeserializer(
-      Deserializer<User>((json) => User.fromJson(json as Map<String, dynamic>)),
+      Deserializer<User>.json(User.fromJson),
     );
 
     await Winter.start(

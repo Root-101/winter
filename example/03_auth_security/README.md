@@ -11,7 +11,9 @@ This example demonstrates a comprehensive implementation of Authentication and A
 ### 2. Authentication (JWT)
 - **Standard JWT**: Implementation using the `dart_jsonwebtoken` library for robust token handling.
 - **JwtFilter**: A global filter that intercepts the `Authorization: Bearer <token>` header, verifies the signature, and populates the `RequestSecurityContext`.
-- **Secure Secrets**: Signing keys are managed via environment variables using `env.find('JWT_SECRET')`.
+- **Secure Secrets**: The signing key comes from the `JWT_SECRET` environment variable (at least 32 characters). There is no hardcoded fallback: without it, a random secret is generated at startup (tokens become invalid after a restart).
+- **Expiring Tokens**: Tokens expire after one hour (`exp` claim), expired tokens are rejected.
+- **Hashed Passwords**: Passwords are stored with PBKDF2-HMAC-SHA256 and a random salt (`PasswordHasher`), never in plain text. Login takes the same time for unknown emails, so it doesn't reveal which emails are registered.
 
 ### 3. Strongly Typed Requests
 - **Request Objects**: Use of `RegisterRequest` and `LoginRequest` classes instead of raw Maps.
@@ -49,7 +51,7 @@ This example demonstrates a comprehensive implementation of Authentication and A
     dart pub get
     ```
 2.  **Set Secret (Optional)**:
-    Set the `JWT_SECRET` environment variable or the system will use a default fallback.
+    Set the `JWT_SECRET` environment variable (at least 32 characters). Without it, a random secret is generated on every start, so tokens stop working after a restart.
 3.  **Execution**:
     ```bash
     dart run lib/main.dart

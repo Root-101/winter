@@ -1,12 +1,14 @@
 import 'package:auth_security_example/auth_security_example.dart';
 
 class UserService {
-  final List<User> _users = [
+  final PasswordHasher passwordHasher;
+
+  late final List<User> _users = [
     User(
       id: 1,
       name: 'Admin User',
       email: 'admin@example.com',
-      password: 'adminpassword',
+      passwordHash: passwordHasher.hash('adminpassword'),
       roles: {'admin'},
       permissions: {'user.list', 'user.delete'},
     ),
@@ -14,11 +16,16 @@ class UserService {
       id: 2,
       name: 'Regular User',
       email: 'user@example.com',
-      password: 'userpassword',
+      passwordHash: passwordHasher.hash('userpassword'),
       roles: {'user'},
       permissions: {},
     ),
   ];
+
+  ///Ids are never reused, even after a user is deleted
+  int _lastId = 2;
+
+  UserService(this.passwordHasher);
 
   List<User> getAll() => List.unmodifiable(_users);
 
@@ -39,10 +46,10 @@ class UserService {
 
   User create(String name, String email, String password) {
     final newUser = User(
-      id: _users.length + 1,
+      id: ++_lastId,
       name: name,
       email: email,
-      password: password,
+      passwordHash: passwordHasher.hash(password),
       roles: {'user'},
     );
     _users.add(newUser);
