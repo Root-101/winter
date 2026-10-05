@@ -69,7 +69,7 @@ void main() async {
 }
 ```
 
-Check out our [examples](./examples) directory for more advanced use cases.
+Check out our [examples](./example) directory for more advanced use cases.
 
 ---
 
@@ -101,7 +101,27 @@ consistent API responses.
 
 - **Rate Limiter**: Protect your API from brute-force and DDoS attacks.
 - **Object Mapping**: Seamlessly convert JSON to Dart objects and vice versa.
-- **HTTP Utils**: Constants and helpers for common HTTP headers and status codes.
+- **HTTP Utils**: Constants and helpers for common HTTP headers and status codes (`HttpHeader`, `StatusCode`, `HttpMethod`, `MediaType`).
+- **Body Size Limit**: `ServerConfig(maxBodySize: ...)` (10 MB by default) rejects huge requests with a 413.
+- **Graceful Shutdown**: on Ctrl+C / SIGTERM the server waits for the requests in progress
+  (`ServerConfig(shutdownTimeout: ..., onShutdown: ...)`).
+- **Logging**: every log goes through `logger` (a `WinterLogger`), replace it to filter by level or send the logs anywhere:
+
+```dart
+Winter.context.setUp(logger: const ConsoleLogger(minLevel: LogLevel.warning));
+```
+
+### Testing
+
+Test the whole pipeline (filters, routing, exception handler...) in memory, without opening a port:
+
+```dart
+final client = WinterTestClient.build(router: myRouter);
+
+final response = await client.get('/hello');
+expect(response.statusCode, 200);
+expect(response.body, 'Hello Winter!');
+```
 
 ---
 
