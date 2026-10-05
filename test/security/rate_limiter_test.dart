@@ -1,72 +1,121 @@
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
+/// A clock controlled by the test: no real waits, exact durations
+class _FakeClock {
+  DateTime now = DateTime.utc(2026);
+
+  DateTime call() => now;
+
+  void advance(Duration duration) => now = now.add(duration);
+}
+
 void main() {
+  late _FakeClock clock;
+
+  setUp(() => clock = _FakeClock());
+
+  RateLimiter limiter(int maxRequests, Duration window) =>
+      RateLimiter(maxRequests, window, clock: clock.call);
+
   group('RateLimiter (Class)', () {
     test('should allow requests within limit', () {
-      final limiter = RateLimiter(3, const Duration(seconds: 1));
+      final rateLimiter = limiter(3, const Duration(seconds: 1));
 
-      expect(limiter.allowRequest('user1'), isTrue);
-      expect(limiter.allowRequest('user1'), isTrue);
-      expect(limiter.allowRequest('user1'), isTrue);
+      expect(rateLimiter.allowRequest('user1'), isTrue);
+      expect(rateLimiter.allowRequest('user1'), isTrue);
+      expect(rateLimiter.allowRequest('user1'), isTrue);
     });
 
     test('should deny requests exceeding limit', () {
-      final limiter = RateLimiter(2, const Duration(seconds: 1));
+      final rateLimiter = limiter(2, const Duration(seconds: 1));
 
-      expect(limiter.allowRequest('user1'), isTrue);
-      expect(limiter.allowRequest('user1'), isTrue);
-      expect(limiter.allowRequest('user1'), isFalse);
+      expect(rateLimiter.allowRequest('user1'), isTrue);
+      expect(rateLimiter.allowRequest('user1'), isTrue);
+      expect(rateLimiter.allowRequest('user1'), isFalse);
     });
 
     test('should handle different IDs independently', () {
-      final limiter = RateLimiter(1, const Duration(seconds: 1));
+      final rateLimiter = limiter(1, const Duration(seconds: 1));
 
-      expect(limiter.allowRequest('user1'), isTrue);
-      expect(limiter.allowRequest('user2'), isTrue);
-      expect(limiter.allowRequest('user1'), isFalse);
-      expect(limiter.allowRequest('user2'), isFalse);
+      expect(rateLimiter.allowRequest('user1'), isTrue);
+      expect(rateLimiter.allowRequest('user2'), isTrue);
+      expect(rateLimiter.allowRequest('user1'), isFalse);
+      expect(rateLimiter.allowRequest('user2'), isFalse);
     });
 
-    test('should allow requests again after window expires', () async {
-      final limiter = RateLimiter(1, const Duration(milliseconds: 50));
+    test('a request is allowed again only after the whole window', () {
+      final rateLimiter = limiter(1, const Duration(seconds: 1));
+      expect(rateLimiter.allowRequest('user1'), isTrue);
 
-      expect(limiter.allowRequest('user1'), isTrue);
-      expect(limiter.allowRequest('user1'), isFalse);
+      clock.advance(const Duration(seconds: 1));
+      expect(rateLimiter.allowRequest('user1'), isFalse);
 
-      await Future<void>.delayed(const Duration(milliseconds: 60));
+      clock.advance(const Duration(microseconds: 1));
+      expect(rateLimiter.allowRequest('user1'), isTrue);
+    });
 
-      expect(limiter.allowRequest('user1'), isTrue);
+    test('the window slides: each request expires on its own', () {
+      final rateLimiter = limiter(2, const Duration(seconds: 10));
+      rateLimiter.allowRequest('user1');
+      clock.advance(const Duration(seconds: 6));
+      rateLimiter.allowRequest('user1');
+      expect(rateLimiter.allowRequest('user1'), isFalse);
+
+      ///Only the first request left the window
+      clock.advance(const Duration(seconds: 5));
+      expect(rateLimiter.getRemaining('user1'), 1);
+      expect(rateLimiter.allowRequest('user1'), isTrue);
+      expect(rateLimiter.allowRequest('user1'), isFalse);
     });
 
     test('getRemaining should return correct number of remaining requests', () {
-      final limiter = RateLimiter(5, const Duration(seconds: 1));
-      limiter.allowRequest('user1');
-      limiter.allowRequest('user1');
+      final rateLimiter = limiter(5, const Duration(seconds: 1));
+      rateLimiter.allowRequest('user1');
+      rateLimiter.allowRequest('user1');
 
-      expect(limiter.getRemaining('user1'), equals(3));
-      expect(limiter.getRemaining('user2'), equals(5));
+      expect(rateLimiter.getRemaining('user1'), equals(3));
+      expect(rateLimiter.getRemaining('user2'), equals(5));
     });
 
-    test('getWaitDuration should return correct duration', () {
-      final limiter = RateLimiter(1, const Duration(seconds: 1));
-      limiter.allowRequest('user1');
+    test('getWaitDuration is exactly the time until a slot is free', () {
+      final rateLimiter = limiter(1, const Duration(seconds: 1));
+      expect(rateLimiter.getWaitDuration('user1'), Duration.zero);
 
-      final wait = limiter.getWaitDuration('user1');
-      expect(wait.inMilliseconds, greaterThan(0));
-      expect(wait.inMilliseconds, lessThanOrEqualTo(1000));
+      rateLimiter.allowRequest('user1');
+      expect(rateLimiter.getWaitDuration('user1'), const Duration(seconds: 1));
+
+      clock.advance(const Duration(milliseconds: 300));
+      expect(
+        rateLimiter.getWaitDuration('user1'),
+        const Duration(milliseconds: 700),
+      );
+    });
+
+    test('reset forgets one id, clear forgets all of them', () {
+      final rateLimiter = limiter(1, const Duration(minutes: 1));
+      rateLimiter.allowRequest('user1');
+      rateLimiter.allowRequest('user2');
+
+      rateLimiter.reset('user1');
+      expect(rateLimiter.allowRequest('user1'), isTrue);
+      expect(rateLimiter.allowRequest('user2'), isFalse);
+
+      rateLimiter.clear();
+      expect(rateLimiter.trackedIds, 0);
+      expect(rateLimiter.allowRequest('user2'), isTrue);
     });
   });
 
   group('RateLimiterFilter', () {
-    late RateLimiter limiter;
+    late RateLimiter rateLimiter;
     late RateLimiterFilter filter;
     late RequestEntity request;
 
     setUp(() {
-      limiter = RateLimiter(2, const Duration(seconds: 1));
+      rateLimiter = limiter(2, const Duration(seconds: 1));
       filter = RateLimiterFilter.fromRateLimiter(
-        rateLimiter: limiter,
+        rateLimiter: rateLimiter,
         onRequest: (req) => 'test-user',
       );
       request = RequestEntity('GET', Uri.parse('http://localhost/test'));
@@ -98,7 +147,7 @@ void main() {
 
       expect(response.statusCode, 429); // Too Many Requests
       expect(response.headers['X-RateLimit-Remaining'], '0');
-      expect(response.headers['Retry-After'], isNotNull);
+      expect(response.headers['Retry-After'], '1');
     });
 
     test('should update remaining requests in headers', () async {
@@ -111,140 +160,158 @@ void main() {
       expect(response2.headers['X-RateLimit-Remaining'], '0');
     });
 
-    test('should handle different clients independently', () async {
-      filter = RateLimiterFilter.fromRateLimiter(
-        rateLimiter: RateLimiter(1, const Duration(seconds: 1)),
-        onRequest: (req) => req.headers['X-User-ID'] ?? 'anonymous',
+    test('should handle different users independently', () async {
+      final multiUserFilter = RateLimiterFilter.fromRateLimiter(
+        rateLimiter: limiter(1, const Duration(seconds: 1)),
+        onRequest: (req) => req.headers['user-id'] ?? 'anonymous',
       );
-
-      final request1 = RequestEntity(
-        'GET',
-        Uri.parse('http://localhost/test'),
-        headers: {'X-User-ID': 'user1'},
-      );
-      final request2 = RequestEntity(
-        'GET',
-        Uri.parse('http://localhost/test'),
-        headers: {'X-User-ID': 'user2'},
-      );
-
       final chain = FilterChain([], handle);
+      final user1 = RequestEntity(
+        'GET',
+        Uri.parse('http://localhost/'),
+        headers: {'user-id': '1'},
+      );
+      final user2 = RequestEntity(
+        'GET',
+        Uri.parse('http://localhost/'),
+        headers: {'user-id': '2'},
+      );
 
-      final response1 = await filter.doFilter(request1, chain);
-      final response2 = await filter.doFilter(request2, chain);
-
-      expect(response1.statusCode, 200);
-      expect(response2.statusCode, 200);
-
-      final response1Blocked = await filter.doFilter(request1, chain);
-      expect(response1Blocked.statusCode, 429);
+      expect((await multiUserFilter.doFilter(user1, chain)).statusCode, 200);
+      expect((await multiUserFilter.doFilter(user2, chain)).statusCode, 200);
+      expect((await multiUserFilter.doFilter(user1, chain)).statusCode, 429);
     });
 
     test('should allow requests again after window expires', () async {
-      final limiter = RateLimiter(1, const Duration(milliseconds: 100));
-      filter = RateLimiterFilter.fromRateLimiter(
-        rateLimiter: limiter,
+      final chain = FilterChain([], handle);
+      await filter.doFilter(request, chain);
+      await filter.doFilter(request, chain);
+      expect((await filter.doFilter(request, chain)).statusCode, 429);
+
+      clock.advance(const Duration(seconds: 1, microseconds: 1));
+
+      expect((await filter.doFilter(request, chain)).statusCode, 200);
+    });
+
+    test('Retry-After is the real wait, rounded up', () async {
+      final chain = FilterChain([], handle);
+      final slowFilter = RateLimiterFilter.fromRateLimiter(
+        rateLimiter: limiter(1, const Duration(seconds: 10)),
         onRequest: (req) => 'test-user',
       );
+      await slowFilter.doFilter(request, chain);
+
+      clock.advance(const Duration(milliseconds: 2500));
+      final response = await slowFilter.doFilter(request, chain);
+
+      expect(response.statusCode, 429);
+      expect(response.headers['Retry-After'], '8');
+    });
+
+    test('X-RateLimit-Reset counts down (not the window size)', () async {
       final chain = FilterChain([], handle);
+      final countDownFilter = RateLimiterFilter.fromRateLimiter(
+        rateLimiter: limiter(5, const Duration(seconds: 3)),
+        onRequest: (req) => 'id',
+      );
 
-      await filter.doFilter(request, chain);
-      final responseBlocked = await filter.doFilter(request, chain);
-      expect(responseBlocked.statusCode, 429);
+      final first = await countDownFilter.doFilter(request, chain);
+      expect(first.headers['X-RateLimit-Reset'], '3');
 
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-
-      final responseAllowed = await filter.doFilter(request, chain);
-      expect(responseAllowed.statusCode, 200);
+      clock.advance(const Duration(seconds: 1));
+      final second = await countDownFilter.doFilter(request, chain);
+      expect(second.headers['X-RateLimit-Reset'], '2');
     });
 
     test('should work with an async ID extractor', () async {
-      filter = RateLimiterFilter.fromRateLimiter(
-        rateLimiter: RateLimiter(1, const Duration(seconds: 1)),
+      final asyncFilter = RateLimiterFilter.fromRateLimiter(
+        rateLimiter: limiter(1, const Duration(seconds: 1)),
         onRequest: (req) async {
-          await Future<void>.delayed(const Duration(milliseconds: 10));
+          await Future<void>.delayed(Duration.zero);
           return 'async-user';
         },
       );
       final chain = FilterChain([], handle);
 
-      final response = await filter.doFilter(request, chain);
-      expect(response.statusCode, 200);
+      expect((await asyncFilter.doFilter(request, chain)).statusCode, 200);
+      expect((await asyncFilter.doFilter(request, chain)).statusCode, 429);
     });
 
-    test('should call log function when limit exceeded', () async {
-      String? loggedId;
-      filter = RateLimiterFilter.fromRateLimiter(
-        rateLimiter: RateLimiter(1, const Duration(seconds: 1)),
+    test('should call log function only when limit exceeded', () async {
+      final loggedIds = <String>[];
+      final loggingFilter = RateLimiterFilter.fromRateLimiter(
+        rateLimiter: limiter(1, const Duration(seconds: 1)),
         onRequest: (req) => 'test-user',
-        log: (req, id) => loggedId = id,
+        log: (req, id) => loggedIds.add(id),
       );
       final chain = FilterChain([], handle);
 
-      await filter.doFilter(request, chain); // OK
-      await filter.doFilter(request, chain); // Limited
+      await loggingFilter.doFilter(request, chain); // OK
+      expect(loggedIds, isEmpty);
 
-      expect(loggedId, equals('test-user'));
+      await loggingFilter.doFilter(request, chain); // Limited
+      expect(loggedIds, ['test-user']);
     });
   });
 
-  group('RateLimiter memory & reset', () {
-    test('inactive ids are purged automatically', () async {
-      final limiter = RateLimiter(1, const Duration(milliseconds: 50));
-      limiter.allowRequest('ip-1');
-      limiter.allowRequest('ip-2');
-      expect(limiter.trackedIds, 2);
+  group('RateLimiter memory', () {
+    test('inactive ids are purged automatically (once per window)', () {
+      final rateLimiter = limiter(1, const Duration(seconds: 1));
+      rateLimiter.allowRequest('ip-1');
+      rateLimiter.allowRequest('ip-2');
+      expect(rateLimiter.trackedIds, 2);
 
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-      limiter.allowRequest('ip-3');
+      clock.advance(const Duration(seconds: 2));
+      rateLimiter.allowRequest('ip-3');
 
-      expect(limiter.trackedIds, 1);
+      expect(rateLimiter.trackedIds, 1);
     });
 
-    test('active ids are not purged', () async {
-      final limiter = RateLimiter(5, const Duration(milliseconds: 200));
-      limiter.allowRequest('ip-1');
+    test('ids with requests inside the window are not purged', () {
+      final rateLimiter = limiter(5, const Duration(seconds: 2));
+      rateLimiter.allowRequest('ip-1');
 
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      limiter.allowRequest('ip-1');
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-      limiter.allowRequest('ip-2');
+      clock.advance(const Duration(seconds: 1));
+      rateLimiter.allowRequest('ip-1');
+      clock.advance(const Duration(milliseconds: 1500));
+      rateLimiter.allowRequest('ip-2');
 
-      expect(limiter.getRemaining('ip-1'), 4);
+      expect(rateLimiter.trackedIds, 2);
+      expect(rateLimiter.getRemaining('ip-1'), 4);
+    });
+
+    test('ids without requests (only consulted) are purged', () {
+      final rateLimiter = limiter(5, const Duration(seconds: 1));
+      rateLimiter.getRemaining('only-consulted');
+      expect(rateLimiter.trackedIds, 1);
+
+      rateLimiter.purgeInactive();
+
+      expect(rateLimiter.trackedIds, 0);
+    });
+
+    test('purgeInactive uses twice the window by default', () {
+      final rateLimiter = limiter(5, const Duration(seconds: 1));
+      rateLimiter.allowRequest('ip-1');
+
+      clock.advance(const Duration(milliseconds: 1500));
+      rateLimiter.purgeInactive();
+      expect(rateLimiter.trackedIds, 1);
+
+      clock.advance(const Duration(seconds: 1));
+      rateLimiter.purgeInactive();
+      expect(rateLimiter.trackedIds, 0);
     });
 
     test('getResetDuration is the time until the oldest request expires', () {
-      final limiter = RateLimiter(2, const Duration(seconds: 10));
-      expect(limiter.getResetDuration('id'), Duration.zero);
+      final rateLimiter = limiter(2, const Duration(seconds: 10));
+      expect(rateLimiter.getResetDuration('id'), Duration.zero);
 
-      limiter.allowRequest('id');
-      final reset = limiter.getResetDuration('id');
+      rateLimiter.allowRequest('id');
+      clock.advance(const Duration(seconds: 4));
+      rateLimiter.allowRequest('id');
 
-      expect(reset, greaterThan(const Duration(seconds: 9)));
-      expect(reset, lessThanOrEqualTo(const Duration(seconds: 10)));
+      expect(rateLimiter.getResetDuration('id'), const Duration(seconds: 6));
     });
-
-    test(
-      'X-RateLimit-Reset header counts down (not the window size)',
-      () async {
-        final filter = RateLimiterFilter(
-          maxRequests: 5,
-          window: const Duration(seconds: 3),
-          onRequest: (req) => 'id',
-          log: null,
-        );
-        final chain = FilterChain([], (req) => ResponseEntity.ok());
-        RequestEntity request() =>
-            RequestEntity('GET', Uri.parse('http://localhost/'));
-
-        final first = await filter.doFilter(request(), chain);
-        expect(first.headers['X-RateLimit-Reset'], '3');
-
-        await Future<void>.delayed(const Duration(milliseconds: 1100));
-        final second = await filter.doFilter(request(), chain);
-
-        expect(second.headers['X-RateLimit-Reset'], '2');
-      },
-    );
   });
 }

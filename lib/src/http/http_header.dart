@@ -1,4 +1,8 @@
 class HttpHeader {
+  /// The `X-Forwarded-For` header, added by proxies with the address of the client
+  /// (de facto standard, not in the HTTP spec).
+  static final String xForwardedFor = 'X-Forwarded-For';
+
   /// The HTTP {@code Accept} header field name.
   /// @see <a href="https://tools.ietf.org/html/rfc7231#section-5.3.2">Section 5.3.2 of RFC 7231</a>
   static final String accept = 'Accept';
