@@ -69,6 +69,14 @@ class ConflictException extends ApiException {
     : super(body: body ?? status.reasonPhrase, statusCode: status.value);
 }
 
+/// exception for 413
+class PayloadTooLargeException extends ApiException {
+  static final StatusCode status = StatusCode.payloadTooLarge;
+
+  PayloadTooLargeException({Object? body, super.headers})
+    : super(body: body ?? status.reasonPhrase, statusCode: status.value);
+}
+
 /// exception for 500
 class InternalServerErrorException extends ApiException {
   static final StatusCode status = StatusCode.internalServerError;
