@@ -62,6 +62,15 @@ void main() {
             handler: (request) async => ResponseEntity.ok(),
           ),
           Route(
+            path: '/anonymous-by-rules',
+            method: HttpMethod.get,
+            filterConfig: FilterConfig([
+              MockAuthFilter(setAuth: false),
+              CustomAuthFilter(authenticated: false, rules: hasRole('admin')),
+            ]),
+            handler: (request) async => ResponseEntity.ok(),
+          ),
+          Route(
             path: '/success',
             method: HttpMethod.get,
             filterConfig: FilterConfig([
@@ -91,32 +100,35 @@ void main() {
     );
   });
 
+  test('Should return custom body for 403 when rules fail and extending AuthFilter', () async {
+    http.Response response = await http.get(url('/forbidden-by-rules'));
+
+    expect(response.statusCode, 403);
+    expect(response.body, contains('Custom 403 message'));
+    expect(response.body, contains('Forbidden'));
+    expect(
+      response.headers['content-type'],
+      contains('application/problem+json'),
+    );
+  });
+
+  test('Should return 401 when authenticated=false but authentication present (not logged in)', () async {
+    http.Response response = await http.get(url('/forbidden-by-auth-state'));
+
+    expect(response.statusCode, 401);
+    expect(response.body, contains('Custom 401 message'));
+    expect(
+      response.headers['content-type'],
+      contains('application/problem+json'),
+    );
+  });
+
   test(
-    'Should return custom body for 403 when rules fail and extending AuthFilter',
+    'Should return 401 when an anonymous user does not match the rules',
     () async {
-      http.Response response = await http.get(url('/forbidden-by-rules'));
+      http.Response response = await http.get(url('/anonymous-by-rules'));
 
-      expect(response.statusCode, 403);
-      expect(response.body, contains('Custom 403 message'));
-      expect(response.body, contains('Forbidden'));
-      expect(
-        response.headers['content-type'],
-        contains('application/problem+json'),
-      );
-    },
-  );
-
-  test(
-    'Should return custom body for 403 when authenticated=false but authentication present',
-    () async {
-      http.Response response = await http.get(url('/forbidden-by-auth-state'));
-
-      expect(response.statusCode, 403);
-      expect(response.body, contains('Custom 403 message'));
-      expect(
-        response.headers['content-type'],
-        contains('application/problem+json'),
-      );
+      expect(response.statusCode, 401);
     },
   );
 
