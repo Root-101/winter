@@ -101,52 +101,78 @@ void main() {
   });
 
   group('Violations', () {
-    test('message stays in English, localizedMessage translates', () {
-      final cvc = ConstraintValidatorContext();
-      cvc.buildValidator('name').size(min: 3).validate('ab');
-      final violation = cvc.violations.single;
+    /// Validate [user] as a request in [locale] would
+    List<ConstrainViolation> validateIn(WinterLocale locale, _User user) =>
+        RequestScope.run(
+          RequestScope(locale: locale),
+          () => user.validate().violations,
+        );
 
-      expect(violation.message, 'The minimum is 3');
-      expect(violation.messageFor(spanish), 'El mínimo es 3');
+    test('message is in the language of the request', () {
+      final violation = validateIn(spanish, _User(name: 'ab')).single;
+
+      expect(violation.message, 'El mínimo es 3');
       expect(violation.toJson(), {
         'value': 'ab',
         'fieldName': 'name',
-        'message': 'The minimum is 3',
+        'message': 'El mínimo es 3',
       });
+    });
+
+    test('Outside a request: the fallback (English)', () {
+      expect(
+        _User(name: 'ab').validate().violations.single.message,
+        'The minimum is 3',
+      );
     });
 
     test('A fixed custom message is the same in every language', () {
       final cvc = ConstraintValidatorContext();
-      cvc
-          .buildValidator('name')
-          .notNull(message: (_) => 'Required')
-          .validate(null);
-      expect(cvc.violations.single.messageFor(spanish), 'Required');
-    });
-
-    test('addRule (fixed message) has no translation', () {
-      final cvc = ConstraintValidatorContext();
-      cvc.buildValidator('name').custom((_) => 'Bad').validate(1);
-      expect(cvc.violations.single.localizedMessage, isNull);
+      RequestScope.run(
+        RequestScope(locale: spanish),
+        () => cvc
+            .buildValidator('name')
+            .notNull(message: 'Required')
+            .validate(null),
+      );
+      expect(cvc.violations.single.message, 'Required');
     });
 
     test('A language without translations uses English', () {
-      final cvc = ConstraintValidatorContext();
-      cvc.buildValidator('name').notNull().validate(null);
       expect(
-        cvc.violations.single.messageFor(const WinterLocale('fr')),
+        validateIn(const WinterLocale('fr'), _User()).single.message,
         'The field cannot be null',
       );
     });
 
     test('Merge with prefix keeps the translation', () {
       final inner = ConstraintValidatorContext();
-      inner.buildValidator('name').notNull().validate(null);
+      RequestScope.run(
+        RequestScope(locale: spanish),
+        () => inner.buildValidator('name').notNull().validate(null),
+      );
       final cvc = ConstraintValidatorContext()..merge(inner, prefix: 'user');
       final violation = cvc.violations.single;
       expect(violation.fieldName, 'user.name');
-      expect(violation.messageFor(spanish), 'El campo no puede ser null');
+      expect(violation.message, 'El campo no puede ser null');
     });
+  });
+
+  test('422 without Vary when the app only answers in English', () async {
+    final client = WinterTestClient.build(
+      router: ServeRouter((request) {
+        _User().validate().throwOnFailure();
+        return ResponseEntity.ok();
+      }),
+    );
+
+    final response = await client.get(
+      '/',
+      headers: {HttpHeader.acceptLanguage: 'es'},
+    );
+    expect(response.statusCode, 422);
+    expect(response.headers[HttpHeader.vary], isNull);
+    expect(response.body, contains('The field cannot be null'));
   });
 
   group('422 in the language of the request', () {

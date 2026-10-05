@@ -21,13 +21,15 @@ class _Case {
     required this.es,
   });
 
-  ConstrainViolation violation() {
-    final cvc = ConstraintValidatorContext();
-    final validator = cvc.buildValidator('field');
-    rule(validator);
-    validator.validate(value);
-    return cvc.violations.single;
-  }
+  /// The violation when validating in a request in [locale]
+  ConstrainViolation violation([WinterLocale locale = WinterLocale.english]) =>
+      RequestScope.run(RequestScope(locale: locale), () {
+        final cvc = ConstraintValidatorContext();
+        final validator = cvc.buildValidator('field');
+        rule(validator);
+        validator.validate(value);
+        return cvc.violations.single;
+      });
 }
 
 final List<_Case> _cases = [
@@ -201,75 +203,75 @@ void main() {
   group('Every validator in every locale', () {
     for (final c in _cases) {
       group(c.name, () {
-        test('message is always English', () {
-          expect(c.violation().message, c.en);
+        test('outside a request: the fallback (English)', () {
+          final cvc = ConstraintValidatorContext();
+          final validator = cvc.buildValidator('field');
+          c.rule(validator);
+          validator.validate(c.value);
+          expect(cvc.violations.single.message, c.en);
         });
 
         test('en', () {
-          expect(c.violation().messageFor(english), c.en);
+          expect(c.violation(english).message, c.en);
         });
 
         test('es', () {
-          expect(c.violation().messageFor(spanish), c.es);
+          expect(c.violation(spanish).message, c.es);
         });
 
         test('a region uses its language (es-MX)', () {
-          expect(
-            c.violation().messageFor(const WinterLocale('es', 'MX')),
-            c.es,
-          );
+          expect(c.violation(const WinterLocale('es', 'MX')).message, c.es);
         });
 
         test('a language without translations uses English (fr)', () {
-          expect(c.violation().messageFor(const WinterLocale('fr')), c.en);
-        });
-
-        test('it is translatable (has localizedMessage)', () {
-          expect(c.violation().localizedMessage, isNotNull);
+          expect(c.violation(const WinterLocale('fr')).message, c.en);
         });
       });
     }
   });
 
   group('A custom message is translated with the locale', () {
-    /// Like an app adapting its own slang messages to a [LocalizedText]
-    String custom(WinterLocale locale) =>
-        locale.languageCode == 'es' ? 'Personalizado' : 'Custom';
+    /// Like the getter of an app over its own slang messages: `AppMessages get t => ...(requestLocale)`
+    String custom() =>
+        requestLocale.languageCode == 'es' ? 'Personalizado' : 'Custom';
 
     final List<(String, void Function(ConstraintValidator), Object?)> rules = [
-      ('notNull', (v) => v.notNull(message: custom), null),
-      ('notBlank', (v) => v.notBlank(message: custom), ''),
-      ('size', (v) => v.size(min: 3, message: custom), 'ab'),
-      ('email', (v) => v.email(message: custom), 'x'),
-      ('min', (v) => v.min(3, message: custom), 1),
-      ('max', (v) => v.max(0, message: custom), 1),
-      ('pattern', (v) => v.pattern(r'^\d+$', message: custom), 'x'),
-      ('isEnum', (v) => v.isEnum(_Color.values, message: custom), 'x'),
+      ('notNull', (v) => v.notNull(message: custom()), null),
+      ('notBlank', (v) => v.notBlank(message: custom()), ''),
+      ('size', (v) => v.size(min: 3, message: custom()), 'ab'),
+      ('email', (v) => v.email(message: custom()), 'x'),
+      ('min', (v) => v.min(3, message: custom()), 1),
+      ('max', (v) => v.max(0, message: custom()), 1),
+      ('pattern', (v) => v.pattern(r'^\d+$', message: custom()), 'x'),
+      ('isEnum', (v) => v.isEnum(_Color.values, message: custom()), 'x'),
     ];
 
     for (final (name, rule, value) in rules) {
       test(name, () {
-        final cvc = ConstraintValidatorContext();
-        final validator = cvc.buildValidator('field');
-        rule(validator);
-        validator.validate(value);
-        final violation = cvc.violations.single;
+        String message(WinterLocale locale) =>
+            RequestScope.run(RequestScope(locale: locale), () {
+              final cvc = ConstraintValidatorContext();
+              final validator = cvc.buildValidator('field');
+              rule(validator);
+              validator.validate(value);
+              return cvc.violations.single.message;
+            });
 
-        ///The English text is kept in `message` (logs, toString)
-        expect(violation.message, 'Custom');
-        expect(violation.messageFor(english), 'Custom');
-        expect(violation.messageFor(spanish), 'Personalizado');
+        expect(message(english), 'Custom');
+        expect(message(spanish), 'Personalizado');
       });
     }
 
-    test('A fixed text (_) => ... is the same in every locale', () {
+    test('A fixed text is the same in every locale', () {
       final cvc = ConstraintValidatorContext();
-      cvc
-          .buildValidator('field')
-          .notNull(message: (_) => 'Fixed')
-          .validate(null);
+      RequestScope.run(
+        RequestScope(locale: spanish),
+        () => cvc
+            .buildValidator('field')
+            .notNull(message: 'Fixed')
+            .validate(null),
+      );
       expect(cvc.violations.single.message, 'Fixed');
-      expect(cvc.violations.single.messageFor(spanish), 'Fixed');
     });
 
     test('422: the custom message uses the language of the request', () async {
@@ -288,7 +290,7 @@ void main() {
                 final cvc = ConstraintValidatorContext();
                 cvc
                     .buildValidator('prefix')
-                    .notNull(message: custom)
+                    .notNull(message: custom())
                     .validate(null);
                 cvc.throwOnFailure();
                 return ResponseEntity.ok();

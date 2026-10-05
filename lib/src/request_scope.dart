@@ -20,9 +20,12 @@ class RequestScope {
   /// The same as `request.locale`: chosen from the `Accept-Language` of the request
   final WinterLocale locale;
 
-  /// Without [locale], the fallback of `Winter.context.localeConfig`
-  RequestScope({required this.securityContext, WinterLocale? locale})
-    : locale = locale ?? Winter.context.localeConfig.fallback;
+  /// Without [securityContext], an empty one.
+  /// Without [locale], the fallback of `Winter.context.localeConfig`.
+  RequestScope({RequestSecurityContext? securityContext, WinterLocale? locale})
+    : securityContext =
+          securityContext ?? RequestSecurityContext<dynamic>.empty(),
+      locale = locale ?? Winter.context.localeConfig.fallback;
 
   /// The scope of the request in progress, or null outside a request
   static RequestScope? get current => Zone.current[_zoneKey] as RequestScope?;
