@@ -14,7 +14,7 @@ enum ConsoleColor {
 }
 
 extension ConsoleStyleExtension on String {
-  /// Aplica estilos ANSI a este String (Negrita y/or Color)
+  /// Apply ANSI styles (bold and/or color) to this String
   String stylize({bool bold = false, ConsoleColor? color}) {
     if (!bold && color == null) return this;
 

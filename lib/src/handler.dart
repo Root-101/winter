@@ -14,13 +14,13 @@ import 'package:winter/winter.dart';
 /// may have been touched by other middleware. Similarly the response may be
 /// directly returned by an HTTP server or have further processing done by other
 /// middleware.
-typedef RequestHandler =
-    FutureOr<ResponseEntity> Function(RequestEntity request);
+typedef RequestHandler = FutureOr<ResponseEntity> Function(
+  RequestEntity request,
+);
 
 ///ExceptionHandler
-typedef ExcHandler =
-    FutureOr<ResponseEntity> Function(
-      RequestEntity request,
-      Exception error,
-      StackTrace stackTrac,
-    );
+typedef ExcHandler = FutureOr<ResponseEntity> Function(
+  RequestEntity request,
+  Exception error,
+  StackTrace stackTrac,
+);
