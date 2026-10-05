@@ -162,12 +162,26 @@ class ResponseEntity<T> extends Response {
     );
   }
 
+  ///Same as [Response.change] (used by shelf middlewares) but returns a [ResponseEntity].
+  ///A new [body] is used as it is (String, bytes or Stream), like shelf does.
   @override
-  Response change({
+  ResponseEntity<T> change({
     Map<String, /* String | List<String> */ Object?>? headers,
     Map<String, Object?>? context,
     Object? body,
   }) {
-    throw UnimplementedError();
+    final Response changed = super.change(
+      headers: headers,
+      context: context,
+      body: body,
+    );
+    return ResponseEntity<T>._(
+      changed.statusCode,
+      body == null ? _bodyValue : (body is T ? body as T : null),
+      changed.read(),
+      changed.headersAll,
+      changed.encoding,
+      changed.context,
+    );
   }
 }
