@@ -78,8 +78,11 @@ class ConstraintValidator {
 extension NotNullValidator on ConstraintValidator {
   /// Validates that the value is not null.
   /// If [stopOnFailure] is true, the validation process for this field will stop if the value is null.
-  /// A custom [message] is used as is, in every language.
-  ConstraintValidator notNull({String? message, bool stopOnFailure = true}) {
+  /// A custom [message] is translated with the locale of the request; use `(_) => 'text'` for a fixed text.
+  ConstraintValidator notNull({
+    LocalizedText? message,
+    bool stopOnFailure = true,
+  }) {
     addLocalizedRule((value) {
       if (value == null) {
         return _text(message, (m) => m.errors.validations.notNull);
@@ -93,7 +96,11 @@ extension NotNullValidator on ConstraintValidator {
 extension NotBlankValidator on ConstraintValidator {
   /// Validates that the string value is not empty or composed only of whitespace.
   /// If [stopOnFailure] is true, the validation process for this field will stop if the value is blank.
-  ConstraintValidator notBlank({String? message, bool stopOnFailure = false}) {
+  /// A custom [message] is translated with the locale of the request; use `(_) => 'text'` for a fixed text.
+  ConstraintValidator notBlank({
+    LocalizedText? message,
+    bool stopOnFailure = false,
+  }) {
     addLocalizedRule((value) {
       if (value == null) return null;
       if (value is! String || value.trim().isEmpty) {
@@ -107,10 +114,11 @@ extension NotBlankValidator on ConstraintValidator {
 
 extension SizeValidator on ConstraintValidator {
   /// Validates the size of a String or Iterable.
+  /// A custom [message] is translated with the locale of the request; use `(_) => 'text'` for a fixed text.
   ConstraintValidator size({
     int? min,
     int? max,
-    String? message,
+    LocalizedText? message,
     bool stopOnFailure = false,
   }) {
     addLocalizedRule((value) {
@@ -135,9 +143,12 @@ extension SizeValidator on ConstraintValidator {
   }
 }
 
-/// The custom [message] of the user (same in every language) or the translated message of Winter
-LocalizedText _text(String? message, String Function(WinterMessages) text) =>
-    message != null ? (_) => message : (locale) => text(winterMessages(locale));
+/// The custom [message] of the user (resolved with the locale of the request, like the default one)
+/// or the translated message of Winter
+LocalizedText _text(
+  LocalizedText? message,
+  String Function(WinterMessages) text,
+) => message ?? (locale) => text(winterMessages(locale));
 
 /// Same rules as the HTML5 spec (WHATWG) for `<input type="email">`, but requiring a dot in the domain:
 /// - local part: letters, digits and the special characters allowed by the spec (so `user+tag@x.com` is valid)
@@ -150,7 +161,11 @@ final RegExp _emailRegex = RegExp(
 
 extension EmailValidator on ConstraintValidator {
   /// Validates that the value is a valid email.
-  ConstraintValidator email({String? message, bool stopOnFailure = false}) {
+  /// A custom [message] is translated with the locale of the request; use `(_) => 'text'` for a fixed text.
+  ConstraintValidator email({
+    LocalizedText? message,
+    bool stopOnFailure = false,
+  }) {
     addLocalizedRule((value) {
       if (value == null) return null;
       if (value is! String) {
@@ -169,9 +184,10 @@ extension MinValidator on ConstraintValidator {
   /// Validates that the numeric value is at least [min].
   /// If [inclusive] is true (default), the value must be greater than or equal to [min].
   /// If [inclusive] is false, the value must be strictly greater than [min].
+  /// A custom [message] is translated with the locale of the request; use `(_) => 'text'` for a fixed text.
   ConstraintValidator min(
     num min, {
-    String? message,
+    LocalizedText? message,
     bool inclusive = true,
     bool stopOnFailure = false,
   }) {
@@ -199,9 +215,10 @@ extension MaxValidator on ConstraintValidator {
   /// Validates that the numeric value is at most [max].
   /// If [inclusive] is true (default), the value must be less than or equal to [max].
   /// If [inclusive] is false, the value must be strictly less than [max].
+  /// A custom [message] is translated with the locale of the request; use `(_) => 'text'` for a fixed text.
   ConstraintValidator max(
     num max, {
-    String? message,
+    LocalizedText? message,
     bool inclusive = true,
     bool stopOnFailure = false,
   }) {
@@ -227,9 +244,10 @@ extension MaxValidator on ConstraintValidator {
 
 extension PatternValidator on ConstraintValidator {
   /// Validates that the value matches the [pattern].
+  /// A custom [message] is translated with the locale of the request; use `(_) => 'text'` for a fixed text.
   ConstraintValidator pattern(
     Pattern pattern, {
-    String? message,
+    LocalizedText? message,
     bool stopOnFailure = false,
   }) {
     addLocalizedRule((value) {
@@ -263,10 +281,11 @@ extension EnumValidator on ConstraintValidator {
   /// Validates that the value matches one of the allowed enum values.
   /// By default, it matches the value against the enum's name.
   /// A custom [resolver] can be provided to change how enum values are compared (e.g., comparing against a specific property).
+  /// A custom [message] is translated with the locale of the request; use `(_) => 'text'` for a fixed text.
   ConstraintValidator isEnum<T extends Enum>(
     Iterable<T> values, {
     Object? Function(T)? resolver,
-    String? message,
+    LocalizedText? message,
     bool stopOnFailure = false,
   }) {
     addLocalizedRule((value) {
