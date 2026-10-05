@@ -70,50 +70,44 @@ void main() {
   });
 
   group('FilterChain Exception Handling Tests', () {
-    test(
-      'Exception thrown by the handler is converted before reaching the outer filters',
-      () async {
-        final seenStatus = <int>[];
-        final chain = FilterChain(
-          [StatusRecordingFilter(seenStatus)],
-          (request) => throw NotFoundException(),
-          exceptionHandler: SimpleExceptionHandler(),
-        );
+    test('Exception thrown by the handler is converted before reaching the outer filters', () async {
+      final seenStatus = <int>[];
+      final chain = FilterChain(
+        [StatusRecordingFilter(seenStatus)],
+        (request) => throw NotFoundException(),
+        exceptionHandler: SimpleExceptionHandler(),
+      );
 
-        final request = RequestEntity('GET', Uri.parse('http://localhost/'));
-        final response = await chain.doFilter(request);
+      final request = RequestEntity('GET', Uri.parse('http://localhost/'));
+      final response = await chain.doFilter(request);
 
-        expect(response.statusCode, 404);
-        expect(seenStatus, equals([404]));
-      },
-    );
+      expect(response.statusCode, 404);
+      expect(seenStatus, equals([404]));
+    });
 
-    test(
-      'Exception thrown by a filter is converted before reaching the outer filters',
-      () async {
-        final log = <String>[];
-        final seenStatus = <int>[];
-        final chain = FilterChain(
-          [
-            StatusRecordingFilter(seenStatus, order: 1),
-            ThrowingFilter(order: 2),
-            LoggingFilter('after-throwing', log, order: 3),
-          ],
-          (request) {
-            log.add('handler');
-            return ResponseEntity.ok();
-          },
-          exceptionHandler: SimpleExceptionHandler(),
-        );
+    test('Exception thrown by a filter is converted before reaching the outer filters', () async {
+      final log = <String>[];
+      final seenStatus = <int>[];
+      final chain = FilterChain(
+        [
+          StatusRecordingFilter(seenStatus, order: 1),
+          ThrowingFilter(order: 2),
+          LoggingFilter('after-throwing', log, order: 3),
+        ],
+        (request) {
+          log.add('handler');
+          return ResponseEntity.ok();
+        },
+        exceptionHandler: SimpleExceptionHandler(),
+      );
 
-        final request = RequestEntity('GET', Uri.parse('http://localhost/'));
-        final response = await chain.doFilter(request);
+      final request = RequestEntity('GET', Uri.parse('http://localhost/'));
+      final response = await chain.doFilter(request);
 
-        expect(response.statusCode, 401);
-        expect(seenStatus, equals([401]));
-        expect(log, isEmpty);
-      },
-    );
+      expect(response.statusCode, 401);
+      expect(seenStatus, equals([401]));
+      expect(log, isEmpty);
+    });
 
     test('Without exception handler the exception is propagated', () async {
       final seenStatus = <int>[];
