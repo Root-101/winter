@@ -115,9 +115,12 @@ void main() {
       });
     });
 
-    test('A custom message is the same in every language', () {
+    test('A fixed custom message is the same in every language', () {
       final cvc = ConstraintValidatorContext();
-      cvc.buildValidator('name').notNull(message: 'Required').validate(null);
+      cvc
+          .buildValidator('name')
+          .notNull(message: (_) => 'Required')
+          .validate(null);
       expect(cvc.violations.single.messageFor(spanish), 'Required');
     });
 

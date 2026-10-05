@@ -21,7 +21,10 @@ void main() {
 
       test('Failure when value is null with custom message', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').notNull(message: 'Required').validate(null);
+        cvc
+            .buildValidator('test')
+            .notNull(message: (_) => 'Required')
+            .validate(null);
         expect(cvc.violations.first.message, equals('Required'));
       });
 
@@ -68,7 +71,10 @@ void main() {
 
       test('Failure with custom message', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').notBlank(message: 'Blank').validate('');
+        cvc
+            .buildValidator('test')
+            .notBlank(message: (_) => 'Blank')
+            .validate('');
         expect(cvc.violations.first.message, equals('Blank'));
       });
 

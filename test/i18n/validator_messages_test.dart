@@ -231,16 +231,20 @@ void main() {
     }
   });
 
-  group('A custom message is used as is in every locale', () {
+  group('A custom message is translated with the locale', () {
+    /// Like an app adapting its own slang messages to a [LocalizedText]
+    String custom(WinterLocale locale) =>
+        locale.languageCode == 'es' ? 'Personalizado' : 'Custom';
+
     final List<(String, void Function(ConstraintValidator), Object?)> rules = [
-      ('notNull', (v) => v.notNull(message: 'Custom'), null),
-      ('notBlank', (v) => v.notBlank(message: 'Custom'), ''),
-      ('size', (v) => v.size(min: 3, message: 'Custom'), 'ab'),
-      ('email', (v) => v.email(message: 'Custom'), 'x'),
-      ('min', (v) => v.min(3, message: 'Custom'), 1),
-      ('max', (v) => v.max(0, message: 'Custom'), 1),
-      ('pattern', (v) => v.pattern(r'^\d+$', message: 'Custom'), 'x'),
-      ('isEnum', (v) => v.isEnum(_Color.values, message: 'Custom'), 'x'),
+      ('notNull', (v) => v.notNull(message: custom), null),
+      ('notBlank', (v) => v.notBlank(message: custom), ''),
+      ('size', (v) => v.size(min: 3, message: custom), 'ab'),
+      ('email', (v) => v.email(message: custom), 'x'),
+      ('min', (v) => v.min(3, message: custom), 1),
+      ('max', (v) => v.max(0, message: custom), 1),
+      ('pattern', (v) => v.pattern(r'^\d+$', message: custom), 'x'),
+      ('isEnum', (v) => v.isEnum(_Color.values, message: custom), 'x'),
     ];
 
     for (final (name, rule, value) in rules) {
@@ -251,10 +255,64 @@ void main() {
         validator.validate(value);
         final violation = cvc.violations.single;
 
+        ///The English text is kept in `message` (logs, toString)
         expect(violation.message, 'Custom');
-        expect(violation.messageFor(spanish), 'Custom');
+        expect(violation.messageFor(english), 'Custom');
+        expect(violation.messageFor(spanish), 'Personalizado');
       });
     }
+
+    test('A fixed text (_) => ... is the same in every locale', () {
+      final cvc = ConstraintValidatorContext();
+      cvc
+          .buildValidator('field')
+          .notNull(message: (_) => 'Fixed')
+          .validate(null);
+      expect(cvc.violations.single.message, 'Fixed');
+      expect(cvc.violations.single.messageFor(spanish), 'Fixed');
+    });
+
+    test('422: the custom message uses the language of the request', () async {
+      final previous = Winter.context.localeConfig;
+      Winter.context.setUp(
+        localeConfig: LocaleConfig(supported: [english, spanish]),
+      );
+      addTearDown(() => Winter.context.setUp(localeConfig: previous));
+
+      final client = WinterTestClient.build(
+        router: WinterRouter(
+          routes: [
+            Route.post(
+              path: '/validate',
+              handler: (request) {
+                final cvc = ConstraintValidatorContext();
+                cvc
+                    .buildValidator('prefix')
+                    .notNull(message: custom)
+                    .validate(null);
+                cvc.throwOnFailure();
+                return ResponseEntity.ok();
+              },
+            ),
+          ],
+        ),
+      );
+
+      Future<String> message(String? acceptLanguage) async {
+        final response = await client.post(
+          '/validate',
+          headers: {HttpHeader.acceptLanguage: ?acceptLanguage},
+        );
+        expect(response.statusCode, 422);
+        expect(response.headers[HttpHeader.vary], HttpHeader.acceptLanguage);
+        final violation =
+            (jsonDecode(response.body) as List).single as Map<String, dynamic>;
+        return violation['message'] as String;
+      }
+
+      expect(await message(null), 'Custom');
+      expect(await message('es-MX'), 'Personalizado');
+    });
   });
 
   group('422 with every validator', () {

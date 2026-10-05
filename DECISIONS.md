@@ -54,11 +54,33 @@ validator, a service) does not know the request. Storing a function from locale 
 exception handler, which does know it, pick the language. It also lets an app (e.g. feather-io)
 use its own slang-generated classes in `addLocalizedRule` without Winter knowing them.
 
+**The custom message of a validator is a `LocalizedText`.** `notNull(message: ...)`, `size(...)` and
+the other built-in validators take `LocalizedText? message`, not `String? message`:
+
+```dart
+cvc.buildValidator('prefix')
+    .notNull(message: localized((m) => m.errors.validations.prefixRequired))
+    .validate(prefix);
+```
+
+- *Why not a `String`*: a plain String is the same in every language, so an app that wants its own
+  translated text had to rewrite the whole rule with `addLocalizedRule`. With a `LocalizedText` it
+  keeps the built-in rule and only changes the text, resolved with `request.locale` like Winter's.
+- A fixed text is still possible: `message: (_) => 'text'`.
+- `ConstrainViolation.message` keeps the English text (the function called with `en`).
+- *Why not generic over the app's messages class* (e.g. `notNull<AppMessages>(message: (m) => ...)`):
+  Winter cannot know the class slang generates in the app, and a type parameter for it would spread
+  through `ConstraintValidator`, the violations and the exception handler. Instead each app writes a
+  small adapter from its own messages to a `LocalizedText`, like feather-io's
+  `localized((m) => ...)`, which builds the app's slang instance for the `WinterLocale`.
+- It was a breaking change (`message: 'x'` no longer compiles), accepted because the i18n API had no
+  external users yet.
+
 **Compatibility.**
 
 - `ConstrainViolation.message` is still always in **English**: it is what logs and `toString` show.
   The translation is in the extra field `localizedMessage`.
-- `addRule` and a custom `message:` keep a fixed text, the same in every language.
+- `addRule` and `custom()` keep a fixed text, the same in every language.
 - `LocaleConfig` lives in the `BuildContext` (not in `ServerConfig`) so `WinterTestClient` and
   `buildHandler` see it without starting a server. By default it only supports English, so an
   existing app does not start answering in Spanish until it opts in.
