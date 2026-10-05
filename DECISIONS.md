@@ -14,8 +14,9 @@ decision changes, update it here.
   (`'winter.context.locale'`), the same pattern as `request.securityContext`.
 - The texts live in `lib/src/i18n/en.i18n.yaml` and `es.i18n.yaml`; `fvm dart run slang` generates
   `messages*.g.dart` (config in `slang.yaml`), which is versioned.
-- A validator stores a `LocalizedText` (`String Function(WinterLocale)`), and `SimpleExceptionHandler`
-  resolves it with `request.locale` when it builds the 422, adding `Vary: Accept-Language`.
+- A validator builds its text with `requestLocale` (the locale of the request in progress, see
+  below), and `SimpleExceptionHandler` adds `Vary: Accept-Language` to the 422 when the app answers
+  in more than one language.
 
 **Why `slang`.**
 
@@ -49,38 +50,44 @@ decision changes, update it here.
   With few messages it is better to fail early than to answer half in English.
 - slang always generates **named** parameters (`max(value: 5)`, never `max(5)`).
 
-**Why messages are resolved when responding, not when throwing.** Whoever throws the error (a
-validator, a service) does not know the request. Storing a function from locale to text lets the
-exception handler, which does know it, pick the language. It also lets an app (e.g. feather-io)
-use its own slang-generated classes in `addLocalizedRule` without Winter knowing them.
-
-**The custom message of a validator is a `LocalizedText`.** `notNull(message: ...)`, `size(...)` and
-the other built-in validators take `LocalizedText? message`, not `String? message`:
+**Why messages are resolved when they are created, with the locale of the request.** Every request
+runs in its own `Zone` with a `RequestScope` (`lib/src/request_scope.dart`), so any code reads the
+language with `requestLocale` without receiving the request, and concurrent requests never mix. A
+validator (or a service) builds the final text right away, in the language of the request, and the
+exception handler only serializes it. An app uses its own slang-generated classes the same way:
 
 ```dart
+AppMessages get t => appMessages(requestLocale); // a getter, never a `final`
+
 cvc.buildValidator('prefix')
-    .notNull(message: localized((m) => m.errors.validations.prefixRequired))
+    .notNull(message: t.errors.validations.prefixRequired)
     .validate(prefix);
+throw ApiException(StatusCode.unauthorized, t.errors.signature.invalid);
 ```
 
-- *Why not a `String`*: a plain String is the same in every language, so an app that wants its own
-  translated text had to rewrite the whole rule with `addLocalizedRule`. With a `LocalizedText` it
-  keeps the built-in rule and only changes the text, resolved with `request.locale` like Winter's.
-- A fixed text is still possible: `message: (_) => 'text'`.
-- `ConstrainViolation.message` keeps the English text (the function called with `en`).
-- *Why not generic over the app's messages class* (e.g. `notNull<AppMessages>(message: (m) => ...)`):
-  Winter cannot know the class slang generates in the app, and a type parameter for it would spread
-  through `ConstraintValidator`, the violations and the exception handler. Instead each app writes a
-  small adapter from its own messages to a `LocalizedText`, like feather-io's
-  `localized((m) => ...)`, which builds the app's slang instance for the `WinterLocale`.
-- It was a breaking change (`message: 'x'` no longer compiles), accepted because the i18n API had no
-  external users yet.
+- *Before*: a validator stored a `LocalizedText` (`String Function(WinterLocale)`) and the exception
+  handler resolved it with `request.locale`, because whoever threw the error did not know the
+  request. It forced every custom text to be a function (`message: (_) => 'text'`,
+  `localized((m) => ...)`) and the violations to carry `localizedMessage`. With the scope the
+  language is known everywhere, so the functions are gone: `message` is a plain `String?`.
+- *Why not generic over the app's messages class*: Winter cannot know the class slang generates in
+  the app. The app writes a one-line getter over `requestLocale` instead.
+- It was a breaking change (`LocalizedText`, `addLocalizedRule`, `localizedMessage`, `messageFor`
+  and `localize` were removed), accepted because the i18n API had no external users yet.
+
+**Caveats.**
+
+- The text is resolved when it is **evaluated**: `message: t.x` while building the validator. Build
+  validators inside `validate()` (once per call, as usual), not in a `static final`, or the text
+  stays in the language of whoever built it first. For the same reason the app's `t` is a getter.
+- Outside a request (start-up, a global `Timer`, a unit test) `requestLocale` is
+  `localeConfig.fallback`. Tests give a language with `RequestScope.run(RequestScope(locale: ...))`.
 
 **Compatibility.**
 
-- `ConstrainViolation.message` is still always in **English**: it is what logs and `toString` show.
-  The translation is in the extra field `localizedMessage`.
-- `addRule` and `custom()` keep a fixed text, the same in every language.
+- `ConstrainViolation.message` is in the **language of the request**, also in logs and `toString`
+  (before it was always English).
+- `addRule` and `custom()` receive whatever text the rule returns; translate it with `requestLocale`.
 - `LocaleConfig` lives in the `BuildContext` (not in `ServerConfig`) so `WinterTestClient` and
   `buildHandler` see it without starting a server. By default it only supports English, so an
   existing app does not start answering in Spanish until it opts in.
@@ -90,9 +97,10 @@ cvc.buildValidator('prefix')
 - `size` uses the same text for Strings (length) and Iterables (items): "The minimum is 3", the
   same as `min()`.
 - The texts do not include the field name; it is already in `fieldName` of the response.
-- A custom `message:` in `notNull`/`size` also adds `Vary: Accept-Language` although the text does
-  not change (harmless, it only lowers the cache hit rate).
+- Every 422 adds `Vary: Accept-Language` when `localeConfig.supported` has more than one language,
+  even if its texts are fixed (harmless, it only lowers the cache hit rate). Other responses that an
+  app translates with `requestLocale` must add it themselves.
 - What is **not** translated, on purpose: the default bodies of the HTTP errors (`Bad Request`,
   `Not Found`...) are the standard reason phrases, like the error codes; the messages of
   `DeserializationException` (400) and similar are technical, for the developer of the client.
-- `custom()` and `addRule` validators keep their fixed text: use `addLocalizedRule` to translate them.
+- `custom()` and `addRule` validators are not translated by Winter: their rule returns the text.

@@ -144,6 +144,87 @@ void main() {
     },
   );
 
+  test(
+    'Concurrent validations answer each 422 in the language of its request',
+    () async {
+      const List<String> languages = ['en', 'es', 'fr'];
+      const int requests = 30;
+      int arrived = 0;
+      final gate = Completer<void>();
+
+      final client = WinterTestClient.build(
+        router: ServeRouter((request) async {
+          ///Every request validates after all of them are in progress
+          if (++arrived == requests) gate.complete();
+          await gate.future;
+
+          final cvc = ConstraintValidatorContext();
+          cvc.buildValidator('name').notNull().validate(null);
+          cvc.throwOnFailure();
+          return ResponseEntity.ok();
+        }),
+      );
+
+      final responses = await Future.wait([
+        for (int i = 0; i < requests; i++)
+          client.get(
+            '/',
+            headers: {'Accept-Language': languages[i % languages.length]},
+          ),
+      ]);
+
+      ///French has no translations in Winter: English
+      const Map<String, String> expected = {
+        'en': 'The field cannot be null',
+        'es': 'El campo no puede ser null',
+        'fr': 'The field cannot be null',
+      };
+      for (int i = 0; i < requests; i++) {
+        expect(responses[i].statusCode, 422);
+        expect(
+          responses[i].headers[HttpHeader.vary],
+          HttpHeader.acceptLanguage,
+        );
+        final violation =
+            (responses[i].json as List).single as Map<String, dynamic>;
+        expect(violation['message'], expected[languages[i % languages.length]]);
+      }
+    },
+  );
+
+  test('custom() can translate its text with requestLocale', () async {
+    final client = WinterTestClient.build(
+      router: ServeRouter((request) {
+        final cvc = ConstraintValidatorContext();
+        cvc
+            .buildValidator('code')
+            .custom(
+              (value) => value == 'ok'
+                  ? null
+                  : (requestLocale == spanish
+                        ? 'Código inválido'
+                        : 'Invalid code'),
+            )
+            .validate(request.url.queryParameters['code']);
+        cvc.throwOnFailure();
+        return ResponseEntity.ok();
+      }),
+    );
+
+    Future<String> message(String language) async {
+      final response = await client.get(
+        '/?code=x',
+        headers: {'Accept-Language': language},
+      );
+      return ((response.json as List).single as Map<String, dynamic>)['message']
+          as String;
+    }
+
+    expect(await message('es'), 'Código inválido');
+    expect(await message('en'), 'Invalid code');
+    expect((await client.get('/?code=ok')).statusCode, 200);
+  });
+
   test('RequestScope.run gives a locale to code outside the server', () async {
     final String language = await RequestScope.run(
       RequestScope(
