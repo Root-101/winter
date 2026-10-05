@@ -44,11 +44,19 @@ class Winter {
 
   final HttpServer _rawServer;
 
+  ///Requests being handled right now, to wait for them on a graceful close
+  final _InFlightRequests _inFlightRequests;
+
   ///Restore the dependencies registered by [start] to its previous state
   final void Function() _restoreDependencies;
 
   ///When was this server started
   final DateTime timestamp;
+
+  ///Subscriptions to SIGINT/SIGTERM (see [ServerConfig.handleSignals])
+  List<StreamSubscription<ProcessSignal>> _signalSubscriptions = [];
+
+  bool _shuttingDown = false;
 
   Winter._({
     required this.serverContext,
@@ -57,6 +65,7 @@ class Winter {
     required this.globalFilterConfig,
     required this.securityConfig,
     required this._rawServer,
+    required this._inFlightRequests,
     required this._restoreDependencies,
   }) : timestamp = DateTime.now();
 
@@ -121,26 +130,21 @@ class Winter {
       _putRestorable<SecurityConfig>(injection, nonNullSecurityConfig),
     );
 
-    List<Filter> filters = [];
+    FilterConfig nonNullGlobalFilterConfig = _globalFilters(
+      nonNullSecurityConfig,
+      globalFilterConfig,
+    );
 
-    // Check for CORS configuration in SecurityConfig
-    final corsConfig = nonNullSecurityConfig.cors();
-    if (corsConfig != null) {
-      filters.insert(0, CorsFilter(config: corsConfig));
-    }
-
-    filters.addAll(globalFilterConfig?.filters ?? []);
-
-    FilterConfig nonNullGlobalFilterConfig = FilterConfig(filters);
-
+    final _InFlightRequests inFlightRequests = _InFlightRequests();
     final HttpServer rawServer;
     try {
       rawServer = await shelf_io.serve(
         poweredByHeader: 'Winter-Server',
-        (request) => _handleRunRequest(
+        _buildHandler(
           router: nonNullRouter,
           globalFilterConfig: nonNullGlobalFilterConfig,
-          request: request,
+          maxBodySize: nonNullConfig.maxBodySize,
+          inFlightRequests: inFlightRequests,
         ),
         shared: shared,
         nonNullConfig.ip,
@@ -152,6 +156,11 @@ class Winter {
       rethrow;
     }
 
+    ///dart:io adds `Content-Type: text/plain` to every response without one
+    ///(ex: a 204, or a 401/404 without body): a response without body has no type.
+    ///The other default headers (X-Frame-Options, X-Content-Type-Options...) are kept.
+    rawServer.defaultResponseHeaders.removeAll(HttpHeaders.contentTypeHeader);
+
     Winter nextRunningServer = Winter._(
       serverContext: _context,
       config: nonNullConfig,
@@ -159,46 +168,187 @@ class Winter {
       globalFilterConfig: nonNullGlobalFilterConfig,
       securityConfig: nonNullSecurityConfig,
       rawServer: rawServer,
+      inFlightRequests: inFlightRequests,
       restoreDependencies: restoreDependencies,
     );
 
     _server = nextRunningServer;
 
+    if (nonNullConfig.handleSignals) {
+      nextRunningServer._signalSubscriptions = _watchShutdownSignals();
+    }
+
     final endTime = DateTime.now();
     double timeDiff = endTime.difference(startTime).inMilliseconds / 1000;
-    stdout.writeln('Server started on port ${rawServer.port} ($timeDiff sec)');
+    logger.info('Server started on port ${rawServer.port} ($timeDiff sec)');
 
     return nextRunningServer;
   }
 
+  ///Close the server.
+  ///
+  ///If [force] is false, the server stops accepting connections and waits for the
+  ///requests in progress. With a [timeout], the remaining connections are closed after it.
   static Future close({
     bool force = false,
+    Duration? timeout,
     void Function()? onNotRunning,
     @Deprecated('Use onNotRunning instead') void Function()? onAlreadyStarted,
   }) async {
     if (isRunning) {
-      await server._rawServer.close(force: force);
-      server._restoreDependencies();
-      _server = null;
+      final Winter current = server;
+
+      if (force) {
+        ///Not awaited: if the server is already closing, this future never completes
+        ///(the active connections are destroyed synchronously anyway)
+        unawaited(current._rawServer.close(force: true));
+        current._inFlightRequests.stopWaiting();
+      } else {
+        ///Stop accepting connections. It does NOT wait for the requests in progress,
+        ///that's why they are tracked by [_inFlightRequests]
+        await current._rawServer.close();
+        final Future<void> idle = current._inFlightRequests.whenIdle();
+        if (timeout == null) {
+          await idle;
+        } else {
+          await idle.timeout(
+            timeout,
+            onTimeout: () {
+              logger.warning(
+                'Closing ${current._inFlightRequests.count} request(s) still in progress after $timeout',
+              );
+              unawaited(current._rawServer.close(force: true));
+            },
+          );
+        }
+      }
+      for (final subscription in current._signalSubscriptions) {
+        await subscription.cancel();
+      }
+      current._restoreDependencies();
+      if (identical(_server, current)) {
+        _server = null;
+      }
     } else {
       final notRunningCallback = onNotRunning ?? onAlreadyStarted;
       if (notRunningCallback != null) {
         notRunningCallback();
       } else {
-        stdout.writeln('Server not running');
+        logger.info('Server not running');
       }
     }
+  }
+
+  ///Graceful shutdown, called on SIGINT/SIGTERM (see [ServerConfig.handleSignals]):
+  ///waits for the requests in progress (up to [ServerConfig.shutdownTimeout]),
+  ///then calls [ServerConfig.onShutdown].
+  ///
+  ///Calling it again while it's shutting down (ex: a second Ctrl+C) forces the close.
+  ///It never calls `exit`: once the signals are released, a new signal has its default behavior.
+  static Future<void> shutdown() async {
+    if (!isRunning) return;
+    final Winter current = server;
+
+    if (current._shuttingDown) {
+      logger.warning('Forcing the shutdown, closing the requests in progress');
+      await close(force: true);
+      return;
+    }
+    current._shuttingDown = true;
+
+    logger.info(
+      'Shutting down, waiting up to ${current.config.shutdownTimeout.inSeconds} s for the requests in progress...',
+    );
+    await close(timeout: current.config.shutdownTimeout);
+    await current.config.onShutdown?.call();
+    logger.info('Server stopped');
+  }
+
+  static List<StreamSubscription<ProcessSignal>> _watchShutdownSignals() {
+    final List<StreamSubscription<ProcessSignal>> subscriptions = [];
+    for (final signal in [
+      ProcessSignal.sigint,
+      if (!Platform.isWindows) ProcessSignal.sigterm,
+    ]) {
+      try {
+        subscriptions.add(signal.watch().listen((_) => shutdown()));
+      } on SignalException {
+        ///Not supported in this platform
+      }
+    }
+    return subscriptions;
+  }
+
+  /// The full request pipeline of a server (CORS, filters, routing, exception handler,
+  /// body size limit...) as a shelf [Handler], without opening any port.
+  ///
+  /// [start] uses it, and tests can call it directly (see `WinterTestClient`):
+  /// it's the same code that handles the requests of a real server.
+  static Handler buildHandler({
+    required AbstractWinterRouter router,
+    FilterConfig? globalFilterConfig,
+    SecurityConfig? securityConfig,
+    int? maxBodySize = defaultMaxBodySize,
+  }) {
+    return _buildHandler(
+      router: router,
+      globalFilterConfig: _globalFilters(
+        securityConfig ?? SecurityConfig(),
+        globalFilterConfig,
+      ),
+      maxBodySize: maxBodySize,
+    );
+  }
+
+  static Handler _buildHandler({
+    required AbstractWinterRouter router,
+    required FilterConfig globalFilterConfig,
+    required int? maxBodySize,
+    _InFlightRequests? inFlightRequests,
+  }) {
+    return (request) async {
+      inFlightRequests?.start();
+      try {
+        return await _handleRunRequest(
+          router: router,
+          globalFilterConfig: globalFilterConfig,
+          maxBodySize: maxBodySize,
+          request: request,
+        );
+      } finally {
+        inFlightRequests?.end();
+      }
+    };
+  }
+
+  /// The global filters, with the [CorsFilter] first if CORS is enabled in the [SecurityConfig]
+  static FilterConfig _globalFilters(
+    SecurityConfig securityConfig,
+    FilterConfig? globalFilterConfig,
+  ) {
+    final corsConfig = securityConfig.cors();
+    return FilterConfig([
+      if (corsConfig != null) CorsFilter(config: corsConfig),
+      ...?globalFilterConfig?.filters,
+    ]);
   }
 
   static FutureOr<Response> _handleRunRequest({
     required Request request,
     required AbstractWinterRouter router,
     required FilterConfig globalFilterConfig,
+    required int? maxBodySize,
   }) async {
     RequestEntity requestEntity = RequestEntity(
       request.method,
       request.requestedUri,
-      body: request.read(),
+      body: maxBodySize == null
+          ? request.read()
+          : limitBodySize(
+              request.read(),
+              maxBytes: maxBodySize,
+              contentLength: request.contentLength,
+            ),
       context: request.context,
       encoding: request.encoding,
       handlerPath: request.handlerPath,
@@ -249,5 +399,61 @@ class Winter {
       log(requestEntity, error, stackTrace);
       return internalServerErrorResponse();
     }
+  }
+}
+
+/// Fail (with a [PayloadTooLargeException], a 413) when the body is bigger than [maxBytes].
+///
+/// The check is done while the body is read, so a request is only rejected if its body is used,
+/// and the body is never fully loaded in memory:
+/// - if the `Content-Length` header is bigger than the limit, it fails before reading anything
+/// - otherwise (ex: chunked requests) it fails as soon as the read bytes exceed the limit
+Stream<List<int>> limitBodySize(
+  Stream<List<int>> body, {
+  required int maxBytes,
+  int? contentLength,
+}) async* {
+  if (contentLength != null && contentLength > maxBytes) {
+    throw PayloadTooLargeException();
+  }
+
+  int readBytes = 0;
+  await for (final chunk in body) {
+    readBytes += chunk.length;
+    if (readBytes > maxBytes) {
+      throw PayloadTooLargeException();
+    }
+    yield chunk;
+  }
+}
+
+/// Counter of the requests being handled, to know when a server can be closed gracefully
+class _InFlightRequests {
+  int count = 0;
+  Completer<void>? _idle;
+
+  void start() => count++;
+
+  void end() {
+    count--;
+    if (count == 0) {
+      _idle?.complete();
+      _idle = null;
+    }
+  }
+
+  bool _stopped = false;
+
+  /// Stop waiting, now and in the future (the connections were forcefully closed)
+  void stopWaiting() {
+    _stopped = true;
+    _idle?.complete();
+    _idle = null;
+  }
+
+  /// Completes when there is no request in progress
+  Future<void> whenIdle() {
+    if (count == 0 || _stopped) return Future.value();
+    return (_idle ??= Completer<void>()).future;
   }
 }

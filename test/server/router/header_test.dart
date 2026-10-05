@@ -83,16 +83,13 @@ void main() {
       );
     });
 
-    test(
-      'Response with Problem JSON body has application/problem+json content-type',
-      () async {
-        http.Response response = await http.get(url('/problem'));
-        expect(
-          response.headers[HttpHeader.contentType.toLowerCase()],
-          contains(MediaType.applicationProblemJson.mimeType),
-        );
-      },
-    );
+    test('Response with Problem JSON body has application/problem+json content-type', () async {
+      http.Response response = await http.get(url('/problem'));
+      expect(
+        response.headers[HttpHeader.contentType.toLowerCase()],
+        contains(MediaType.applicationProblemJson.mimeType),
+      );
+    });
 
     test('Response with String body has text/plain content-type', () async {
       http.Response response = await http.get(url('/text'));
@@ -148,18 +145,21 @@ void main() {
       expect(response.headers[HttpHeader.contentLength.toLowerCase()], isNull);
     });
 
-    //TODO: alguien le esta agregando el content-type text/plan y no se quien es
-    /*test(
-      'Response 204 No Content has no Content-Type or Content-Length',
-      () async {
-        http.Response response = await http.get(url('/no-content'));
-        expect(response.statusCode, equals(StatusCode.noContent.value));
-        expect(response.headers[HttpHeader.contentType.toLowerCase()], isNull);
-        expect(
-          response.headers[HttpHeader.contentLength.toLowerCase()],
-          isNull,
-        );
-      },
-    );*/
+    test('Response 204 No Content has no Content-Type nor body', () async {
+      http.Response response = await http.get(url('/no-content'));
+
+      expect(response.statusCode, equals(StatusCode.noContent.value));
+      // dart:io adds a default `Content-Type: text/plain` to every response,
+      // the server removes it: a response without body has no type
+      expect(response.headers[HttpHeader.contentType.toLowerCase()], isNull);
+      expect(response.body, isEmpty);
+    });
+
+    test('Security headers of dart:io are kept', () async {
+      http.Response response = await http.get(url('/no-content'));
+
+      expect(response.headers['x-content-type-options'], 'nosniff');
+      expect(response.headers['x-frame-options'], 'SAMEORIGIN');
+    });
   });
 }
