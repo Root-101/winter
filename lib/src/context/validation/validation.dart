@@ -80,7 +80,7 @@ class ConstrainViolation implements Serializable {
   final dynamic value;
 
   ///Name of the field that failed the validation
-  ///Si forma parte de un objeto anidado o una lista o map o similar,
+  ///If it is part of a nested object, a list, a map or similar,
   ///the name will be the concatenation of every field-name from the root to the specific field
   final String fieldName;
 

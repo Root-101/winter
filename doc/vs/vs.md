@@ -384,7 +384,7 @@ List<ConstrainViolation> violations = vs.validate(address);
 List<ConstrainViolation> correctValidations = [
   ConstrainViolation(
     value: '',
-    fieldName: 'this.name', //notar que aqui en vez del default `root.` aparece `this.`
+    fieldName: 'this.name', //note that here `this.` appears instead of the default `root.`
     message: 'Text can\'t be empty',
   ),
 ];
@@ -418,7 +418,7 @@ List<ConstrainViolation> violations = vs.validate(address);
 List<ConstrainViolation> correctValidations = [
   ConstrainViolation(
     value: '',
-    fieldName: 'this -> name', //notar que aqui en vez del default `.` aparece ` -> `
+    fieldName: 'this -> name', //note that here ` -> ` appears instead of the default `.`
     message: 'Text can\'t be empty',
   ),
 ];
