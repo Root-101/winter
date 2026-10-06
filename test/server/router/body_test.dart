@@ -163,7 +163,7 @@ void main() {
 
     expect(response.statusCode, 200);
 
-    UserResponse responseBody = om.deserialize(response.body);
+    UserResponse responseBody = om.decode(response.body);
     expect(responseBody.username, 'test');
     expect(
       responseBody.createdAt?.toIso8601String(),
@@ -210,7 +210,7 @@ void main() {
 
     expect(response.statusCode, 200);
 
-    int responseBody = om.deserialize(response.body);
+    int responseBody = om.decode(response.body);
     expect(responseBody, 25);
   });
 
@@ -224,7 +224,7 @@ void main() {
 
     expect(response.statusCode, 200);
 
-    List<int> responseBody = om.deserialize(response.body);
+    List<int> responseBody = om.decode(response.body);
     expect(responseBody, [25, 36, 49]);
   });
 
@@ -250,15 +250,14 @@ void main() {
 
     http.Response response = await http.post(
       url(urlToTest),
-      body: now.toIso8601String(),
+      body: jsonEncode(now.toIso8601String()),
     );
 
     expect(response.statusCode, 200);
-    // Use ISO string comparison to avoid precision issues if any
-    expect(
-      DateTime.parse(jsonDecode(response.body) as String).toIso8601String(),
-      now.toIso8601String(),
-    );
+    // DateTime is always serialized in UTC
+    final String echoed = jsonDecode(response.body) as String;
+    expect(echoed, endsWith('Z'));
+    expect(DateTime.parse(echoed).isAtSameMomentAs(now), isTrue);
   });
 
   test('Send and receive Serializable body', () async {
@@ -313,10 +312,8 @@ void main() {
   });
 }
 
-class UserRequest implements Serializable {
+class UserRequest {
   String? email;
-
-  @override
   Object? toJson() {
     return {'email': email};
   }
@@ -324,24 +321,20 @@ class UserRequest implements Serializable {
   UserRequest({required this.email});
 }
 
-class UserResponse implements Serializable {
+class UserResponse {
   String? username;
   DateTime? createdAt;
 
   UserResponse.build({required this.username, required this.createdAt});
-
-  @override
   Object? toJson() {
     return {'username': username, 'createdAt': createdAt?.toIso8601String()};
   }
 }
 
-class SerializableUser implements Serializable {
+class SerializableUser {
   final String name;
 
   SerializableUser({required this.name});
-
-  @override
   Object? toJson() => {'name': name};
 }
 

@@ -113,13 +113,39 @@ class RequestEntity extends Request {
       _rawBody ??= readAsString(encoding)
           .then((value) => _rawBodyValue = value);
 
-  /// Get the body of the request, it's get parsed with the ObjectMapper in the process
+  /// Get the body of the request, decoded as JSON with the ObjectMapper ([ObjectMapper.decode]).
+  ///
+  /// - The `Content-Type` must be JSON (`application/json` or `*/*+json`), `text/plain` or none:
+  ///   any other is a 415 ([UnsupportedMediaTypeException]). `text/plain` is accepted because
+  ///   `package:http` and `fetch()` send it for a String body when no header is given.
+  /// - `body<String>()` decodes a JSON string (`"hello"` → `hello`) when the `Content-Type` is
+  ///   JSON, and returns the text as it is otherwise.
+  ///
   /// The raw body is cached, so this method can be called multiple times (even with different types)
   /// Note: after calling it, [read] & [readAsString] can't be used (the stream is already consumed)
   Future<T> body<T>({ObjectMapper? om}) async {
-    String rawString = await _readRawBody();
-    return (om ?? Winter.context.objectMapper).deserialize<T>(rawString);
+    final String raw = await _readRawBody();
+    final bool json = _isJson(mimeType);
+    if (T == String || T == _typeOf<String?>()) {
+      return json
+          ? (om ?? Winter.context.objectMapper).decode<T>(raw)
+          : raw as T;
+    }
+    if (mimeType != null && !json && mimeType != MediaType.textPlain.mimeType) {
+      throw UnsupportedMediaTypeException(
+        body:
+            'Unsupported Content-Type $mimeType, '
+            'expected ${MediaType.applicationJson.mimeType}',
+      );
+    }
+    return (om ?? Winter.context.objectMapper).decode<T>(raw);
   }
+
+  static bool _isJson(String? mimeType) =>
+      mimeType == MediaType.applicationJson.mimeType ||
+      (mimeType != null && mimeType.endsWith('+json'));
+
+  static Type _typeOf<X>() => X;
 
   ///The copy with needs to be async because if the body is not passed,
   ///we need to read the body from the request

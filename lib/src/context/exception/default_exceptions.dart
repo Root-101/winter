@@ -77,6 +77,14 @@ class PayloadTooLargeException extends ApiException {
     : super(body: body ?? status.reasonPhrase, statusCode: status.value);
 }
 
+/// exception for 415: the body is not in a format the endpoint understands
+class UnsupportedMediaTypeException extends ApiException {
+  static final StatusCode status = StatusCode.unsupportedMediaType;
+
+  UnsupportedMediaTypeException({Object? body, super.headers})
+    : super(body: body ?? status.reasonPhrase, statusCode: status.value);
+}
+
 /// exception for 500
 class InternalServerErrorException extends ApiException {
   static final StatusCode status = StatusCode.internalServerError;

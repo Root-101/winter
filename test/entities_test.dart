@@ -291,9 +291,7 @@ void main() {
   });
 }
 
-class _CountingBody implements Serializable {
+class _CountingBody {
   int calls = 0;
-
-  @override
   Object? toJson() => {'calls': ++calls};
 }

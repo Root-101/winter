@@ -4,10 +4,8 @@ import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 /// Counts how many times it's serialized
-class _CountingBody implements Serializable {
+class _CountingBody {
   int calls = 0;
-
-  @override
   Object? toJson() => {'calls': ++calls};
 }
 

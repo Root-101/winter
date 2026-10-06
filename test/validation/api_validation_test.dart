@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
-class LoginRequest implements Validatable, Serializable {
+class LoginRequest implements Validatable {
   final String? email;
   final String? password;
 
@@ -18,7 +18,6 @@ class LoginRequest implements Validatable, Serializable {
     return cvc;
   }
 
-  @override
   Object? toJson() => {'email': email, 'password': password};
 }
 

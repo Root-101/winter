@@ -47,8 +47,7 @@ class ResponseEntity<T> extends Response {
   static Object? _resolveBody(Object? body, ObjectMapper? objectMapper) {
     if (body == null || body is String || body is Stream) return body;
 
-    final mapper = objectMapper ?? Winter.context.objectMapper;
-    return jsonEncode(mapper.serialize(body));
+    return (objectMapper ?? Winter.context.objectMapper).encode(body);
   }
 
   /// Content-Type of a value given to the constructor: a String is text, a Stream is binary,

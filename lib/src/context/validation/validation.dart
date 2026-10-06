@@ -75,7 +75,7 @@ class ConstraintValidatorContext {
 }
 
 /// Class that represent a fail validation
-class ConstrainViolation implements Serializable {
+class ConstrainViolation {
   ///Value that failed the validation
   final dynamic value;
 
@@ -111,7 +111,6 @@ class ConstrainViolation implements Serializable {
     );
   }
 
-  @override
   Object? toJson() {
     return {
       if (!sensitive) 'value': value,
