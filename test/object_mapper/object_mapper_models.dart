@@ -1,5 +1,3 @@
-import 'package:winter/winter.dart';
-
 class Tool {
   String? name;
 
@@ -51,12 +49,10 @@ class Worker {
   int get hashCode => name.hashCode;
 }
 
-class Gadget implements Serializable {
+class Gadget {
   final String id;
 
   Gadget({required this.id});
-
-  @override
   Map<String, dynamic> toJson() => {'id': id};
 
   factory Gadget.fromJson(Map<String, dynamic> json) =>
@@ -71,13 +67,11 @@ class Gadget implements Serializable {
   int get hashCode => id.hashCode;
 }
 
-class Workshop implements Serializable {
+class Workshop {
   final String name;
   final List<Gadget> gadgets;
 
   Workshop({required this.name, required this.gadgets});
-
-  @override
   Map<String, dynamic> toJson() => {'name': name, 'gadgets': gadgets};
 
   @override

@@ -1,6 +1,4 @@
-import 'package:winter/winter.dart';
-
-class User implements Serializable {
+class User {
   final int id;
   final String name;
   final String email;
@@ -18,8 +16,6 @@ class User implements Serializable {
     this.roles = const {},
     this.permissions = const {},
   });
-
-  @override
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,

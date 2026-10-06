@@ -3,12 +3,10 @@ import 'dart:async';
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
-class _Item implements Serializable {
+class _Item {
   final String name;
 
   _Item(this.name);
-
-  @override
   Object? toJson() => {'name': name};
 }
 

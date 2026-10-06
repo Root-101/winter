@@ -46,7 +46,7 @@ class WinterTestClient {
     final Map<String, String> requestHeaders = {...?headers};
     Object? requestBody = body;
     if (body != null && body is! String && body is! List<int>) {
-      requestBody = jsonEncode(om.serialize(body));
+      requestBody = om.encode(body);
       requestHeaders.putIfAbsent(
         HttpHeader.contentType,
         () => MediaType.applicationJson.mimeType,

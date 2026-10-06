@@ -101,8 +101,7 @@ void main() {
 
 enum _Status { paid }
 
-class _Order implements Serializable {
-  @override
+class _Order {
   Object? toJson() => {
     'at': DateTime.utc(2026),
     'status': _Status.paid,
