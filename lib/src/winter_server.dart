@@ -116,8 +116,13 @@ class Winter {
         config ?? injection.tryFind<ServerConfig>() ?? ServerConfig();
     restores.add(_putRestorable<ServerConfig>(injection, nonNullConfig));
 
+    ///Found with the same type it's registered with (any router, ex: a MultiRouter),
+    ///or as a WinterRouter (`di.put(WinterRouter(...))` infers that type)
     AbstractWinterRouter nonNullRouter =
-        router ?? injection.tryFind<WinterRouter>() ?? WinterRouter();
+        router ??
+        injection.tryFind<AbstractWinterRouter>() ??
+        injection.tryFind<WinterRouter>() ??
+        WinterRouter();
     restores.add(
       _putRestorable<AbstractWinterRouter>(injection, nonNullRouter),
     );
