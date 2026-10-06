@@ -18,6 +18,9 @@
     * **Request scope** :link: : Each request runs in its own `Zone`: `requestAuthentication`, `requestSecurityContext` and `requestLocale` work from any code without receiving the request (`RequestScope`). The texts are resolved with `requestLocale` when they are created: `LocalizedText`, `addLocalizedRule` and `ConstrainViolation.localizedMessage` were removed, and the custom `message` of the built-in validators is a `String`. Reading the language (`requestLocale`, `request.locale`) adds `Vary: Accept-Language` to the response automatically.
     * **Logging** :memo: : Every log goes through `WinterLogger` (`logger`, default `ConsoleLogger` with levels), replaceable in the `BuildContext`.
     * **Request** :inbox_tray: : `body<T>()` can be called many times. `change()` is implemented for `RequestEntity` & `ResponseEntity` (shelf middlewares).
+    * **Response** :outbox_tray: : Fix: `CorsFilter` & `RateLimiterFilter` lost a body set with `change()` (or sent its bytes as JSON), and serialized the body again. `copyWith()` without a new body keeps the resolved body, a response without body gets no `Content-Type`, and CORS merges its `Vary: Origin` with the one of the response.
+    * **Request** :inbox_tray: : `queryParamsAll` with every value of a repeated query param (`?tag=a&tag=b`).
+    * **Server** :rocket: : Fix: `Winter.start` uses any router registered in DI as `AbstractWinterRouter` (ex: a `MultiRouter`), not only a `WinterRouter`.
     * **Object Mapper** :card_file_box: : `Map` deserialization, `Deserializer<T>.json(fromJson)`, recursive serialization of `toJson()` results, enums, `Set` & non String map keys.
     * **Dependency Injection** :syringe: : Every instance has its own dependencies, `Winter.close()` restores the ones registered by `Winter.start()`.
     * **Rate Limiter** :stopwatch: : Inactive ids are purged automatically, `X-RateLimit-Reset` is the time until a new slot.

@@ -54,9 +54,7 @@ class RateLimiterFilter extends Filter {
       final response = await chain.doFilter(request);
 
       // Add headers to the successful response
-      return response.copyWith(
-        headers: {...response.headers, ...rateLimitHeaders},
-      );
+      return response.change(headers: rateLimitHeaders);
     } else {
       log?.call(request, requestId);
 
