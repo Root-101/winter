@@ -168,6 +168,72 @@ void main() {
       expect(copy.headers['x-res'], equals('val'));
       expect(copy.context['modified'], isTrue);
     });
+
+    test(
+      'keeps a body set with change (bytes are never serialized as JSON)',
+      () async {
+        final typed = ResponseEntity<String>.ok(body: 'old')
+            .change(body: [104, 105]);
+        final dynamicBody = ResponseEntity<dynamic>(
+          200,
+          body: 'old',
+        ).change(body: [104, 105]);
+
+        expect(await typed.copyWith(statusCode: 201).readAsString(), 'hi');
+        expect(
+          await dynamicBody.copyWith(statusCode: 201).readAsString(),
+          'hi',
+        );
+      },
+    );
+
+    test('does not serialize the body again', () async {
+      final counter = _CountingBody();
+      final copy = ResponseEntity.ok(body: counter).copyWith(statusCode: 201);
+
+      expect(counter.calls, 1);
+      expect(await copy.readAsString(), '{"calls":1}');
+      expect(copy.statusCode, 201);
+      expect(copy.body(), same(counter));
+    });
+
+    test('a response without body gets no Content-Type', () {
+      final copy = ResponseEntity<String>.unauthorized().copyWith(
+        statusCode: 403,
+      );
+      final changed = ResponseEntity<String>.unauthorized().change(
+        headers: {'x': '1'},
+      );
+
+      expect(copy.headers.containsKey(HttpHeader.contentType), isFalse);
+      expect(changed.headers.containsKey(HttpHeader.contentType), isFalse);
+      expect(changed.headers['x'], '1');
+    });
+  });
+
+  group('ResponseEntity change', () {
+    test('the Content-Type of a new body is the one of the raw value', () {
+      expect(
+        ResponseEntity<int>(
+          200,
+          body: 1,
+        ).change(body: 'text').headers[HttpHeader.contentType],
+        MediaType.applicationJson.mimeType,
+        reason: 'the Content-Type of the response is kept',
+      );
+      expect(
+        ResponseEntity<int>(200)
+            .change(body: 'text')
+            .headers[HttpHeader.contentType],
+        MediaType.textPlain.mimeType,
+      );
+      expect(
+        ResponseEntity<int>(200)
+            .change(body: [1, 2])
+            .headers[HttpHeader.contentType],
+        MediaType.applicationOctetStream.mimeType,
+      );
+    });
   });
 
   group('RequestEntity routing context', () {
@@ -205,5 +271,29 @@ void main() {
       expect(request.queryParams, {'q': 'dart', 'page': '2'});
       expect(request.httpMethod, HttpMethod.get);
     });
+
+    test('repeated query params', () {
+      final request = RequestEntity(
+        'GET',
+        Uri.parse('http://x/search?tag=a&q=dart&tag=b'),
+      );
+
+      expect(request.queryParams, {'tag': 'b', 'q': 'dart'});
+      expect(request.queryParamsAll, {
+        'tag': ['a', 'b'],
+        'q': ['dart'],
+      });
+      expect(
+        RequestEntity('GET', Uri.parse('http://x/')).queryParamsAll,
+        isEmpty,
+      );
+    });
   });
+}
+
+class _CountingBody implements Serializable {
+  int calls = 0;
+
+  @override
+  Object? toJson() => {'calls': ++calls};
 }

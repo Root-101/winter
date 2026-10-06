@@ -42,7 +42,8 @@ class RequestEntity extends Request {
       );
     }
 
-    _queryParams = _extractQueryParams(requestedUri.toString());
+    ///wrapped in a Map.of to avoid unmodifiable map
+    _queryParams = Map.of(requestedUri.queryParameters);
   }
 
   HttpMethod get httpMethod => HttpMethod(method);
@@ -72,7 +73,17 @@ class RequestEntity extends Request {
     return index >= 0 ? ips[index] : connectionIp;
   }
 
+  ///The query params, with the last value of a repeated param (`?tag=a&tag=b` => `{tag: b}`).
+  ///Use [queryParamsAll] to get every value.
   Map<String, String> get queryParams => _queryParams ?? {};
+
+  Map<String, List<String>>? _queryParamsAll;
+
+  ///Every value of each query param, in order (`?tag=a&tag=b` => `{tag: [a, b]}`)
+  Map<String, List<String>> get queryParamsAll => _queryParamsAll ??= {
+    for (final entry in requestedUri.queryParametersAll.entries)
+      entry.key: List.of(entry.value),
+  };
 
   Map<String, String> get pathParams => _pathParams ?? {};
 
@@ -198,18 +209,4 @@ String _decodePathParam(String value) {
   } catch (_) {
     return value;
   }
-}
-
-/// Extract query params from the url
-///
-/// In the case of the url:
-/// http(s)://domain.com/some-url?id=5&name=adam
-///
-/// The query params will be:
-/// { id: 5, name: adam}
-Map<String, String> _extractQueryParams(String actualUrl) {
-  Uri uri = Uri.parse(actualUrl);
-
-  ///wrapped in a Map.of to avoid unmodifiable map
-  return Map.of(uri.queryParameters);
 }

@@ -16,23 +16,25 @@ class ResponseEntity<T> extends Response {
          statusCode,
          body,
          _resolveBody(body, objectMapper),
+         _contentTypeOfValue(statusCode, body),
          headers,
          encoding,
          context,
        );
 
+  ///[contentType] is added when [headers] have none (null: don't add any)
   ResponseEntity._(
     super.statusCode,
     this._bodyValue,
     Object? resolvedBody,
+    String? contentType,
     Map<String, /* String | List<String> */ Object>? headers,
     Encoding? encoding,
     Map<String, Object>? context,
   ) : super(
         body: resolvedBody,
         headers: _resolveHeaders(
-          statusCode,
-          _bodyValue,
+          contentType,
           resolvedBody,
           headers,
           encoding: encoding,
@@ -49,52 +51,51 @@ class ResponseEntity<T> extends Response {
     return jsonEncode(mapper.serialize(body));
   }
 
-  /// Resolve the headers, adding automatic Content-Type and Content-Length when needed.
+  /// Content-Type of a value given to the constructor: a String is text, a Stream is binary,
+  /// anything else is serialized as JSON (`application/problem+json` for errors)
+  static String? _contentTypeOfValue(int statusCode, Object? body) {
+    if (body == null) return null;
+    if (body is Stream) return MediaType.applicationOctetStream.mimeType;
+    if (body is String) return MediaType.textPlain.mimeType;
+    return statusCode >= 400
+        ? MediaType.applicationProblemJson.mimeType
+        : MediaType.applicationJson.mimeType;
+  }
+
+  /// Content-Type of a body given to [change], which is used as it is (never serialized):
+  /// a String is text, bytes or a Stream are binary
+  static String? _contentTypeOfRawBody(Object? body) {
+    if (body == null) return null;
+    if (body is String) return MediaType.textPlain.mimeType;
+    return MediaType.applicationOctetStream.mimeType;
+  }
+
+  /// Resolve the headers, adding [contentType] and the Content-Length when needed.
   static Map<String, Object>? _resolveHeaders(
-    int statusCode,
-    Object? originalBody,
+    String? contentType,
     Object? resolvedBody,
     Map<String, /* String | List<String> */ Object>? headers, {
     Encoding? encoding,
   }) {
     final Map<String, Object> resolved = {...?headers};
 
-    if (resolvedBody == null) {
-      return resolved.isEmpty ? null : resolved;
+    if (contentType != null && !_hasHeader(resolved, HttpHeader.contentType)) {
+      resolved[HttpHeader.contentType] = contentType;
     }
 
-    final hasContentType = resolved.keys.any(
-      (k) => k.toLowerCase() == HttpHeader.contentType.toLowerCase(),
-    );
-
-    if (!hasContentType) {
-      if (originalBody is Stream) {
-        resolved[HttpHeader.contentType] =
-            MediaType.applicationOctetStream.mimeType;
-      } else if (originalBody is String) {
-        resolved[HttpHeader.contentType] = MediaType.textPlain.mimeType;
-      } else {
-        resolved[HttpHeader.contentType] = (statusCode >= 400)
-            ? MediaType.applicationProblemJson.mimeType
-            : MediaType.applicationJson.mimeType;
-      }
+    if (resolvedBody is String &&
+        !_hasHeader(resolved, HttpHeader.contentLength)) {
+      resolved[HttpHeader.contentLength] = (encoding ?? utf8)
+          .encode(resolvedBody)
+          .length
+          .toString();
     }
 
-    final hasContentLength = resolved.keys.any(
-      (k) => k.toLowerCase() == HttpHeader.contentLength.toLowerCase(),
-    );
-
-    if (!hasContentLength) {
-      if (resolvedBody is String) {
-        resolved[HttpHeader.contentLength] = (encoding ?? utf8)
-            .encode(resolvedBody)
-            .length
-            .toString();
-      }
-    }
-
-    return resolved;
+    return resolved.isEmpty ? null : resolved;
   }
+
+  static bool _hasHeader(Map<String, Object> headers, String name) =>
+      headers.keys.any((k) => k.toLowerCase() == name.toLowerCase());
 
   T body() => _bodyValue as T;
 
@@ -146,6 +147,11 @@ class ResponseEntity<T> extends Response {
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this(StatusCode.internalServerError.value, body: body, headers: headers);
 
+  ///A copy with the given values. [headers] replace all the headers (to add some, use [change]).
+  ///
+  ///Without a new [body], the copy keeps the body already resolved (serialized, bytes or stream)
+  ///as it is: it's never serialized again, and a body set with [change] is kept.
+  ///Like [change], it reads this response, so use the copy from then on.
   ResponseEntity<T> copyWith({
     int? statusCode,
     T? body,
@@ -153,17 +159,29 @@ class ResponseEntity<T> extends Response {
     Encoding? encoding,
     Map<String, Object>? context,
   }) {
-    return ResponseEntity<T>(
+    if (body != null) {
+      return ResponseEntity<T>(
+        statusCode ?? this.statusCode,
+        body: body,
+        headers: headers ?? this.headers,
+        encoding: encoding ?? this.encoding,
+        context: context ?? this.context,
+      );
+    }
+    return ResponseEntity<T>._(
       statusCode ?? this.statusCode,
-      body: body ?? _bodyValue,
-      headers: headers ?? this.headers,
-      encoding: encoding ?? this.encoding,
-      context: context ?? this.context,
+      _bodyValue,
+      read(),
+      null,
+      headers ?? headersAll,
+      encoding ?? this.encoding,
+      context ?? this.context,
     );
   }
 
   ///Same as [Response.change] (used by shelf middlewares) but returns a [ResponseEntity].
   ///A new [body] is used as it is (String, bytes or Stream), like shelf does.
+  ///The [headers] are added to the current ones (`null` removes one).
   @override
   ResponseEntity<T> change({
     Map<String, /* String | List<String> */ Object?>? headers,
@@ -179,6 +197,7 @@ class ResponseEntity<T> extends Response {
       changed.statusCode,
       body == null ? _bodyValue : (body is T ? body as T : null),
       changed.read(),
+      _contentTypeOfRawBody(body),
       changed.headersAll,
       changed.encoding,
       changed.context,

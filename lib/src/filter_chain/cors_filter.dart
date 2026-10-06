@@ -32,8 +32,13 @@ class CorsFilter extends Filter {
     ResponseEntity response,
   ) {
     final corsHeaders = _getCorsHeaders(request);
-    final newHeaders = {...response.headers, ...corsHeaders};
-    return response.copyWith(headers: newHeaders);
+
+    ///Merged with the `Vary` of the response (ex: `Cookie`), not replaced
+    final String? vary = corsHeaders.remove(HttpHeader.vary);
+    final ResponseEntity withCors = corsHeaders.isEmpty
+        ? response
+        : response.change(headers: corsHeaders);
+    return vary == null ? withCors : addVary(withCors, vary) as ResponseEntity;
   }
 
   Map<String, String> _getCorsHeaders(RequestEntity request) {
