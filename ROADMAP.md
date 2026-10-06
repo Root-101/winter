@@ -39,6 +39,7 @@ way we want to maintain it**. Exit criteria:
 | Request scope (`Zone`): `requestAuthentication`, `requestLocale` | ✅ |
 | i18n (slang + YAML, `Accept-Language`, automatic `Vary`) | ✅ Documented in `DECISIONS.md` |
 | Testing (in-memory `WinterTestClient`) | ✅ |
+| HTTP engine (`shelf` + `shelf_io`) | ⚠️ To be replaced by `dart:io` → phase 3.1 |
 | Object mapper | ⚠️ Works, with design limits → phase 2.1 |
 | Validation, exceptions, DI, Env, logging, security | ⚠️ Work, to be reviewed → phase 2 |
 | Documentation | ❌ The biggest gap |
@@ -272,10 +273,9 @@ validators as extensions, `throwOnFailure()` → 422, messages in the language o
 
 ### 2.8 Router, filters and entities (light review)
 
-They're the most solid part (phase 1 covers their bugs), so this is only an API review:
+They're the most solid part (phase 1 covers their bugs), so this is only an API review. The
+entities (`RequestEntity`, `ResponseEntity`) are redesigned in phase 3.1, without shelf.
 
-- [ ] `RequestEntity.copyWith` (async) and `change` (sync) do almost the same: keep only one, or
-  document the difference well.
 - [ ] `WinterRouter.routes` is a public, mutable `List`: expose it read-only and leave `addRoute` as
   the only way to add routes.
 - [ ] `FilterConfig.add` mutates a list that may be `const` (it throws then).
@@ -284,10 +284,81 @@ They're the most solid part (phase 1 covers their bugs), so this is only an API 
 
 ---
 
-## Phase 3: freeze the public API 🔴
+## Phase 3: remove shelf and freeze the public API 🔴
 
 With the decisions of phase 2 applied, the last pass before the API becomes stable. Every change
 goes to the CHANGELOG and to the migration guide.
+
+### 3.1 Move from shelf to `dart:io`
+
+**Decision:** 1.0 doesn't depend on `shelf`. Winter serves the requests with `dart:io` directly and
+has its own request/response model, so its public API never depends on another package's, and
+the features that shelf packages provide (WebSockets, static files, multipart) are implemented by
+Winter.
+
+**Why:** today `RequestEntity`/`ResponseEntity` extend the classes of shelf and `winter.dart`
+re-exports all of shelf, so every method of shelf is public API of Winter, and a breaking change in
+shelf is a breaking change in Winter. It also costs performance: on an empty endpoint (AOT,
+loopback, 64 concurrent connections) `dart:io` serves ~17 000 req/s, shelf ~14 500 (−15 %) and
+Winter ~12 500. Record the decision in `DECISIONS.md` when it's done.
+
+**Where shelf is used today** (everything else, router, filters, security, DI, object mapper, i18n,
+is already independent):
+
+| Where | What it uses |
+|---|---|
+| `winter_server.dart` | `shelf_io.serve(...)`: bind, connections, writing the response |
+| `RequestEntity extends Request`, `ResponseEntity<T> extends Response` | Headers, body and its encoding, `context`, `change()` |
+| `Winter.buildHandler` → `Handler` | `WinterTestClient` calls the pipeline in memory |
+| `context['shelf.io.connection_info']` | The IP of the client (`clientIp`) |
+| `export 'package:shelf/shelf.dart'` | All of shelf re-exported (tests use `Response.ok` with `addVary`, `shelf_change_test.dart`) |
+
+**Tasks:**
+
+- [ ] **Baseline:** save the numbers of `benchmark/` (handler, sequential and concurrent server)
+  before starting, to compare at the end. Add a `dart:io` "hello world" to the benchmark as the
+  ceiling.
+- [ ] **Server:** `HttpServer.bind` / `bindSecure` (HTTPS) with `shared`, a loop that runs the
+  pipeline for every `HttpRequest`, and the settings shelf hid: `autoCompress`, `idleTimeout`,
+  `defaultResponseHeaders` (today Content-Type is removed by hand), `X-Powered-By`. The graceful
+  shutdown and `_InFlightRequests` are already Winter's.
+- [ ] **Own request model:** `RequestEntity` no longer extends anything. One implementation reads
+  an `HttpRequest` and another one is built in memory (tests). It keeps the names the users know
+  (`method`, `headers`, `requestedUri`, `body<T>()`, `pathParams`, `queryParams`, `context`…)
+  and adds what shelf didn't have:
+  - Headers that are case-insensitive and multi-value (`header('x')`, `headerAll('x')`).
+  - `cookies` (`HttpRequest.cookies` of `dart:io`).
+  - `clientIp` from `HttpRequest.connectionInfo`, without context keys.
+  - A body read once (single subscription), with the charset of the `Content-Type` and the
+    `maxBodySize` limit.
+  - Decide `copyWith` (async) vs `change` (sync): today they do almost the same, keep one.
+  - Drop what only shelf needed: `handlerPath`, `url` relative to the handler, the unmodifiable
+    `context` that Winter had to override.
+- [ ] **Own response model:** `ResponseEntity<T>` with status, multi-value headers (several
+  `Set-Cookie`), a body as a value, String, bytes or Stream, the encoding, and automatic
+  `Content-Type`/`Content-Length` (the logic of phase 1 is already Winter's).
+- [ ] **Writing the response** to `HttpResponse`: status, headers, `Content-Length` or chunked, no
+  body for HEAD/204/304, streaming with `bufferOutput: false` (for Server-Sent Events), and a client
+  that disconnects in the middle must not crash the server (log at debug).
+- [ ] **Errors of the HTTP layer** that shelf_io handled: a malformed request (`HttpException` of
+  `dart:io`) → 400; a handler that fails after the headers were sent → log and close the
+  connection; a response that can't be written → log.
+- [ ] **Testing in memory:** `Winter.buildHandler` returns a Winter handler
+  (`Future<ResponseEntity> Function(RequestEntity)`) and `WinterTestClient` builds in-memory
+  requests. The same pipeline as the real server, without ports, as today.
+- [ ] **Leave room for WebSockets (1.x):** the pipeline must be able to hand an `HttpRequest` over
+  to `WebSocketTransformer.upgrade` of `dart:io` after the filters (auth, CORS) run, without a
+  breaking change. Design it now (ex: a response type that takes the connection), implement it in
+  4.3.
+- [ ] **Remove the dependency:** `shelf` out of `pubspec.yaml`, no `export` of shelf, `addVary` and
+  the helpers on Winter's types, rewrite `test/shelf_change_test.dart` and `client_ip_test.dart`.
+- [ ] **Shelf middlewares:** they stop working. Filters are the replacement; document how to turn a
+  shelf middleware into a filter in the migration guide.
+- [ ] **Compare with the baseline:** Winter must be at least as fast as with shelf (goal: close to
+  the `dart:io` ceiling), and publish the numbers.
+- [ ] Update `CLAUDE.md`, `DECISIONS.md` and the CHANGELOG.
+
+### 3.2 Freeze the public API
 
 - [ ] Delete the deprecated `onAlreadyStarted` parameter of `Winter.close` and the `@Deprecated`
   values of `StatusCode`.
@@ -296,9 +367,6 @@ goes to the CHANGELOG and to the migration guide.
   - Loose helpers: `addVary`, `limitBodySize`, `isValidUri`, `normalizePath`,
     `methodNotAllowedOrNotFound`, `internalServerErrorResponse`,
     `warnLocalesWithoutWinterMessages` and `console_style` (`stylize` on `String`).
-  - The whole `export 'package:shelf/shelf.dart'`: it's handy, but it ties the API of Winter to the
-    one of shelf (a breaking change in shelf becomes a breaking change in Winter). Consider
-    exporting only what is needed (`Request`, `Response`, `Handler`, `Middleware`, `Pipeline`).
 - [ ] Read the whole public API once more (`dart doc` output) looking for inconsistent names and
   parameters.
 
@@ -316,19 +384,21 @@ goes to the CHANGELOG and to the migration guide.
   (today every handler runs `int.parse`, and an error there ends in a 500).
 - [ ] **`application/x-www-form-urlencoded` forms:** `request.formData()`.
 - [ ] **Multipart / file uploads:** `request.multipart()` with fields and files as streams,
-  respecting `maxBodySize` (possible base: `shelf_multipart`). It was in `todo.md`.
-- [ ] **Cookies:** read (`request.cookies`) and write (`ResponseEntity` with `setCookie(...)`, with
-  `HttpOnly`, `Secure`, `SameSite`, `Max-Age`).
+  respecting `maxBodySize` (possible base: `MimeMultipartTransformer` of `package:mime`, from
+  the Dart team, or an own parser). It was in `todo.md`.
+- [ ] **Cookies:** read (`request.cookies`, from 3.1) and write (`ResponseEntity` with
+  `setCookie(...)`, with `HttpOnly`, `Secure`, `SameSite`, `Max-Age`; `Cookie` of `dart:io`).
 - [ ] **Static files:** a `StaticRouter`/`Route.static('/assets', directory)` with
-  `ETag`/`Last-Modified`, `304` and no path traversal (`..`). Possible base: `shelf_static`.
-- [ ] **HTTPS:** `ServerConfig(securityContext: ...)` (shelf_io already supports it, it only needs
-  to be exposed).
+  `ETag`/`Last-Modified`, `304`, `Range` requests and no path traversal (`..`), streaming the
+  `File` of `dart:io`.
+- [ ] **HTTPS:** `ServerConfig(securityContext: ...)` with `HttpServer.bindSecure` (the server of
+  3.1).
 
 ### 4.2 Operations 🟡
 
 - [ ] **Timeout per request** (`ServerConfig.requestTimeout`): a stuck handler returns a 503 and
   doesn't hold the graceful shutdown until its timeout.
-- [ ] Optional **gzip compression** (`HttpServer.autoCompress` or a filter).
+- [ ] Optional **gzip compression** (`HttpServer.autoCompress`, exposed by the server of 3.1).
 - [ ] **Health check:** `Route.health('/health')` or a documented example (needed for Docker and
   Kubernetes).
 
@@ -336,7 +406,10 @@ goes to the CHANGELOG and to the migration guide.
 
 They don't block 1.0 and shouldn't delay it (they can be added in 1.x without breaking changes):
 
-- [ ] WebSockets (`shelf_web_socket`) and Server-Sent Events.
+- [ ] **WebSockets**, implemented by Winter on `WebSocketTransformer` of `dart:io` (no shelf):
+  routes for WebSockets that go through the filters (auth, CORS) before the upgrade, as designed
+  in 3.1.
+- [ ] **Server-Sent Events** on the streaming responses of 3.1.
 - [ ] Scheduled tasks (cron), it was in `todo.md`.
 - [ ] OpenAPI generation from the routes.
 - [ ] Async validations (if phase 2.2 left room for them).
@@ -414,7 +487,7 @@ written twice. The rest can be written now.
 - [ ] **`filters.md`:** `Filter`, `doFilter`/`chain.doFilter`, short-circuiting the chain, `order`,
   `shouldFilter`, global vs route filters (inherited in nested routes), why a filter never receives
   an exception (it becomes a response where it's thrown), `LogsFilter`, `CorsFilter`,
-  `RateLimiterFilter`, and how to use shelf middlewares.
+  `RateLimiterFilter`.
 - [ ] **`requests-and-responses.md`:** `RequestEntity` (`body<T>()` and its cache, `pathParams`,
   `queryParams`, `clientIp`, `change`) and `ResponseEntity` (constructors, automatic `Content-Type`
   and `Content-Length`, streams), body limit (413), cookies, forms, multipart and static files
@@ -490,7 +563,9 @@ written twice. The rest can be written now.
   graceful shutdown in Docker/Kubernetes (SIGTERM, `shutdownTimeout` vs
   `terminationGracePeriodSeconds`), health checks, several isolates with `shared: true`, and running
   behind a reverse proxy (`trustedProxies`, HTTPS terminated at the proxy).
-- [ ] **`migration-0.x-to-1.0.md`:** every breaking change of phases 1 to 3 with a before and after.
+- [ ] **`migration-0.x-to-1.0.md`:** every breaking change of phases 1 to 3 with a before and after,
+  including the move away from shelf (the shelf types that are gone, and how to turn a shelf
+  middleware into a filter).
 - [ ] **Rewritten `README.md`:**
   - Badges (pub, CI, coverage, license), the value proposition in 3 lines, installation with the
     real version (today it says `^latest_version`) and hello world.
@@ -537,20 +612,21 @@ The current 4 are fine. Missing:
 ### 6.2 Package 🔴
 
 - [ ] `pubspec.yaml`: `homepage`, `documentation`, `issue_tracker`, `topics` (`server`, `http`,
-  `backend`, `rest`, `shelf`) and a `description` that says clearly in one line what it is.
+  `backend`, `rest`, `api`) and a `description` that says clearly in one line what it is.
 - [ ] `.pubignore`: leave out `todo.md`, `benchmark/`, `slang.yaml`, `CLAUDE.md`,
   `winter_framework.iml` and `brag-output/` (today `dart pub publish --dry-run` includes the whole
   `test/`, which is fine, but the rest is not needed).
 - [ ] Review the runtime dependencies: `slang` + `intl` (range `>=0.18.1 <2.0.0`), `crypto` (only
   for the route keys; a simpler hash would remove the dependency), `collection` and `http_parser`.
+  `shelf` is already gone (3.1).
   Check that they work with the minimum versions (`dart pub downgrade && dart test`).
 
 ### 6.3 Final review 🟡
 
 - [ ] A full security review (path traversal in static files, multipart limits, headers, errors
   never leaking internal data).
-- [ ] Publish the benchmarks (routing and server) and compare them with `shelf_router` as a
-  reference, in the README or in `doc/`.
+- [ ] Publish the benchmarks (routing and server) and compare them with `dart:io` (the ceiling) and
+  with the last version on shelf, in the README or in `doc/`.
 - [ ] Keep the coverage of the new modules at the current level (~99%).
 
 ### 6.4 Release
@@ -566,7 +642,8 @@ The current 4 are fine. Missing:
 
 ```
 Phase 1      Phase 2 (system by system)             Phase 3       Phase 4       rc.1 ──► 1.0.0
-(core bugs)  2.1 object mapper ──► 2.2 validation   (frozen API)  (features)
+(core bugs)  2.1 object mapper ──► 2.2 validation   3.1 dart:io   (features)
+                                                    3.2 freeze
              ──► 2.3 exceptions ──► 2.4-2.8                │             │
                     │                                      │             │
                     └── each system's doc, once reviewed ──┴── docs of the new features
@@ -575,6 +652,10 @@ Phase 1      Phase 2 (system by system)             Phase 3       Phase 4       
 Can start now: CI and pubspec/.pubignore (phase 6.1, 6.2), and the docs of the modules that
 won't change (i18n, routing, filters, testing, architecture, deployment).
 ```
+
+Phase 3.1 goes before the features of phase 4 because cookies, static files, multipart, HTTPS and
+compression are built on its server and its request/response model. It can also start in parallel
+with phase 2: it only touches the HTTP layer, and the systems of phase 2 don't depend on shelf.
 
 2.1 → 2.2 → 2.3 go in that order because each one depends on the previous: `validBody` needs the
 deserialization of 2.1, and the error format of 2.3 has to include the violations of 2.2 and the
