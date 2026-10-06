@@ -62,6 +62,29 @@ void main() {
     di.delete<SecurityConfig>();
   });
 
+  test('Any router registered as AbstractWinterRouter is used', () async {
+    final router = MultiRouter([WinterRouter()]);
+    di.put<AbstractWinterRouter>(router);
+
+    await Winter.start(config: ServerConfig(port: port));
+    expect(Winter.server.router, same(router));
+
+    await Winter.close(force: true);
+    expect(di.find<AbstractWinterRouter>(), same(router));
+    di.delete<AbstractWinterRouter>();
+  });
+
+  test('A router registered as WinterRouter is used', () async {
+    final router = WinterRouter();
+    di.put(router);
+
+    await Winter.start(config: ServerConfig(port: port));
+    expect(Winter.server.router, same(router));
+
+    await Winter.close(force: true);
+    di.delete<WinterRouter>();
+  });
+
   test('A failed start does not leave dependencies behind', () async {
     final blocker = await ServerSocket.bind(InternetAddress.anyIPv4, port);
     try {
