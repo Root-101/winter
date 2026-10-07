@@ -45,7 +45,8 @@ way we want to maintain it**. Exit criteria:
 | Exceptions and error handling                                                           | ✅ Reviewed (2.3), `doc/error-handling.md`  |
 | Dependency injection                                                                    | ✅ Reviewed (2.4), `doc/dependency-injection.md` |
 | Configuration (`Env`, `ServerConfig`)                                                   | ✅ Reviewed (2.5), `doc/configuration.md`   |
-| Logging, security                                                                       | ⚠️ Work, to be reviewed → phase 2          |
+| Logging                                                                                 | ✅ Reviewed (2.6), `doc/logging.md`         |
+| Security                                                                                | ⚠️ Works, to be reviewed → phase 2.7       |
 | Documentation                                                                           | ❌ The biggest gap                          |
 | CI / publishing                                                                         | ❌ No CI                                    |
 
@@ -323,17 +324,29 @@ guide in `doc/configuration.md`. Left for phase 3.1 and 4: `securityContext` (HT
   at start-up and fail fast if a required variable is missing. → The `AppConfig.fromEnv` pattern
   and `requireAll` (§6.4).
 
-### 2.6 Logging
+### 2.6 Logging ✅
 
-- [ ] A **JSON logger** (`JsonLogger`) for production (Cloud Logging, Datadog…).
-- [ ] **Request ID** in the logs: a filter that reads or generates `X-Request-Id`, saves it in the
-  `RequestScope` (`requestId`), adds it to the response, and the loggers include it.
-- [ ] `debug`/`info` don't accept `error`/`stackTrace` (only `warning`/`error` do).
-- [ ] Lazy messages (`logger.debug(() => '...')`) so a disabled level doesn't build the string.
-- [ ] `ConsoleLogger` uses the local time; decide UTC.
+**Done** (2026-10-07): every decision is in `DECISIONS.md` §7, the behavior in
+`test/logging_behavior_test.dart` (100% line coverage of the loggers and the request scope), and
+the guide in `doc/logging.md`.
+
+- [x] A **JSON logger** (`JsonLogger`) for production (Cloud Logging, Datadog…). → One JSON per
+  line, with `fields` (§7.3).
+- [x] **Request ID** in the logs: a filter that reads or generates `X-Request-Id`, saves it in the
+  `RequestScope` (`requestId`), adds it to the response, and the loggers include it. → Always on,
+  no filter to add, and in the body of a 500 (§7.4).
+- [x] `debug`/`info` don't accept `error`/`stackTrace` (only `warning`/`error` do). → Every level
+  takes them, and `fields` (§7.2).
+- [x] Lazy messages (`logger.debug(() => '...')`) so a disabled level doesn't build the string.
+  → `isEnabled(level)`, used by the debug logs of the framework (§7.2).
+- [x] `ConsoleLogger` uses the local time; decide UTC. → UTC (§7.3).
+- [x] ✔️ **The debug log of a failed deserialization included the value sent** (a card number in
+  the test), in several lines. → The type of the error only (§7.1).
 
 ### 2.7 Security
 
+- [ ] **Expose `X-Request-Id` to browsers**: CORS must list it in `Access-Control-Expose-Headers`, or
+  a web client can't read the id of a response (found in the review 2.6).
 - [ ] **CORS with `'*'` and `allowCredentials: true` echoes any origin**: that gives every website
   credentialed access to the API, which is what the browser rule is meant to prevent. Require
   explicit origins with credentials (fail on start), or at least log a warning.
@@ -695,7 +708,7 @@ written twice. The rest can be written now.
 - [x] **`configuration.md`** (after 2.5), its snippets checked by running them: every option of `ServerConfig`, `Env` (supported types,
   `required`, lists, `.env`), `BuildContext` and `setUp`, and the order in which `Winter.start`
   resolves the configuration (argument → DI → default).
-- [ ] **`logging.md`** (after 2.6): `WinterLogger`, levels, `ConsoleLogger(minLevel:)`, writing
+- [x] **`logging.md`** (after 2.6), its snippets checked by running them: `WinterLogger`, levels, `ConsoleLogger(minLevel:)`, writing
   your own logger, what the framework logs and at which level, and why `LogsFilter` never logs
   bodies nor query strings.
 - [ ] **`testing.md`:** `WinterTestClient` (all its methods, `TestResponse.json`), parallel tests

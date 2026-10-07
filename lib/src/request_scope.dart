@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:winter/winter.dart';
 
@@ -20,12 +21,42 @@ class RequestScope {
   final WinterLocale _locale;
   bool _localeRead = false;
 
+  /// The id of the request: its `X-Request-Id` if valid ([isValidRequestId]), or a new one. It's
+  /// in every log written for the request, in the `X-Request-Id` of the response and in a 500.
+  final String requestId;
+
   /// Without [securityContext], an empty one.
   /// Without [locale], the fallback of `Winter.context.localeConfig`.
-  RequestScope({RequestSecurityContext? securityContext, WinterLocale? locale})
-    : securityContext =
-          securityContext ?? RequestSecurityContext<dynamic>.empty(),
-      _locale = locale ?? Winter.context.localeConfig.fallback;
+  /// Without [requestId], a new one ([newRequestId]).
+  RequestScope({
+    RequestSecurityContext? securityContext,
+    WinterLocale? locale,
+    String? requestId,
+  }) : securityContext =
+           securityContext ?? RequestSecurityContext<dynamic>.empty(),
+       _locale = locale ?? Winter.context.localeConfig.fallback,
+       requestId = requestId ?? newRequestId();
+
+  static final RegExp _validRequestId = RegExp(r'^[A-Za-z0-9._:-]{1,128}$');
+
+  /// Whether [id] (an `X-Request-Id` sent by the client or a proxy) can be used: 1 to 128 letters,
+  /// digits, `.`, `_`, `:` or `-`. Anything else could inject lines or noise into the logs.
+  static bool isValidRequestId(String? id) =>
+      id != null && _validRequestId.hasMatch(id);
+
+  static final Random _random = Random.secure();
+
+  /// A random UUID (version 4)
+  static String newRequestId() {
+    final bytes = List<int>.generate(16, (_) => _random.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    final hex = [
+      for (final byte in bytes) byte.toRadixString(16).padLeft(2, '0'),
+    ].join();
+    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-'
+        '${hex.substring(16, 20)}-${hex.substring(20)}';
+  }
 
   /// The same as `request.locale`: chosen from the `Accept-Language` of the request.
   /// Reading it marks the response as dependent on the language ([localeRead]).
@@ -89,6 +120,10 @@ class RequestScope {
   static R run<R>(RequestScope scope, R Function() body) =>
       runZoned(body, zoneValues: {_zoneKey: scope});
 }
+
+/// The id of the request in progress (see [RequestScope.requestId]), or null outside a request.
+/// The loggers of Winter add it to every log.
+String? get requestId => RequestScope.current?.requestId;
 
 /// Security context of the request in progress, or null outside a request.
 /// The same object as `request.securityContext`.

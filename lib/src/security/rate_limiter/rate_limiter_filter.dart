@@ -75,6 +75,8 @@ class RateLimiterFilter extends Filter {
 /// Debug level: under an attack there is one log per rejected request,
 /// at info level it would flood the logs
 void defaultLogRateLimiter(RequestEntity request, String requestId) {
+  ///Skipped before building the message: under an attack there is one per rejected request
+  if (!logger.isEnabled(LogLevel.debug)) return;
   logger.debug(
     'Rate limit exceeded for id: $requestId in ${request.method} ${request.requestedUri.path}',
   );
