@@ -19,7 +19,7 @@ then, this index says which ones exist.
 | Filters                                              | 🕓    | `Filter`, the chain, `order`, global and route filters, the default filters  |
 | Requests and responses                               | 🕓    | `RequestEntity`, `ResponseEntity`, body limit, cookies, forms, files         |
 | [Object mapper](object-mapper.md)                    | ✅    | JSON ↔ objects: `toJson()`, serializers, deserializers, generics, errors, options |
-| Validation                                           | 🕓    | Validators and the 422 response, after the review 2.2                        |
+| [Validation](validation.md)                          | ✅    | `Validatable`, `cvc.field(...)`, the validators, nested objects, the 422     |
 | Error handling                                       | 🕓    | Exceptions, their status, the `ExceptionHandler`, the error format (2.3)     |
 | i18n                                                 | 🕓    | The language of the request, Winter's messages, translating an app with slang |
 | Security                                             | 🕓    | Authentication, `AuthFilter`, rules, CORS, rate limiter (2.7)                |
@@ -33,7 +33,7 @@ then, this index says which ones exist.
 ## Other references
 
 - [`DECISIONS.md`](../DECISIONS.md): **why** the framework behaves the way it does (the guides
-  explain **how**). Today: i18n (§1) and the object mapper (§2).
+  explain **how**). Today: i18n (§1), the object mapper (§2) and validation (§3).
 - [`CHANGELOG.md`](../CHANGELOG.md): what changed in each version, breaking changes included.
 - [`ROADMAP.md`](../ROADMAP.md): what is left for 1.0.
 - [`example/`](../example): standalone apps, from a basic server to authentication and i18n.

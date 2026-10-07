@@ -41,7 +41,8 @@ way we want to maintain it**. Exit criteria:
 | Testing (in-memory `WinterTestClient`)                                                  | ✅                                          |
 | HTTP engine (`shelf` + `shelf_io`)                                                      | ⚠️ To be replaced by `dart:io` → phase 3.1 |
 | Object mapper                                                                           | ✅ Reviewed (2.1), `doc/object-mapper.md`   |
-| Validation, exceptions, DI, Env, logging, security                                      | ⚠️ Work, to be reviewed → phase 2          |
+| Validation                                                                              | ✅ Reviewed (2.2), `doc/validation.md`      |
+| Exceptions, DI, Env, logging, security                                                  | ⚠️ Work, to be reviewed → phase 2          |
 | Documentation                                                                           | ❌ The biggest gap                          |
 | CI / publishing                                                                         | ❌ No CI                                    |
 
@@ -168,41 +169,54 @@ type.
   and fully in memory) and compare it with a direct `jsonEncode` of the `toJson()`. → It was
   ×3.5–4.2 in AOT; `encode` is now a single pass, ×1.1–1.2 (§2.9).
 
-### 2.2 Validation
+### 2.2 Validation ✅
 
-**Today:** `Validatable`, `ConstraintValidatorContext`, a fluent `ConstraintValidator` with
+**Done** (2026-10-06): every decision is in `DECISIONS.md` §3, the behavior in
+`test/validation/validation_behavior_test.dart` (100% line coverage of the validation), and the
+guide in `doc/validation.md`. Left for other phases: the format of `fieldName` vs the `$` path of
+the 400 (2.3), async validations (4.3) and example `05` (5.4).
+
+**Before the review:** `Validatable`, `ConstraintValidatorContext`, a fluent `ConstraintValidator` with
 validators as extensions, `throwOnFailure()` → 422, messages in the language of the request.
 
 **Problems found:**
 
-- [ ] ✔️ **`pattern()` with a `RegExp` never matches.** It does `RegExp(pattern.toString())`, and
+- [x] ✔️ **`pattern()` with a `RegExp` never matches.** It does `RegExp(pattern.toString())`, and
   `RegExp.toString()` returns `RegExp: pattern=^abc$ flags=i`, so the regex it builds is that text.
   It only works with a `String`. It also builds a new `RegExp` on every validation; use the `RegExp`
-  received as is (flags included) and compile a `String` once.
-- [ ] `ConstrainViolation` → **`ConstraintViolation`** (misspelled public API: it appears in the
-  JSON of the 422s and in `ValidationException.violations`).
-- [ ] `ConstrainViolation.==` compares `value.toString()` and says "needed for tests": decide
-  whether it's real value equality or remove it.
-- [ ] `Validatable` is an abstract class with a `validate()` that returns an empty context: it
+  received as is (flags included) and compile a `String` once. → Fixed (§3.7).
+- [x] `ConstrainViolation` → **`ConstraintViolation`** (misspelled public API: it appears in the
+  JSON of the 422s and in `ValidationException.violations`). → Renamed (§3.6).
+- [x] `ConstrainViolation.==` compares `value.toString()` and says "needed for tests": decide
+  whether it's real value equality or remove it. → Real equality; `1` and `'1'` were equal with
+  different hash codes (§3.6).
+- [x] `Validatable` is an abstract class with a `validate()` that returns an empty context: it
   should be an interface (`abstract interface class`), and returning a valid context by default
-  hides a forgotten implementation.
-- [ ] Validators receive `dynamic`: a typo like `.min(3)` on a `String` is only seen at runtime
-  (`The value must be a number`).
+  hides a forgotten implementation. → Interface (§3.6).
+- [x] Validators receive `dynamic`: a typo like `.min(3)` on a `String` is only seen at runtime
+  (`The value must be a number`). → Typed by the value (§3.1).
+- [x] ✔️ **A forgotten `.validate(value)` validated nothing**, silently
+  (`cvc.buildValidator('name').notNull();`). → The rules run as they are chained (§3.1).
+- [x] ✔️ **A 422 became a 500** when the `value` of a violation was an object without `toJson()`.
+  → The 422 never has the value (§3.5).
+- [x] `notBlank()` of a value that isn't a String said "cannot be blank", and `size()` didn't accept
+  a `Map`. → Typed validators; `size()`/`notEmpty()` accept a `Map` (§3.7).
 
 **Questions to decide:**
 
-- [ ] **A machine-readable code in each violation** (`"code": "size.min", "params": {"value": 3}`)
-  besides the message, so a client (a Flutter app) can show its own text.
-- [ ] **`validBody<T>()`**: deserializes and validates in one step (every POST/PUT repeats it by
-  hand). It depends on 2.1.
-- [ ] **Typed validators** (`buildValidator<String>('name')`) so the compiler rejects `.min()` on a
-  String, or keep `dynamic` for simplicity.
-- [ ] **Nested validation** without calling `merge(prefix:)` by hand (`.valid()` on a `Validatable`
-  field).
-- [ ] **More validators:** `url`, `uuid`, `positive`/`negative`, `past`/`future` (dates), `notEmpty`
-  (collections), `oneOf` (literal values), `size` on `Map`.
-- [ ] **Async validations** (`FutureOr`, "the email already exists"): decide now whether the API
-  allows them later without a breaking change, even if they arrive in 1.x 🟢.
+- [x] **A machine-readable code in each violation** (`"code": "size.min", "params": {"value": 3}`)
+  besides the message, so a client (a Flutter app) can show its own text. → Yes (§3.4).
+- [x] **`validBody<T>()`**: deserializes and validates in one step (every POST/PUT repeats it by
+  hand). It depends on 2.1. → `body<T>()` validates by default, `validate: false` to skip it (§3.2).
+- [x] **Typed validators** (`buildValidator<String>('name')`) so the compiler rejects `.min()` on a
+  String, or keep `dynamic` for simplicity. → `cvc.field(name, value)`, typed by the value (§3.1).
+- [x] **Nested validation** without calling `merge(prefix:)` by hand (`.valid()` on a `Validatable`
+  field). → `valid()` and `validEach()` (§3.3).
+- [x] **More validators:** `url`, `uuid`, `positive`/`negative`, `past`/`future` (dates), `notEmpty`
+  (collections), `oneOf` (literal values), `size` on `Map`. → All of them (§3.7).
+- [x] **Async validations** (`FutureOr`, "the email already exists"): decide now whether the API
+  allows them later without a breaking change, even if they arrive in 1.x 🟢. → A separate
+  `AsyncValidatable` interface in 1.x, without breaking changes (§3.8, and 4.3).
 
 ### 2.3 Exceptions and error handling
 
@@ -438,7 +452,8 @@ They don't block 1.0 and shouldn't delay it (they can be added in 1.x without br
 - [ ] **Server-Sent Events** on the streaming responses of 3.1.
 - [ ] Scheduled tasks (cron), it was in `todo.md`.
 - [ ] OpenAPI generation from the routes.
-- [ ] Async validations (if phase 2.2 left room for them).
+- [ ] Async validations: an `AsyncValidatable` interface with a `Future` `validate()`, also run by
+  `body<T>()` (`DECISIONS.md` §3.8).
 - [ ] A Redis `RateLimiterStore`.
 - [ ] More languages for Winter's messages (fr, pt, de…).
 - [ ] Configuration with annotations / package scanning (with codegen).
@@ -557,15 +572,15 @@ written twice. The rest can be written now.
     - Deserialization of lists, maps and generics, as decided in 2.1.
     - Which error each failure gives and its format.
     - How to use it with `json_serializable`/`freezed`.
-- [ ] **`validation.md`** (after 2.2):
-    - `Validatable`, `ConstraintValidatorContext`, `buildValidator(name)`.
+- [x] **`validation.md`** (after 2.2), its snippets checked by running them:
+    - `Validatable`, `ConstraintValidatorContext`, `field(name, value)`.
     - Every validator with its semantics: `null` passes except with `notNull`, `stopOnFailure`,
       `inclusive`.
     - Sensitive fields (`sensitive: true`).
-    - Nested objects and lists (`merge(prefix:)`, `List<Validatable>.validate()` → `items[0].name`).
-    - `throwOnFailure()` → 422 and the format of the response.
+    - Nested objects and lists (`valid()`, `validEach()` → `items[0].name`).
+    - `body<T>()` and `throwOnFailure()` → 422 and the format of the response.
     - Custom and translated messages (link to `i18n.md`).
-    - Writing your own validators as an extension of `ConstraintValidator` with `addRule`.
+    - Writing your own validators as an extension of `FieldValidator` with `addRule`.
     - **Pitfall:** build the validators inside `validate()`, never in a `static final`.
 - [ ] **`error-handling.md`** (after 2.3): the exception hierarchy, which status each one gives,
   why a 500 never exposes details, how to customize the `ExceptionHandler`, the error format and
@@ -638,7 +653,7 @@ written twice. The rest can be written now.
 
 - [ ] Enable the `public_member_api_docs` lint and document the whole public API, with an example
   in the main classes (`Winter`, `WinterRouter`, `Route`, `Filter`, `ResponseEntity`,
-  `ObjectMapper`, `ConstraintValidator`, `AuthFilter`). The object mapper already passes the lint.
+  `ObjectMapper`, `FieldValidator`, `AuthFilter`). The object mapper already passes the lint.
 - [ ] Clean up the comments copied from Spring with Javadoc syntax (`{@link ...}`, `{@code ...}`,
   `@see <a href=...>` with broken URLs) in `http_status_code.dart` and `status_code.dart`.
 - [ ] Use dartdoc categories (`{@category Routing}`) to group the reference by module.

@@ -57,7 +57,7 @@ void main() {
     test('A 422 with the texts of Winter', () async {
       final response = await get((_) {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('name').notNull().validate(null);
+        cvc.field('name', null).notNull();
         cvc.throwOnFailure();
         return ResponseEntity.ok();
       });
@@ -75,7 +75,7 @@ void main() {
     test('A 422 with only fixed messages', () async {
       final response = await get((_) {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('name').notNull(message: 'Required').validate(null);
+        cvc.field('name', null).notNull(message: 'Required');
         cvc.throwOnFailure();
         return ResponseEntity.ok();
       });

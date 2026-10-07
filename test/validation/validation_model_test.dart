@@ -83,12 +83,10 @@ void main() {
 
     test('Should continue validations when stopOnFailure is false', () {
       final cvc = ConstraintValidatorContext();
-      final validator = cvc.buildValidator('testField');
-
-      validator
+      cvc
+          .field('testField', 'some value')
           .custom((v) => 'error1', stopOnFailure: false)
-          .custom((v) => 'error2', stopOnFailure: false)
-          .validate('some value');
+          .custom((v) => 'error2', stopOnFailure: false);
 
       expect(cvc.violations.length, equals(2));
       expect(cvc.violations[0].message, equals('error1'));
@@ -97,12 +95,10 @@ void main() {
 
     test('Should stop validations when stopOnFailure is true', () {
       final cvc = ConstraintValidatorContext();
-      final validator = cvc.buildValidator('testField');
-
-      validator
+      cvc
+          .field('testField', 'some value')
           .custom((v) => 'error1', stopOnFailure: true)
-          .custom((v) => 'error2', stopOnFailure: false)
-          .validate('some value');
+          .custom((v) => 'error2', stopOnFailure: false);
 
       expect(cvc.violations.length, equals(1));
       expect(cvc.violations[0].message, equals('error1'));
@@ -122,23 +118,21 @@ class LoginRequest implements Validatable {
 
     //username
     cvc
-        .buildValidator('username')
+        .field('username', username)
         .notNull()
         .notBlank()
         .email()
-        .size(min: 3, max: 20)
-        .validate(username);
+        .size(min: 3, max: 20);
 
     //password
     cvc
-        .buildValidator('password')
+        .field('password', password)
         .notNull()
         .size(min: 8, max: 20)
         .custom(
           (value) =>
               password == '12345678' ? 'Password can\'t be 12345678' : null,
-        )
-        .validate(password);
+        );
 
     return cvc;
   }

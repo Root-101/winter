@@ -4,31 +4,43 @@
 # The texts don't include the field name: it's already in the `fieldName` of the violation.
 errors:
   validations:
-    # The value has the wrong type (email() & pattern() need a String, min() & max() a number)
-    type:
-      string: 'The value must be a String'
-      number: 'The value must be a number'
-    # ConstraintValidator.notNull()
+    # notNull()
     notNull: 'The field cannot be null'
-    # ConstraintValidator.notBlank(): empty or only whitespace
+    # notBlank(): empty or only whitespace
     notBlank: 'The field cannot be blank'
-    # ConstraintValidator.size(): the same text for Strings (length) and Iterables (items)
+    # size(): the same text for Strings (length), Iterables and Maps (items)
     size:
       min: 'The minimum is {value: int}'
       max: 'The maximum is {value: int}'
-      # The value is neither a String nor an Iterable
-      invalidType: 'The value must be a String or Iterable'
-    # ConstraintValidator.min(): `inclusive` (>=, default) or `exclusive` (>)
+    # min(): `inclusive` (>=, default) or `exclusive` (>)
     min:
       inclusive: 'The minimum is {value: num}'
       exclusive: 'The value must be greater than {value: num}'
-    # ConstraintValidator.max(): `inclusive` (<=, default) or `exclusive` (<)
+    # max(): `inclusive` (<=, default) or `exclusive` (<)
     max:
       inclusive: 'The maximum is {value: num}'
       exclusive: 'The value must be less than {value: num}'
-    # ConstraintValidator.email()
+    # email()
     email: 'The value is not a valid email'
-    # ConstraintValidator.pattern()
+    # pattern()
     pattern: 'The value has an invalid format'
-    # ConstraintValidator.isEnum(): `values` is the list of allowed values, joined with ', '
+    # isEnum(): `values` is the list of allowed values, joined with ', '
     isEnum: 'The value must be one of: {values: String}'
+    # notEmpty(): a list, set or map without elements (notBlank() is the one of Strings)
+    notEmpty: 'The field cannot be empty'
+    # oneOf(): `values` is the list of allowed values, joined with ', '
+    oneOf: 'The value must be one of: {values: String}'
+    # url()
+    url: 'The value is not a valid URL'
+    # uuid()
+    uuid: 'The value is not a valid UUID'
+    # positive(), negative(), positiveOrZero(), negativeOrZero()
+    positive: 'The value must be greater than 0'
+    negative: 'The value must be less than 0'
+    positiveOrZero: 'The value must be 0 or greater'
+    negativeOrZero: 'The value must be 0 or less'
+    # past(), future(), pastOrPresent(), futureOrPresent() of a DateTime
+    past: 'The date must be in the past'
+    future: 'The date must be in the future'
+    pastOrPresent: 'The date cannot be in the future'
+    futureOrPresent: 'The date cannot be in the past'

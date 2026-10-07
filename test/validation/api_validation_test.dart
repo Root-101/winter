@@ -13,8 +13,8 @@ class LoginRequest implements Validatable {
   @override
   ConstraintValidatorContext validate() {
     final cvc = ConstraintValidatorContext();
-    cvc.buildValidator('email').notNull().notBlank().email().validate(email);
-    cvc.buildValidator('password').notNull().size(min: 8).validate(password);
+    cvc.field('email', email).notNull().notBlank().email();
+    cvc.field('password', password).notNull().size(min: 8);
     return cvc;
   }
 
@@ -34,8 +34,8 @@ void main() {
           password: data['password']?.toString(),
         ),
       ),
-      Deserializer<ConstrainViolation>(
-        (data) => ConstrainViolation(
+      Deserializer<ConstraintViolation>(
+        (data) => ConstraintViolation(
           value: data['value'],
           fieldName: data['fieldName']?.toString() ?? '',
           message: data['message']?.toString() ?? '',
@@ -54,8 +54,8 @@ void main() {
             path: '/login',
             method: HttpMethod.post,
             handler: (request) async {
-              final loginRequest = await request.body<LoginRequest>();
-              loginRequest.validate().throwOnFailure();
+              // body<T>() validates a Validatable: an invalid one is a 422
+              await request.body<LoginRequest>();
 
               return ResponseEntity.ok(body: 'Login successful');
             },
@@ -94,7 +94,7 @@ void main() {
       expect(response.statusCode, 422);
 
       final List violationsRaw = jsonDecode(response.body) as List;
-      final violations = om.deserialize<List<ConstrainViolation>>(
+      final violations = om.deserialize<List<ConstraintViolation>>(
         violationsRaw,
       );
 
@@ -113,7 +113,7 @@ void main() {
       expect(response.statusCode, 422);
 
       final List violationsRaw = jsonDecode(response.body) as List;
-      final violations = om.deserialize<List<ConstrainViolation>>(
+      final violations = om.deserialize<List<ConstraintViolation>>(
         violationsRaw,
       );
 

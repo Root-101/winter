@@ -70,8 +70,6 @@ class WinterMessages$errors$validations$en {
   final WinterMessages _root; // ignore: unused_field
 
   // Translations
-  late final WinterMessages$errors$validations$type$en type =
-      WinterMessages$errors$validations$type$en._(_root);
 
   /// en: 'The field cannot be null'
   String get notNull => 'The field cannot be null';
@@ -95,21 +93,43 @@ class WinterMessages$errors$validations$en {
   /// en: 'The value must be one of: {values: String}'
   String isEnum({required String values}) =>
       'The value must be one of: ${values}';
-}
 
-// Path: errors.validations.type
-class WinterMessages$errors$validations$type$en {
-  WinterMessages$errors$validations$type$en._(this._root);
+  /// en: 'The field cannot be empty'
+  String get notEmpty => 'The field cannot be empty';
 
-  final WinterMessages _root; // ignore: unused_field
+  /// en: 'The value must be one of: {values: String}'
+  String oneOf({required String values}) =>
+      'The value must be one of: ${values}';
 
-  // Translations
+  /// en: 'The value is not a valid URL'
+  String get url => 'The value is not a valid URL';
 
-  /// en: 'The value must be a String'
-  String get string => 'The value must be a String';
+  /// en: 'The value is not a valid UUID'
+  String get uuid => 'The value is not a valid UUID';
 
-  /// en: 'The value must be a number'
-  String get number => 'The value must be a number';
+  /// en: 'The value must be greater than 0'
+  String get positive => 'The value must be greater than 0';
+
+  /// en: 'The value must be less than 0'
+  String get negative => 'The value must be less than 0';
+
+  /// en: 'The value must be 0 or greater'
+  String get positiveOrZero => 'The value must be 0 or greater';
+
+  /// en: 'The value must be 0 or less'
+  String get negativeOrZero => 'The value must be 0 or less';
+
+  /// en: 'The date must be in the past'
+  String get past => 'The date must be in the past';
+
+  /// en: 'The date must be in the future'
+  String get future => 'The date must be in the future';
+
+  /// en: 'The date cannot be in the future'
+  String get pastOrPresent => 'The date cannot be in the future';
+
+  /// en: 'The date cannot be in the past'
+  String get futureOrPresent => 'The date cannot be in the past';
 }
 
 // Path: errors.validations.size
@@ -125,9 +145,6 @@ class WinterMessages$errors$validations$size$en {
 
   /// en: 'The maximum is {value: int}'
   String max({required int value}) => 'The maximum is ${value}';
-
-  /// en: 'The value must be a String or Iterable'
-  String get invalidType => 'The value must be a String or Iterable';
 }
 
 // Path: errors.validations.min
@@ -170,8 +187,6 @@ class WinterMessages$errors$validations$max$en {
 extension on WinterMessages {
   dynamic _flatMapFunction(String path) {
     return switch (path) {
-      'errors.validations.type.string' => 'The value must be a String',
-      'errors.validations.type.number' => 'The value must be a number',
       'errors.validations.notNull' => 'The field cannot be null',
       'errors.validations.notBlank' => 'The field cannot be blank',
       'errors.validations.size.min' => ({
@@ -180,8 +195,6 @@ extension on WinterMessages {
       'errors.validations.size.max' => ({
         required int value,
       }) => 'The maximum is ${value}',
-      'errors.validations.size.invalidType' =>
-        'The value must be a String or Iterable',
       'errors.validations.min.inclusive' => ({
         required num value,
       }) => 'The minimum is ${value}',
@@ -199,6 +212,20 @@ extension on WinterMessages {
       'errors.validations.isEnum' => ({
         required String values,
       }) => 'The value must be one of: ${values}',
+      'errors.validations.notEmpty' => 'The field cannot be empty',
+      'errors.validations.oneOf' => ({
+        required String values,
+      }) => 'The value must be one of: ${values}',
+      'errors.validations.url' => 'The value is not a valid URL',
+      'errors.validations.uuid' => 'The value is not a valid UUID',
+      'errors.validations.positive' => 'The value must be greater than 0',
+      'errors.validations.negative' => 'The value must be less than 0',
+      'errors.validations.positiveOrZero' => 'The value must be 0 or greater',
+      'errors.validations.negativeOrZero' => 'The value must be 0 or less',
+      'errors.validations.past' => 'The date must be in the past',
+      'errors.validations.future' => 'The date must be in the future',
+      'errors.validations.pastOrPresent' => 'The date cannot be in the future',
+      'errors.validations.futureOrPresent' => 'The date cannot be in the past',
       _ => null,
     };
   }

@@ -63,9 +63,7 @@ exception handler only serializes it. An app uses its own slang-generated classe
 ```dart
 AppMessages get t => appMessages(requestLocale); // a getter, never a `final`
 
-cvc.buildValidator('prefix')
-    .notNull(message: t.errors.validations.prefixRequired)
-    .validate(prefix);
+cvc.field('prefix', prefix).notNull(message: t.errors.validations.prefixRequired);
 throw UnauthorizedException(body: t.errors.signature.invalid);
 ```
 
@@ -89,7 +87,7 @@ throw UnauthorizedException(body: t.errors.signature.invalid);
 
 **Compatibility.**
 
-- `ConstrainViolation.message` is in the **language of the request**, also in logs and `toString`
+- `ConstraintViolation.message` is in the **language of the request**, also in logs and `toString`
   (before it was always English).
 - `addRule` and `custom()` receive whatever text the rule returns; translate it with
   `requestLocale`.
@@ -305,3 +303,109 @@ Added after the review, from a list of improvements (the rest are in `ROADMAP.md
   `invalid value`.
 - **`body<T>(objectMapper: ...)`** instead of `body<T>(om: ...)`: `ResponseEntity` and
   `BuildContext` already called it `objectMapper`. Breaking, done before freezing the API.
+
+## 3. Validation
+
+**Status:** decided and implemented on 2026-10-06 in the review of phase 2.2 of `ROADMAP.md`.
+`test/validation/validation_behavior_test.dart` covers every section below, and
+`doc/validation.md` is the guide.
+
+### 3.1 The value first, typed: `cvc.field(name, value)`
+
+```dart
+@override
+ConstraintValidatorContext validate() {
+  final cvc = ConstraintValidatorContext();
+  cvc.field('email', email).notNull().email();
+  cvc.field('password', password, sensitive: true).notNull().size(min: 8);
+  cvc.field('age', age).min(18);
+  cvc.field('address', address).notNull().valid();
+  cvc.field('items', items).notEmpty().validEach();
+  return cvc;
+}
+```
+
+`field<T>(name, value)` returns a `FieldValidator<T>`, and every rule runs **as it's chained**.
+
+- *Why*: with `buildValidator(name)...validate(value)`, forgetting the final `.validate(value)` was a
+  silent success (nothing was validated), and every validator received `dynamic`, so `.min(3)` on
+  a String was only seen at runtime (`The value must be a number`). With the value first there is
+  nothing to forget, and `T` comes from the value: the validators are extensions on
+  `FieldValidator<String?>`, `<num?>`, `<Iterable<Object?>?>`, `<Map<Object?, Object?>?>`,
+  `<DateTime?>` and `<Validatable?>`, so `.min(3)` on a String doesn't compile.
+- Every validator except `notNull()` passes on `null`. A rule with `stopOnFailure` (the default of
+  `notNull()`) skips the rest of the rules of that field.
+- Writing your own validator: an extension on `FieldValidator<T>` that calls
+  `addRule(isValid, message: ..., code: ..., params: ...)`; `custom((value) => message?)` for a
+  one-off rule. `message` is a function, called only when the rule fails: a valid request never
+  reads the language, so it doesn't get a `Vary: Accept-Language`.
+- The messages of a wrong type (`type.string`, `type.number`, `size.invalidType`) were removed:
+  that mistake is now a compile error.
+- Breaking: `buildValidator`, `ConstraintValidator` and the `List<Validatable>.validate()`
+  extension are removed.
+
+### 3.2 `body<T>()` validates by default
+
+`body<T>({ObjectMapper? objectMapper, bool validate = true})`: when the body is a `Validatable`
+(or a list of them, prefixed `[0].email`), it's validated and a failure throws the 422.
+
+- *Why*: a model implements `Validatable` because it must be validated, so the safe default is to
+  do it; every POST/PUT repeated `body<T>()` + `.validate().throwOnFailure()`. A partial update
+  (PATCH) opts out with `body<T>(validate: false)`.
+- A handler that still calls `.validate().throwOnFailure()` validates twice: harmless.
+
+### 3.3 Nested objects: `valid()` and `validEach()`
+
+`cvc.field('address', address).valid()` validates a `Validatable` and prefixes its violations
+(`address.zip`); `validEach()` does it for every element of a list (`items[0].quantity`).
+`merge(other, prefix:)` stays for manual cases.
+
+- The nested `validate()` creates its own context, so it couldn't see the `clock` of the parent.
+  `valid()`/`validEach()` run it in a `Zone` with that clock, and a context created without one
+  takes it: a test fixes the time once for the whole tree.
+
+### 3.4 Each violation has a `code` and `params`
+
+```json
+{ "fieldName": "password", "message": "The minimum is 8", "code": "size.min", "params": { "value": 8 } }
+```
+
+- *Why*: a client (a Flutter app) can show its own text instead of depending on the message.
+- The `code` is the key of the message in `*.i18n.yaml` (`notNull`, `size.min`, `min.exclusive`...)
+  and `params` its parameters. A `custom` rule has no code unless it gives one.
+
+### 3.5 The value is never in the JSON of a 422
+
+The violation keeps the `value` in Dart (for logs), except for a `sensitive` field, whose value is
+never stored. Its JSON has only `fieldName`, `message`, `code` and `params`.
+
+- *Why*: the client knows what it sent, and repeating it puts personal data and long texts back in
+  the response, the same reason the 400 of the object mapper never echoes a value. It also fixes
+  a 422 that became a 500 when the value was an object without `toJson()`.
+
+### 3.6 `ConstraintViolation`, equality and `Validatable`
+
+- `ConstrainViolation` is renamed `ConstraintViolation` (misspelled public API).
+- Its `==` compares the `value` with `==` (it compared `value.toString()`, so `1` and `'1'` were
+  equal with different hash codes, which breaks a `Set` or a `Map`).
+- `Validatable` is an `abstract interface class` without a default `validate()`: the default
+  returned an empty (valid) context, which hid a forgotten implementation.
+
+### 3.7 Validators
+
+Kept: `notNull`, `notBlank`, `size` (now also for a `Map`), `min`, `max`, `email`, `pattern`,
+`isEnum`, `custom`. New: `url`, `uuid`, `positive`, `negative`, `positiveOrZero`,
+`negativeOrZero`, `past`, `future`, `pastOrPresent`, `futureOrPresent` (with a clock that tests
+can replace), `notEmpty` (collections) and `oneOf` (literal values).
+
+- `pattern()` uses a `RegExp` as it is (flags included) and compiles a `String` once: it built
+  `RegExp(pattern.toString())`, so a `RegExp` never matched.
+
+### 3.8 Left for later
+
+- **Async validations** ("the email already exists"): `validate()` stays synchronous. 1.x will add
+  a separate interface (an `AsyncValidatable` with a `Future` `validate()`) that `body<T>()` will
+  also run, without breaking anything. Until then, check it in the service and throw a
+  `ConflictException` or a `ValidationException`.
+- **The format of `fieldName`** (`items[0].name`) vs the path of the 400 of the object mapper
+  (`$.items[0].name`): decided in 2.3 with the error format (Problem Details).

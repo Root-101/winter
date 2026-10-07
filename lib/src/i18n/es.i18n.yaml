@@ -1,14 +1,10 @@
 errors:
   validations:
-    type:
-      string: 'El valor debe ser un String'
-      number: 'El valor debe ser un número'
     notNull: 'El campo no puede ser null'
     notBlank: 'El campo no puede estar vacío'
     size:
       min: 'El mínimo es {value}'
       max: 'El máximo es {value}'
-      invalidType: 'El valor debe ser un String o un Iterable'
     min:
       inclusive: 'El mínimo es {value}'
       exclusive: 'El valor debe ser mayor que {value}'
@@ -18,3 +14,15 @@ errors:
     email: 'El valor no es un email válido'
     pattern: 'El valor tiene un formato no válido'
     isEnum: 'El valor debe ser uno de: {values}'
+    notEmpty: 'El campo no puede estar vacío'
+    oneOf: 'El valor debe ser uno de: {values}'
+    url: 'El valor no es una URL válida'
+    uuid: 'El valor no es un UUID válido'
+    positive: 'El valor debe ser mayor que 0'
+    negative: 'El valor debe ser menor que 0'
+    positiveOrZero: 'El valor debe ser 0 o mayor'
+    negativeOrZero: 'El valor debe ser 0 o menor'
+    past: 'La fecha debe estar en el pasado'
+    future: 'La fecha debe estar en el futuro'
+    pastOrPresent: 'La fecha no puede estar en el futuro'
+    futureOrPresent: 'La fecha no puede estar en el pasado'

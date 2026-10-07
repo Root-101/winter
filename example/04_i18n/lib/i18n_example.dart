@@ -21,14 +21,9 @@ class OrderRequest implements Validatable {
   ConstraintValidatorContext validate() {
     final cvc = ConstraintValidatorContext();
     cvc
-        .buildValidator('product')
-        .notBlank(message: t.orders.productRequired) // text of the app
-        .validate(product);
-    cvc
-        .buildValidator('quantity')
-        .notNull()
-        .min(1) // texts of Winter
-        .validate(quantity);
+        .field('product', product)
+        .notBlank(message: t.orders.productRequired); // text of the app
+    cvc.field('quantity', quantity).notNull().min(1); // texts of Winter
     return cvc;
   }
 }

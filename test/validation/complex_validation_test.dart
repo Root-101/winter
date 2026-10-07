@@ -6,7 +6,7 @@ void main() {
     test('Should merge violations from two contexts', () {
       final cvc1 = ConstraintValidatorContext();
       cvc1.addViolation(
-        const ConstrainViolation(
+        const ConstraintViolation(
           value: null,
           fieldName: 'field1',
           message: 'error1',
@@ -15,7 +15,7 @@ void main() {
 
       final cvc2 = ConstraintValidatorContext();
       cvc2.addViolation(
-        const ConstrainViolation(
+        const ConstraintViolation(
           value: null,
           fieldName: 'field2',
           message: 'error2',
@@ -35,7 +35,7 @@ void main() {
       final cvc1 = ConstraintValidatorContext();
       final cvc2 = ConstraintValidatorContext();
       cvc2.addViolation(
-        const ConstrainViolation(
+        const ConstraintViolation(
           value: 'val',
           fieldName: 'field',
           message: 'error',
@@ -51,7 +51,7 @@ void main() {
       final cvc1 = ConstraintValidatorContext();
       final cvc2 = ConstraintValidatorContext();
       cvc2.addViolation(
-        const ConstrainViolation(
+        const ConstraintViolation(
           value: 'val',
           fieldName: 'field',
           message: 'error',
@@ -71,7 +71,7 @@ void main() {
         _SimpleValidatable(name: 'test2'),
       ];
 
-      final cvc = request.validate();
+      final cvc = ConstraintValidatorContext()..field('', request).validEach();
 
       expect(cvc.isValid, isTrue);
       expect(cvc.violations, isEmpty);
@@ -84,7 +84,8 @@ void main() {
         _SimpleValidatable(name: ''),
       ];
 
-      final cvc = request.validate(prefix: 'items');
+      final cvc = ConstraintValidatorContext()
+        ..field('items', request).validEach();
 
       expect(cvc.isValid, isFalse);
       // items[1].name -> null -> notNull failure
@@ -199,7 +200,7 @@ class _SimpleValidatable implements Validatable {
   @override
   ConstraintValidatorContext validate() {
     final cvc = ConstraintValidatorContext();
-    cvc.buildValidator('name').notNull().notBlank().validate(name);
+    cvc.field('name', name).notNull().notBlank();
     return cvc;
   }
 }
@@ -212,7 +213,7 @@ class _Profile implements Validatable {
   @override
   ConstraintValidatorContext validate() {
     final cvc = ConstraintValidatorContext();
-    cvc.buildValidator('email').notNull().email().validate(email);
+    cvc.field('email', email).notNull().email();
     return cvc;
   }
 }
@@ -226,8 +227,8 @@ class _Address implements Validatable {
   @override
   ConstraintValidatorContext validate() {
     final cvc = ConstraintValidatorContext();
-    cvc.buildValidator('street').notNull().notBlank().validate(street);
-    cvc.buildValidator('city').notNull().notBlank().validate(city);
+    cvc.field('street', street).notNull().notBlank();
+    cvc.field('city', city).notNull().notBlank();
     return cvc;
   }
 }
@@ -248,13 +249,13 @@ class _User implements Validatable {
     final cvc = ConstraintValidatorContext();
 
     // 1. Validate self
-    cvc.buildValidator('username').notNull().notBlank().validate(username);
+    cvc.field('username', username).notNull().notBlank();
 
-    // 2. Validate nested object manually
-    cvc.merge(profile.validate(), prefix: 'profile');
+    // 2. A nested object
+    cvc.field('profile', profile).valid();
 
-    // 3. Validate list of objects manually using extension or loop
-    cvc.merge(addresses.validate(), prefix: 'addresses');
+    // 3. A list of objects
+    cvc.field('addresses', addresses).validEach();
 
     return cvc;
   }
@@ -269,7 +270,7 @@ class _GrandChild implements Validatable {
   @override
   ConstraintValidatorContext validate() {
     final cvc = ConstraintValidatorContext();
-    cvc.buildValidator('name').notBlank().validate(name);
+    cvc.field('name', name).notBlank();
     return cvc;
   }
 }
@@ -282,7 +283,7 @@ class _Child implements Validatable {
   @override
   ConstraintValidatorContext validate() {
     final cvc = ConstraintValidatorContext();
-    cvc.merge(grandChild.validate(), prefix: 'grandChild');
+    cvc.field('grandChild', grandChild).valid();
     return cvc;
   }
 }
@@ -295,7 +296,7 @@ class _Root implements Validatable {
   @override
   ConstraintValidatorContext validate() {
     final cvc = ConstraintValidatorContext();
-    cvc.merge(child.validate(), prefix: 'child');
+    cvc.field('child', child).valid();
     return cvc;
   }
 }
@@ -310,8 +311,8 @@ class _Product implements Validatable {
   @override
   ConstraintValidatorContext validate() {
     final cvc = ConstraintValidatorContext();
-    cvc.buildValidator('name').notBlank().validate(name);
-    cvc.buildValidator('price').min(0).validate(price);
+    cvc.field('name', name).notBlank();
+    cvc.field('price', price).min(0);
     return cvc;
   }
 }
@@ -325,8 +326,8 @@ class _Category implements Validatable {
   @override
   ConstraintValidatorContext validate() {
     final cvc = ConstraintValidatorContext();
-    cvc.buildValidator('name').notBlank().validate(name);
-    cvc.merge(products.validate(), prefix: 'products');
+    cvc.field('name', name).notBlank();
+    cvc.field('products', products).validEach();
     return cvc;
   }
 }
@@ -339,7 +340,7 @@ class _Catalog implements Validatable {
   @override
   ConstraintValidatorContext validate() {
     final cvc = ConstraintValidatorContext();
-    cvc.merge(categories.validate(), prefix: 'categories');
+    cvc.field('categories', categories).validEach();
     return cvc;
   }
 }

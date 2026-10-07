@@ -1,20 +1,18 @@
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
-class _EmptyModel extends Validatable {}
-
 enum _Color { red }
 
 void main() {
-  group('ConstrainViolation', () {
-    const violation = ConstrainViolation(
+  group('ConstraintViolation', () {
+    const violation = ConstraintViolation(
       value: 'x',
       fieldName: 'name',
       message: 'too short',
     );
 
     test('equality & hashCode', () {
-      const same = ConstrainViolation(
+      const same = ConstraintViolation(
         value: 'x',
         fieldName: 'name',
         message: 'too short',
@@ -37,13 +35,9 @@ void main() {
   });
 
   group('Validatable', () {
-    test('a model without rules is valid by default', () {
-      expect(_EmptyModel().validate().isValid, isTrue);
-    });
-
     test('throwOnFailure throws a ValidationException with the violations', () {
       final cvc = ConstraintValidatorContext();
-      cvc.buildValidator('tags').size(min: 2).validate(['only-one']);
+      cvc.field('tags', ['only-one']).size(min: 2);
 
       expect(
         cvc.throwOnFailure,
@@ -68,26 +62,42 @@ void main() {
   test('Optional fields: null is valid for every rule except notNull', () {
     final cvc = ConstraintValidatorContext();
     cvc
-        .buildValidator('optional')
+        .field<String?>('text', null)
         .notBlank()
         .size(min: 1)
         .email()
+        .pattern(RegExp('x'))
+        .url()
+        .uuid()
+        .isEnum(_Color.values)
+        .oneOf(['a']);
+    cvc
+        .field<int?>('number', null)
         .min(1)
         .max(1)
-        .pattern(RegExp('x'))
-        .isEnum(_Color.values)
-        .validate(null);
+        .positive()
+        .negative()
+        .positiveOrZero()
+        .negativeOrZero();
+    cvc.field<List<int>?>('list', null).size(min: 1).notEmpty();
+    cvc.field<Map<String, int>?>('map', null).size(min: 1).notEmpty();
+    cvc
+        .field<DateTime?>('date', null)
+        .past()
+        .future()
+        .pastOrPresent()
+        .futureOrPresent();
 
     expect(cvc.isValid, isTrue);
 
-    cvc.buildValidator('required').notNull().validate(null);
+    cvc.field('required', null).notNull();
     expect(cvc.violations.single.fieldName, 'required');
   });
 
   test('merge with a prefix names a violation without field name', () {
     final inner = ConstraintValidatorContext()
       ..addViolation(
-        const ConstrainViolation(value: 1, fieldName: '', message: 'm'),
+        const ConstraintViolation(value: 1, fieldName: '', message: 'm'),
       );
 
     final outer = ConstraintValidatorContext()..merge(inner, prefix: 'items');
