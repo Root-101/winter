@@ -91,7 +91,7 @@ void main() {
     Future<void> start(LocaleConfig localeConfig) async {
       Winter.context.setUp(logger: memoryLogger, localeConfig: localeConfig);
       await Winter.start(
-        config: ServerConfig(port: port, handleSignals: false),
+        config: const ServerConfig(port: port, handleSignals: false),
       );
     }
 

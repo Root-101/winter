@@ -1,19 +1,32 @@
 import 'dart:async';
-import 'dart:io';
+
+import 'package:winter/winter.dart';
 
 const int defaultServerPort = 8080;
 
 ///10 MB
 const int defaultMaxBodySize = 10 * 1024 * 1024;
 
+/// How the server runs: where it listens, the body limit and the graceful shutdown.
+///
+/// ```dart
+/// await Winter.start(config: const ServerConfig(port: 9000));
+/// await Winter.start(config: ServerConfig.fromEnv(env)); // PORT and HOST of the platform
+/// ```
+///
+/// `Winter.start` validates it before opening the port (an [ArgumentError] for a port out of
+/// 0-65535, or a negative [maxBodySize] or [shutdownTimeout]).
 class ServerConfig {
-  ///Address on which the service will be running
-  ///Default to InternetAddress.anyIPv4
-  late final InternetAddress ip;
+  ///Address on which the server listens: `'0.0.0.0'` (default, every IPv4 interface),
+  ///`'localhost'`, `'127.0.0.1'`, `'::'`...
+  final String host;
 
-  ///Port on which the service will be running
-  ///Default to `defaultServerPort` (8080)
-  late final int port;
+  ///Port on which the server listens. Default to [defaultServerPort] (8080); `0` picks a free one.
+  final int port;
+
+  ///If true, several isolates can listen on the same [port] (see
+  ///`benchmark/server_shared_benchmark.dart`): the connections are balanced between them.
+  final bool shared;
 
   ///Max size (in bytes) of the body of a request, a bigger body is rejected with a 413 (Payload Too Large)
   ///when it's read. It protects the server from running out of memory with huge requests.
@@ -29,19 +42,64 @@ class ServerConfig {
   ///after it the remaining connections are closed. Default to 10 seconds.
   final Duration shutdownTimeout;
 
-  ///Called on a graceful shutdown after the server is closed,
-  ///to release other resources (database connections, files...)
+  ///Called on a graceful shutdown after the server is closed and before the dependencies are
+  ///disposed (`di.disposeAll()`), to release other resources
   final FutureOr<void> Function()? onShutdown;
 
-  ServerConfig({
-    InternetAddress? ip,
-    int? port,
+  /// The configuration of the server
+  const ServerConfig({
+    this.host = '0.0.0.0',
+    this.port = defaultServerPort,
+    this.shared = false,
     this.maxBodySize = defaultMaxBodySize,
     this.handleSignals = true,
     this.shutdownTimeout = const Duration(seconds: 10),
     this.onShutdown,
-  }) {
-    this.ip = ip ?? InternetAddress.anyIPv4;
-    this.port = port ?? defaultServerPort;
+  });
+
+  /// The configuration with the `PORT` and `HOST` of [env], the variables that Cloud Run, Heroku,
+  /// Render and Kubernetes set. [port] and [host] are the values without them.
+  factory ServerConfig.fromEnv(
+    Env env, {
+    String host = '0.0.0.0',
+    int port = defaultServerPort,
+    bool shared = false,
+    int? maxBodySize = defaultMaxBodySize,
+    bool handleSignals = true,
+    Duration shutdownTimeout = const Duration(seconds: 10),
+    FutureOr<void> Function()? onShutdown,
+  }) => ServerConfig(
+    host: env.find<String>('HOST')?.trim() ?? host,
+    port: env.find<int>('PORT') ?? port,
+    shared: shared,
+    maxBodySize: maxBodySize,
+    handleSignals: handleSignals,
+    shutdownTimeout: shutdownTimeout,
+    onShutdown: onShutdown,
+  );
+
+  /// An [ArgumentError] if a value is out of its range (a `const` constructor can't check it)
+  void validate() {
+    if (port < 0 || port > 65535) {
+      throw ArgumentError.value(port, 'port', 'Must be between 0 and 65535');
+    }
+    final int? maxBodySize = this.maxBodySize;
+    if (maxBodySize != null && maxBodySize < 0) {
+      throw ArgumentError.value(
+        maxBodySize,
+        'maxBodySize',
+        'Must be 0 or more (null for no limit)',
+      );
+    }
+    if (shutdownTimeout.isNegative) {
+      throw ArgumentError.value(
+        shutdownTimeout,
+        'shutdownTimeout',
+        'Must be 0 or more',
+      );
+    }
+    if (host.trim().isEmpty) {
+      throw ArgumentError.value(host, 'host', 'Must not be empty');
+    }
   }
 }

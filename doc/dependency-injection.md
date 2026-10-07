@@ -94,15 +94,11 @@ it from a missing one.
 A dependency is found by the type it was registered with, never by a supertype or an interface:
 
 ```dart
-di.put
-(
-InMemoryUserRepository());
+di.put(InMemoryUserRepository());
 di.find<UserRepository>(); // StateError: registered as InMemoryUserRepository
 
 di.put<UserRepository>(InMemoryUserRepository());
-di.find<UserRepository>
-(
-); // found
+di.find<UserRepository>(); // found
 ```
 
 `T` and `T?` are the same key: a dependency registered from a variable of type `Service?` is found
@@ -114,11 +110,10 @@ as `Service`.
 order, even if one needs another:
 
 ```dart
-di..putLazy<OrderService>
-(
-() => OrderService(di.find(), di.find()))
-..putLazy<OrderRepository>(() => SqlOrderRepository(di.find()))
-..putLazy<PaymentClient>(() => PaymentClient(paymentsUrl));
+di
+  ..putLazy<OrderService>(() => OrderService(di.find(), di.find()))
+  ..putLazy<OrderRepository>(() => SqlOrderRepository(di.find()))
+  ..putLazy<PaymentClient>(() => PaymentClient(paymentsUrl));
 ```
 
 A cycle (`A` needs `B`, which needs `A`) is a `StateError` with the chain:
@@ -127,19 +122,18 @@ A cycle (`A` needs `B`, which needs `A`) is a `StateError` with the chain:
 ### One instance per request: `putScoped`
 
 ```dart
-di.putScoped<UnitOfWork>
-(
-() => UnitOfWork(di.find<Database>()),
-onDispose: (uow) => uow.close(),
+di.putScoped<UnitOfWork>(
+  () => UnitOfWork(di.find<Database>()),
+  onDispose: (uow) => uow.close(),
 );
 
 Route.post(
-path: '/orders',
-handler: (request) async {
-final uow = di.find<UnitOfWork>(); // the same one in this request, even after an await
-await di.find<OrderService>().create(await request.body<Order>(), uow);
-return ResponseEntity(201);
-},
+  path: '/orders',
+  handler: (request) async {
+    final uow = di.find<UnitOfWork>(); // the same one in this request, even after an await
+    await di.find<OrderService>().create(await request.body<Order>(), uow);
+    return ResponseEntity(201);
+  },
 );
 ```
 
@@ -171,10 +165,9 @@ the same way (registering it after the request ended is a `StateError`: it would
 ### Shutting down: `onDispose`
 
 ```dart
-di.putLazy<Database>
-(
-() => Database.open(databaseUrl),
-onDispose: (db) => db.close(),
+di.putLazy<Database>(
+  () => Database.open(databaseUrl),
+  onDispose: (db) => db.close(),
 );
 ```
 
@@ -198,13 +191,7 @@ the same dependencies. Call `di.disposeAll()` yourself when you need it.
 registrations, so a test can use a fresh one:
 
 ```dart
-setUp
-(
-() => Winter.context.setUp(dependencyInjection: DependencyInjection
-(
-)
-)
-);
+setUp(() => Winter.context.setUp(dependencyInjection: DependencyInjection()));
 ```
 
 Replacing it drops what was registered in the previous one.
@@ -216,10 +203,8 @@ Replacing it drops what was registered in the previous one.
 Register the fake with the same type, before the code under test finds it:
 
 ```dart
-setUp
-(
-() {
-di.put<PaymentClient>(FakePaymentClient());
+setUp(() {
+  di.put<PaymentClient>(FakePaymentClient());
 });
 ```
 
@@ -229,26 +214,19 @@ Registering it again replaces the registration, even a `putLazy` already created
 ### Several implementations of the same type
 
 ```dart
-di..put<Notifier>
-(
-EmailNotifier(), tag: 'email')
-..put<Notifier>(SmsNotifier(), tag: 'sms');
+di
+  ..put<Notifier>(EmailNotifier(), tag: 'email')
+  ..put<Notifier>(SmsNotifier(), tag: 'sms');
 
 di.find<Notifier>(tag: 'sms');
 ```
 
 ### Configuration values
 
+See [configuration](configuration.md) for `Env` and the typed configuration of the app.
+
 ```dart
-di.put
-(
-AppConfig
-.
-fromEnv
-(
-env
-)
-); // read once at start-up, fail fast if something is missing
+di.put(AppConfig.fromEnv(env)); // read once at start-up, fail fast if something is missing
 ```
 
 ## Typical mistakes and limitations

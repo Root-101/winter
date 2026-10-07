@@ -78,8 +78,8 @@ void main() {
   });
 
   test('Default limit is 10 MB and null means no limit', () {
-    expect(ServerConfig().maxBodySize, 10 * 1024 * 1024);
-    expect(ServerConfig(maxBodySize: null).maxBodySize, isNull);
+    expect(const ServerConfig().maxBodySize, 10 * 1024 * 1024);
+    expect(const ServerConfig(maxBodySize: null).maxBodySize, isNull);
   });
 
   test('limitBodySize fails as soon as the limit is exceeded', () async {

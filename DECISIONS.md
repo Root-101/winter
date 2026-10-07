@@ -622,3 +622,100 @@ A review of the new DI, from zero, found two silent bugs of `putScoped`:
 Proposed for later (`ROADMAP.md`): `di.createAll()` to create every lazy one at start-up and fail
 there instead of in the first request (before 1.0), and after 1.0 async initialization, child
 containers for tests and a listing of the registrations.
+
+## 6. Configuration
+
+**Status:** decided and implemented on 2026-10-07 in the review of phase 2.5 of `ROADMAP.md`.
+`test/env/config_behavior_test.dart` covers every section below, and `doc/configuration.md` is
+the guide.
+
+### 6.1 `find` and `require`
+
+```dart
+final port = env.find<int>('PORT') ?? 8080;     // int
+final dbUrl = env.require<String>('DB_URL');     // String, or a StateError that names it
+final debug = env.find<bool>('DEBUG') ?? false;
+```
+
+- `find<T>` returns `T?` and supports nullable types (`find<int?>` was an "unsupported type");
+  defaults are written with `??`. `require<T>` returns a `T`: `find(required: true)` returned a
+  `T?` that always needed a `!`. Breaking: `required:` is removed.
+- `requireAll(['DB_URL', 'JWT_SECRET'])` checks every variable at once and names **all** the
+  missing ones in a single error: in a container, finding them one restart at a time is slow.
+- **An error never shows the value**: a wrong type said `found with value 'hunter2'`, and a
+  configuration error ends in the logs. It names the variable and the expected type only.
+- An empty value counts as missing.
+
+### 6.2 Types
+
+`String`, `bool`, `int`, `double`, `num`, `Duration` (`250ms`, `30s`, `5m`, `1h`, `2d`), `Uri`
+(absolute), a `List` of any of them (comma separated), and enums with
+`findEnum(key, values)` / `requireEnum(key, values)` (by name, any case; the error lists the valid
+names).
+
+- A `String` is returned as it is; numbers, bools, durations, URIs and every item of a list are
+  trimmed (`' 8080 '` is a typo, not a value). Trimming a `String` altered secrets and passwords
+  with spaces.
+- `bool` and `List<bool>` accept any case (`List<bool>` used `bool.parse`, which only takes
+  lowercase, while `bool` accepted `TRUE`).
+- The "unsupported type" error lists every supported type (it forgot `List<bool>`).
+- `put` returns the value given (it read it back with `find`, which failed for a type `find`
+  doesn't read).
+
+### 6.3 `.env` files and profiles
+
+`Env.load()` reads `.env` and `.env.<profile>`, the profile coming from `WINTER_PROFILE`
+(`WINTER_PROFILE=prod` → `.env.prod`).
+
+- Precedence: **process variables > `.env.<profile>` > `.env`**. A file that doesn't exist is
+  ignored.
+- *Why*: in production the variables come from the platform (`docker run -e`, the configuration of
+  the cloud service), not from files. The files are for local development. Since the process wins
+  and missing files are ignored, the same code runs on a laptop (with a `.env`) and in a container
+  (without files).
+- Format: `KEY=VALUE`, `#` comments, empty lines, an optional `export `, and quoted values
+  (`"..."` with `\n` escapes, `'...'` literal). No interpolation (`${OTHER}`): it hides where a
+  value comes from.
+- `env.profile` is the active profile (`null` without one).
+- `Env.parseDotEnv(lines)` is public, to read a file of another place. A line that is not a
+  variable, or an unclosed quote, is a `FormatException` with the file and the line number, never
+  its content.
+
+### 6.4 A typed configuration of the app
+
+The documented pattern: a class read once at start-up, registered in `di`, so a missing variable
+fails before the server opens its port:
+
+```dart
+class AppConfig {
+  final String dbUrl;
+  final Duration timeout;
+
+  AppConfig({required this.dbUrl, required this.timeout});
+
+  factory AppConfig.fromEnv(Env env) {
+    env.requireAll(['DB_URL']);
+    return AppConfig(
+      dbUrl: env.require<String>('DB_URL'),
+      timeout: env.find<Duration>('TIMEOUT') ?? const Duration(seconds: 30),
+    );
+  }
+}
+
+di.put(AppConfig.fromEnv(env));
+```
+
+### 6.5 `ServerConfig`
+
+- `const ServerConfig(...)`: the fields are set in the initializer list, and the address is a
+  `host` `String` (`'0.0.0.0'` by default, `'localhost'`, `'127.0.0.1'`) instead of an
+  `InternetAddress`, which can't be `const`. Breaking: `ip:` → `host:`.
+- `shared` (several isolates on the same port) moves from `Winter.start(shared:)` to
+  `ServerConfig(shared: true)`, with the rest of the server's configuration. Breaking.
+- `Winter.start` validates it before opening the port: a port out of `0-65535`, or a negative
+  `maxBodySize` or `shutdownTimeout`, is an `ArgumentError` (a `const` constructor can't throw).
+- `ServerConfig.fromEnv(env)` reads `PORT` and `HOST`, the variables that Cloud Run, Heroku,
+  Render and Kubernetes set, with the given values as defaults.
+- `validate()` is public (an empty `host` is rejected too), so a test or a custom start can check
+  a configuration without starting a server.
+- `securityContext` (HTTPS) and `requestTimeout` come with the server of phase 3.1 and phase 4.

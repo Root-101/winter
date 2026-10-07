@@ -164,11 +164,8 @@ void main() {
       expect(() => env.find<List<int>>('BAD_INTS'), throwsStateError);
     });
 
-    test('required: true fails when the env is missing (or blank)', () {
-      expect(
-        () => env.find<String>('MISSING', required: true),
-        throwsStateError,
-      );
+    test('require fails when the env is missing (or blank)', () {
+      expect(() => env.require<String>('MISSING'), throwsStateError);
       expect(env.find<String>('MISSING'), isNull);
     });
 

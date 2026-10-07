@@ -92,7 +92,6 @@ class Winter {
     AbstractWinterRouter? router,
     FilterConfig? globalFilterConfig,
     SecurityConfig? securityConfig,
-    bool shared = false,
   }) async {
     if (isRunning) {
       throw StateError('Server already started');
@@ -114,7 +113,10 @@ class Winter {
     }
 
     ServerConfig nonNullConfig =
-        config ?? injection.tryFind<ServerConfig>() ?? ServerConfig();
+        config ?? injection.tryFind<ServerConfig>() ?? const ServerConfig();
+
+    ///Before registering anything or opening the port: a const constructor can't check its values
+    nonNullConfig.validate();
     restores.add(_putRestorable<ServerConfig>(injection, nonNullConfig));
 
     ///Found with the same type it's registered with (any router, ex: a MultiRouter),
@@ -152,8 +154,8 @@ class Winter {
           maxBodySize: nonNullConfig.maxBodySize,
           inFlightRequests: inFlightRequests,
         ),
-        shared: shared,
-        nonNullConfig.ip,
+        shared: nonNullConfig.shared,
+        nonNullConfig.host,
         nonNullConfig.port,
       );
     } catch (_) {
