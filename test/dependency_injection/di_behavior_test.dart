@@ -291,6 +291,198 @@ void main() {
     });
   });
 
+  group('Scoped dependencies and the lifetime of the request (§5.6)', () {
+    test('a lazy singleton that depends on a scoped one is a StateError', () {
+      di
+        ..putScoped<_UnitOfWork>(_UnitOfWork.new)
+        ..putLazy<_OrderService>(() => _OrderService(di.find()));
+
+      expect(
+        () => RequestScope.run(RequestScope(), () => di.find<_OrderService>()),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              contains('<_OrderService>'),
+              contains('<_UnitOfWork>'),
+              contains('putFactory'),
+            ),
+          ),
+        ),
+      );
+      // Nothing is left half created: as a factory it works
+      di.putFactory<_OrderService>(() => _OrderService(di.find()));
+      RequestScope.run(RequestScope(), () {
+        expect(
+          di.find<_OrderService>().unitOfWork,
+          same(di.find<_UnitOfWork>()),
+        );
+      });
+    });
+
+    test('a factory and the handler get the same scoped instance', () {
+      di
+        ..putScoped<_UnitOfWork>(_UnitOfWork.new)
+        ..putFactory<_OrderService>(() => _OrderService(di.find()));
+
+      RequestScope.run(RequestScope(), () {
+        expect(
+          di.find<_OrderService>().unitOfWork,
+          same(di.find<_UnitOfWork>()),
+        );
+      });
+    });
+
+    test('after the request ended it is a StateError', () async {
+      final scope = RequestScope();
+      di.putScoped<_UnitOfWork>(_UnitOfWork.new);
+      RequestScope.run(scope, () => di.find<_UnitOfWork>());
+
+      await scope.complete();
+
+      expect(scope.isCompleted, isTrue);
+      expect(
+        () => RequestScope.run(scope, () => di.find<_UnitOfWork>()),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('already ended'),
+          ),
+        ),
+      );
+      expect(() => scope.onComplete(() {}), throwsStateError);
+    });
+
+    test(
+      'tryFind of a scoped dependency outside a request is a StateError',
+      () {
+        di.putScoped<_UnitOfWork>(_UnitOfWork.new);
+
+        // It's registered, but there is no request to give it
+        expect(di.isRegistered<_UnitOfWork>(), isTrue);
+        expect(() => di.tryFind<_UnitOfWork>(), throwsStateError);
+      },
+    );
+
+    test('a failing onDispose of a scoped one is logged', () async {
+      final logs = <String>[];
+      Winter.context.setUp(logger: _MemoryLogger(logs));
+      addTearDown(() => Winter.context.setUp(logger: const ConsoleLogger()));
+      di.putScoped<_UnitOfWork>(
+        _UnitOfWork.new,
+        onDispose: (_) => throw StateError('x'),
+      );
+      final scope = RequestScope();
+      RequestScope.run(scope, () => di.find<_UnitOfWork>());
+
+      await scope.complete();
+
+      expect(logs.single, contains('<_UnitOfWork>'));
+    });
+  });
+
+  group('Use cases (§5.2, §5.3)', () {
+    test('tags with every kind of registration', () {
+      di
+        ..putLazy<_Service>(_Service.new, tag: 'lazy')
+        ..putFactory<_Service>(_Service.new, tag: 'factory')
+        ..putScoped<_Service>(_Service.new, tag: 'scoped')
+        ..put(_Service(), tag: 'instance');
+
+      expect(
+        di.find<_Service>(tag: 'lazy'),
+        same(di.find<_Service>(tag: 'lazy')),
+      );
+      expect(
+        di.find<_Service>(tag: 'factory'),
+        isNot(same(di.find<_Service>(tag: 'factory'))),
+      );
+      RequestScope.run(RequestScope(), () {
+        expect(
+          di.find<_Service>(tag: 'scoped'),
+          same(di.find<_Service>(tag: 'scoped')),
+        );
+      });
+      expect(di.isRegistered<_Service>(), isFalse);
+    });
+
+    test('a lazy one that fails is created again by the next find', () {
+      var attempts = 0;
+      di.putLazy<_Service>(() {
+        if (++attempts == 1) throw StateError('database down');
+        return _Service();
+      });
+
+      expect(() => di.find<_Service>(), throwsStateError);
+      expect(di.find<_Service>(), isA<_Service>());
+      expect(attempts, 2);
+    });
+
+    test('a cycle between factories is a StateError too', () {
+      di
+        ..putFactory<_A>(() => _A(di.find()))
+        ..putFactory<_B>(() => _B(di.find()));
+
+      expect(
+        () => di.find<_B>(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'Circular dependency: _B -> _A -> _B',
+          ),
+        ),
+      );
+    });
+
+    test('registering a fake replaces a lazy one already created', () {
+      di.putLazy<_Repository>(_SqlRepository.new);
+      final real = di.find<_Repository>();
+
+      di.put<_Repository>(_FakeRepository());
+
+      expect(real, isA<_SqlRepository>());
+      expect(di.find<_Repository>(), isA<_FakeRepository>());
+    });
+
+    test('isRegistered of a lazy one does not create it', () {
+      var created = false;
+      di.putLazy<_Service>(() {
+        created = true;
+        return _Service();
+      });
+
+      expect(di.isRegistered<_Service>(), isTrue);
+      expect(created, isFalse);
+    });
+
+    test('an async onDispose is awaited before the next one', () async {
+      final events = <String>[];
+      di
+        ..put(
+          _Service(),
+          onDispose: (_) async {
+            await Future<void>.delayed(Duration.zero);
+            events.add('service');
+          },
+        )
+        ..put<_Repository>(
+          _SqlRepository(),
+          onDispose: (_) async {
+            await Future<void>.delayed(const Duration(milliseconds: 5));
+            events.add('repository');
+          },
+        );
+
+      await di.disposeAll();
+      await di.disposeAll(); // nothing left: nothing happens
+
+      expect(events, ['repository', 'service']);
+    });
+  });
+
   group('RequestScope.onComplete', () {
     test('a failing callback is logged and the others still run', () async {
       final logs = <String>[];
@@ -317,6 +509,14 @@ _Service? _maybeService() => _Service();
 abstract class _Repository {}
 
 class _SqlRepository implements _Repository {}
+
+class _FakeRepository implements _Repository {}
+
+class _OrderService {
+  final _UnitOfWork unitOfWork;
+
+  _OrderService(this.unitOfWork);
+}
 
 class _Controller {
   final _Repository repository;

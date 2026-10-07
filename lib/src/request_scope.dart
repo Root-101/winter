@@ -45,13 +45,25 @@ class RequestScope {
   /// the scoped dependencies of `di.putScoped` that are disposed there.
   ///
   /// A response streamed after that point (a [Stream] body) must not need what they close.
-  void onComplete(FutureOr<void> Function() callback) =>
-      _onComplete.add(callback);
+  ///
+  /// Registering one after the request ended is a [StateError]: it would never run.
+  void onComplete(FutureOr<void> Function() callback) {
+    if (_completed) {
+      throw StateError('The request already ended: onComplete would never run');
+    }
+    _onComplete.add(callback);
+  }
+
+  bool _completed = false;
+
+  /// True once the request ended ([complete] was called): its scoped dependencies are disposed.
+  bool get isCompleted => _completed;
 
   /// Runs the [onComplete] callbacks (once: they are removed). A callback that fails is logged and
   /// the others still run. The server calls it for every request; call it yourself after
   /// [run] in a test that registers callbacks (or uses scoped dependencies).
   Future<void> complete() async {
+    _completed = true;
     final callbacks = _onComplete.reversed.toList();
     _onComplete.clear();
     for (final callback in callbacks) {
