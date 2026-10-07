@@ -15,7 +15,7 @@ class FailingGlobalFilter extends Filter {
 
   @override
   FutureOr<ResponseEntity> doFilter(RequestEntity request, FilterChain chain) {
-    throw UnauthorizedException();
+    throw const UnauthorizedException();
   }
 }
 
@@ -51,11 +51,11 @@ void main() {
           ),
           Route.get(
             path: '/not-found',
-            handler: (request) => throw NotFoundException(),
+            handler: (request) => throw const NotFoundException(),
           ),
           Route.get(
             path: '/seen',
-            handler: (request) => throw ConflictException(),
+            handler: (request) => throw const ConflictException(),
             filterConfig: FilterConfig([SeenStatusFilter()]),
           ),
         ],

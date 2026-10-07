@@ -20,7 +20,7 @@ void main() {
   };
 
   List<String> messages(TestResponse response) => [
-    for (final v in response.json as List)
+    for (final v in (response.json as Map)['violations'] as List)
       (v as Map<String, dynamic>)['message'] as String,
   ];
 
@@ -87,7 +87,7 @@ void main() {
     test('404 in Spanish', () async {
       final response = await client.get('/orders/7', headers: lang('es'));
       expect(response.statusCode, 404);
-      expect(response.body, 'Pedido 7 no encontrado');
+      expect((response.json as Map)['detail'], 'Pedido 7 no encontrado');
       expect(response.headers[HttpHeader.vary], HttpHeader.acceptLanguage);
     });
 
@@ -100,7 +100,7 @@ void main() {
 
     test('404 in English', () async {
       final response = await client.get('/orders/7');
-      expect(response.body, 'Order 7 not found');
+      expect((response.json as Map)['detail'], 'Order 7 not found');
     });
   });
 
@@ -112,7 +112,7 @@ void main() {
 
     for (int i = 0; i < 20; i++) {
       expect(
-        responses[i].body,
+        (responses[i].json as Map)['detail'],
         i.isEven ? 'Pedido $i no encontrado' : 'Order $i not found',
       );
     }
@@ -126,8 +126,8 @@ void main() {
       ),
       throwsA(
         isA<NotFoundException>().having(
-          (e) => e.body,
-          'body',
+          (e) => e.detail,
+          'detail',
           'Pedido 3 no encontrado',
         ),
       ),

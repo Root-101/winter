@@ -35,7 +35,7 @@ Answers in the language of each request (`Accept-Language`), with typed translat
 - **Validator with a text of the app**: `notBlank(message: t.orders.productRequired)` in
   `OrderRequest.validate()`. The built-in texts of Winter (`notNull`, `min`...) are translated too,
   so a 422 mixes both, all in the same language.
-- **Service**: `OrderService.find` throws `NotFoundException(body: t.orders.notFound(id: id))`
+- **Service**: `OrderService.find` throws `NotFoundException(detail: t.orders.notFound(id: id))`
   without receiving the request.
 - **Handler**: `t.greetings.hello(name: requestAuthentication!.name)` uses both the language and
   the user of the request.

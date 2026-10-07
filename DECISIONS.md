@@ -433,3 +433,109 @@ A review of the new API, from zero, found:
 - The docs recommend `validate()` with cascades (`=> ConstraintValidatorContext()..field(...)`),
   and a model of its own for a PATCH (optional fields are only validated when they come) instead of
   `validate: false`.
+
+## 4. Exceptions and error handling
+
+**Status:** decided and implemented on 2026-10-07 in the review of phase 2.3 of `ROADMAP.md`.
+`test/server/exception_handler/error_handling_behavior_test.dart` covers every section below, and
+`doc/error-handling.md` is the guide.
+
+### 4.1 Every error is a Problem Details (RFC 9457)
+
+Every error response is `application/problem+json`:
+
+```json
+{ "type": "about:blank", "title": "Not Found", "status": 404, "detail": "User 42 not found" }
+```
+
+- `type` is `about:blank` unless the app gives one, `title` is the reason phrase of the status,
+  `status` its code, and `detail` is only there when there is one (never in a 500).
+- The 422 adds `"violations": [...]` (the `ConstraintViolation`s of §3).
+- *Why*: there were five formats (no body for 404/405/401/429, `text/plain` for the 400s, 413, 415
+  and 500, a JSON array for the 422 and any map for an `ApiException` with a map body), and the 422
+  used `application/problem+json` for a body that wasn't one. Problem Details is the standard
+  (Spring 6 uses it by default), so any client can read every error the same way.
+- The `title` is never translated: it's the standard reason phrase, like the i18n section (§1)
+  decided. What the user reads is the `detail`, written by the app with its own translations.
+
+### 4.2 `ApiException`: `detail`, `type`, `title` and extensions
+
+```dart
+throw NotFoundException(detail: 'User 42 not found');
+
+throw ApiException(
+  StatusCode.conflict,
+  detail: 'The email is already registered',
+  type: 'https://api.example.com/errors/email-taken',
+  extensions: {'email': email},
+);
+
+throw ResponseException(ResponseEntity(402, body: myBody)); // a response of its own
+```
+
+- `ApiException(status, {detail, type, title, extensions, headers})` works for any status; the
+  subclasses are shortcuts for the common ones: 400, 401, 403, 404, 405 (`MethodNotAllowedException`,
+  with the `Allow` header), 409, 413, 415, 422, 429 (`TooManyRequestsException`), 500 and 503
+  (`ServiceUnavailableException`). `PaymentRequiredException` (402) is removed.
+- `type` is a `String` (a URI reference), so the exceptions can be `const`.
+- Breaking: `body:` is removed. It meant "the body of the response", which no longer fits a
+  Problem Details; a response of its own is a `ResponseException`.
+- The status is a `StatusCode`, so a code that isn't in the enum (`700`) needs a
+  `ResponseException`. `ProblemDetails` is public, to build one by hand (`toResponse()`).
+
+### 4.3 The `ExceptionHandler` receives everything, `Error`s included
+
+`ExceptionHandler.call(RequestEntity request, Object error, StackTrace stackTrace)`, and the filter
+chain turns any `Exception` **or `Error`** into a response where it's thrown.
+
+- *Why*: an `Error` (a `StateError`, a `TypeError`...) went through every filter up to the
+  pipeline, which answered its own 500: **without the CORS headers** (a browser showed a CORS error
+  instead of the 500), without the filters seeing it (`LogsFilter` didn't log it), and without the
+  `ExceptionHandler` (a custom one couldn't log or format it; the pipeline checked
+  `eh is SimpleExceptionHandler` to find `logUnhandledError`).
+- Breaking for a custom `ExceptionHandler`: the parameter is `Object` instead of `Exception`.
+- If the `ExceptionHandler` itself throws, the pipeline logs both errors and answers a generic
+  500, so a broken handler never leaves a request without a response.
+
+### 4.4 Handling an exception of the app: `on<T>()` or inheritance
+
+```dart
+Winter.context.setUp(
+  exceptionHandler: SimpleExceptionHandler()
+    ..on<EmailTakenException>((request, e) => ConflictException(detail: e.message))
+    ..on<PaymentFailed>((request, e) => ResponseEntity(402, body: {...})),
+);
+```
+
+- The function returns an `ApiException` (formatted as a Problem Details) or a `ResponseEntity`
+  (used as it is). The most specific registered type wins, whatever the order of registration.
+- Inheritance keeps working: extend `SimpleExceptionHandler` and override `handle` (its default
+  rules; the mappings of `on()` still run first), or implement `ExceptionHandler` to replace it all.
+- If a mapping throws, what it throws is answered by the default rules, never by the mappings
+  again, so two mappings can't loop.
+
+### 4.5 The errors of Winter go through the handler too
+
+The router throws `NotFoundException` / `MethodNotAllowedException`, `AuthFilter` throws
+`UnauthorizedException` / `ForbiddenException` and the rate limiter `TooManyRequestsException`
+(with its `X-RateLimit-*` and `Retry-After` headers), instead of returning a response.
+
+- *Why*: the `ExceptionHandler` is then the only place that formats every error, and
+  `on<NotFoundException>` can change the 404 of the router.
+- Breaking: `AuthFilter.build401`/`build403` are removed (use `on<UnauthorizedException>`).
+
+### 4.6 The path of the 400 and the `fieldName` of the 422 stay different
+
+The 400 of the object mapper has a JSON path in its `detail` (`$.items[1].price: expected a
+number, got a string`), and the 422 a field name (`items[1].price`).
+
+- *Why*: a 400 means the JSON doesn't have the shape of the type, a bug of the client that its
+  developer reads; a 422 means the user typed an invalid value, and the client links `fieldName`
+  to an input of a form.
+
+### 4.7 Small fixes
+
+- The `ExcHandler` typedef (unused, with a parameter named `stackTrac`) is removed.
+- `ResponseException.responseEntity` is `final`.
+- `Filter chain ended without a response` can't happen (the last link is always the handler, which
+  never calls the chain): it becomes a `StateError` instead of a 500 with an internal message.

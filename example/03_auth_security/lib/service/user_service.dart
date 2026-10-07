@@ -39,8 +39,7 @@ class UserService {
   User getById(int id) {
     return _users.firstWhere(
       (u) => u.id == id,
-      orElse: () =>
-          throw NotFoundException(body: {'error': 'User $id not found'}),
+      orElse: () => throw NotFoundException(detail: 'User $id not found'),
     );
   }
 
@@ -59,7 +58,7 @@ class UserService {
   User delete(int id) {
     final index = _users.indexWhere((u) => u.id == id);
     if (index == -1) {
-      throw NotFoundException(body: {'error': 'User $id not found'});
+      throw NotFoundException(detail: 'User $id not found');
     }
     return _users.removeAt(index);
   }

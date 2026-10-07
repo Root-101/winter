@@ -1,6 +1,8 @@
 @TestOn('vm')
 library;
 
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
@@ -110,7 +112,7 @@ void main() {
     http.Response response = await http.post(url(urlToTest));
 
     expect(response.statusCode, 405);
-    expect(response.body, '');
+    expect((jsonDecode(response.body) as Map)['title'], 'Method Not Allowed');
   });
 
   test('404: Not found', () async {
@@ -118,6 +120,6 @@ void main() {
     http.Response response = await http.get(url(urlToTest));
 
     expect(response.statusCode, 404);
-    expect(response.body, '');
+    expect((jsonDecode(response.body) as Map)['title'], 'Not Found');
   });
 }

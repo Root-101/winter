@@ -20,7 +20,7 @@ then, this index says which ones exist.
 | Requests and responses                               | 🕓    | `RequestEntity`, `ResponseEntity`, body limit, cookies, forms, files         |
 | [Object mapper](object-mapper.md)                    | ✅    | JSON ↔ objects: `toJson()`, serializers, deserializers, generics, errors, options |
 | [Validation](validation.md)                          | ✅    | `Validatable`, `cvc.field(...)`, the validators, nested objects, the 422     |
-| Error handling                                       | 🕓    | Exceptions, their status, the `ExceptionHandler`, the error format (2.3)     |
+| [Error handling](error-handling.md)                  | ✅    | Problem Details, `ApiException` and its shortcuts, `on<T>()`, the 500        |
 | i18n                                                 | 🕓    | The language of the request, Winter's messages, translating an app with slang |
 | Security                                             | 🕓    | Authentication, `AuthFilter`, rules, CORS, rate limiter (2.7)                |
 | Dependency injection                                 | 🕓    | `di`, tags, what `Winter.start` registers, tests (2.4)                       |
@@ -33,7 +33,8 @@ then, this index says which ones exist.
 ## Other references
 
 - [`DECISIONS.md`](../DECISIONS.md): **why** the framework behaves the way it does (the guides
-  explain **how**). Today: i18n (§1), the object mapper (§2) and validation (§3).
+  explain **how**). Today: i18n (§1), the object mapper (§2), validation (§3) and error handling
+  (§4).
 - [`CHANGELOG.md`](../CHANGELOG.md): what changed in each version, breaking changes included.
 - [`ROADMAP.md`](../ROADMAP.md): what is left for 1.0.
 - [`example/`](../example): standalone apps, from a basic server to authentication and i18n.

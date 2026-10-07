@@ -56,14 +56,20 @@ void main() async {
 }
 ```
 
-`POST /users` with `{"email": "x", "age": 16}` answers:
+`POST /users` with `{"email": "x", "age": 16}` answers a Problem Details (like every error, see
+[error handling](error-handling.md)) with the `violations`:
 
 ```json
-[
-  { "fieldName": "email", "message": "The value is not a valid email", "code": "email" },
-  { "fieldName": "password", "message": "The field cannot be null", "code": "notNull" },
-  { "fieldName": "age", "message": "The minimum is 18", "code": "min.inclusive", "params": { "value": 18 } }
-]
+{
+  "violations": [
+    { "fieldName": "email", "message": "The value is not a valid email", "code": "email" },
+    { "fieldName": "password", "message": "The field cannot be null", "code": "notNull" },
+    { "fieldName": "age", "message": "The minimum is 18", "code": "min.inclusive", "params": { "value": 18 } }
+  ],
+  "type": "about:blank",
+  "title": "Unprocessable Entity",
+  "status": 422
+}
 ```
 
 ## How it works
@@ -117,7 +123,7 @@ Every validator takes `message:` (your own text) and `stopOnFailure:`.
 `body<T>()` validates a `Validatable` body (and every element of a list of them, with its index:
 `[1].email`) and throws a `ValidationException` when there is any violation. Outside a body, call
 `cvc.throwOnFailure()` yourself (in a service, for example). The exception handler answers **422**
-with the list of violations:
+with a Problem Details whose `violations` member is the list of violations:
 
 | Key         | Content                                                                 |
 |-------------|-------------------------------------------------------------------------|
@@ -268,5 +274,6 @@ validations are planned for 1.x (`DECISIONS.md` §3.8).
   `.validate().throwOnFailure()` in the handler is harmless but unnecessary.
 - **`size()` uses the same text for Strings and collections**: "The minimum is 3" (characters or
   elements).
-- **`fieldName` is a path without `$`** (`items[0].name`), while a 400 of the object mapper says
-  `$.items[0].name`. A single error format is decided in phase 2.3 of the roadmap.
+- **`fieldName` is a path without `$`** (`items[0].name`), while the 400 of the object mapper
+  says `$.items[0].name` in its `detail`. On purpose: the 422 names a field of a form, the 400 a
+  place of the JSON (see [error handling](error-handling.md)).

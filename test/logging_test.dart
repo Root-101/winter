@@ -119,7 +119,11 @@ void main() {
         window: const Duration(minutes: 1),
         onRequest: (request) => 'client',
       );
-      final chain = FilterChain([filter], (request) => ResponseEntity.ok());
+      final chain = FilterChain(
+        [filter],
+        (request) => ResponseEntity.ok(),
+        exceptionHandler: SimpleExceptionHandler(),
+      );
       RequestEntity request() => RequestEntity('GET', Uri.parse('http://x/'));
 
       await chain.doFilter(request());

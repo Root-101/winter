@@ -351,7 +351,7 @@ void main() {
 
     test('an ApiException thrown by a deserializer is not wrapped', () {
       mapper.addDeserializer(
-        Deserializer<Worker>((data) => throw ConflictException()),
+        Deserializer<Worker>((data) => throw const ConflictException()),
       );
 
       expect(
@@ -369,7 +369,7 @@ void main() {
       final response = await client.post('/', headers: _json, body: '{}');
 
       expect(response.statusCode, 400);
-      expect(response.body, r'$: invalid value');
+      expect((response.json as Map)['detail'], r'$: invalid value');
     });
   });
 
@@ -688,7 +688,7 @@ void main() {
 
     test('throws the same errors as serialize()', () {
       compact.addSerializer(
-        Serializer<Worker>((worker) => throw ConflictException()),
+        Serializer<Worker>((worker) => throw const ConflictException()),
       );
       final cyclic = <Object?>[];
       cyclic.add(cyclic);

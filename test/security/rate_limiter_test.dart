@@ -127,7 +127,7 @@ void main() {
     test('should allow request and add Rate-Limit headers', () async {
       final chain = FilterChain([], handle);
 
-      final response = await filter.doFilter(request, chain);
+      final response = await _run(filter, request, chain);
 
       expect(response.statusCode, 200);
       expect(response.headers['X-RateLimit-Limit'], '2');
@@ -139,11 +139,11 @@ void main() {
       final chain = FilterChain([], handle);
 
       // Consume limit (2 requests)
-      await filter.doFilter(request, chain);
-      await filter.doFilter(request, chain);
+      await _run(filter, request, chain);
+      await _run(filter, request, chain);
 
       // Third one should fail
-      final response = await filter.doFilter(request, chain);
+      final response = await _run(filter, request, chain);
 
       expect(response.statusCode, 429); // Too Many Requests
       expect(response.headers['X-RateLimit-Remaining'], '0');
@@ -153,10 +153,10 @@ void main() {
     test('should update remaining requests in headers', () async {
       final chain = FilterChain([], handle);
 
-      final response1 = await filter.doFilter(request, chain);
+      final response1 = await _run(filter, request, chain);
       expect(response1.headers['X-RateLimit-Remaining'], '1');
 
-      final response2 = await filter.doFilter(request, chain);
+      final response2 = await _run(filter, request, chain);
       expect(response2.headers['X-RateLimit-Remaining'], '0');
     });
 
@@ -177,20 +177,20 @@ void main() {
         headers: {'user-id': '2'},
       );
 
-      expect((await multiUserFilter.doFilter(user1, chain)).statusCode, 200);
-      expect((await multiUserFilter.doFilter(user2, chain)).statusCode, 200);
-      expect((await multiUserFilter.doFilter(user1, chain)).statusCode, 429);
+      expect((await _run(multiUserFilter, user1, chain)).statusCode, 200);
+      expect((await _run(multiUserFilter, user2, chain)).statusCode, 200);
+      expect((await _run(multiUserFilter, user1, chain)).statusCode, 429);
     });
 
     test('should allow requests again after window expires', () async {
       final chain = FilterChain([], handle);
-      await filter.doFilter(request, chain);
-      await filter.doFilter(request, chain);
-      expect((await filter.doFilter(request, chain)).statusCode, 429);
+      await _run(filter, request, chain);
+      await _run(filter, request, chain);
+      expect((await _run(filter, request, chain)).statusCode, 429);
 
       clock.advance(const Duration(seconds: 1, microseconds: 1));
 
-      expect((await filter.doFilter(request, chain)).statusCode, 200);
+      expect((await _run(filter, request, chain)).statusCode, 200);
     });
 
     test('Retry-After is the real wait, rounded up', () async {
@@ -199,10 +199,10 @@ void main() {
         rateLimiter: limiter(1, const Duration(seconds: 10)),
         onRequest: (req) => 'test-user',
       );
-      await slowFilter.doFilter(request, chain);
+      await _run(slowFilter, request, chain);
 
       clock.advance(const Duration(milliseconds: 2500));
-      final response = await slowFilter.doFilter(request, chain);
+      final response = await _run(slowFilter, request, chain);
 
       expect(response.statusCode, 429);
       expect(response.headers['Retry-After'], '8');
@@ -215,11 +215,11 @@ void main() {
         onRequest: (req) => 'id',
       );
 
-      final first = await countDownFilter.doFilter(request, chain);
+      final first = await _run(countDownFilter, request, chain);
       expect(first.headers['X-RateLimit-Reset'], '3');
 
       clock.advance(const Duration(seconds: 1));
-      final second = await countDownFilter.doFilter(request, chain);
+      final second = await _run(countDownFilter, request, chain);
       expect(second.headers['X-RateLimit-Reset'], '2');
     });
 
@@ -233,8 +233,8 @@ void main() {
       );
       final chain = FilterChain([], handle);
 
-      expect((await asyncFilter.doFilter(request, chain)).statusCode, 200);
-      expect((await asyncFilter.doFilter(request, chain)).statusCode, 429);
+      expect((await _run(asyncFilter, request, chain)).statusCode, 200);
+      expect((await _run(asyncFilter, request, chain)).statusCode, 429);
     });
 
     test('should call log function only when limit exceeded', () async {
@@ -246,10 +246,10 @@ void main() {
       );
       final chain = FilterChain([], handle);
 
-      await loggingFilter.doFilter(request, chain); // OK
+      await _run(loggingFilter, request, chain); // OK
       expect(loggedIds, isEmpty);
 
-      await loggingFilter.doFilter(request, chain); // Limited
+      await _run(loggingFilter, request, chain); // Limited
       expect(loggedIds, ['test-user']);
     });
   });
@@ -314,4 +314,17 @@ void main() {
       expect(rateLimiter.getResetDuration('id'), const Duration(seconds: 6));
     });
   });
+}
+
+/// Runs [filter] like the server does: an exception it throws becomes its response
+Future<ResponseEntity> _run(
+  Filter filter,
+  RequestEntity request,
+  FilterChain chain,
+) async {
+  try {
+    return await filter.doFilter(request, chain);
+  } catch (error, stackTrace) {
+    return SimpleExceptionHandler()(request, error, stackTrace);
+  }
 }

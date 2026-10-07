@@ -424,16 +424,24 @@ class Winter {
       );
 
       return await filterChain.doFilter(requestEntity);
-    } on Exception catch (error, stackTrace) {
-      ///Exceptions outside the chain (like routing)
-      return eh.call(requestEntity, error, stackTrace);
-    } on Error catch (error, stackTrace) {
-      ///Errors are bugs (StateError, TypeError...): log them and don't expose its details
-      final currentEh = eh;
-      final log = currentEh is SimpleExceptionHandler
-          ? currentEh.logUnhandledError
-          : defaultLogUnhandledError;
-      log(requestEntity, error, stackTrace);
+    } catch (error, stackTrace) {
+      ///Errors outside the chain (like routing)
+      return _handleError(requestEntity, error, stackTrace);
+    }
+  }
+
+  /// [eh] answers the error; if [eh] itself fails, the error is logged and the answer is a
+  /// generic 500, so a broken exception handler never leaves the request without a response
+  static Future<ResponseEntity> _handleError(
+    RequestEntity request,
+    Object error,
+    StackTrace stackTrace,
+  ) async {
+    try {
+      return await eh.call(request, error, stackTrace);
+    } catch (handlerError, handlerStackTrace) {
+      defaultLogUnhandledError(request, error, stackTrace);
+      defaultLogUnhandledError(request, handlerError, handlerStackTrace);
       return internalServerErrorResponse();
     }
   }
@@ -467,14 +475,14 @@ Stream<List<int>> limitBodySize(
   int? contentLength,
 }) async* {
   if (contentLength != null && contentLength > maxBytes) {
-    throw PayloadTooLargeException();
+    throw const PayloadTooLargeException();
   }
 
   int readBytes = 0;
   await for (final chunk in body) {
     readBytes += chunk.length;
     if (readBytes > maxBytes) {
-      throw PayloadTooLargeException();
+      throw const PayloadTooLargeException();
     }
     yield chunk;
   }

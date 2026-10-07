@@ -182,8 +182,8 @@ An explicit registration wins over a derived one, and removing a deserializer
 | No serializer, `toJson()` nor enum for an object     | `MissingSerializerError`         | 500      |
 | A serializer or a `toJson()` throws                  | `SerializationException`         | 500      |
 
-The message of a 400 is `path: reason`, and it never contains a Dart type, a stack trace or a
-file path:
+The 400 is a Problem Details (see [error handling](error-handling.md)) whose `detail` is
+`path: reason`, and it never contains a Dart type, a stack trace or a file path:
 
 | Body                   | Asked for          | Message                                               |
 |------------------------|--------------------|-------------------------------------------------------|
@@ -230,7 +230,7 @@ Winter.context.setUp(
 );
 
 final user = await request.body<User>(objectMapper: anotherMapper);
-final response = ResponseEntity.ok(body: user, objectMapper: anotherMapper);
+final response = ResponseEntity(200, body: user, objectMapper: anotherMapper);
 ```
 
 | Option           | Default        | Effect                                                                      |

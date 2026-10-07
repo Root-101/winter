@@ -5,31 +5,23 @@ import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
-/// A custom implementation of AuthFilter that overrides build401 and build403
-/// to return a response with a body.
-class CustomAuthFilter extends AuthFilter {
-  CustomAuthFilter({super.authenticated, super.rules});
-
-  @override
-  ResponseEntity build401(RequestEntity request) {
-    return ResponseEntity.unauthorized(
-      body: {'error': 'Unauthorized', 'message': 'Custom 401 message'},
-    );
-  }
-
-  @override
-  ResponseEntity build403(RequestEntity request) {
-    return ResponseEntity.forbidden(
-      body: {'error': 'Forbidden', 'message': 'Custom 403 message'},
-    );
-  }
-}
-
 void main() {
   int port = 9086;
   String localUrl = 'http://localhost:$port';
 
   setUpAll(() async {
+    /// The 401 and the 403 of AuthFilter are exceptions: on<T>() changes their response
+    Winter.context.setUp(
+      exceptionHandler: SimpleExceptionHandler()
+        ..on<UnauthorizedException>(
+          (request, e) =>
+              const UnauthorizedException(detail: 'Custom 401 message'),
+        )
+        ..on<ForbiddenException>(
+          (request, e) =>
+              const ForbiddenException(detail: 'Custom 403 message'),
+        ),
+    );
     await Winter.start(
       config: ServerConfig(port: port),
       router: WinterRouter(
@@ -39,7 +31,7 @@ void main() {
             method: HttpMethod.get,
             filterConfig: FilterConfig([
               MockAuthFilter(setAuth: false),
-              CustomAuthFilter(authenticated: true),
+              AuthFilter(authenticated: true),
             ]),
             handler: (request) async => ResponseEntity.ok(),
           ),
@@ -48,7 +40,7 @@ void main() {
             method: HttpMethod.get,
             filterConfig: FilterConfig([
               MockAuthFilter(roles: {'user'}),
-              CustomAuthFilter(rules: hasRole('admin')),
+              AuthFilter(rules: hasRole('admin')),
             ]),
             handler: (request) async => ResponseEntity.ok(),
           ),
@@ -57,7 +49,7 @@ void main() {
             method: HttpMethod.get,
             filterConfig: FilterConfig([
               MockAuthFilter(authenticated: false),
-              CustomAuthFilter(authenticated: true),
+              AuthFilter(authenticated: true),
             ]),
             handler: (request) async => ResponseEntity.ok(),
           ),
@@ -66,7 +58,7 @@ void main() {
             method: HttpMethod.get,
             filterConfig: FilterConfig([
               MockAuthFilter(setAuth: false),
-              CustomAuthFilter(authenticated: false, rules: hasRole('admin')),
+              AuthFilter(authenticated: false, rules: hasRole('admin')),
             ]),
             handler: (request) async => ResponseEntity.ok(),
           ),
@@ -75,7 +67,7 @@ void main() {
             method: HttpMethod.get,
             filterConfig: FilterConfig([
               MockAuthFilter(roles: {'admin'}),
-              CustomAuthFilter(rules: hasRole('admin')),
+              AuthFilter(rules: hasRole('admin')),
             ]),
             handler: (request) async => ResponseEntity.ok(body: 'Success'),
           ),
@@ -84,23 +76,29 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
+  tearDownAll(() async {
+    await Winter.close(force: true);
+    Winter.context.setUp(exceptionHandler: SimpleExceptionHandler());
+  });
 
   Uri url(String path) => Uri.parse(localUrl + path);
 
-  test('Should return custom body for 401 when extending AuthFilter', () async {
-    http.Response response = await http.get(url('/unauthorized'));
+  test(
+    'Should return custom body for 401 with on<UnauthorizedException>',
+    () async {
+      http.Response response = await http.get(url('/unauthorized'));
 
-    expect(response.statusCode, 401);
-    expect(response.body, contains('Custom 401 message'));
-    expect(response.body, contains('Unauthorized'));
-    expect(
-      response.headers['content-type'],
-      contains('application/problem+json'),
-    );
-  });
+      expect(response.statusCode, 401);
+      expect(response.body, contains('Custom 401 message'));
+      expect(response.body, contains('Unauthorized'));
+      expect(
+        response.headers['content-type'],
+        contains('application/problem+json'),
+      );
+    },
+  );
 
-  test('Should return custom body for 403 when rules fail and extending AuthFilter', () async {
+  test('Should return custom body for 403 when rules fail with on<ForbiddenException>', () async {
     http.Response response = await http.get(url('/forbidden-by-rules'));
 
     expect(response.statusCode, 403);

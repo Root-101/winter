@@ -42,7 +42,8 @@ way we want to maintain it**. Exit criteria:
 | HTTP engine (`shelf` + `shelf_io`)                                                      | ⚠️ To be replaced by `dart:io` → phase 3.1 |
 | Object mapper                                                                           | ✅ Reviewed (2.1), `doc/object-mapper.md`   |
 | Validation                                                                              | ✅ Reviewed (2.2), `doc/validation.md`      |
-| Exceptions, DI, Env, logging, security                                                  | ⚠️ Work, to be reviewed → phase 2          |
+| Exceptions and error handling                                                           | ✅ Reviewed (2.3), `doc/error-handling.md`  |
+| DI, Env, logging, security                                                              | ⚠️ Work, to be reviewed → phase 2          |
 | Documentation                                                                           | ❌ The biggest gap                          |
 | CI / publishing                                                                         | ❌ No CI                                    |
 
@@ -220,27 +221,37 @@ validators as extensions, `throwOnFailure()` → 422, messages in the language o
   allows them later without a breaking change, even if they arrive in 1.x 🟢. → A separate
   `AsyncValidatable` interface in 1.x, without breaking changes (§3.8, and 4.3).
 
-### 2.3 Exceptions and error handling
+### 2.3 Exceptions and error handling ✅
 
-**Today:** the `ApiException` hierarchy (400, 401, 402, 403, 404, 409, 413, 422, 500),
+**Done** (2026-10-07): every decision is in `DECISIONS.md` §4, the behavior in
+`test/server/exception_handler/error_handling_behavior_test.dart` (100% line coverage of the
+exceptions and the handler), and the guide in `doc/error-handling.md`. Left for other phases: the
+`WWW-Authenticate` of the 401 (2.7) and a request id in the 500 (2.6).
+
+**Before the review:** the `ApiException` hierarchy (400, 401, 402, 403, 404, 409, 413, 422, 500),
 `ResponseException`, `SimpleExceptionHandler`, a generic 500 that never exposes the error.
 
 **Problems found:**
 
-- [ ] **Errors come in different formats:** an `ApiException` answers `text/plain` with the reason
+- [x] **Errors come in different formats:** an `ApiException` answers `text/plain` with the reason
   phrase, a 404/405 of the router has no body, a validation returns a JSON array and a
-  `DeserializationException` a string.
-- [ ] `_runPipeline` checks `eh is SimpleExceptionHandler` to find `logUnhandledError`: a custom
+  `DeserializationException` a string. → Problem Details for every error (§4.1).
+- [x] `_runPipeline` checks `eh is SimpleExceptionHandler` to find `logUnhandledError`: a custom
   `ExceptionHandler` can't log the `Error`s its own way. Move it to the `ExceptionHandler`
-  interface.
-- [ ] The `ExcHandler` typedef in `handler.dart` is unused and its parameter is named `stackTrac`.
-- [ ] `ResponseException.responseEntity` is not `final`; the exceptions can't be `const`.
-- [ ] A chain without a response returns a 500 with the body `Filter chain ended without a
-  response` (an internal message sent to the client).
+  interface. → The handler receives `Error`s too (§4.3).
+- [x] ✔️ **An `Error` gave a 500 without the CORS headers**, and no filter saw it (`LogsFilter`
+  didn't log it): it went through the chain up to the pipeline. → The chain turns it into a
+  response where it's thrown (§4.3).
+- [x] The `ExcHandler` typedef in `handler.dart` is unused and its parameter is named `stackTrac`.
+  → Removed.
+- [x] `ResponseException.responseEntity` is not `final`; the exceptions can't be `const`. → `final`,
+  and most exceptions are `const`.
+- [x] A chain without a response returns a 500 with the body `Filter chain ended without a
+  response` (an internal message sent to the client). → It can't happen: a `StateError`.
 
 **Questions to decide:**
 
-- [ ] **Problem Details (RFC 9457)** as the default format of every error. Winter already sends
+- [x] **Problem Details (RFC 9457)** as the default format of every error. Winter already sends
   `application/problem+json` when the status is >= 400 and the body is an object, but the body
   doesn't follow the format:
   ```json
@@ -248,13 +259,15 @@ validators as extensions, `throwOnFailure()` → 422, messages in the language o
   ```
   Validation would extend it with `"violations": [...]`. Configurable by replacing the
   `ExceptionHandler`, but consistent by default (router, `ApiException`, deserialization, 413, 429,
-  500).
-- [ ] **`ExceptionHandler` by type:** today you have to extend `SimpleExceptionHandler` and chain
+  500). → Yes, and the errors of Winter are exceptions, so the handler formats all of them (§4.5).
+- [x] **`ExceptionHandler` by type:** today you have to extend `SimpleExceptionHandler` and chain
   `if (e is X)`. A registry `handler.on<MyException>((req, e) => ...)` (Spring's
-  `@ControllerAdvice`, without annotations).
-- [ ] **More exceptions:** `MethodNotAllowedException` (405), `NotAcceptableException` (406),
+  `@ControllerAdvice`, without annotations). → `on<T>()`, and inheritance still works (§4.4).
+- [x] **More exceptions:** `MethodNotAllowedException` (405), `NotAcceptableException` (406),
   `UnsupportedMediaTypeException` (415, already added in 2.1), `TooManyRequestsException` (429),
   `ServiceUnavailableException` (503). Or a single `ApiException(StatusCode.x)` and fewer classes.
+  → `ApiException(status)` for any status, shortcuts for the common ones with 405, 429 and 503;
+  `PaymentRequiredException` removed (§4.2).
 
 ### 2.4 Dependency injection
 
@@ -308,6 +321,9 @@ validators as extensions, `throwOnFailure()` → 422, messages in the language o
   (`request.principal<User>()`) so handlers don't need a cast.
 - [ ] Roles vs permissions vs authorities: three concepts, where `authorities` is the union of the
   other two. Decide whether all three are needed.
+- [ ] `RateLimiter(0, window)` answers every request with a 500: with no logs, `getWaitDuration`
+  reads `logs.first` of an empty list (`StateError`). Reject `maxRequests < 1` when it's created
+  (found in the review 2.3).
 - [ ] Rate limiter: document that it's in memory, per isolate and per process; leave an abstract
   `RateLimiterStore` so a Redis store can be added in 1.x without a breaking change.
 - [ ] A `SecurityHeadersFilter`: `Strict-Transport-Security`, `X-Content-Type-Options`,
@@ -594,7 +610,7 @@ written twice. The rest can be written now.
     - Custom and translated messages (link to `i18n.md`).
     - Writing your own validators as an extension of `FieldValidator` with `addRule`.
     - **Pitfall:** build the validators inside `validate()`, never in a `static final`.
-- [ ] **`error-handling.md`** (after 2.3): the exception hierarchy, which status each one gives,
+- [x] **`error-handling.md`** (after 2.3), its snippets checked by running them: the exception hierarchy, which status each one gives,
   why a 500 never exposes details, how to customize the `ExceptionHandler`, the error format and
   the difference between `Exception` and `Error`.
 - [ ] **`i18n.md`**, with this outline:

@@ -17,10 +17,3 @@ import 'package:winter/winter.dart';
 typedef RequestHandler = FutureOr<ResponseEntity> Function(
   RequestEntity request,
 );
-
-///ExceptionHandler
-typedef ExcHandler = FutureOr<ResponseEntity> Function(
-  RequestEntity request,
-  Exception error,
-  StackTrace stackTrac,
-);

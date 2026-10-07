@@ -17,7 +17,7 @@ class AuthFilter extends Filter {
 
     ///401: nobody (or an authentication with `authenticated: false`) is logged in
     if (authenticated && !isAuthenticated) {
-      return build401(request);
+      throw const UnauthorizedException();
     }
 
     if (rules != null) {
@@ -26,19 +26,13 @@ class AuthFilter extends Filter {
       if (!rules!.evaluate(authentication)) {
         ///An anonymous user may get access by logging in (401),
         ///a logged in user without the needed roles/permissions can't (403)
-        return isAuthenticated ? build403(request) : build401(request);
+        throw isAuthenticated
+            ? const ForbiddenException()
+            : const UnauthorizedException();
       }
     }
 
     return chain.doFilter(request);
-  }
-
-  ResponseEntity build401(RequestEntity request) {
-    return ResponseEntity.unauthorized();
-  }
-
-  ResponseEntity build403(RequestEntity request) {
-    return ResponseEntity.forbidden();
   }
 
   @override

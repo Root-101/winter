@@ -136,7 +136,7 @@ class RequestEntity extends Request {
     }
     if (mimeType != null && !json && mimeType != MediaType.textPlain.mimeType) {
       throw UnsupportedMediaTypeException(
-        body:
+        detail:
             'Unsupported Content-Type $mimeType, '
             'expected ${MediaType.applicationJson.mimeType}',
       );

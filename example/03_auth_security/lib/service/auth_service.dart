@@ -18,7 +18,7 @@ class AuthService {
       user?.passwordHash ?? _dummyHash,
     );
     if (user == null || !validPassword) {
-      throw UnauthorizedException(body: {'error': 'Invalid credentials'});
+      throw const UnauthorizedException(detail: 'Invalid credentials');
     }
 
     final token = jwtService.generateToken({
@@ -36,7 +36,7 @@ class AuthService {
 
   User register(String name, String email, String password) {
     if (userService.getByEmail(email) != null) {
-      throw ConflictException(body: {'error': 'Email already registered'});
+      throw const ConflictException(detail: 'Email already registered');
     }
     return userService.create(name, email, password);
   }

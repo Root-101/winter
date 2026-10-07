@@ -186,7 +186,8 @@ void main() {
           HttpHeader.acceptLanguage,
         );
         final violation =
-            (responses[i].json as List).single as Map<String, dynamic>;
+            ((responses[i].json as Map)['violations'] as List).single
+                as Map<String, dynamic>;
         expect(violation['message'], expected[languages[i % languages.length]]);
       }
     },
@@ -215,7 +216,8 @@ void main() {
         '/?code=x',
         headers: {'Accept-Language': language},
       );
-      return ((response.json as List).single as Map<String, dynamic>)['message']
+      return (((response.json as Map)['violations'] as List).single
+              as Map<String, dynamic>)['message']
           as String;
     }
 

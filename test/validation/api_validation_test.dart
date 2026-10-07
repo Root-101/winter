@@ -93,7 +93,8 @@ void main() {
 
       expect(response.statusCode, 422);
 
-      final List violationsRaw = jsonDecode(response.body) as List;
+      final List violationsRaw =
+          ((jsonDecode(response.body) as Map)['violations'] as List);
       final violations = om.deserialize<List<ConstraintViolation>>(
         violationsRaw,
       );
@@ -112,7 +113,8 @@ void main() {
 
       expect(response.statusCode, 422);
 
-      final List violationsRaw = jsonDecode(response.body) as List;
+      final List violationsRaw =
+          ((jsonDecode(response.body) as Map)['violations'] as List);
       final violations = om.deserialize<List<ConstraintViolation>>(
         violationsRaw,
       );

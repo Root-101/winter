@@ -511,11 +511,11 @@ void main() {
       parser
         ..addDeserializer<Worker>(
           Deserializer<Worker>(
-            (data) => throw BadRequestException(body: 'bad'),
+            (data) => throw const BadRequestException(detail: 'bad'),
           ),
         )
         ..addSerializer<Worker>(
-          Serializer<Worker>((worker) => throw ConflictException()),
+          Serializer<Worker>((worker) => throw const ConflictException()),
         );
 
       expect(

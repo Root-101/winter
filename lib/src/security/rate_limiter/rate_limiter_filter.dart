@@ -60,7 +60,7 @@ class RateLimiterFilter extends Filter {
 
       final wait = _ceilSeconds(rateLimiter.getWaitDuration(requestId));
 
-      return ResponseEntity.tooManyRequests(
+      throw TooManyRequestsException(
         retryAfter: wait > 0 ? wait : 1,
         headers: rateLimitHeaders,
       );

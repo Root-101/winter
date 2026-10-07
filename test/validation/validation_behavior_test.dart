@@ -90,7 +90,7 @@ void main() {
       final response = await client.post('/users', body: {'email': 'x'});
 
       expect(response.statusCode, 422);
-      expect(response.json, [
+      expect((response.json as Map)['violations'], [
         {
           'fieldName': 'email',
           'message': 'The value is not a valid email',
@@ -110,7 +110,7 @@ void main() {
 
       expect(response.statusCode, 422);
       expect(
-        (response.json as List).single,
+        ((response.json as Map)['violations'] as List).single,
         containsPair('fieldName', '[1].email'),
       );
     });
@@ -231,7 +231,7 @@ void main() {
       final response = await client.get('/');
 
       expect(response.statusCode, 422);
-      expect(response.json, [
+      expect((response.json as Map)['violations'], [
         {'fieldName': 'point', 'message': 'invalid point'},
       ]);
     });
@@ -377,10 +377,12 @@ void main() {
       );
 
       expect(response.statusCode, 422);
-      expect((response.json as List).map((v) => (v as Map)['field_name']), [
-        'first_name',
-        'home_address.zip_code',
-      ]);
+      expect(
+        ((response.json as Map)['violations'] as List).map(
+          (v) => (v as Map)['field_name'],
+        ),
+        ['first_name', 'home_address.zip_code'],
+      );
     });
 
     test('jsonFieldName() converts every name of a path, not the indexes', () {

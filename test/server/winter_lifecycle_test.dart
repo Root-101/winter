@@ -1,6 +1,8 @@
 @TestOn('vm')
 library;
 
+import 'dart:convert';
+
 import 'dart:async';
 
 import 'package:http/http.dart' as http;
@@ -14,7 +16,7 @@ class _FailingRouter extends AbstractWinterRouter {
 
   @override
   Route? resolveRoute(RequestEntity request) =>
-      throw ConflictException(body: 'from resolveRoute');
+      throw const ConflictException(detail: 'from resolveRoute');
 
   @override
   FutureOr<ResponseEntity> handler(RequestEntity request) =>
@@ -73,7 +75,10 @@ void main() {
         final response = await http.get(Uri.parse('http://localhost:$port/'));
 
         expect(response.statusCode, 409);
-        expect(response.body, 'from resolveRoute');
+        expect(
+          (jsonDecode(response.body) as Map)['detail'],
+          'from resolveRoute',
+        );
       },
     );
   });

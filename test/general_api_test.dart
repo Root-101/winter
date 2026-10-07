@@ -87,7 +87,7 @@ void main() {
   );
 
   test('ApiException has a readable toString', () {
-    final exception = NotFoundException(body: 'User not found');
+    final exception = const NotFoundException(detail: 'User not found');
 
     expect(exception.toString(), contains('NotFoundException'));
     expect(exception.toString(), contains('404'));
