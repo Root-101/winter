@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
@@ -75,7 +77,7 @@ void main() {
       expect(changed.body(), {'id': 1});
       expect(changed.headers['x-new'], '1');
       expect(changed.headers['content-type'], 'application/json');
-      expect(await changed.readAsString(), '{"id":1}');
+      expect(jsonDecode(await changed.readAsString()), {'id': 1});
     });
 
     test('a new body replaces the old one with the right length', () async {

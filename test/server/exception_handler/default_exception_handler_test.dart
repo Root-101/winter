@@ -1,6 +1,8 @@
 @TestOn('vm')
 library;
 
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
@@ -298,8 +300,8 @@ void main() {
     String urlToTest = '/api-exception/json';
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 400);
-    expect(response.body, contains('"error":"json error"'));
-    expect(response.body, contains('"code":123'));
+    expect(jsonDecode(response.body), containsPair('error', 'json error'));
+    expect(jsonDecode(response.body), containsPair('code', 123));
   });
 
   test('Test Exception: /api-exception/validation', () async {
@@ -307,9 +309,13 @@ void main() {
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 422);
     expect(
-      response.body,
-      contains(
-        '[{"value":"wrong-value","fieldName":"email","message":"Invalid email format"}]',
+      jsonDecode(response.body),
+      anyElement(
+        equals({
+          'value': 'wrong-value',
+          'fieldName': 'email',
+          'message': 'Invalid email format',
+        }),
       ),
     );
   });
