@@ -25,7 +25,7 @@ then, this index says which ones exist.
 | Security                                             | 🕓    | Authentication, `AuthFilter`, rules, CORS, rate limiter (2.7)                |
 | [Dependency injection](dependency-injection.md)      | ✅    | `put`, `putLazy`, `putFactory`, `putScoped`, `onDispose`, tests              |
 | [Configuration](configuration.md)                    | ✅    | `Env` (`find`, `require`, types, `.env` and profiles), `ServerConfig`, `BuildContext` |
-| Logging                                              | 🕓    | `WinterLogger`, levels, what the framework logs (2.6)                        |
+| [Logging](logging.md)                                | ✅    | `ConsoleLogger`, `JsonLogger`, fields, the request id, what Winter logs      |
 | Testing                                              | 🕓    | `WinterTestClient`, tests without ports, `RequestScope.run`, fake clocks     |
 | Deployment                                           | 🕓    | `dart compile exe`, Docker, graceful shutdown, isolates, reverse proxy       |
 | Migration from 0.x to 1.0                            | 🕓    | Every breaking change with a before and after (today in the [CHANGELOG](../CHANGELOG.md)) |
@@ -34,7 +34,7 @@ then, this index says which ones exist.
 
 - [`DECISIONS.md`](../DECISIONS.md): **why** the framework behaves the way it does (the guides
   explain **how**). Today: i18n (§1), the object mapper (§2), validation (§3), error handling
-  (§4), dependency injection (§5) and configuration (§6).
+  (§4), dependency injection (§5), configuration (§6) and logging (§7).
 - [`CHANGELOG.md`](../CHANGELOG.md): what changed in each version, breaking changes included.
 - [`ROADMAP.md`](../ROADMAP.md): what is left for 1.0.
 - [`example/`](../example): standalone apps, from a basic server to authentication and i18n.

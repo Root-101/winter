@@ -153,7 +153,10 @@ class Deserializer<T> extends _MapperEntity<T> {
     } on MissingDeserializerError {
       rethrow;
     } catch (e) {
-      logger.debug('Invalid value for <$T>: $e');
+      ///Never the message of the error: it may contain the value sent (personal data)
+      if (logger.isEnabled(LogLevel.debug)) {
+        logger.debug('Invalid value for <$T> (${e.runtimeType})');
+      }
       throw DeserializationException('invalid value', cause: e);
     }
   }

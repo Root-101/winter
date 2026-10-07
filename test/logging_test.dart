@@ -23,6 +23,7 @@ class _MemoryLogger extends WinterLogger {
     String message, {
     Object? error,
     StackTrace? stackTrace,
+    Map<String, Object?> fields = const {},
   }) => logs.add('${level.name}: $message${error == null ? '' : ' ($error)'}');
 }
 

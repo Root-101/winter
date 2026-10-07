@@ -17,6 +17,7 @@ class _MemoryLogger extends WinterLogger {
     String message, {
     Object? error,
     StackTrace? stackTrace,
+    Map<String, Object?> fields = const {},
   }) {
     if (level == LogLevel.warning) warnings.add(message);
   }

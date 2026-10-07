@@ -189,7 +189,11 @@ void main() {
     String urlToTest = '/custom-exception';
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 500);
+    // The id of the request, the same as its header, so the client can report it
+    final String? id = response.headers['x-request-id'];
+    expect(id, isNotNull);
     expect(jsonDecode(response.body), {
+      'requestId': id,
       'type': 'about:blank',
       'title': 'Internal Server Error',
       'status': 500,

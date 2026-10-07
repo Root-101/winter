@@ -719,3 +719,60 @@ di.put(AppConfig.fromEnv(env));
 - `validate()` is public (an empty `host` is rejected too), so a test or a custom start can check
   a configuration without starting a server.
 - `securityContext` (HTTPS) and `requestTimeout` come with the server of phase 3.1 and phase 4.
+
+## 7. Logging
+
+**Status:** decided and implemented on 2026-10-07 in the review of phase 2.6 of `ROADMAP.md`.
+`test/logging_behavior_test.dart` covers every section below, and `doc/logging.md` is the guide.
+
+### 7.1 The logs never contain the data of a request
+
+The debug log of a failed deserialization was `Invalid value for <T>: $e`, and the message of the
+original error can include the value sent (`FormatException: ... card-4111111111111111`), in
+several lines. It's now `Invalid value for <T> (FormatException)`: the type of the error, never its
+message (the error is still in `DeserializationException.cause`). The same rule as `LogsFilter`,
+which never logs bodies nor query strings.
+
+### 7.2 `WinterLogger`
+
+- Every level takes `error`, `stackTrace` and `fields` (structured data:
+  `logger.info('Order created', fields: {'orderId': 42})`); `debug` and `info` didn't take an error.
+- `isEnabled(level)` tells whether a level is written, to skip building an expensive message. The
+  framework uses it for its own debug logs: the rate limiter built a message for every rejected
+  request (a lot of them under an attack) even when debug was off.
+- Breaking for a custom logger: `log` takes `fields`.
+
+### 7.3 `ConsoleLogger` and `JsonLogger`
+
+- `ConsoleLogger` (development): `2026-10-07T16:11:07.171Z [INFO] [8f1c...] message`, the time in
+  **UTC** (it was the local time without an offset), the request id inside a request, and the
+  fields as `key=value`. Debug and info to stdout, warning and error to stderr.
+- `JsonLogger` (production): one JSON object per line on stdout, with the keys that Cloud Logging
+  reads by itself and that Datadog or Loki map easily:
+
+  ```json
+  {"time":"2026-10-07T16:11:07.171Z","severity":"INFO","message":"Order created","requestId":"8f1c...","orderId":42}
+  ```
+
+  `error` and `stackTrace` are strings; the `fields` are members of their own and never replace
+  `time`, `severity`, `message`, `requestId`, `error` nor `stackTrace`.
+
+### 7.4 The request id
+
+Every request has an id, always (no filter to add):
+
+- It's the `X-Request-Id` of the request when it's valid (1 to 128 letters, digits and `.`, `_`,
+  `:`, `-`: a header with anything else could inject lines into the logs), or a new random UUID.
+- It's in the `RequestScope` (`requestId`, `null` outside a request), in the `X-Request-Id` header
+  of the response, in every log written during the request, and in the body of a 500
+  (`"requestId": "..."`), so a client can report it and the logs of that request can be found.
+- `RequestScope` generates it (`newRequestId()`, a UUID v4 from `Random.secure`) unless one is
+  given, and `isValidRequestId` checks the one of the header; the server adds the header to every
+  response. The top-level `requestId` reads it from any code, like `requestLocale`.
+- *Why always*: a request id costs almost nothing, and it's what turns a support ticket ("it
+  failed at 10:31") into the logs of that request.
+
+### 7.5 `LogsFilter`
+
+It keeps two lines per request, `REQUEST: GET /users/1` and `RESPONSE: GET /users/1 => 200
+(12 ms)`, both in info; both carry the request id now, so they can be matched.

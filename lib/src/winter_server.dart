@@ -374,11 +374,13 @@ class Winter {
     ///Created now and not lazily, so the request, its changes (`change` copies the context)
     ///and the scope share the same security context and locale.
     ///(Outside the zone yet: reading `request.locale` here doesn't mark the scope)
+    final String? sentId = requestEntity.headers[HttpHeader.xRequestId];
     final RequestScope scope = RequestScope(
       securityContext: requestEntity.securityContext,
       locale: requestEntity.locale,
+      requestId: RequestScope.isValidRequestId(sentId) ? sentId : null,
     );
-    final Response response = await RequestScope.run(scope, () async {
+    final Response pipelineResponse = await RequestScope.run(scope, () async {
       try {
         return await _runPipeline(
           requestEntity: requestEntity,
@@ -390,6 +392,11 @@ class Winter {
         await scope.complete();
       }
     });
+
+    ///The id of the request goes back to the client (and the next proxy), to find its logs
+    final Response response = pipelineResponse.change(
+      headers: {HttpHeader.xRequestId: scope.requestId},
+    );
 
     ///Some code used the language of the request, so the response depends on it
     ///(only if the app answers in more than one language)

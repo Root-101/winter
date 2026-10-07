@@ -30,9 +30,12 @@ void defaultLogUnhandledError(
   );
 }
 
-/// Generic 500, without any internal detail of the error
-ResponseEntity internalServerErrorResponse() =>
-    ProblemDetails.of(StatusCode.internalServerError).toResponse();
+/// Generic 500, without any internal detail of the error. Inside a request it has the
+/// `requestId`, so the client can report it and the logs of that request can be found.
+ResponseEntity internalServerErrorResponse() => ProblemDetails.of(
+  StatusCode.internalServerError,
+  extensions: {'requestId': ?requestId},
+).toResponse();
 
 /// The default [ExceptionHandler]: every error is answered as a [ProblemDetails].
 ///

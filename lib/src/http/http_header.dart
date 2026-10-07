@@ -253,4 +253,8 @@ class HttpHeader {
   /// The HTTP {@code WWW-Authenticate} header field name.
   /// @see <a href="https://tools.ietf.org/html/rfc7235#section-4.1">Section 4.1 of RFC 7235</a>
   static final String wwwAuthenticate = 'WWW-Authenticate';
+
+  /// The id of a request (not standard, but widely used): Winter reads it from the request, or
+  /// generates one, and sends it back in the response (see `requestId`).
+  static final String xRequestId = 'X-Request-Id';
 }
