@@ -38,6 +38,35 @@ class RequestScope {
   /// Then the server adds `Vary: Accept-Language` to the response, so caches keep one copy per language.
   bool get localeRead => _localeRead;
 
+  final List<FutureOr<void> Function()> _onComplete = [];
+
+  /// Runs [callback] when the request ends: after its response is built, before it's sent.
+  /// The callbacks run in reverse order of registration (the last one registered, first), like
+  /// the scoped dependencies of `di.putScoped` that are disposed there.
+  ///
+  /// A response streamed after that point (a [Stream] body) must not need what they close.
+  void onComplete(FutureOr<void> Function() callback) =>
+      _onComplete.add(callback);
+
+  /// Runs the [onComplete] callbacks (once: they are removed). A callback that fails is logged and
+  /// the others still run. The server calls it for every request; call it yourself after
+  /// [run] in a test that registers callbacks (or uses scoped dependencies).
+  Future<void> complete() async {
+    final callbacks = _onComplete.reversed.toList();
+    _onComplete.clear();
+    for (final callback in callbacks) {
+      try {
+        await callback();
+      } catch (error, stackTrace) {
+        logger.error(
+          'A callback of the end of the request failed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
+  }
+
   /// The scope of the request in progress, or null outside a request
   static RequestScope? get current => Zone.current[_zoneKey] as RequestScope?;
 

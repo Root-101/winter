@@ -539,3 +539,67 @@ number, got a string`), and the 422 a field name (`items[1].price`).
 - `ResponseException.responseEntity` is `final`.
 - `Filter chain ended without a response` can't happen (the last link is always the handler, which
   never calls the chain): it becomes a `StateError` instead of a 500 with an internal message.
+
+## 5. Dependency injection
+
+**Status:** decided and implemented on 2026-10-07 in the review of phase 2.4 of `ROADMAP.md`.
+`test/dependency_injection/di_behavior_test.dart` covers every section below, and
+`doc/dependency-injection.md` is the guide.
+
+### 5.1 A service locator, by exact type
+
+`di` stays a service locator: dependencies are registered and found by `(Type, tag)`, never built
+by reflection or code generation (AOT has no reflection, and the project avoids `build_runner`).
+
+- An implementation is found by the type it was registered with: `di.put<UserRepository>(SqlRepo())`
+  to find it as a `UserRepository`. Looking up subtypes would be slower, ambiguous with two
+  implementations, and magic. The error of a missing dependency says so.
+- **Nullable and non nullable types are the same key**: a dependency registered from a `Service?`
+  variable was registered as `<Service?>`, and `find<Service>()` didn't find it. Keys are now the
+  nullable form of the type, so both find it.
+- `put` of a registered key replaces it (the old one isn't disposed: it may still be in use), even
+  a lazy one already created: a test can register a fake at any time.
+
+### 5.2 Singletons, lazy singletons, factories and scoped
+
+```dart
+di.put(UserService());                                      // the instance given
+di.putLazy<Database>(() => Database.connect(url));          // created by the first find
+di.putFactory<Clock>(() => SystemClock());                  // a new one by every find
+di.putScoped<UnitOfWork>(() => UnitOfWork(di.find()));      // one per request
+```
+
+- `putLazy` lets dependencies be registered in any order even if one needs another, and only
+  creates what is used. A cycle between lazy ones (`A → B → A`) is a `StateError` that shows the
+  chain.
+- `putScoped` keeps one instance per request in its `RequestScope` (like `@RequestScope` of
+  Spring): a transaction or a unit of work. Outside a request, `find` of it is a `StateError`.
+- The functions are synchronous: an async initialization (opening a connection) is awaited before
+  registering the result.
+
+### 5.3 Disposing: `onDispose`
+
+`put`, `putLazy` and `putScoped` take `onDispose: (db) => db.close()`.
+
+- `Winter.shutdown()` (SIGTERM, Ctrl+C) calls them after waiting for the requests and after
+  `ServerConfig.onShutdown`, in reverse order of registration, and removes the dependencies.
+  `di.disposeAll()` does the same by hand.
+- `Winter.close()` doesn't: tests start and close servers with the same dependencies.
+- A lazy singleton never created is never disposed. A scoped instance is disposed when its request
+  ends (after its response is built), in reverse order of creation.
+- For that, `RequestScope` got `onComplete(callback)` (public: an app can run its own code at the
+  end of every request) and `complete()`, which the server calls in a `finally` after the pipeline,
+  still inside the zone of the request. A test that uses `RequestScope.run` calls it itself.
+- An `onDispose` that fails is logged, and the others still run.
+
+### 5.4 `null` values and `isRegistered`
+
+`put<Config?>(null)` is a valid registration, and `find` returns `null`. `tryFind` can't tell it
+from a missing one, so `isRegistered<T>({tag})` says whether something is registered.
+
+- *Why*: `find` checked `value != null`, so a registered `null` was "not found".
+
+### 5.5 Small fixes
+
+- `notFound` is private, and the map of registrations is no longer named `_singl`.
+- `delete` returns the instance if it was created (`null` for a lazy one never used).
