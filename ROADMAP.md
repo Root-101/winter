@@ -274,7 +274,9 @@ exceptions and the handler), and the guide in `doc/error-handling.md`. Left for 
 
 **Done** (2026-10-07): every decision is in `DECISIONS.md` §5, the behavior in
 `test/dependency_injection/di_behavior_test.dart` (100% line coverage of the DI and the request
-scope), and the guide in `doc/dependency-injection.md`.
+scope), and the guide in `doc/dependency-injection.md`. A second review fixed two silent bugs of
+`putScoped` (§5.6): a lazy singleton that kept the disposed instance of the first request, and a
+`find` after the request ended.
 
 **Before the review:** `put`/`find`/`tryFind`/`delete` by `(Type, tag)`, singletons only.
 
@@ -347,6 +349,11 @@ entities (`RequestEntity`, `ResponseEntity`) are redesigned in phase 3.1, withou
 - [ ] `FilterConfig.add` mutates a list that may be `const` (it throws then).
 - [ ] i18n was reviewed recently (`DECISIONS.md` §1): only check that it fits with the decisions of
   2.2 (violation codes) and 2.3 (error format).
+
+
+### 2.9 Review all of the above
+- [ ] check all the systems in this phase to ensure they work well together.
+- [ ] Review the tests of all these systems to test most use cases, including those that involve multiple systems, such as an object mapper that validates and that validation depends on an environment
 
 ---
 
@@ -467,6 +474,9 @@ is already independent):
 - [ ] Optional **gzip compression** (`HttpServer.autoCompress`, exposed by the server of 3.1).
 - [ ] **Health check:** `Route.health('/health')` or a documented example (needed for Docker and
   Kubernetes).
+- [ ] **`di.createAll()`**: create every lazy dependency at start-up (opt-in), so a broken
+  registration (a missing dependency, a cycle, a constructor that throws) fails when the server
+  starts instead of in the first request that needs it. Proposed in the second review of 2.4.
 
 ### 4.3 After 1.0 🟢
 
@@ -485,6 +495,15 @@ They don't block 1.0 and shouldn't delay it (they can be added in 1.x without br
 - [ ] Configuration with annotations / package scanning (with codegen).
 - [ ] A tree-based (trie) router if benchmarks with hundreds of routes justify it (today the lookup
   is linear).
+
+**Dependency injection** (proposed in the second review of 2.4, none of them is breaking):
+
+- [ ] **Async initialization**: `putLazyAsync<T>(() async => ...)` and `await di.ready()`, for a
+  dependency that needs a connection opened; today it's awaited before `put`.
+- [ ] **Child containers for tests**: `di.child()` falls back to its parent, so a test registers
+  its fakes in a child without touching the global `di`.
+- [ ] **A listing of the registrations** (`di.registrations`: type, tag, kind, created or not), to
+  log them at start-up or debug a missing one.
 
 **Validation** (proposed in the second review of 2.2, none of them is breaking):
 

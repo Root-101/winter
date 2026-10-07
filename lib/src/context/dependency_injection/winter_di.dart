@@ -151,6 +151,13 @@ class DependencyInjection {
               'The dependency <${registration.name}> is scoped to a request: find it inside one '
               '(or inside RequestScope.run)',
             ));
+        if (scope.isCompleted) {
+          throw StateError(
+            'The dependency <${registration.name}> is scoped to a request that already ended '
+            '(its instance is disposed): find it while the request is in progress',
+          );
+        }
+        _failOnCaptive(registration.name);
         final instances = _scopedInstances[scope] ??= {};
         if (instances.containsKey(key)) return instances[key];
         final Object? instance = _create(key, registration);
@@ -162,6 +169,21 @@ class DependencyInjection {
           );
         }
         return instance;
+    }
+  }
+
+  /// A lazy singleton being created can't depend on a scoped dependency: it would keep the
+  /// instance of the first request (disposed when that request ends) forever
+  void _failOnCaptive(String scopedName) {
+    for (final creating in _creating) {
+      final _Registration? lazy = _registrations[creating];
+      if (lazy?.kind != _Kind.lazy) continue;
+      throw StateError(
+        'The lazy singleton <${lazy!.name}> depends on <$scopedName>, which is scoped to a '
+        'request: it would keep the instance of the first request (disposed when it ends) '
+        'forever. Register <${lazy.name}> with putFactory or putScoped, or find '
+        '<$scopedName> where it is used instead of when <${lazy.name}> is created',
+      );
     }
   }
 

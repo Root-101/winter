@@ -148,11 +148,25 @@ return ResponseEntity(201);
   without receiving the request.
 - Its `onDispose` runs when the request ends: **after the response is built, before it's sent**.
   A response streamed after that (a `Stream` body) must not need it.
-- Outside a request it's a `StateError`. In a test, give it one with
-  `RequestScope.run(scope, () => ...)` and call `await scope.complete()` to dispose it.
+- Outside a request it's a `StateError`, with `find` and with `tryFind` too: it's registered, but
+  there is no request to give it. In a test, give it one with `RequestScope.run(scope, () => ...)`
+  and call `await scope.complete()` to dispose it.
+- After its request ended (code that keeps running after the response, like an `unawaited` job)
+  it's a `StateError` too: its instance is already disposed (`RequestScope.isCompleted`).
+- **A lazy singleton can't depend on it.** A `putLazy` is created once, in the first request that
+  finds it, and would keep the scoped instance of that request (disposed when it ends) forever.
+  It's a `StateError` that says so. The service that needs it is a `putFactory` (a new one in each
+  request, which gets the instance of its request) or a `putScoped`, or it finds the dependency
+  where it's used:
+
+  ```dart
+  di
+    ..putScoped<UnitOfWork>(() => UnitOfWork(di.find()))
+    ..putFactory<OrderService>(() => OrderService(di.find<UnitOfWork>())); // not putLazy
+  ```
 
 `RequestScope.current?.onComplete(() => ...)` runs any code of your own at the end of the request
-the same way.
+the same way (registering it after the request ended is a `StateError`: it would never run).
 
 ### Shutting down: `onDispose`
 
@@ -245,8 +259,10 @@ env
   registrations. Find it when it's used, or in a `putLazy` function.
 - **An async initialization in `putLazy`**: the function is synchronous; await it first and `put`
   the result.
-- **A scoped dependency outside a request** (a `Timer`, a background job): it's a `StateError`;
-  run that code inside `RequestScope.run` or use a lazy or factory dependency.
+- **A scoped dependency outside a request** (a `Timer`, a background job, or after the response):
+  it's a `StateError`; run that code inside `RequestScope.run` or use a lazy or factory dependency.
+- **A lazy singleton that depends on a scoped one**: it's a `StateError`. Register the service with
+  `putFactory` or `putScoped`.
 - **No constructor injection**: dependencies are found by your code (`di.find()` in the
   functions), never injected by Winter. It's a service locator on purpose: AOT has no reflection,
   and the project avoids code generation.

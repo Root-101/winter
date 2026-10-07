@@ -603,3 +603,22 @@ from a missing one, so `isRegistered<T>({tag})` says whether something is regist
 
 - `notFound` is private, and the map of registrations is no longer named `_singl`.
 - `delete` returns the instance if it was created (`null` for a lazy one never used).
+
+### 5.6 Second review: the lifetime of a scoped dependency
+
+A review of the new DI, from zero, found two silent bugs of `putScoped`:
+
+- **A lazy singleton that depends on a scoped one** was created in the first request that found it
+  and kept that request's instance forever: the next requests used an instance already disposed
+  (a *captive dependency*). Finding a scoped dependency while a lazy one is being created is now a
+  `StateError` that says to use `putFactory` or `putScoped`; a factory is created in each request,
+  so it gets the instance of its request.
+- **A `find` after the request ended** (code that keeps running after the response) returned the
+  disposed instance. It's a `StateError` now, and `RequestScope.isCompleted` tells it; an
+  `onComplete` registered after the end is a `StateError` too (it would never run).
+- `tryFind` of a scoped dependency outside a request stays a `StateError`: it's registered, there
+  is just no request to give it, and `null` would hide the mistake.
+
+Proposed for later (`ROADMAP.md`): `di.createAll()` to create every lazy one at start-up and fail
+there instead of in the first request (before 1.0), and after 1.0 async initialization, child
+containers for tests and a listing of the registrations.
