@@ -68,7 +68,7 @@ class Deserializer<T> extends _MapperEntity<T> {
   final T Function(Object? data, ObjectMapper mapper) _deserialize;
 
   /// [deserializer] receives the decoded JSON value. If it throws, the client gets a 400
-  /// (`invalid value for T`) and the original error is logged at debug.
+  /// (`invalid value`, without the type: it would expose the name of a class of the server, obfuscated or not) and the original error is logged at debug.
   Deserializer(T Function(dynamic data) deserializer)
     : _deserialize = ((data, _) => deserializer(data));
 
@@ -102,7 +102,7 @@ class Deserializer<T> extends _MapperEntity<T> {
       rethrow;
     } catch (e) {
       logger.debug('Invalid value for <$T>: $e');
-      throw DeserializationException('invalid value for $T', cause: e);
+      throw DeserializationException('invalid value', cause: e);
     }
   }
 
@@ -187,13 +187,14 @@ class ObjectMapper {
 
   final DurationFormat durationFormat;
 
-  /// Indent the JSON of [encode] (and so of the responses). Meant for development.
+  /// Indent the JSON of [encode] (and so of the responses), on by default so they are easy to
+  /// read. `false` writes compact JSON, for smaller responses.
   final bool prettyPrint;
 
   final Map<Type, Serializer> _serializers = {};
 
-  /// Serializer of a supertype found for each runtimeType (null: there is none)
-  final Map<Type, Serializer?> _supertypeSerializers = {};
+  /// How each runtimeType is converted (serializer, `toJson()`, enum...), found once per type
+  final Map<Type, Object? Function(Object object)> _converters = {};
 
   final Map<Type, Deserializer> _deserializers = {};
 
@@ -209,7 +210,7 @@ class ObjectMapper {
     this.includeNulls = true,
     this.fieldNaming = FieldNaming.none,
     this.durationFormat = DurationFormat.milliseconds,
-    this.prettyPrint = false,
+    this.prettyPrint = true,
   }) {
     for (final s in [..._defaultSerializers(), ...?serializers]) {
       _serializers[s.type] = s;
@@ -272,13 +273,13 @@ class ObjectMapper {
   /// Adds a [Serializer] to the mapper (it replaces the one of the same type).
   void addSerializer<T>(Serializer<T> serializer) {
     _serializers[serializer.type] = serializer;
-    _supertypeSerializers.clear();
+    _converters.clear();
   }
 
   /// Removes the [Serializer] for type [T].
   void removeSerializer<T>() {
     _serializers.remove(T);
-    _supertypeSerializers.clear();
+    _converters.clear();
   }
 
   /// Adds a [Deserializer] to the mapper (it replaces the one of the same type),
@@ -314,13 +315,26 @@ class ObjectMapper {
     }
   }
 
-  /// [serialize] and encode the result as JSON text (indented with [prettyPrint]).
+  /// Encodes [object] as JSON text (indented with [prettyPrint]), in a single pass.
+  ///
+  /// Same result as `jsonEncode(serialize(object))`, but maps, lists and primitives are written
+  /// directly by the [JsonEncoder]: only the objects are converted (see [serialize]).
   String encode(Object? object) {
-    final encoder = prettyPrint
-        ? const JsonEncoder.withIndent('  ')
-        : const JsonEncoder();
-    return encoder.convert(serialize(object));
+    try {
+      return (prettyPrint ? _prettyEncoder : _encoder).convert(object);
+    } on JsonUnsupportedObjectError catch (e) {
+      throw _serializationError(e.cause ?? e);
+    }
   }
+
+  late final JsonEncoder _encoder = JsonEncoder(_encodable);
+  late final JsonEncoder _prettyEncoder = JsonEncoder.withIndent(
+    '  ',
+    _encodable,
+  );
+
+  /// For the [JsonEncoder]: errors thrown here are wrapped in a [JsonUnsupportedObjectError]
+  Object? _encodable(Object? object) => _toEncodable(object!);
 
   /// Decode the JSON text [source] and [deserialize] it.
   ///
@@ -346,99 +360,110 @@ class ObjectMapper {
   /// Recursively serializes [object] to a JSON value
   /// (null, String, num, bool, List & Map with String keys).
   ///
-  /// The result of `toJson()` and of the registered serializers is also serialized,
-  /// so they can return maps with any serializable value (DateTime, enums, other objects...).
+  /// Primitives, lists and maps are kept as they are (map keys converted to String, any other
+  /// [Iterable] to a list). Any other object is converted with, in order: the [Serializer] of its
+  /// exact type, the first [Serializer] of a supertype, its `toJson()`, or its `name` (enums).
+  /// The result of a serializer or a `toJson()` is serialized again, so they can return maps with
+  /// any serializable value (DateTime, enums, other objects...).
   ///
   /// An object that can't be serialized throws a [MissingSerializerError];
   /// a serializer or a `toJson()` that fails, a [SerializationException].
   Object? serialize(Object? object) {
     try {
       return _serialize(object);
-    } on ApiException {
-      rethrow;
-    } on ObjectMapperException {
-      rethrow;
-    } on MissingSerializerError {
-      rethrow;
     } catch (e) {
-      throw SerializationException(e.toString());
+      throw _serializationError(e);
     }
   }
 
-  Object? _serialize(Object? object) {
-    if (object == null) return null;
+  /// [ApiException]s, mapper errors and [MissingSerializerError] as they are, anything else
+  /// (an error inside a `toJson()`, a cycle...) as a [SerializationException]
+  static Object _serializationError(Object error) => switch (error) {
+    ApiException() ||
+    ObjectMapperException() ||
+    MissingSerializerError() => error,
+    _ => SerializationException(error.toString()),
+  };
 
-    final Serializer? serializer = _serializers[object.runtimeType];
-    if (serializer != null) {
-      return _serializeObject(serializer._call(object, this), object);
+  Object? _serialize(Object? object) {
+    if (object == null || object is String || object is num || object is bool) {
+      return object;
     }
-    if (object is String || object is num || object is bool) return object;
+    if (object is List) return [for (final e in object) _serialize(e)];
     if (object is Map) {
       return <String, Object?>{
         for (final MapEntry(:key, :value) in object.entries)
           _serializeMapKey(key): _serialize(value),
       };
     }
-    if (object is Iterable) return [for (final e in object) _serialize(e)];
-
-    final Serializer? supertypeSerializer = _supertypeSerializer(object);
-    if (supertypeSerializer != null) {
-      return _serializeObject(supertypeSerializer._call(object, this), object);
+    final Object? converted = _toEncodable(object);
+    if (identical(converted, object)) {
+      throw SerializationException(
+        'The serializer of ${object.runtimeType} returned the same object',
+      );
     }
-
-    final Object? Function()? toJson = _toJsonOf(object);
-    if (toJson != null) return _serializeObject(toJson(), object);
-
-    if (object is Enum) return object.name;
-
-    throw MissingSerializerError(object.runtimeType);
+    return _serialize(converted);
   }
 
-  /// The first registered serializer whose type is a supertype of [object], cached per runtimeType
-  Serializer? _supertypeSerializer(Object object) {
+  /// Converts one level of an object that is not a JSON value: the [JsonEncoder] (or
+  /// [_serialize]) converts what is inside the result. Lists, maps with String keys and
+  /// primitives never get here when encoding, the [JsonEncoder] writes them itself.
+  Object? _toEncodable(Object object) {
+    if (object is Map) {
+      return <String, Object?>{
+        for (final MapEntry(:key, :value) in object.entries)
+          _serializeMapKey(key): value,
+      };
+    }
+    if (object is Iterable) return object.toList();
+
+    return (_converters[object.runtimeType] ??= _converterOf(object))(object);
+  }
+
+  /// How to convert the objects with the runtimeType of [object]
+  Object? Function(Object object) _converterOf(Object object) {
+    final Serializer? serializer =
+        _serializers[object.runtimeType] ?? _supertypeSerializer(object);
+    if (serializer != null) {
+      return (object) => _applyObjectOptions(serializer._call(object, this));
+    }
+    if (_hasToJson(object)) {
+      return (object) => _applyObjectOptions((object as dynamic).toJson());
+    }
+    if (object is Enum) return (object) => (object as Enum).name;
+
     final Type type = object.runtimeType;
-    if (_supertypeSerializers.containsKey(type)) {
-      return _supertypeSerializers[type];
-    }
-    Serializer? found;
+    return (_) => throw MissingSerializerError(type);
+  }
+
+  /// The first registered serializer whose type is a supertype of [object]
+  Serializer? _supertypeSerializer(Object object) {
     for (final serializer in _serializers.values) {
-      if (serializer._accepts(object)) {
-        found = serializer;
-        break;
-      }
+      if (serializer._accepts(object)) return serializer;
     }
-    return _supertypeSerializers[type] = found;
+    return null;
   }
 
-  /// The `toJson` method of [object], or null if it has none.
-  /// It's read before calling it, so an error thrown inside `toJson` is never taken as a missing method.
-  static Object? Function()? _toJsonOf(Object object) {
+  /// Whether [object] has a `toJson()` method that takes no arguments.
+  /// It's read as a tear-off without calling it, so an error thrown inside a `toJson()` is never
+  /// taken as a missing method.
+  static bool _hasToJson(Object object) {
     try {
-      final Object? toJson = (object as dynamic).toJson;
-      return toJson is Object? Function() ? toJson : null;
+      return (object as dynamic).toJson is Object? Function();
     } on NoSuchMethodError {
-      return null;
+      return false;
     }
   }
 
-  /// Serialize the value returned by a serializer or a `toJson()` of [original],
-  /// applying [includeNulls] and [fieldNaming] when it's an object.
-  Object? _serializeObject(Object? result, Object original) {
-    if (result == null ||
-        result is String ||
-        result is num ||
-        result is bool ||
-        identical(result, original)) {
+  /// [includeNulls] and [fieldNaming] on the result of a serializer or a `toJson()`, when it's an object
+  Object? _applyObjectOptions(Object? result) {
+    if (result is! Map || (includeNulls && fieldNaming == FieldNaming.none)) {
       return result;
     }
-    final Object? serialized = _serialize(result);
-    if (serialized is! Map<String, Object?> ||
-        (includeNulls && fieldNaming == FieldNaming.none)) {
-      return serialized;
-    }
-    return {
-      for (final MapEntry(:key, :value) in serialized.entries)
-        if (includeNulls || value != null) _dartKeyToJson(key): value,
+    return <String, Object?>{
+      for (final MapEntry(:key, :value) in result.entries)
+        if (includeNulls || value != null)
+          _dartKeyToJson(_serializeMapKey(key)): value,
     };
   }
 

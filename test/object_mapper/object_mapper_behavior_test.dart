@@ -2,6 +2,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
@@ -287,10 +288,7 @@ void main() {
     );
 
     test('a missing field in fromJson', () {
-      expect(
-        () => mapper.decode<Tool>('{}'),
-        withMessage(r'$: invalid value for Tool'),
-      );
+      expect(() => mapper.decode<Tool>('{}'), withMessage(r'$: invalid value'));
     });
 
     test('a field with the wrong type in fromJson', () {
@@ -347,7 +345,7 @@ void main() {
     test('a nested error inside a list of fromJson has its index', () {
       expect(
         () => mapper.decode<List<Tool>>('[{"NAME":"A"},{}]'),
-        withMessage(r'$[1]: invalid value for Tool'),
+        withMessage(r'$[1]: invalid value'),
       );
     });
 
@@ -371,7 +369,7 @@ void main() {
       final response = await client.post('/', headers: _json, body: '{}');
 
       expect(response.statusCode, 400);
-      expect(response.body, r'$: invalid value for Tool');
+      expect(response.body, r'$: invalid value');
     });
   });
 
@@ -435,6 +433,33 @@ void main() {
         throwsA(isA<DeserializationException>()),
       );
       expect(mapper.decode<List<int?>>('[null]'), [null]);
+    });
+
+    test('a raw Map needs a JSON object', () {
+      expect(mapper.decode<Map>('{"a":1}'), {'a': 1});
+      expect(
+        () => mapper.decode<Map>('[1]'),
+        throwsA(
+          isA<DeserializationException>().having(
+            (e) => e.message,
+            'message',
+            r'$: expected an object, got an array',
+          ),
+        ),
+      );
+    });
+
+    test('a value that is not JSON is described without its Dart type', () {
+      expect(
+        () => mapper.deserialize<String>(Duration.zero),
+        throwsA(
+          isA<DeserializationException>().having(
+            (e) => e.message,
+            'message',
+            r'$: expected a string, got an unsupported value',
+          ),
+        ),
+      );
     });
   });
 
@@ -515,6 +540,76 @@ void main() {
     });
   });
 
+  group('encode() in a single pass', () {
+    late ObjectMapper compact;
+
+    setUp(() {
+      compact = ObjectMapper(
+        prettyPrint: false,
+        serializers: [Serializer<Tool>((tool) => tool.toJson())],
+      );
+    });
+
+    test('gives the same JSON as jsonEncode(serialize())', () {
+      final values = <Object?>[
+        null,
+        'a',
+        1,
+        1.5,
+        true,
+        [1, 'a'],
+        {'a': DateTime.utc(2026)},
+        {1, 2},
+        {1: 'a', _Plain.value: 'b'},
+        [Worker(name: 'W'), Tool(name: 'T'), _Level.high, _Plain.value],
+        const Duration(seconds: 1),
+      ];
+      for (final value in values) {
+        expect(
+          compact.encode(value),
+          jsonEncode(compact.serialize(value)),
+          reason: '$value',
+        );
+      }
+    });
+
+    test('throws the same errors as serialize()', () {
+      compact.addSerializer(
+        Serializer<Worker>((worker) => throw ConflictException()),
+      );
+      final cyclic = <Object?>[];
+      cyclic.add(cyclic);
+
+      for (final (value, matcher) in [
+        (other.Tool('x'), isA<MissingSerializerError>()),
+        (Worker(name: 'W'), isA<ConflictException>()),
+        (_BrokenToJson(), isA<SerializationException>()),
+        (cyclic, isA<SerializationException>()),
+        (
+          {
+            [1]: 'a',
+          },
+          isA<SerializationException>(),
+        ),
+      ]) {
+        expect(() => compact.encode(value), throwsA(matcher), reason: '$value');
+      }
+    });
+
+    test('a serializer that returns the same object is an error', () {
+      compact.addSerializer(Serializer<Worker>((worker) => worker));
+
+      expect(
+        () => compact.serialize(Worker(name: 'W')),
+        throwsA(isA<SerializationException>()),
+      );
+      expect(
+        () => compact.encode(Worker(name: 'W')),
+        throwsA(isA<SerializationException>()),
+      );
+    });
+  });
+
   group('Options (§2.8)', () {
     test('includeNulls: false drops the null fields of the objects', () {
       final mapper = ObjectMapper(includeNulls: false);
@@ -557,6 +652,15 @@ void main() {
       expect(mapper.decode<_Profile>(mapper.encode(profile)).userId, 'ID-1');
       // A Map deserialized directly is data
       expect(mapper.decode<Map<String, int>>('{"a_b":1}'), {'a_b': 1});
+
+      final kebab = ObjectMapper(
+        fieldNaming: FieldNaming.kebabCase,
+        deserializers: [Deserializer<_Profile>.json(_Profile.fromJson)],
+      );
+      expect(
+        kebab.decode<_Profile>('{"first-name":"Ann","user-id":"ID-1"}').userId,
+        'ID-1',
+      );
     });
 
     test('fieldNaming converts acronyms and keeps a leading separator', () {
@@ -610,12 +714,20 @@ void main() {
       }
     });
 
-    test('prettyPrint indents encode() and the responses', () {
-      final mapper = ObjectMapper(prettyPrint: true);
+    test(
+      'prettyPrint (on by default) indents encode() and the responses',
+      () async {
+        expect(ObjectMapper().encode({'a': 1}), '{\n  "a": 1\n}');
+        expect(ObjectMapper(prettyPrint: false).encode({'a': 1}), '{"a":1}');
 
-      expect(mapper.encode({'a': 1}), '{\n  "a": 1\n}');
-      expect(ObjectMapper().encode({'a': 1}), '{"a":1}');
-    });
+        final response = ResponseEntity(
+          200,
+          body: {'a': 1},
+          objectMapper: ObjectMapper(),
+        );
+        expect(await response.readAsString(), '{\n  "a": 1\n}');
+      },
+    );
   });
 }
 

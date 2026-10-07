@@ -1,6 +1,8 @@
 @TestOn('vm')
 library;
 
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
@@ -89,7 +91,7 @@ void main() {
     test('Test Auth Filter - Unauthorized', () async {
       http.Response response = await http.get(url('/protected'));
       expect(response.statusCode, 401);
-      expect(response.body, '{"message":"Unauthorized"}');
+      expect(jsonDecode(response.body), {'message': 'Unauthorized'});
     });
 
     test('Test Auth Filter - Authorized', () async {

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'dart:async';
 import 'dart:io';
 
@@ -76,10 +78,11 @@ void main() {
       final response = ResponseEntity.ok(body: _Order());
 
       expect(response.headers['content-type'], 'application/json');
-      expect(
-        await response.readAsString(),
-        '{"at":"2026-01-01T00:00:00.000Z","status":"paid","tags":["a"]}',
-      );
+      expect(jsonDecode(await response.readAsString()), {
+        'at': '2026-01-01T00:00:00.000Z',
+        'status': 'paid',
+        'tags': ['a'],
+      });
     },
   );
 

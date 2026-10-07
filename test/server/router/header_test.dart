@@ -1,6 +1,8 @@
 @TestOn('vm')
 library;
 
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
@@ -123,11 +125,12 @@ void main() {
 
     test('Response with JSON body has correct Content-Length', () async {
       http.Response response = await http.get(url('/json'));
-      // {"message":"hello"} -> 19 characters
+      // The length in bytes of the body, whatever its format (prettyPrint)
       expect(
         response.headers[HttpHeader.contentLength.toLowerCase()],
-        equals('19'),
+        equals('${utf8.encode(response.body).length}'),
       );
+      expect(jsonDecode(response.body), {'message': 'hello'});
     });
 
     test('Response with String body has correct Content-Length', () async {

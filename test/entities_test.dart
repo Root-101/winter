@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
@@ -192,7 +194,7 @@ void main() {
       final copy = ResponseEntity.ok(body: counter).copyWith(statusCode: 201);
 
       expect(counter.calls, 1);
-      expect(await copy.readAsString(), '{"calls":1}');
+      expect(jsonDecode(await copy.readAsString()), {'calls': 1});
       expect(copy.statusCode, 201);
       expect(copy.body(), same(counter));
     });

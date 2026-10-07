@@ -201,11 +201,15 @@ positions, file paths):
 |-----------------------------------------------|---------------------------------------------|
 | `{"a":1,"b":"x"}` as `Map<String, int>`       | `$.b: expected an integer, got a string`    |
 | `[{"name":"A"}, 1]` as `List<User>`           | `$[1]: expected an object, got a number`    |
-| `{}` as `User` (its `fromJson` fails)         | `$: invalid value for User`                 |
+| `{}` as `User` (its `fromJson` fails)         | `$: invalid value`                          |
 | `{"name": ` (malformed)                       | `The body is not valid JSON`                |
 
 - The path is known where the mapper walks the data itself (lists, maps, primitives). Inside a
-  `fromJson` it is not: the message names the type, and the original error is logged at `debug`.
+  `fromJson` it is not: the message is `invalid value` at the path of the object, and the type and
+  the original error are logged at `debug` (the error is also in `cause`).
+- The message never names a Dart type: it's an internal name of the server, and with
+  `--obfuscate` it's a meaningless one (`invalid value for ej`, found by compiling with
+  `dart compile exe --extra-gen-snapshot-options=--obfuscate`).
 - The format of the response body (Problem Details) is decided in phase 2.3; this only fixes the
   message.
 
@@ -234,14 +238,15 @@ positions, file paths):
 
 ### 2.8 Options of the `ObjectMapper`
 
-`ObjectMapper(...)` gets four options. The defaults keep today's behavior:
+`ObjectMapper(...)` gets four options. The defaults keep the previous behavior, except
+`prettyPrint`:
 
 | Option           | Default        | Values                                         |
 |------------------|----------------|------------------------------------------------|
 | `includeNulls`   | `true`         | `false` drops the keys with a `null` value     |
 | `fieldNaming`    | `none`         | `snakeCase`, `kebabCase`                       |
 | `durationFormat` | `milliseconds` | `iso8601` (`PT1H30M`)                          |
-| `prettyPrint`    | `false`        | `true` indents the JSON of the responses       |
+| `prettyPrint`    | `true`         | `false` writes compact JSON                    |
 
 - `includeNulls` and `fieldNaming` apply **only to objects** (the maps returned by `toJson()` or by
   a serializer, and the map given to `Deserializer.json`), never to a `Map` the app serializes or
@@ -252,4 +257,34 @@ positions, file paths):
 - Renaming is not reversible for acronyms: `userID` becomes `user_id` (the readable form), which
   comes back as `userId`. The docs recommend camelCase names without acronyms (`userId`), and the
   tests cover the round trip.
-- `prettyPrint` is for development; it makes every response bigger.
+- `prettyPrint` is **on by default**, so the responses are readable when they are inspected
+  (browser, curl, logs). It makes every JSON response bigger (two spaces per level and a new line
+  per value; `{"message":"hello"}` goes from 19 to 24 bytes); turn it off
+  (`ObjectMapper(prettyPrint: false)`) when the size matters. Tests should compare decoded JSON,
+  not the text.
+
+### 2.9 Performance: `encode` in a single pass
+
+`encode` gives the `JsonEncoder` a `toEncodable` callback: the encoder writes maps, lists and
+primitives itself and only asks the mapper to convert the objects, one level at a time. How each
+`runtimeType` is converted (exact serializer, supertype serializer, `toJson()`, enum) is decided
+the first time and cached.
+
+- *Why*: `jsonEncode(serialize(object))` built a whole copy of the tree before encoding it, and
+  every enum (no `toJson()`) threw and caught a `NoSuchMethodError` per value, which is slow in
+  AOT. Measured with `benchmark/object_mapper_benchmark.dart` (AOT, 1000 orders, 291 KB):
+
+  | Operation (vs by hand)                 | Before  | After        |
+  |----------------------------------------|---------|--------------|
+  | `encode`, `toJson()`                   | x3.5–3.8 | x1.15–1.2   |
+  | `encode`, `Serializer<Order>`          | x3.6–4.2 | x1.1–1.15   |
+  | `encode`, serializer of a supertype    | x1.8–2.0 | x1.15–1.2   |
+  | `decode<List<Order>>`                  | x1.0–1.1 | x1.0–1.1    |
+
+- `serialize` follows the same rules (and the same cache), so `encode(x)` is always
+  `jsonEncode(serialize(x))`; a test checks it.
+- Primitives, lists and maps are written as they are, before looking for a serializer: a
+  `Serializer<String>` (or `num`, `bool`, `List`, `Map`) is never used.
+- *Benchmark caveat*: measured one after the other in the same process, the later cases were up
+  to 3x slower, even the same code (the state of the GC). The benchmark interleaves the cases in
+  rounds so they all run in the same conditions.
