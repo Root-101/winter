@@ -89,7 +89,57 @@ class Deserializer<T> extends _MapperEntity<T> {
     : _deserialize = ((data, mapper) =>
           fromJson(mapper._jsonKeysToDart(_asJsonObject(data))));
 
+  /// Deserializer of a type written as a JSON string:
+  ///
+  /// ```dart
+  /// Deserializer<Uri>.string(Uri.parse)
+  /// ```
+  ///
+  /// Any other JSON value is a 400 that says so (`$.url: expected a string, got an integer`);
+  /// if [fromString] throws, a 400 `invalid value`.
+  Deserializer.string(T Function(String value) fromString)
+    : _deserialize = ((data, _) => fromString(
+        data is String ? data : throw _expected('a string', data),
+      ));
+
+  /// Deserializer of a type written as a JSON integer (`12`, or `12.0`), see [Deserializer.string]
+  Deserializer.integer(T Function(int value) fromInt)
+    : _deserialize = ((data, _) => fromInt(_asInt(data)));
+
+  /// Deserializer of a type written as a JSON number, see [Deserializer.string]
+  Deserializer.number(T Function(num value) fromNumber)
+    : _deserialize = ((data, _) =>
+          fromNumber(data is num ? data : throw _expected('a number', data)));
+
+  /// Deserializer of a type written as a JSON boolean, see [Deserializer.string]
+  Deserializer.boolean(T Function(bool value) fromBool)
+    : _deserialize = ((data, _) =>
+          fromBool(data is bool ? data : throw _expected('a boolean', data)));
+
   Deserializer._withMapper(this._deserialize) : super(warnDynamic: false);
+
+  /// Deserializer of an enum written as its `name`, the way enums are serialized by default:
+  ///
+  /// ```dart
+  /// om.addDeserializer(Deserializer.enumByName(Status.values));
+  /// ```
+  ///
+  /// Any other value is a 400 that lists the valid names
+  /// (`$.status: expected one of pending, paid, got another string`).
+  /// An enum with its own `toJson()` needs its own deserializer.
+  static Deserializer<E> enumByName<E extends Enum>(List<E> values) {
+    final Map<String, E> byName = {
+      for (final value in values) value.name: value,
+    };
+    final String names = byName.keys.join(', ');
+    return Deserializer<E>._withMapper((data, _) {
+      if (data is! String) throw _expected('one of $names', data);
+      return byName[data] ??
+          (throw DeserializationException(
+            'expected one of $names, got another string',
+          ));
+    });
+  }
 
   /// Runs the deserializer: any error that is not already a [DeserializationException]
   /// (a cast in a `fromJson`, a parser...) is a 400 without its details.

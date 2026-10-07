@@ -113,7 +113,8 @@ class RequestEntity extends Request {
       _rawBody ??= readAsString(encoding)
           .then((value) => _rawBodyValue = value);
 
-  /// Get the body of the request, decoded as JSON with the ObjectMapper ([ObjectMapper.decode]).
+  /// Get the body of the request, decoded as JSON with [objectMapper] (default: the global `om`,
+  /// see [ObjectMapper.decode]).
   ///
   /// - The `Content-Type` must be JSON (`application/json` or `*/*+json`), `text/plain` or none:
   ///   any other is a 415 ([UnsupportedMediaTypeException]). `text/plain` is accepted because
@@ -123,13 +124,12 @@ class RequestEntity extends Request {
   ///
   /// The raw body is cached, so this method can be called multiple times (even with different types)
   /// Note: after calling it, [read] & [readAsString] can't be used (the stream is already consumed)
-  Future<T> body<T>({ObjectMapper? om}) async {
+  Future<T> body<T>({ObjectMapper? objectMapper}) async {
+    final ObjectMapper mapper = objectMapper ?? Winter.context.objectMapper;
     final String raw = await _readRawBody();
     final bool json = _isJson(mimeType);
     if (T == String || T == _typeOf<String?>()) {
-      return json
-          ? (om ?? Winter.context.objectMapper).decode<T>(raw)
-          : raw as T;
+      return json ? mapper.decode<T>(raw) : raw as T;
     }
     if (mimeType != null && !json && mimeType != MediaType.textPlain.mimeType) {
       throw UnsupportedMediaTypeException(
@@ -138,7 +138,7 @@ class RequestEntity extends Request {
             'expected ${MediaType.applicationJson.mimeType}',
       );
     }
-    return (om ?? Winter.context.objectMapper).decode<T>(raw);
+    return mapper.decode<T>(raw);
   }
 
   static bool _isJson(String? mimeType) =>
