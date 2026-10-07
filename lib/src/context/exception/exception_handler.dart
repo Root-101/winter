@@ -52,9 +52,15 @@ class SimpleExceptionHandler extends ExceptionHandler {
     } else if (exception is ValidationException) {
       ///The messages are already in the language of the request
       ///(reading it adds `Vary: Accept-Language`, see `RequestScope.localeRead`)
+      ///`fieldName` follows the `fieldNaming` of the mapper, so it's the name the client sent
       return ResponseEntity(
         exception.statusCode,
-        body: om.serialize(exception.violations),
+        body: om.serialize([
+          for (final violation in exception.violations)
+            violation.copyWith(
+              fieldName: om.jsonFieldName(violation.fieldName),
+            ),
+        ]),
         headers: exception.headers,
       );
     } else if (exception is ApiException) {
