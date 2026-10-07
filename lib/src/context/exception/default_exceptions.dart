@@ -102,7 +102,7 @@ class UnprocessableEntityException extends ApiException {
 }
 
 class ValidationException extends UnprocessableEntityException {
-  final List<ConstrainViolation> violations;
+  final List<ConstraintViolation> violations;
 
   ValidationException({required this.violations, super.headers});
 

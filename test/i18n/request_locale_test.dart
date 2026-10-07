@@ -159,7 +159,7 @@ void main() {
           await gate.future;
 
           final cvc = ConstraintValidatorContext();
-          cvc.buildValidator('name').notNull().validate(null);
+          cvc.field('name', null).notNull();
           cvc.throwOnFailure();
           return ResponseEntity.ok();
         }),
@@ -197,15 +197,14 @@ void main() {
       router: ServeRouter((request) {
         final cvc = ConstraintValidatorContext();
         cvc
-            .buildValidator('code')
+            .field('code', request.url.queryParameters['code'])
             .custom(
               (value) => value == 'ok'
                   ? null
                   : (requestLocale == spanish
                         ? 'Código inválido'
                         : 'Invalid code'),
-            )
-            .validate(request.url.queryParameters['code']);
+            );
         cvc.throwOnFailure();
         return ResponseEntity.ok();
       }),

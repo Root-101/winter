@@ -78,9 +78,6 @@ class WinterMessages$errors$validations$es
 
   // Translations
   @override
-  late final WinterMessages$errors$validations$type$es type =
-      WinterMessages$errors$validations$type$es._(_root);
-  @override
   String get notNull => 'El campo no puede ser null';
   @override
   String get notBlank => 'El campo no puede estar vacío';
@@ -100,20 +97,31 @@ class WinterMessages$errors$validations$es
   @override
   String isEnum({required Object values}) =>
       'El valor debe ser uno de: ${values}';
-}
-
-// Path: errors.validations.type
-class WinterMessages$errors$validations$type$es
-    implements WinterMessages$errors$validations$type$en {
-  WinterMessages$errors$validations$type$es._(this._root);
-
-  final WinterMessagesEs _root; // ignore: unused_field
-
-  // Translations
   @override
-  String get string => 'El valor debe ser un String';
+  String get notEmpty => 'El campo no puede estar vacío';
   @override
-  String get number => 'El valor debe ser un número';
+  String oneOf({required Object values}) =>
+      'El valor debe ser uno de: ${values}';
+  @override
+  String get url => 'El valor no es una URL válida';
+  @override
+  String get uuid => 'El valor no es un UUID válido';
+  @override
+  String get positive => 'El valor debe ser mayor que 0';
+  @override
+  String get negative => 'El valor debe ser menor que 0';
+  @override
+  String get positiveOrZero => 'El valor debe ser 0 o mayor';
+  @override
+  String get negativeOrZero => 'El valor debe ser 0 o menor';
+  @override
+  String get past => 'La fecha debe estar en el pasado';
+  @override
+  String get future => 'La fecha debe estar en el futuro';
+  @override
+  String get pastOrPresent => 'La fecha no puede estar en el futuro';
+  @override
+  String get futureOrPresent => 'La fecha no puede estar en el pasado';
 }
 
 // Path: errors.validations.size
@@ -128,8 +136,6 @@ class WinterMessages$errors$validations$size$es
   String min({required Object value}) => 'El mínimo es ${value}';
   @override
   String max({required Object value}) => 'El máximo es ${value}';
-  @override
-  String get invalidType => 'El valor debe ser un String o un Iterable';
 }
 
 // Path: errors.validations.min
@@ -170,8 +176,6 @@ class WinterMessages$errors$validations$max$es
 extension on WinterMessagesEs {
   dynamic _flatMapFunction(String path) {
     return switch (path) {
-      'errors.validations.type.string' => 'El valor debe ser un String',
-      'errors.validations.type.number' => 'El valor debe ser un número',
       'errors.validations.notNull' => 'El campo no puede ser null',
       'errors.validations.notBlank' => 'El campo no puede estar vacío',
       'errors.validations.size.min' => ({
@@ -180,8 +184,6 @@ extension on WinterMessagesEs {
       'errors.validations.size.max' => ({
         required Object value,
       }) => 'El máximo es ${value}',
-      'errors.validations.size.invalidType' =>
-        'El valor debe ser un String o un Iterable',
       'errors.validations.min.inclusive' => ({
         required Object value,
       }) => 'El mínimo es ${value}',
@@ -199,6 +201,22 @@ extension on WinterMessagesEs {
       'errors.validations.isEnum' => ({
         required Object values,
       }) => 'El valor debe ser uno de: ${values}',
+      'errors.validations.notEmpty' => 'El campo no puede estar vacío',
+      'errors.validations.oneOf' => ({
+        required Object values,
+      }) => 'El valor debe ser uno de: ${values}',
+      'errors.validations.url' => 'El valor no es una URL válida',
+      'errors.validations.uuid' => 'El valor no es un UUID válido',
+      'errors.validations.positive' => 'El valor debe ser mayor que 0',
+      'errors.validations.negative' => 'El valor debe ser menor que 0',
+      'errors.validations.positiveOrZero' => 'El valor debe ser 0 o mayor',
+      'errors.validations.negativeOrZero' => 'El valor debe ser 0 o menor',
+      'errors.validations.past' => 'La fecha debe estar en el pasado',
+      'errors.validations.future' => 'La fecha debe estar en el futuro',
+      'errors.validations.pastOrPresent' =>
+        'La fecha no puede estar en el futuro',
+      'errors.validations.futureOrPresent' =>
+        'La fecha no puede estar en el pasado',
       _ => null,
     };
   }

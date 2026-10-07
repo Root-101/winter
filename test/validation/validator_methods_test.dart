@@ -8,40 +8,35 @@ void main() {
     group('notNull()', () {
       test('Success when value is not null', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').notNull().validate('content');
+        cvc.field('test', 'content').notNull();
         expect(cvc.isValid, isTrue);
       });
 
       test('Failure when value is null', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').notNull().validate(null);
+        cvc.field('test', null).notNull();
         expect(cvc.isValid, isFalse);
         expect(cvc.violations.first.message, contains('cannot be null'));
       });
 
       test('Failure when value is null with custom message', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').notNull(message: 'Required').validate(null);
+        cvc.field('test', null).notNull(message: 'Required');
         expect(cvc.violations.first.message, equals('Required'));
       });
 
       test('stopOnFailure: true (default) stops subsequent rules', () {
         final cvc = ConstraintValidatorContext();
-        cvc
-            .buildValidator('test')
-            .notNull()
-            .custom((v) => 'should not run')
-            .validate(null);
+        cvc.field('test', null).notNull().custom((v) => 'should not run');
         expect(cvc.violations.length, equals(1));
       });
 
       test('stopOnFailure: false continues to subsequent rules', () {
         final cvc = ConstraintValidatorContext();
         cvc
-            .buildValidator('test')
+            .field('test', null)
             .notNull(stopOnFailure: false)
-            .custom((v) => 'should run')
-            .validate(null);
+            .custom((v) => 'should run');
         expect(cvc.violations.length, equals(2));
       });
     });
@@ -49,105 +44,82 @@ void main() {
     group('notBlank()', () {
       test('Success when string has content', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').notBlank().validate('hello');
+        cvc.field('test', 'hello').notBlank();
         expect(cvc.isValid, isTrue);
       });
 
       test('Failure when string is empty', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').notBlank().validate('');
+        cvc.field('test', '').notBlank();
         expect(cvc.isValid, isFalse);
         expect(cvc.violations.first.message, contains('cannot be blank'));
       });
 
       test('Failure when string is whitespace', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').notBlank().validate('   ');
+        cvc.field('test', '   ').notBlank();
         expect(cvc.isValid, isFalse);
       });
 
       test('Failure with custom message', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').notBlank(message: 'Blank').validate('');
+        cvc.field('test', '').notBlank(message: 'Blank');
         expect(cvc.violations.first.message, equals('Blank'));
       });
 
       test('Ignore if value is null (delegate to notNull)', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').notBlank().validate(null);
+        cvc.field('test', null).notBlank();
         expect(cvc.isValid, isTrue);
-      });
-
-      test('Failure if value is not a string', () {
-        final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').notBlank().validate(123);
-        expect(cvc.isValid, isFalse);
       });
     });
 
     group('size()', () {
       test('Success within bounds (String)', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').size(min: 2, max: 5).validate('abc');
+        cvc.field('test', 'abc').size(min: 2, max: 5);
         expect(cvc.isValid, isTrue);
       });
 
       test('Failure too short (String)', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').size(min: 5).validate('abc');
+        cvc.field('test', 'abc').size(min: 5);
         expect(cvc.isValid, isFalse);
         expect(cvc.violations.first.message, contains('The minimum is 5'));
       });
 
       test('Failure too long (String)', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').size(max: 2).validate('abc');
+        cvc.field('test', 'abc').size(max: 2);
         expect(cvc.isValid, isFalse);
         expect(cvc.violations.first.message, contains('The maximum is 2'));
       });
 
       test('Success within bounds (List)', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').size(min: 1, max: 2).validate([1]);
+        cvc.field('test', [1]).size(min: 1, max: 2);
         expect(cvc.isValid, isTrue);
       });
 
       test('Failure too many items (List)', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').size(max: 1).validate([1, 2]);
+        cvc.field('test', [1, 2]).size(max: 1);
         expect(cvc.isValid, isFalse);
         expect(cvc.violations.first.message, contains('The maximum is 1'));
       });
 
       test('Exact size success', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').size(min: 3, max: 3).validate('abc');
+        cvc.field('test', 'abc').size(min: 3, max: 3);
         expect(cvc.isValid, isTrue);
-      });
-
-      test('Failure if value is not a String or Iterable', () {
-        final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').size(min: 1).validate(123);
-        expect(cvc.isValid, isFalse);
-        expect(
-          cvc.violations.first.message,
-          contains('must be a String or Iterable'),
-        );
       });
     });
 
     group('email()', () {
       test('Success with valid email', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').email().validate('user@domain.com');
+        cvc.field('test', 'user@domain.com').email();
         expect(cvc.isValid, isTrue);
-      });
-
-      test('Failure if value is not a String', () {
-        final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').email().validate(123);
-        expect(cvc.isValid, isFalse);
-        expect(cvc.violations.first.message, contains('must be a String'));
       });
 
       test('Failure with invalid formats', () {
@@ -160,7 +132,7 @@ void main() {
         ];
         for (var email in invalidEmails) {
           final tempCvc = ConstraintValidatorContext();
-          tempCvc.buildValidator('test').email().validate(email);
+          tempCvc.field('test', email).email();
           expect(tempCvc.isValid, isFalse, reason: 'Failed for $email');
         }
       });
@@ -169,27 +141,21 @@ void main() {
     group('min()', () {
       test('Success when value >= min (inclusive: true)', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').min(10).validate(10);
-        cvc.buildValidator('test2').min(10).validate(11);
+        cvc.field('test', 10).min(10);
+        cvc.field('test2', 11).min(10);
         expect(cvc.isValid, isTrue);
       });
 
       test('Failure when value == min (inclusive: false)', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').min(10, inclusive: false).validate(10);
+        cvc.field('test', 10).min(10, inclusive: false);
         expect(cvc.isValid, isFalse);
         expect(cvc.violations.first.message, contains('greater than 10'));
       });
 
       test('Failure when value < min', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').min(10).validate(9.9);
-        expect(cvc.isValid, isFalse);
-      });
-
-      test('Failure with non-numeric value', () {
-        final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').min(10).validate('10');
+        cvc.field('test', 9.9).min(10);
         expect(cvc.isValid, isFalse);
       });
     });
@@ -197,52 +163,35 @@ void main() {
     group('max()', () {
       test('Success when value <= max (inclusive: true)', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').max(10).validate(10);
-        cvc.buildValidator('test2').max(10).validate(9);
+        cvc.field('test', 10).max(10);
+        cvc.field('test2', 9).max(10);
         expect(cvc.isValid, isTrue);
       });
 
       test('Failure when value == max (inclusive: false)', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').max(10, inclusive: false).validate(10);
+        cvc.field('test', 10).max(10, inclusive: false);
         expect(cvc.isValid, isFalse);
         expect(cvc.violations.first.message, contains('less than 10'));
       });
 
       test('Failure when value > max', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').max(10).validate(10.1);
+        cvc.field('test', 10.1).max(10);
         expect(cvc.isValid, isFalse);
-      });
-
-      test('Failure with non-numeric value', () {
-        final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').max(10).validate('10');
-        expect(cvc.isValid, isFalse);
-        expect(cvc.violations.first.message, contains('must be a number'));
       });
     });
 
     group('pattern()', () {
       test('Success with matching regex', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').pattern(r'^[0-9]+$').validate('12345');
+        cvc.field('test', '12345').pattern(r'^[0-9]+$');
         expect(cvc.isValid, isTrue);
-      });
-
-      test('Failure if value is not a String', () {
-        final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').pattern(r'^[0-9]+$').validate(123);
-        expect(cvc.isValid, isFalse);
-        expect(cvc.violations.first.message, contains('must be a String'));
       });
 
       test('Failure with non-matching regex', () {
         final cvc = ConstraintValidatorContext();
-        cvc
-            .buildValidator('test')
-            .pattern(RegExp(r'^[0-9]+$'))
-            .validate('abc12');
+        cvc.field('test', 'abc12').pattern(RegExp(r'^[0-9]+$'));
         expect(cvc.isValid, isFalse);
         expect(cvc.violations.first.message, contains('invalid format'));
       });
@@ -251,16 +200,13 @@ void main() {
     group('custom()', () {
       test('Success when custom returns null', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').custom((v) => null).validate('any');
+        cvc.field('test', 'any').custom((v) => null);
         expect(cvc.isValid, isTrue);
       });
 
       test('Failure when custom returns message', () {
         final cvc = ConstraintValidatorContext();
-        cvc
-            .buildValidator('test')
-            .custom((v) => 'custom error')
-            .validate('any');
+        cvc.field('test', 'any').custom((v) => 'custom error');
         expect(cvc.isValid, isFalse);
         expect(cvc.violations.first.message, equals('custom error'));
       });
@@ -269,13 +215,13 @@ void main() {
     group('isEnum()', () {
       test('Success matching by name (default)', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').isEnum(_TestEnum.values).validate('val1');
+        cvc.field('test', 'val1').isEnum(_TestEnum.values);
         expect(cvc.isValid, isTrue);
       });
 
       test('Failure when name does not exist', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').isEnum(_TestEnum.values).validate('other');
+        cvc.field('test', 'other').isEnum(_TestEnum.values);
         expect(cvc.isValid, isFalse);
         expect(
           cvc.violations.first.message,
@@ -285,16 +231,13 @@ void main() {
 
       test('Success using custom resolver (index)', () {
         final cvc = ConstraintValidatorContext();
-        cvc
-            .buildValidator('test')
-            .isEnum(_TestEnum.values, resolver: (e) => e.index)
-            .validate(0);
+        cvc.field('test', 0).isEnum(_TestEnum.values, resolver: (e) => e.index);
         expect(cvc.isValid, isTrue);
       });
 
       test('Success matching against a specific list subset', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').isEnum([_TestEnum.val1]).validate('val1');
+        cvc.field('test', 'val1').isEnum([_TestEnum.val1]);
         expect(cvc.isValid, isTrue);
       });
     });
@@ -304,12 +247,12 @@ void main() {
     test('Violations list should be unmodifiable', () {
       final cvc = ConstraintValidatorContext();
       cvc.addViolation(
-        const ConstrainViolation(value: 1, fieldName: 'f', message: 'm'),
+        const ConstraintViolation(value: 1, fieldName: 'f', message: 'm'),
       );
 
       expect(
         () => (cvc.violations as dynamic).add(
-          const ConstrainViolation(value: 2, fieldName: 'f2', message: 'm2'),
+          const ConstraintViolation(value: 2, fieldName: 'f2', message: 'm2'),
         ),
         throwsUnsupportedError,
       );
@@ -318,7 +261,7 @@ void main() {
     test('toString() contains violations', () {
       final cvc = ConstraintValidatorContext();
       cvc.addViolation(
-        const ConstrainViolation(value: 1, fieldName: 'f', message: 'm'),
+        const ConstraintViolation(value: 1, fieldName: 'f', message: 'm'),
       );
       expect(cvc.toString(), contains('f'));
       expect(cvc.toString(), contains('m'));
@@ -336,7 +279,7 @@ void validationFixesTests() {
     ]) {
       test('Valid: $email', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').email().validate(email);
+        cvc.field('test', email).email();
         expect(cvc.isValid, isTrue);
       });
     }
@@ -349,7 +292,7 @@ void validationFixesTests() {
     ]) {
       test('Invalid: $email', () {
         final cvc = ConstraintValidatorContext();
-        cvc.buildValidator('test').email().validate(email);
+        cvc.field('test', email).email();
         expect(cvc.isValid, isFalse);
       });
     }
@@ -358,10 +301,7 @@ void validationFixesTests() {
   group('Sensitive fields', () {
     test('The value of a sensitive field is never exposed', () {
       final cvc = ConstraintValidatorContext();
-      cvc
-          .buildValidator('password', sensitive: true)
-          .size(min: 8)
-          .validate('secret');
+      cvc.field('password', 'secret', sensitive: true).size(min: 8);
 
       final violation = cvc.violations.single;
       expect(violation.value, isNull);
@@ -372,10 +312,7 @@ void validationFixesTests() {
 
     test('Sensitive stays hidden when merged with a prefix', () {
       final inner = ConstraintValidatorContext();
-      inner
-          .buildValidator('password', sensitive: true)
-          .size(min: 8)
-          .validate('secret');
+      inner.field('password', 'secret', sensitive: true).size(min: 8);
 
       final outer = ConstraintValidatorContext()..merge(inner, prefix: 'user');
 
@@ -383,11 +320,12 @@ void validationFixesTests() {
       expect(outer.violations.single.toJson(), isNot(contains('value')));
     });
 
-    test('Non sensitive fields still include the value', () {
+    test('Non sensitive fields keep the value in Dart, never in the JSON', () {
       final cvc = ConstraintValidatorContext();
-      cvc.buildValidator('name').size(min: 8).validate('short');
+      cvc.field('name', 'short').size(min: 8);
 
-      expect(cvc.violations.single.toJson(), containsPair('value', 'short'));
+      expect(cvc.violations.single.value, 'short');
+      expect(cvc.violations.single.toJson(), isNot(contains('value')));
     });
   });
 }

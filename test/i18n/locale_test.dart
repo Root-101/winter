@@ -17,8 +17,8 @@ class _User implements Validatable {
   @override
   ConstraintValidatorContext validate() {
     final cvc = ConstraintValidatorContext();
-    cvc.buildValidator('name').notNull().size(min: 3, max: 10).validate(name);
-    cvc.buildValidator('tags').size(max: 2).validate(tags);
+    cvc.field('name', name).notNull().size(min: 3, max: 10);
+    cvc.field('tags', tags).size(max: 2);
     return cvc;
   }
 }
@@ -102,7 +102,7 @@ void main() {
 
   group('Violations', () {
     /// Validate [user] as a request in [locale] would
-    List<ConstrainViolation> validateIn(WinterLocale locale, _User user) =>
+    List<ConstraintViolation> validateIn(WinterLocale locale, _User user) =>
         RequestScope.run(
           RequestScope(locale: locale),
           () => user.validate().violations,
@@ -113,9 +113,10 @@ void main() {
 
       expect(violation.message, 'El mínimo es 3');
       expect(violation.toJson(), {
-        'value': 'ab',
         'fieldName': 'name',
         'message': 'El mínimo es 3',
+        'code': 'size.min',
+        'params': {'value': 3},
       });
     });
 
@@ -130,10 +131,7 @@ void main() {
       final cvc = ConstraintValidatorContext();
       RequestScope.run(
         RequestScope(locale: spanish),
-        () => cvc
-            .buildValidator('name')
-            .notNull(message: 'Required')
-            .validate(null),
+        () => cvc.field('name', null).notNull(message: 'Required'),
       );
       expect(cvc.violations.single.message, 'Required');
     });
@@ -149,7 +147,7 @@ void main() {
       final inner = ConstraintValidatorContext();
       RequestScope.run(
         RequestScope(locale: spanish),
-        () => inner.buildValidator('name').notNull().validate(null),
+        () => inner.field('name', null).notNull(),
       );
       final cvc = ConstraintValidatorContext()..merge(inner, prefix: 'user');
       final violation = cvc.violations.single;

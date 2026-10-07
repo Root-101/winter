@@ -156,7 +156,7 @@ void main() {
             method: HttpMethod.get,
             handler: (request) => throw ValidationException(
               violations: [
-                const ConstrainViolation(
+                const ConstraintViolation(
                   value: 'wrong-value',
                   fieldName: 'email',
                   message: 'Invalid email format',
@@ -311,11 +311,8 @@ void main() {
     expect(
       jsonDecode(response.body),
       anyElement(
-        equals({
-          'value': 'wrong-value',
-          'fieldName': 'email',
-          'message': 'Invalid email format',
-        }),
+        // The value is never sent back
+        equals({'fieldName': 'email', 'message': 'Invalid email format'}),
       ),
     );
   });

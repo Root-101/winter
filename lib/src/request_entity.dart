@@ -121,10 +121,13 @@ class RequestEntity extends Request {
   ///   `package:http` and `fetch()` send it for a String body when no header is given.
   /// - `body<String>()` decodes a JSON string (`"hello"` → `hello`) when the `Content-Type` is
   ///   JSON, and returns the text as it is otherwise.
+  /// - With [validate] (the default), a [Validatable] body, or a list of them, is validated: a
+  ///   failure throws a [ValidationException] (422). Use `validate: false` to read it without
+  ///   validating (ex: a partial update).
   ///
   /// The raw body is cached, so this method can be called multiple times (even with different types)
   /// Note: after calling it, [read] & [readAsString] can't be used (the stream is already consumed)
-  Future<T> body<T>({ObjectMapper? objectMapper}) async {
+  Future<T> body<T>({ObjectMapper? objectMapper, bool validate = true}) async {
     final ObjectMapper mapper = objectMapper ?? Winter.context.objectMapper;
     final String raw = await _readRawBody();
     final bool json = _isJson(mimeType);
@@ -138,7 +141,26 @@ class RequestEntity extends Request {
             'expected ${MediaType.applicationJson.mimeType}',
       );
     }
-    return mapper.decode<T>(raw);
+    final T body = mapper.decode<T>(raw);
+    if (validate) _validate(body);
+    return body;
+  }
+
+  /// Validates a [Validatable] body, or every one in a list (prefixed with its index: `[0].email`)
+  static void _validate(Object? body) {
+    if (body is Validatable) {
+      body.validate().throwOnFailure();
+    } else if (body is Iterable<Object?>) {
+      final cvc = ConstraintValidatorContext();
+      var index = 0;
+      for (final element in body) {
+        if (element is Validatable) {
+          cvc.merge(element.validate(), prefix: '[$index]');
+        }
+        index++;
+      }
+      cvc.throwOnFailure();
+    }
   }
 
   static bool _isJson(String? mimeType) =>

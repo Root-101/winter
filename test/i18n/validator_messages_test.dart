@@ -5,29 +5,20 @@ import 'package:winter/winter.dart';
 
 enum _Color { red, green }
 
-/// A failing validation: the rule, the value that breaks it, and its message in every locale
+/// A failing validation: the rule (with the value that breaks it), and its message in every locale
 class _Case {
   final String name;
-  final void Function(ConstraintValidator validator) rule;
-  final Object? value;
+  final void Function(ConstraintValidatorContext cvc, String field) rule;
   final String en;
   final String es;
 
-  const _Case(
-    this.name,
-    this.rule, {
-    required this.value,
-    required this.en,
-    required this.es,
-  });
+  const _Case(this.name, this.rule, {required this.en, required this.es});
 
   /// The violation when validating in a request in [locale]
-  ConstrainViolation violation([WinterLocale locale = WinterLocale.english]) =>
+  ConstraintViolation violation([WinterLocale locale = WinterLocale.english]) =>
       RequestScope.run(RequestScope(locale: locale), () {
         final cvc = ConstraintValidatorContext();
-        final validator = cvc.buildValidator('field');
-        rule(validator);
-        validator.validate(value);
+        rule(cvc, 'field');
         return cvc.violations.single;
       });
 }
@@ -35,164 +26,189 @@ class _Case {
 final List<_Case> _cases = [
   _Case(
     'notNull',
-    (v) => v.notNull(),
-    value: null,
+    (cvc, f) => cvc.field(f, null).notNull(),
     en: 'The field cannot be null',
     es: 'El campo no puede ser null',
   ),
   _Case(
     'notBlank: empty',
-    (v) => v.notBlank(),
-    value: '',
+    (cvc, f) => cvc.field(f, '').notBlank(),
     en: 'The field cannot be blank',
     es: 'El campo no puede estar vacío',
   ),
   _Case(
     'notBlank: only whitespace',
-    (v) => v.notBlank(),
-    value: '   ',
-    en: 'The field cannot be blank',
-    es: 'El campo no puede estar vacío',
-  ),
-  _Case(
-    'notBlank: not a String',
-    (v) => v.notBlank(),
-    value: 5,
+    (cvc, f) => cvc.field(f, '   ').notBlank(),
     en: 'The field cannot be blank',
     es: 'El campo no puede estar vacío',
   ),
   _Case(
     'size: min of a String',
-    (v) => v.size(min: 3),
-    value: 'ab',
+    (cvc, f) => cvc.field(f, 'ab').size(min: 3),
     en: 'The minimum is 3',
     es: 'El mínimo es 3',
   ),
   _Case(
     'size: max of a String',
-    (v) => v.size(max: 2),
-    value: 'abc',
+    (cvc, f) => cvc.field(f, 'abc').size(max: 2),
     en: 'The maximum is 2',
     es: 'El máximo es 2',
   ),
   _Case(
     'size: min of an Iterable',
-    (v) => v.size(min: 2),
-    value: [1],
+    (cvc, f) => cvc.field(f, [1]).size(min: 2),
     en: 'The minimum is 2',
     es: 'El mínimo es 2',
   ),
   _Case(
     'size: max of an Iterable',
-    (v) => v.size(max: 1),
-    value: {1, 2},
+    (cvc, f) => cvc.field(f, {1, 2}).size(max: 1),
     en: 'The maximum is 1',
     es: 'El máximo es 1',
   ),
   _Case(
-    'size: invalid type',
-    (v) => v.size(min: 1),
-    value: 5,
-    en: 'The value must be a String or Iterable',
-    es: 'El valor debe ser un String o un Iterable',
-  ),
-  _Case(
     'email: invalid',
-    (v) => v.email(),
-    value: 'not-an-email',
+    (cvc, f) => cvc.field(f, 'not-an-email').email(),
     en: 'The value is not a valid email',
     es: 'El valor no es un email válido',
   ),
   _Case(
-    'email: not a String',
-    (v) => v.email(),
-    value: 1,
-    en: 'The value must be a String',
-    es: 'El valor debe ser un String',
-  ),
-  _Case(
     'min: inclusive',
-    (v) => v.min(3),
-    value: 2,
+    (cvc, f) => cvc.field(f, 2).min(3),
     en: 'The minimum is 3',
     es: 'El mínimo es 3',
   ),
   _Case(
     'min: exclusive',
-    (v) => v.min(3, inclusive: false),
-    value: 3,
+    (cvc, f) => cvc.field(f, 3).min(3, inclusive: false),
     en: 'The value must be greater than 3',
     es: 'El valor debe ser mayor que 3',
   ),
   _Case(
     'min: decimal',
-    (v) => v.min(0.5),
-    value: 0.1,
+    (cvc, f) => cvc.field(f, 0.1).min(0.5),
     en: 'The minimum is 0.5',
     es: 'El mínimo es 0.5',
   ),
   _Case(
-    'min: not a number',
-    (v) => v.min(1),
-    value: '5',
-    en: 'The value must be a number',
-    es: 'El valor debe ser un número',
-  ),
-  _Case(
     'max: inclusive',
-    (v) => v.max(3),
-    value: 4,
+    (cvc, f) => cvc.field(f, 4).max(3),
     en: 'The maximum is 3',
     es: 'El máximo es 3',
   ),
   _Case(
     'max: exclusive',
-    (v) => v.max(3, inclusive: false),
-    value: 3,
+    (cvc, f) => cvc.field(f, 3).max(3, inclusive: false),
     en: 'The value must be less than 3',
     es: 'El valor debe ser menor que 3',
   ),
   _Case(
     'max: decimal',
-    (v) => v.max(2.5),
-    value: 3,
+    (cvc, f) => cvc.field(f, 3).max(2.5),
     en: 'The maximum is 2.5',
     es: 'El máximo es 2.5',
   ),
   _Case(
-    'max: not a number',
-    (v) => v.max(1),
-    value: true,
-    en: 'The value must be a number',
-    es: 'El valor debe ser un número',
-  ),
-  _Case(
     'pattern: no match',
-    (v) => v.pattern(r'^\d+$'),
-    value: 'abc',
+    (cvc, f) => cvc.field(f, 'abc').pattern(r'^\d+$'),
     en: 'The value has an invalid format',
     es: 'El valor tiene un formato no válido',
   ),
   _Case(
-    'pattern: not a String',
-    (v) => v.pattern(r'^\d+$'),
-    value: 123,
-    en: 'The value must be a String',
-    es: 'El valor debe ser un String',
-  ),
-  _Case(
     'isEnum: by name',
-    (v) => v.isEnum(_Color.values),
-    value: 'blue',
+    (cvc, f) => cvc.field(f, 'blue').isEnum(_Color.values),
     en: 'The value must be one of: red, green',
     es: 'El valor debe ser uno de: red, green',
   ),
   _Case(
     'isEnum: with resolver',
-    (v) => v.isEnum(_Color.values, resolver: (c) => c.index),
-    value: 7,
+    (cvc, f) => cvc.field(f, 7).isEnum(_Color.values, resolver: (c) => c.index),
     en: 'The value must be one of: 0, 1',
     es: 'El valor debe ser uno de: 0, 1',
+  ),
+  _Case(
+    'size: max of a Map',
+    (cvc, f) => cvc.field(f, {'a': 1, 'b': 2}).size(max: 1),
+    en: 'The maximum is 1',
+    es: 'El máximo es 1',
+  ),
+  _Case(
+    'notEmpty: a list',
+    (cvc, f) => cvc.field(f, <int>[]).notEmpty(),
+    en: 'The field cannot be empty',
+    es: 'El campo no puede estar vacío',
+  ),
+  _Case(
+    'notEmpty: a map',
+    (cvc, f) => cvc.field(f, <String, int>{}).notEmpty(),
+    en: 'The field cannot be empty',
+    es: 'El campo no puede estar vacío',
+  ),
+  _Case(
+    'oneOf',
+    (cvc, f) => cvc.field(f, 'c').oneOf(['a', 'b']),
+    en: 'The value must be one of: a, b',
+    es: 'El valor debe ser uno de: a, b',
+  ),
+  _Case(
+    'url',
+    (cvc, f) => cvc.field(f, 'not a url').url(),
+    en: 'The value is not a valid URL',
+    es: 'El valor no es una URL válida',
+  ),
+  _Case(
+    'uuid',
+    (cvc, f) => cvc.field(f, '1234').uuid(),
+    en: 'The value is not a valid UUID',
+    es: 'El valor no es un UUID válido',
+  ),
+  _Case(
+    'positive',
+    (cvc, f) => cvc.field(f, 0).positive(),
+    en: 'The value must be greater than 0',
+    es: 'El valor debe ser mayor que 0',
+  ),
+  _Case(
+    'positiveOrZero',
+    (cvc, f) => cvc.field(f, -1).positiveOrZero(),
+    en: 'The value must be 0 or greater',
+    es: 'El valor debe ser 0 o mayor',
+  ),
+  _Case(
+    'negative',
+    (cvc, f) => cvc.field(f, 0).negative(),
+    en: 'The value must be less than 0',
+    es: 'El valor debe ser menor que 0',
+  ),
+  _Case(
+    'negativeOrZero',
+    (cvc, f) => cvc.field(f, 1).negativeOrZero(),
+    en: 'The value must be 0 or less',
+    es: 'El valor debe ser 0 o menor',
+  ),
+  _Case(
+    'past',
+    (cvc, f) => cvc.field(f, DateTime(3000)).past(),
+    en: 'The date must be in the past',
+    es: 'La fecha debe estar en el pasado',
+  ),
+  _Case(
+    'pastOrPresent',
+    (cvc, f) => cvc.field(f, DateTime(3000)).pastOrPresent(),
+    en: 'The date cannot be in the future',
+    es: 'La fecha no puede estar en el futuro',
+  ),
+  _Case(
+    'future',
+    (cvc, f) => cvc.field(f, DateTime(2000)).future(),
+    en: 'The date must be in the future',
+    es: 'La fecha debe estar en el futuro',
+  ),
+  _Case(
+    'futureOrPresent',
+    (cvc, f) => cvc.field(f, DateTime(2000)).futureOrPresent(),
+    en: 'The date cannot be in the past',
+    es: 'La fecha no puede estar en el pasado',
   ),
 ];
 
@@ -205,9 +221,7 @@ void main() {
       group(c.name, () {
         test('outside a request: the fallback (English)', () {
           final cvc = ConstraintValidatorContext();
-          final validator = cvc.buildValidator('field');
-          c.rule(validator);
-          validator.validate(c.value);
+          c.rule(cvc, 'field');
           expect(cvc.violations.single.message, c.en);
         });
 
@@ -235,25 +249,44 @@ void main() {
     String custom() =>
         requestLocale.languageCode == 'es' ? 'Personalizado' : 'Custom';
 
-    final List<(String, void Function(ConstraintValidator), Object?)> rules = [
-      ('notNull', (v) => v.notNull(message: custom()), null),
-      ('notBlank', (v) => v.notBlank(message: custom()), ''),
-      ('size', (v) => v.size(min: 3, message: custom()), 'ab'),
-      ('email', (v) => v.email(message: custom()), 'x'),
-      ('min', (v) => v.min(3, message: custom()), 1),
-      ('max', (v) => v.max(0, message: custom()), 1),
-      ('pattern', (v) => v.pattern(r'^\d+$', message: custom()), 'x'),
-      ('isEnum', (v) => v.isEnum(_Color.values, message: custom()), 'x'),
+    final List<(String, void Function(ConstraintValidatorContext cvc))>
+    rules = [
+      ('notNull', (cvc) => cvc.field('field', null).notNull(message: custom())),
+      ('notBlank', (cvc) => cvc.field('field', '').notBlank(message: custom())),
+      (
+        'size',
+        (cvc) => cvc.field('field', 'ab').size(min: 3, message: custom()),
+      ),
+      ('email', (cvc) => cvc.field('field', 'x').email(message: custom())),
+      ('min', (cvc) => cvc.field('field', 1).min(3, message: custom())),
+      ('max', (cvc) => cvc.field('field', 1).max(0, message: custom())),
+      (
+        'pattern',
+        (cvc) => cvc.field('field', 'x').pattern(r'^\d+$', message: custom()),
+      ),
+      (
+        'isEnum',
+        (cvc) =>
+            cvc.field('field', 'x').isEnum(_Color.values, message: custom()),
+      ),
+      (
+        'oneOf',
+        (cvc) => cvc.field('field', 'x').oneOf(['a'], message: custom()),
+      ),
+      ('url', (cvc) => cvc.field('field', 'x').url(message: custom())),
+      ('positive', (cvc) => cvc.field('field', 0).positive(message: custom())),
+      (
+        'past',
+        (cvc) => cvc.field('field', DateTime(3000)).past(message: custom()),
+      ),
     ];
 
-    for (final (name, rule, value) in rules) {
+    for (final (name, rule) in rules) {
       test(name, () {
         String message(WinterLocale locale) =>
             RequestScope.run(RequestScope(locale: locale), () {
               final cvc = ConstraintValidatorContext();
-              final validator = cvc.buildValidator('field');
-              rule(validator);
-              validator.validate(value);
+              rule(cvc);
               return cvc.violations.single.message;
             });
 
@@ -266,10 +299,7 @@ void main() {
       final cvc = ConstraintValidatorContext();
       RequestScope.run(
         RequestScope(locale: spanish),
-        () => cvc
-            .buildValidator('field')
-            .notNull(message: 'Fixed')
-            .validate(null),
+        () => cvc.field('field', null).notNull(message: 'Fixed'),
       );
       expect(cvc.violations.single.message, 'Fixed');
     });
@@ -288,10 +318,7 @@ void main() {
               path: '/validate',
               handler: (request) {
                 final cvc = ConstraintValidatorContext();
-                cvc
-                    .buildValidator('prefix')
-                    .notNull(message: custom())
-                    .validate(null);
+                cvc.field('prefix', null).notNull(message: custom());
                 cvc.throwOnFailure();
                 return ResponseEntity.ok();
               },
@@ -334,9 +361,7 @@ void main() {
               handler: (request) async {
                 final cvc = ConstraintValidatorContext();
                 for (var i = 0; i < _cases.length; i++) {
-                  final validator = cvc.buildValidator('field$i');
-                  _cases[i].rule(validator);
-                  validator.validate(_cases[i].value);
+                  _cases[i].rule(cvc, 'field$i');
                 }
                 cvc.throwOnFailure();
                 return ResponseEntity.ok();
