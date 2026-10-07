@@ -288,3 +288,20 @@ the first time and cached.
 - *Benchmark caveat*: measured one after the other in the same process, the later cases were up
   to 3x slower, even the same code (the state of the GC). The benchmark interleaves the cases in
   rounds so they all run in the same conditions.
+
+### 2.10 Enums, typed deserializers and `objectMapper:`
+
+Added after the review, from a list of improvements (the rest are in `ROADMAP.md` §4.3, after 1.0):
+
+- **`Deserializer.enumByName(Status.values)`**. Enums were serialized by `name` with nothing to
+  register, but reading one needed a hand-written deserializer, and without it `body<Status>()`
+  was a 500. Dart can't list the values of an enum from its type, so the values are passed once.
+  The 400 lists the valid names (`expected one of pending, paid, got another string`) and never
+  echoes the value sent. It's a static method, not a constructor, so the type is checked to be an
+  `Enum` and inferred from the values.
+- **`Deserializer<T>.string`, `.integer`, `.number`, `.boolean`**. With `Deserializer<Uri>((data)
+  => Uri.parse(data as String))` a number was `invalid value`; the typed constructors check the
+  JSON type first, so the 400 says what was expected, and only a failure of the function is
+  `invalid value`.
+- **`body<T>(objectMapper: ...)`** instead of `body<T>(om: ...)`: `ResponseEntity` and
+  `BuildContext` already called it `objectMapper`. Breaking, done before freezing the API.

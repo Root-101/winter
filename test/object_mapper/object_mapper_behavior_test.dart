@@ -127,7 +127,7 @@ void main() {
     test('body<T?>() answers 200, not a 500', () async {
       final client = _client(
         (request) async => ResponseEntity.ok(
-          body: (await request.body<Tool?>(om: mapper))?.name,
+          body: (await request.body<Tool?>(objectMapper: mapper))?.name,
         ),
       );
 
@@ -362,7 +362,7 @@ void main() {
 
     test('the 400 sent to the client has no Dart internals', () async {
       final client = _client((request) async {
-        await request.body<Tool>(om: mapper);
+        await request.body<Tool>(objectMapper: mapper);
         return ResponseEntity.ok();
       });
 
@@ -470,8 +470,8 @@ void main() {
       client = _client((request) async {
         final type = request.url.queryParameters['type'];
         final Object? body = type == 'string'
-            ? await request.body<String>(om: mapper)
-            : (await request.body<Tool>(om: mapper)).name;
+            ? await request.body<String>(objectMapper: mapper)
+            : (await request.body<Tool>(objectMapper: mapper)).name;
         return ResponseEntity.ok(body: body);
       });
     });
@@ -537,6 +537,119 @@ void main() {
         expect(response.statusCode, 200, reason: '$contentType');
         expect(response.body, 'A');
       }
+    });
+  });
+
+  group('Enums: Deserializer.enumByName', () {
+    setUp(() {
+      mapper.addDeserializer(Deserializer.enumByName(_Status.values));
+    });
+
+    test('reads the name, the way enums are serialized', () {
+      expect(mapper.decode<_Status>('"paid"'), _Status.paid);
+      expect(
+        mapper.decode<_Status>(mapper.encode(_Status.pending)),
+        _Status.pending,
+      );
+    });
+
+    test('the type is inferred and the derived types come with it', () {
+      expect(Deserializer.enumByName(_Status.values).type, _Status);
+      expect(mapper.decode<List<_Status>>('["paid","pending"]'), [
+        _Status.paid,
+        _Status.pending,
+      ]);
+      expect(mapper.decode<_Status?>('null'), isNull);
+    });
+
+    test('an unknown name lists the valid ones, without echoing the value', () {
+      expect(
+        () => mapper.decode<Map<String, _Status>>('{"a":"refunded"}'),
+        throwsA(
+          isA<DeserializationException>().having(
+            (e) => e.message,
+            'message',
+            r'$.a: expected one of pending, paid, got another string',
+          ),
+        ),
+      );
+      expect(
+        () => mapper.decode<_Status>('1'),
+        throwsA(
+          isA<DeserializationException>().having(
+            (e) => e.message,
+            'message',
+            r'$: expected one of pending, paid, got an integer',
+          ),
+        ),
+      );
+    });
+
+    test('the name is case sensitive', () {
+      expect(
+        () => mapper.decode<_Status>('"PAID"'),
+        throwsA(isA<DeserializationException>()),
+      );
+    });
+  });
+
+  group('Typed deserializers: string, integer, number, boolean', () {
+    setUp(() {
+      mapper
+        ..addDeserializer(Deserializer<Uri>.string(Uri.parse))
+        ..addDeserializer(Deserializer<_Cents>.integer(_Cents.new))
+        ..addDeserializer(Deserializer<_Ratio>.number(_Ratio.new))
+        ..addDeserializer(Deserializer<_Flag>.boolean(_Flag.new));
+    });
+
+    test('convert the JSON value of their type', () {
+      expect(
+        mapper.decode<Uri>('"https://example.com/a"'),
+        Uri.parse('https://example.com/a'),
+      );
+      expect(mapper.decode<_Cents>('150').value, 150);
+      expect(mapper.decode<_Cents>('150.0').value, 150);
+      expect(mapper.decode<_Ratio>('0.5').value, 0.5);
+      expect(mapper.decode<_Flag>('true').value, isTrue);
+      expect(mapper.decode<List<Uri>>('["a"]'), [Uri.parse('a')]);
+    });
+
+    test('another JSON type is a 400 that says what was expected', () {
+      Matcher withMessage(String message) => throwsA(
+        isA<DeserializationException>().having(
+          (e) => e.message,
+          'message',
+          message,
+        ),
+      );
+
+      expect(
+        () => mapper.decode<Map<String, Uri>>('{"url":1}'),
+        withMessage(r'$.url: expected a string, got an integer'),
+      );
+      expect(
+        () => mapper.decode<_Cents>('1.5'),
+        withMessage(r'$: expected an integer, got a decimal number'),
+      );
+      expect(
+        () => mapper.decode<_Ratio>('"0.5"'),
+        withMessage(r'$: expected a number, got a string'),
+      );
+      expect(
+        () => mapper.decode<_Flag>('"true"'),
+        withMessage(r'$: expected a boolean, got a string'),
+      );
+    });
+
+    test('a function that throws is a 400 invalid value', () {
+      expect(
+        () => mapper.decode<List<Uri>>('["ok", "http://[::1"]'),
+        throwsA(
+          isA<DeserializationException>()
+              .having((e) => e.message, 'message', r'$[1]: invalid value')
+              .having((e) => e.cause, 'cause', isA<FormatException>()),
+        ),
+      );
     });
   });
 
@@ -751,6 +864,26 @@ enum _Level {
 }
 
 enum _Plain { value }
+
+enum _Status { pending, paid }
+
+class _Cents {
+  final int value;
+
+  _Cents(this.value);
+}
+
+class _Ratio {
+  final num value;
+
+  _Ratio(this.value);
+}
+
+class _Flag {
+  final bool value;
+
+  _Flag(this.value);
+}
 
 class _BrokenToJson {
   Object? toJson() => (null as dynamic).missing();

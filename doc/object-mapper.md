@@ -62,18 +62,18 @@ void main() async {
 `ResponseEntity(body: object)` calls `om.encode(object)`. Every value is converted with the first
 rule that applies:
 
-| Value                                          | JSON                                                      |
-|------------------------------------------------|-----------------------------------------------------------|
-| `null`, `String`, `num`, `bool`                | As it is                                                  |
-| `List`, any other `Iterable` (`Set`...)        | An array, each element converted                          |
-| `Map`                                          | An object, keys converted to `String`, values converted   |
-| A type with a registered `Serializer`          | What the serializer returns, converted again              |
-| A subtype of a type with a `Serializer`        | The same (the first registered one that matches)          |
-| An object with a `toJson()` method             | What `toJson()` returns, converted again                  |
-| An enum without `toJson()`                     | Its `name`                                                |
-| `DateTime` (default serializer)                | ISO-8601 **in UTC**: `2026-01-01T16:30:00.000Z`           |
-| `Duration` (default serializer)                | Milliseconds (`5400000`), or ISO-8601, see `durationFormat` |
-| Anything else                                  | `MissingSerializerError` (500)                            |
+| Value                                   | JSON                                                        |
+|-----------------------------------------|-------------------------------------------------------------|
+| `null`, `String`, `num`, `bool`         | As it is                                                    |
+| `List`, any other `Iterable` (`Set`...) | An array, each element converted                            |
+| `Map`                                   | An object, keys converted to `String`, values converted     |
+| A type with a registered `Serializer`   | What the serializer returns, converted again                |
+| A subtype of a type with a `Serializer` | The same (the first registered one that matches)            |
+| An object with a `toJson()` method      | What `toJson()` returns, converted again                    |
+| An enum without `toJson()`              | Its `name`                                                  |
+| `DateTime` (default serializer)         | ISO-8601 **in UTC**: `2026-01-01T16:30:00.000Z`             |
+| `Duration` (default serializer)         | Milliseconds (`5400000`), or ISO-8601, see `durationFormat` |
+| Anything else                           | `MissingSerializerError` (500)                              |
 
 Because the result of a `toJson()` or a serializer is converted again, a `toJson()` can return
 `DateTime`s, enums and other objects without converting them itself:
@@ -118,6 +118,35 @@ Deserializers are found by the exact `Type` you ask for. These are registered by
 Types are **strict**: `"12"` is not an `int` and `"true"` is not a `bool` (400). JSON has a single
 number type, so `12.0` is a valid `int` and `1` a valid `double`.
 
+#### Registering a deserializer
+
+| Written in JSON as | Constructor                          | Example                                                       |
+|--------------------|--------------------------------------|---------------------------------------------------------------|
+| An object          | `Deserializer<T>.json(fromJson)`     | `Deserializer<User>.json(User.fromJson)`                      |
+| A string           | `Deserializer<T>.string(fromString)` | `Deserializer<Uri>.string(Uri.parse)`                         |
+| An integer         | `Deserializer<T>.integer(fromInt)`   | `Deserializer<Cents>.integer(Cents.new)`                      |
+| A number           | `Deserializer<T>.number(fromNumber)` | `Deserializer<Ratio>.number(Ratio.new)`                       |
+| A boolean          | `Deserializer<T>.boolean(fromBool)`  | `Deserializer<Flag>.boolean(Flag.new)`                        |
+| An enum `name`     | `Deserializer.enumByName(values)`    | `Deserializer.enumByName(Status.values)`                      |
+| Anything else      | `Deserializer<T>(fromAnyValue)`      | `Deserializer<Point>((data) => Point.fromList(data as List))` |
+
+The typed constructors check the JSON type before calling your function, so a wrong one is a 400
+that says what was expected (`$.url: expected a string, got an integer`). If your function throws
+(`Uri.parse` with an invalid URI), the 400 is `invalid value` at the path of the value. With the
+plain `Deserializer<T>(...)` constructor every failure is `invalid value`.
+
+**Enums** are serialized by their `name` without registering anything, but reading one needs its
+deserializer, since Dart can't list the values of an enum from its type:
+
+```dart
+om.addDeserializer(Deserializer.enumByName(Status.values));
+// body<Status>(), List<Status>, Map<String, Status>...
+// "refunded" → 400 $.status: expected one of pending, paid, got another string
+```
+
+The names are case sensitive, and the value sent by the client is never echoed in the message.
+An enum with its own `toJson()` is written differently, so it needs its own deserializer.
+
 #### Generic types
 
 Registering `Deserializer<T>` also registers, derived from it:
@@ -156,13 +185,13 @@ An explicit registration wins over a derived one, and removing a deserializer
 The message of a 400 is `path: reason`, and it never contains a Dart type, a stack trace or a
 file path:
 
-| Body                                  | Asked for            | Message                                       |
-|---------------------------------------|----------------------|-----------------------------------------------|
-| `{"a":1,"b":"x"}`                     | `Map<String, int>`   | `$.b: expected an integer, got a string`      |
-| `[{"name":"A"}, 1]`                   | `List<User>`         | `$[1]: expected an object, got an integer`    |
-| `[{"name":"A"}, {}]`                  | `List<User>`         | `$[1]: invalid value`                         |
-| `{"first name": true}`                | `Map<String, int>`   | `$["first name"]: expected an integer, got a boolean` |
-| `{"name": `                           | `User`               | `The body is not valid JSON`                  |
+| Body                   | Asked for          | Message                                               |
+|------------------------|--------------------|-------------------------------------------------------|
+| `{"a":1,"b":"x"}`      | `Map<String, int>` | `$.b: expected an integer, got a string`              |
+| `[{"name":"A"}, 1]`    | `List<User>`       | `$[1]: expected an object, got an integer`            |
+| `[{"name":"A"}, {}]`   | `List<User>`       | `$[1]: invalid value`                                 |
+| `{"first name": true}` | `Map<String, int>` | `$["first name"]: expected an integer, got a boolean` |
+| `{"name": `            | `User`             | `The body is not valid JSON`                          |
 
 The path goes as deep as the mapper walks the data itself (lists, maps, primitives). Inside your
 `fromJson` it can't know which field failed, so the message is `invalid value` at the path of the
@@ -194,22 +223,22 @@ Winter.context.setUp(
     serializers: [Serializer<Money>((money) => money.toString())],
     deserializers: [
       Deserializer<User>.json(User.fromJson),
-      Deserializer<Money>((data) => Money.parse(data as String)),
+      Deserializer<Money>.string(Money.parse),
     ],
     fieldNaming: FieldNaming.snakeCase,
   ),
 );
 
-final user = await request.body<User>(om: anotherMapper);
+final user = await request.body<User>(objectMapper: anotherMapper);
 final response = ResponseEntity.ok(body: user, objectMapper: anotherMapper);
 ```
 
-| Option           | Default        | Effect                                                              |
-|------------------|----------------|---------------------------------------------------------------------|
-| `includeNulls`   | `true`         | `false` drops the fields with a `null` value                        |
-| `fieldNaming`    | `none`         | `snakeCase` (`user_id`) or `kebabCase` (`user-id`)                  |
+| Option           | Default        | Effect                                                                      |
+|------------------|----------------|-----------------------------------------------------------------------------|
+| `includeNulls`   | `true`         | `false` drops the fields with a `null` value                                |
+| `fieldNaming`    | `none`         | `snakeCase` (`user_id`) or `kebabCase` (`user-id`)                          |
 | `durationFormat` | `milliseconds` | `iso8601`: `PT1H30M`, `-PT0.5S`, `P1DT2H` (hours are not grouped into days) |
-| `prettyPrint`    | `true`         | `false` writes compact JSON, for smaller responses                  |
+| `prettyPrint`    | `true`         | `false` writes compact JSON, for smaller responses                          |
 
 `includeNulls` and `fieldNaming` only apply to **objects**: the maps returned by a `toJson()` or a
 serializer, and the map given to `Deserializer.json`. A `Map` you serialize or ask for directly
@@ -245,11 +274,11 @@ Register a `Serializer` and a `Deserializer` for it:
 ```dart
 om
   ..addSerializer(Serializer<Uri>((uri) => uri.toString()))
-  ..addDeserializer(Deserializer<Uri>((data) => Uri.parse(data as String)));
+  ..addDeserializer(Deserializer<Uri>.string(Uri.parse));
 ```
 
-If the deserializer throws (here, `data` is not a String or not a valid URI), the client gets a
-400 `invalid value` at the path of the value.
+A value that is not a string is a 400 `expected a string, got ...`, and an invalid URI (`Uri.parse`
+throws) a 400 `invalid value`, both at the path of the value.
 
 ### Sealed classes and subtypes
 
@@ -281,6 +310,9 @@ email...) are a 422 of the validation, see [validation](validation.md).
 - **Forgetting the type argument**: `Deserializer.json(User.fromJson)` infers `User`, but inside a
   list (`deserializers: [Deserializer((data) => ...)]`) the type of the list wins and it's
   registered as `dynamic`. A warning is logged; write `Deserializer<User>(...)`.
+- **Enums are not read automatically**: `body<Status>()` without
+  `Deserializer.enumByName(Status.values)` is a `MissingDeserializerError` (500), even though
+  writing them needs nothing.
 - **Asking for a type that is not registered**, like `List<List<User>>` without registering
   `List<User>`, is a `MissingDeserializerError` (500), not a 400.
 - **`deserialize` with JSON text**: `om.deserialize<User>('{"id":1}')` receives a String, not an

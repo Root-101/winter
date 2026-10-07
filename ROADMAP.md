@@ -91,7 +91,9 @@ Steps for every system:
 
 ### 2.1 Object mapper (dedicated review) ✅
 
-**Done** (2026-10-06, commits `716b572` and `0add5e1`): every decision is in `DECISIONS.md` §2,
+**Done** (2026-10-06, commits `716b572` and `0add5e1`, then `Deserializer.enumByName`, the typed
+constructors `string`/`integer`/`number`/`boolean` and `body<T>(objectMapper:)`, §2.10): every
+decision is in `DECISIONS.md` §2,
 the behavior in `test/object_mapper/object_mapper_behavior_test.dart` (100% line coverage of the
 mapper), the guide in `doc/object-mapper.md` and the numbers in
 `benchmark/object_mapper_benchmark.dart`. What is left of the object mapper is in other phases:
@@ -442,6 +444,34 @@ They don't block 1.0 and shouldn't delay it (they can be added in 1.x without br
 - [ ] Configuration with annotations / package scanning (with codegen).
 - [ ] A tree-based (trie) router if benchmarks with hundreds of routes justify it (today the lookup
   is linear).
+
+**Object mapper** (proposed after the review 2.1, none of them is breaking):
+
+- [ ] **`JsonConverter<T>`**: register the serializer and the deserializer of a type you don't
+  own in one call (`om.addConverter(JsonConverter<Uri>.string(toJson: ..., fromJson: Uri.parse))`).
+- [ ] **Typed field access for hand-written `fromJson`** (`json.field<String>('name')`,
+  `json.object('address', Address.fromJson)`): the 400 says which field failed
+  (`$.address.zip: ...`) instead of `$: invalid value`, without tracking the keys behind the
+  scenes.
+- [ ] **`TestResponse.as<T>()`**: deserialize a response of `WinterTestClient` with the mapper,
+  instead of `json` (`dynamic`) and a manual `fromJson`.
+- [ ] **Warn when the mapper is replaced after registering**: `Winter.context.setUp(objectMapper:
+  ...)` drops what was registered in the previous `om`, and the missing deserializer is only seen
+  as a 500 at runtime.
+- [ ] **Encode straight to bytes** with `JsonUtf8Encoder` (today `encode` makes a String that is
+  encoded to UTF-8 again), on the response model of 3.1. Measure it with
+  `benchmark/object_mapper_benchmark.dart` first.
+- [ ] **Decode without the intermediate String** (`utf8.decoder.fuse(json.decoder)` on the body
+  stream), keeping the cache of the raw body that `body<T>()` needs.
+- [ ] **Absent vs `null`** for partial updates (PATCH): today a missing field and a `null` one are
+  the same; `body<Map<String, dynamic>>()` is the workaround.
+- [ ] **Reject unknown fields** (optional, against mass assignment): needs to know which keys the
+  `fromJson` read (see the typed field access above).
+- [ ] **Map keys that are not `String`** (`Map<int, T>`, `Map<Status, T>`): convert the key from
+  its text.
+- Not possible, on purpose: reading a class without registering it, or serializing records
+  (`(id: 1, name: 'a')`); both need reflection, which AOT doesn't have, or codegen, which the
+  project avoids.
 
 ---
 
