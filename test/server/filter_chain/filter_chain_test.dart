@@ -74,7 +74,7 @@ void main() {
       final seenStatus = <int>[];
       final chain = FilterChain(
         [StatusRecordingFilter(seenStatus)],
-        (request) => throw NotFoundException(),
+        (request) => throw const NotFoundException(),
         exceptionHandler: SimpleExceptionHandler(),
       );
 
@@ -113,7 +113,7 @@ void main() {
       final seenStatus = <int>[];
       final chain = FilterChain([
         StatusRecordingFilter(seenStatus),
-      ], (request) => throw NotFoundException());
+      ], (request) => throw const NotFoundException());
 
       final request = RequestEntity('GET', Uri.parse('http://localhost/'));
 
@@ -147,7 +147,7 @@ class ThrowingFilter extends Filter {
 
   @override
   FutureOr<ResponseEntity> doFilter(RequestEntity request, FilterChain chain) {
-    throw UnauthorizedException();
+    throw const UnauthorizedException();
   }
 }
 

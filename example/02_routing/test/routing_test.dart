@@ -37,7 +37,8 @@ void main() {
 
       expect(response.statusCode, equals(404));
       final error = jsonDecode(response.body);
-      expect(error['error'], contains('not found'));
+      // Every error is a Problem Details (application/problem+json)
+      expect(error['detail'], contains('not found'));
     });
 
     test('POST /users creates user and it is stored in service', () async {

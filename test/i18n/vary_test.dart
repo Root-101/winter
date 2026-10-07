@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
@@ -41,7 +43,7 @@ void main() {
         router: ServeRouter((request) async {
           await Future<void>.delayed(Duration.zero);
           throw NotFoundException(
-            body: requestLocale == spanish ? 'No encontrado' : 'Not found',
+            detail: requestLocale == spanish ? 'No encontrado' : 'Not found',
           );
         }),
       );
@@ -50,7 +52,7 @@ void main() {
         headers: {HttpHeader.acceptLanguage: 'es'},
       );
       expect(response.statusCode, 404);
-      expect(response.body, 'No encontrado');
+      expect((jsonDecode(response.body) as Map)['detail'], 'No encontrado');
       expect(response.headers[HttpHeader.vary], HttpHeader.acceptLanguage);
     });
 

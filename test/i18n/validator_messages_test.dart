@@ -335,7 +335,8 @@ void main() {
         expect(response.statusCode, 422);
         expect(response.headers[HttpHeader.vary], HttpHeader.acceptLanguage);
         final violation =
-            (jsonDecode(response.body) as List).single as Map<String, dynamic>;
+            (((jsonDecode(response.body) as Map)['violations'] as List)).single
+                as Map<String, dynamic>;
         return violation['message'] as String;
       }
 
@@ -384,7 +385,8 @@ void main() {
       expect(response.statusCode, 422);
       expect(response.headers[HttpHeader.vary], HttpHeader.acceptLanguage);
       return [
-        for (final v in jsonDecode(response.body) as List)
+        for (final v
+            in ((jsonDecode(response.body) as Map)['violations'] as List))
           v as Map<String, dynamic>,
       ];
     }

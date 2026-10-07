@@ -43,7 +43,7 @@ class OrderService {
     final order = _orders[id];
     if (order == null) {
       //`t` reads the language of the request: Winter adds `Vary: Accept-Language` by itself
-      throw NotFoundException(body: t.orders.notFound(id: id));
+      throw NotFoundException(detail: t.orders.notFound(id: id));
     }
     return order;
   }

@@ -37,19 +37,12 @@ class ServeRouter extends AbstractWinterRouter {
   }
 }
 
-///The response when no route can handle a request:
-///405 (with the 'Allow' header) if the path exists for other methods, 404 otherwise
-ResponseEntity methodNotAllowedOrNotFound(Set<HttpMethod> allowedMethods) {
-  if (allowedMethods.isEmpty) {
-    return ResponseEntity.notFound();
-  }
-  return ResponseEntity.methodNotAllowed(
-    headers: {
-      HttpHeader.allow: allowedMethods
-          .map((method) => method.name.toUpperCase())
-          .join(', '),
-    },
-  );
+///What happens when no route can handle a request: a [MethodNotAllowedException] (405, with the
+///`Allow` header) if the path exists for other methods, a [NotFoundException] (404) otherwise.
+///They go through the exception handler like any other error.
+Never methodNotAllowedOrNotFound(Set<HttpMethod> allowedMethods) {
+  if (allowedMethods.isEmpty) throw const NotFoundException();
+  throw MethodNotAllowedException(allowedMethods);
 }
 
 class WinterRouter extends AbstractWinterRouter {

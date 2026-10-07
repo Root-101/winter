@@ -1,6 +1,8 @@
 @TestOn('vm')
 library;
 
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
@@ -49,7 +51,7 @@ void main() {
           ),
           Route.get(
             path: '/not-found',
-            handler: (request) => throw NotFoundException(),
+            handler: (request) => throw const NotFoundException(),
           ),
         ],
       ),
@@ -66,7 +68,10 @@ void main() {
     final response = await http.get(url('/error'));
 
     expect(response.statusCode, 500);
-    expect(response.body, 'Internal Server Error');
+    expect(
+      (jsonDecode(response.body) as Map)['title'],
+      'Internal Server Error',
+    );
     expect(response.body, isNot(contains('internal-secret')));
     expect(loggedErrors, hasLength(1));
     expect(loggedErrors.single, isA<StateError>());
@@ -76,7 +81,10 @@ void main() {
     final response = await http.get(url('/exception'));
 
     expect(response.statusCode, 500);
-    expect(response.body, 'Internal Server Error');
+    expect(
+      (jsonDecode(response.body) as Map)['title'],
+      'Internal Server Error',
+    );
     expect(response.body, isNot(contains('internal-secret')));
     expect(loggedErrors, hasLength(1));
     expect(loggedErrors.single.toString(), contains('internal-secret'));
@@ -86,7 +94,10 @@ void main() {
     final response = await http.get(url('/serialization'));
 
     expect(response.statusCode, 500);
-    expect(response.body, 'Internal Server Error');
+    expect(
+      (jsonDecode(response.body) as Map)['title'],
+      'Internal Server Error',
+    );
     expect(response.body, isNot(contains('internal-secret')));
     expect(loggedErrors.single, isA<SerializationException>());
   });

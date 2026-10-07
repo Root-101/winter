@@ -7,10 +7,10 @@ class FilterChain {
   final int _currentFilterIndex;
   final List<Filter> _filters;
 
-  ///If provided, any [Exception] thrown by a filter or by the handler is converted
-  ///into a response right where it happens, so every outer filter receives a
-  ///response instead of the exception.
-  ///If null, the exception is propagated to the caller.
+  ///If provided, anything thrown by a filter or by the handler ([Exception]s and [Error]s) is
+  ///converted into a response right where it happens, so every outer filter (CORS, logs...)
+  ///receives a response instead of the error.
+  ///If null, the error is propagated to the caller.
   final ExceptionHandler? _exceptionHandler;
 
   FilterChain(
@@ -44,15 +44,14 @@ class FilterChain {
         } else {
           return await nextChain.doFilter(request);
         }
-      } on Exception catch (error, stackTrace) {
+      } catch (error, stackTrace) {
         final exceptionHandler = _exceptionHandler;
         if (exceptionHandler == null) rethrow;
         return await exceptionHandler(request, error, stackTrace);
       }
     } else {
-      return ResponseEntity.internalServerError(
-        body: 'Filter chain ended without a response',
-      );
+      // The last link is always the handler, which never calls the chain
+      throw StateError('The filter chain ended without a response');
     }
   }
 }

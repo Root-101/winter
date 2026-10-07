@@ -54,7 +54,7 @@ void main() {
           ),
           Route.get(
             path: '/boom',
-            handler: (request) => throw NotFoundException(),
+            handler: (request) => throw const NotFoundException(),
           ),
         ],
       ),

@@ -49,7 +49,7 @@ void main() {
           logResponse: (req, res, duration) => logged.add(res.statusCode),
         ),
       ],
-      (request) => throw NotFoundException(),
+      (request) => throw const NotFoundException(),
       exceptionHandler: SimpleExceptionHandler(),
     );
 

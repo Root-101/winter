@@ -40,9 +40,9 @@ void main() {
           Route(
             path: '/api-exception/json',
             method: HttpMethod.get,
-            handler: (request) => throw ApiException(
-              statusCode: 400,
-              body: {'error': 'json error', 'code': 123},
+            handler: (request) => throw const ApiException(
+              StatusCode.badRequest,
+              extensions: {'error': 'json error', 'code': 123},
             ),
           ),
 
@@ -98,19 +98,23 @@ void main() {
           Route(
             path: '/api-exception/700',
             method: HttpMethod.get,
-            handler: (request) => throw ApiException(
-              statusCode: 700,
-              body: 'Generic api exception',
-              headers: {'exception-header': '123456789'},
+
+            /// A status that is not in StatusCode: a response of its own
+            handler: (request) => throw ResponseException(
+              ResponseEntity(
+                700,
+                body: 'Generic api exception',
+                headers: {'exception-header': '123456789'},
+              ),
             ),
           ),
 
           Route(
             path: '/api-exception/custom',
             method: HttpMethod.get,
-            handler: (request) => throw ApiException(
-              statusCode: 418,
-              body: 'I am a teapot',
+            handler: (request) => throw const ApiException(
+              StatusCode.imATeapot,
+              detail: 'I am a teapot',
               headers: {'X-Teapot': 'True'},
             ),
           ),
@@ -119,44 +123,39 @@ void main() {
           Route(
             path: '/api-exception/bad-request',
             method: HttpMethod.get,
-            handler: (request) => throw BadRequestException(),
+            handler: (request) => throw const BadRequestException(),
           ),
           Route(
             path: '/api-exception/forbidden',
             method: HttpMethod.get,
-            handler: (request) => throw ForbiddenException(),
-          ),
-          Route(
-            path: '/api-exception/payment-required',
-            method: HttpMethod.get,
-            handler: (request) => throw PaymentRequiredException(),
+            handler: (request) => throw const ForbiddenException(),
           ),
           Route(
             path: '/api-exception/unauthorized',
             method: HttpMethod.get,
-            handler: (request) => throw UnauthorizedException(),
+            handler: (request) => throw const UnauthorizedException(),
           ),
           Route(
             path: '/api-exception/not-found',
             method: HttpMethod.get,
-            handler: (request) => throw NotFoundException(),
+            handler: (request) => throw const NotFoundException(),
           ),
           Route(
             path: '/api-exception/conflict',
             method: HttpMethod.get,
-            handler: (request) => throw ConflictException(),
+            handler: (request) => throw const ConflictException(),
           ),
           Route(
             path: '/api-exception/unprocessable',
             method: HttpMethod.get,
-            handler: (request) => throw UnprocessableEntityException(),
+            handler: (request) => throw const UnprocessableEntityException(),
           ),
           Route(
             path: '/api-exception/validation',
             method: HttpMethod.get,
-            handler: (request) => throw ValidationException(
+            handler: (request) => throw const ValidationException(
               violations: [
-                const ConstraintViolation(
+                ConstraintViolation(
                   value: 'wrong-value',
                   fieldName: 'email',
                   message: 'Invalid email format',
@@ -168,7 +167,7 @@ void main() {
             ///ise = Internal Server Error
             path: '/api-exception/ise',
             method: HttpMethod.get,
-            handler: (request) => throw InternalServerErrorException(),
+            handler: (request) => throw const InternalServerErrorException(),
           ),
         ],
       ),
@@ -190,7 +189,11 @@ void main() {
     String urlToTest = '/custom-exception';
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 500);
-    expect(response.body, 'Internal Server Error');
+    expect(jsonDecode(response.body), {
+      'type': 'about:blank',
+      'title': 'Internal Server Error',
+      'status': 500,
+    });
     expect(response.body, isNot(contains('Handler for custom exception')));
   });
 
@@ -198,7 +201,7 @@ void main() {
     String urlToTest = '/generic-exception';
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 500);
-    expect(response.body, 'Internal Server Error');
+    expect(jsonDecode(response.body), containsPair('status', 500));
     expect(response.body, isNot(contains('Handler for generic exception')));
   });
 
@@ -250,7 +253,7 @@ void main() {
     String urlToTest = '/api-exception/custom';
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 418);
-    expect(response.body, 'I am a teapot');
+    expect(jsonDecode(response.body), containsPair('detail', 'I am a teapot'));
     expect(response.headers['x-teapot'], 'True');
   });
 
@@ -258,12 +261,6 @@ void main() {
     String urlToTest = '/api-exception/bad-request';
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 400);
-  });
-
-  test('Test Exception: /api-exception/payment-required', () async {
-    String urlToTest = '/api-exception/payment-required';
-    http.Response response = await http.get(url(urlToTest));
-    expect(response.statusCode, 402);
   });
 
   test('Test Exception: /api-exception/forbidden', () async {
@@ -300,8 +297,14 @@ void main() {
     String urlToTest = '/api-exception/json';
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 400);
-    expect(jsonDecode(response.body), containsPair('error', 'json error'));
-    expect(jsonDecode(response.body), containsPair('code', 123));
+    // The extensions are members of the Problem Details
+    expect(jsonDecode(response.body), {
+      'error': 'json error',
+      'code': 123,
+      'type': 'about:blank',
+      'title': 'Bad Request',
+      'status': 400,
+    });
   });
 
   test('Test Exception: /api-exception/validation', () async {
@@ -309,7 +312,7 @@ void main() {
     http.Response response = await http.get(url(urlToTest));
     expect(response.statusCode, 422);
     expect(
-      jsonDecode(response.body),
+      (jsonDecode(response.body) as Map)['violations'],
       anyElement(
         // The value is never sent back
         equals({'fieldName': 'email', 'message': 'Invalid email format'}),

@@ -124,18 +124,15 @@ class TestExceptionHandler extends ExceptionHandler {
   @override
   Future<ResponseEntity> call(
     RequestEntity request,
-    Exception exception,
-    StackTrace stackTrac,
+    Object error,
+    StackTrace stackTrace,
   ) async {
-    if (exception is CustomStatusException) {
-      return ResponseEntity(
-        exception.code,
-        body: 'Custom code: ${exception.code}',
-      );
+    if (error is CustomStatusException) {
+      return ResponseEntity(error.code, body: 'Custom code: ${error.code}');
     }
-    if (exception is PathCheckException) {
+    if (error is PathCheckException) {
       return ResponseEntity.ok(body: 'Path: ${request.requestedUri.path}');
     }
-    return ResponseEntity.badRequest(body: exception.toString());
+    return ResponseEntity.badRequest(body: error.toString());
   }
 }

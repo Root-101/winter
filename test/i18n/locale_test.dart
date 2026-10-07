@@ -210,7 +210,8 @@ void main() {
         );
 
     List<String> messages(TestResponse response) => [
-      for (final v in jsonDecode(response.body) as List)
+      for (final v
+          in ((jsonDecode(response.body) as Map)['violations'] as List))
         (v as Map<String, dynamic>)['message'] as String,
     ];
 
@@ -230,7 +231,7 @@ void main() {
       expect(response.headers[HttpHeader.vary], HttpHeader.acceptLanguage);
       expect(messages(response), ['El máximo es 10', 'El máximo es 2']);
       expect(
-        jsonDecode(response.body),
+        (jsonDecode(response.body) as Map)['violations'],
         contains(containsPair('fieldName', 'name')),
       );
     });

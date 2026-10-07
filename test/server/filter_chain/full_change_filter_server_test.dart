@@ -1,6 +1,8 @@
 @TestOn('vm')
 library;
 
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
@@ -178,7 +180,10 @@ void main() {
     http.Response response = await http.get(url(urlToTest));
 
     expect(response.statusCode, 500);
-    expect(response.body, 'Internal Server Error');
+    expect(
+      (jsonDecode(response.body) as Map)['title'],
+      'Internal Server Error',
+    );
     expect(response.body, isNot(contains('Filter error')));
   });
 
