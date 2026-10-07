@@ -13,7 +13,7 @@ A `WinterRouter` is defined with support for path parameters and multiple HTTP m
 *   `DELETE /api/v1/users/{id}`: Deletes a user.
 
 ### 2. ObjectMapper (Serialization)
-*   **Models**: Use of the `Serializable` interface in the `User` class for automatic JSON conversion.
+*   **Models**: The `User` class has a `toJson()` method, which the object mapper calls to write the responses (no interface to implement).
 *   **Deserialization**: Registration of a `Deserializer<User>` to automatically process request bodies (`request.body<User>()`).
 
 ### 3. Dependency Injection (DI)

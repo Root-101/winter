@@ -31,19 +31,19 @@ way we want to maintain it**. Exit criteria:
 
 ## 1. Current state
 
-| Module | State |
-|---|---|
-| Pipeline (`buildHandler`, filters, exception handler inside the chain) | ✅ Solid |
-| Router (nested, regex, static routes first, 404/405 + `Allow`, HEAD→GET, `MultiRouter`) | ✅ Solid, with benchmark |
-| Lifecycle (graceful shutdown, signals, body limit with 413) | ✅ |
-| Request scope (`Zone`): `requestAuthentication`, `requestLocale` | ✅ |
-| i18n (slang + YAML, `Accept-Language`, automatic `Vary`) | ✅ Documented in `DECISIONS.md` |
-| Testing (in-memory `WinterTestClient`) | ✅ |
-| HTTP engine (`shelf` + `shelf_io`) | ⚠️ To be replaced by `dart:io` → phase 3.1 |
-| Object mapper | ⚠️ Works, with design limits → phase 2.1 |
-| Validation, exceptions, DI, Env, logging, security | ⚠️ Work, to be reviewed → phase 2 |
-| Documentation | ❌ The biggest gap |
-| CI / publishing | ❌ No CI |
+| Module                                                                                  | State                                      |
+|-----------------------------------------------------------------------------------------|--------------------------------------------|
+| Pipeline (`buildHandler`, filters, exception handler inside the chain)                  | ✅ Solid                                    |
+| Router (nested, regex, static routes first, 404/405 + `Allow`, HEAD→GET, `MultiRouter`) | ✅ Solid, with benchmark                    |
+| Lifecycle (graceful shutdown, signals, body limit with 413)                             | ✅                                          |
+| Request scope (`Zone`): `requestAuthentication`, `requestLocale`                        | ✅                                          |
+| i18n (slang + YAML, `Accept-Language`, automatic `Vary`)                                | ✅ Documented in `DECISIONS.md`             |
+| Testing (in-memory `WinterTestClient`)                                                  | ✅                                          |
+| HTTP engine (`shelf` + `shelf_io`)                                                      | ⚠️ To be replaced by `dart:io` → phase 3.1 |
+| Object mapper                                                                           | ✅ Reviewed (2.1), `doc/object-mapper.md`   |
+| Validation, exceptions, DI, Env, logging, security                                      | ⚠️ Work, to be reviewed → phase 2          |
+| Documentation                                                                           | ❌ The biggest gap                          |
+| CI / publishing                                                                         | ❌ No CI                                    |
 
 ---
 
@@ -55,13 +55,13 @@ are in its section of phase 2, so each system is reviewed as a whole.
 - [x] ✔️ **`ResponseEntity.copyWith` loses or corrupts the body.** `CorsFilter` and
   `RateLimiterFilter` add headers with `copyWith`, which rebuilds the response from the original
   value of the body (`_bodyValue`):
-  - After `change(body: bytes)` on a `ResponseEntity<String>`, the body is **lost** (it's empty).
-  - On a `ResponseEntity<dynamic>`, the bytes are **serialized as JSON** (`[104,105]` instead of
-    `hi`).
-  - With an object, every filter that adds headers **runs `jsonEncode` on the body again**: no
-    error, but repeated work on every response.
-  - Fix: the filters use `change(headers: ...)` (it doesn't touch the already resolved body), and
-    `copyWith` only re-serializes when it receives a new `body`.
+    - After `change(body: bytes)` on a `ResponseEntity<String>`, the body is **lost** (it's empty).
+    - On a `ResponseEntity<dynamic>`, the bytes are **serialized as JSON** (`[104,105]` instead of
+      `hi`).
+    - With an object, every filter that adds headers **runs `jsonEncode` on the body again**: no
+      error, but repeated work on every response.
+    - Fix: the filters use `change(headers: ...)` (it doesn't touch the already resolved body), and
+      `copyWith` only re-serializes when it receives a new `body`.
 - [x] ✔️ **Repeated query params are lost:** `?tag=a&tag=b` gives `{tag: b}`. Add `queryParamsAll`
   (`Map<String, List<String>>`, with `Uri.queryParametersAll`).
 - [x] **`Winter.start` looks for the router in DI as `WinterRouter`, but registers it as
@@ -89,58 +89,82 @@ Steps for every system:
 4. Implement, update the CHANGELOG and the migration guide.
 5. Write its document in `doc/` (phase 5), now that it won't change.
 
-### 2.1 Object mapper (dedicated review)
+### 2.1 Object mapper (dedicated review) ✅
 
-**Today:** a registry of `Serializer<T>`/`Deserializer<T>` by exact `Type`, the `Serializable`
+**Done** (2026-10-06, commits `716b572` and `0add5e1`): every decision is in `DECISIONS.md` §2,
+the behavior in `test/object_mapper/object_mapper_behavior_test.dart` (100% line coverage of the
+mapper), the guide in `doc/object-mapper.md` and the numbers in
+`benchmark/object_mapper_benchmark.dart`. What is left of the object mapper is in other phases:
+the format of the error body (2.3), `validBody<T>()` (2.2), the migration guide and
+`requests-and-responses.md` (5.2), example `05` (5.4) and the obfuscation check in CI (6.1).
+
+**Before the review:** a registry of `Serializer<T>`/`Deserializer<T>` by exact `Type`, the `Serializable`
 interface, recursive serialization, and `List<T>` / `Map<String, T>` found by the **name** of the
 type.
 
 **Problems found:**
 
-- [ ] **Generic types are found by name** (`k.toString() == typeName` in
+- [x] **Generic types are found by name** (`k.toString() == typeName` in
   `_extractListElementType` / `_extractMapValueType`):
-  - Two `User` classes from different libraries collide.
-  - With `dart compile exe --obfuscate` the names change and it stops working.
-  - `List<List<T>>`, `Set<T>` and nullable types (`body<User?>()`) are not supported, or fail with
-    a 500 (`StateError`) instead of a 400.
-- [ ] ✔️ **A class with `toJson()` that doesn't implement `Serializable` gives a 500**
+    - Two `User` classes from different libraries collide (the 400 even sent the paths of the
+      server's files to the client).
+    - With `dart compile exe --extra-gen-snapshot-options=--obfuscate` the names change and it
+      stops working.
+    - `List<List<T>>`, `Set<T>` and nullable types (`body<User?>()`) are not supported, or fail with
+      a 500 (`StateError`) instead of a 400.
+    - → Found by `Type`; `T?`, `List<T>`, `Set<T>`, `Map<String, T>` derived from `T`, deeper types
+      with `deserializerOf<T>().list()` (§2.1). Checked with an obfuscated AOT build.
+- [x] ✔️ **A class with `toJson()` that doesn't implement `Serializable` gives a 500**
   (`Bad state: Generated need to implement the Serializable interface`). That's exactly what
   `json_serializable` and `freezed` generate, so the most common way of writing models in Dart
-  doesn't work without adding `implements Serializable` to each one.
-- [ ] **Serializers are found by the exact `runtimeType`:** a serializer for `Animal` doesn't apply
+  doesn't work without adding `implements Serializable` to each one. → `toJson()` is called
+  dynamically and `Serializable` was removed (§2.2).
+- [x] **Serializers are found by the exact `runtimeType`:** a serializer for `Animal` doesn't apply
   to `Dog`. The default `Serializer<num>` and `Serializer<Object>` are never used (no value has
-  those runtime types).
-- [ ] ✔️ **A local `DateTime` is serialized without an offset** (`2026-01-01T00:00:00.000`): the
-  client can't know its time zone. Decide: always UTC (`toUtc()`), or keep the offset.
-- [ ] **The errors expose Dart internals to the client** (400): a failing `fromJson` sends
+  those runtime types). → A serializer applies to subtypes; the dead defaults were removed (§2.3).
+- [x] ✔️ **A local `DateTime` is serialized without an offset** (`2026-01-01T00:00:00.000`): the
+  client can't know its time zone. Decide: always UTC (`toUtc()`), or keep the offset. → Always UTC
+  (§2.6).
+- [x] **The errors expose Dart internals to the client** (400): a failing `fromJson` sends
   `type 'Null' is not a subtype of type 'String' in type cast`, and a wrong number sends the parser
   message (`Invalid radix-10 number (at character 1)`). They don't say which field failed either.
-- [ ] **Leniency is inconsistent:** `int`/`double`/`bool` are parsed from `v.toString()`, so `"12"`
+  → `path: reason` (`$.items[1]: expected a string, got an integer`), never a Dart type (§2.5).
+- [x] **Leniency is inconsistent:** `int`/`double`/`bool` are parsed from `v.toString()`, so `"12"`
   (a string) is accepted as `12` and `"true"` as `true`, but `12.0` is not accepted as an `int`.
-- [ ] `body<String>()` returns the raw body without decoding the JSON (`_isPrimitive`): a JSON body
+  → Strict types, `12.0` is an `int` (§2.4).
+- [x] `body<String>()` returns the raw body without decoding the JSON (`_isPrimitive`): a JSON body
   `"hello"` comes back with its quotes. Document it, or decode it when the `Content-Type` is JSON.
-- [ ] `body<T>()` ignores the `Content-Type` of the request: a form or XML body tries to parse as
-  JSON. Decide whether a non-JSON body is a **415**.
-- [ ] `ListTypeExtension` adds `isList`/`isMap` to **every** `Type` of the user (public extension).
+  → Decoded when the `Content-Type` is JSON; `deserialize` (values) and `decode` (text) are
+  separate methods (§2.0, §2.7).
+- [x] `body<T>()` ignores the `Content-Type` of the request: a form or XML body tries to parse as
+  JSON. Decide whether a non-JSON body is a **415**. → 415 (`UnsupportedMediaTypeException`),
+  except `text/plain` and no `Content-Type`, which `package:http` and `fetch()` send (§2.7).
+- [x] `ListTypeExtension` adds `isList`/`isMap` to **every** `Type` of the user (public extension).
+  → Removed.
 
 **Questions to decide:**
 
-- [ ] **How generics are registered.** Options: (a) explicit
+- [x] **How generics are registered.** Options: (a) explicit
   (`om.addDeserializer<List<User>>(...)` generated by a helper, `Deserializer<User>.list()`),
   (b) the deserializer of `T` creates the ones of `List<T>`/`Map<String, T>`/`T?` itself when it's
   registered, (c) optional codegen. Option (b) removes the lookup by name without new API.
-- [ ] **Duck-typed `toJson()`:** call `(object as dynamic).toJson()` when the object has one
+  → (b), plus (a) for deeper types.
+- [x] **Duck-typed `toJson()`:** call `(object as dynamic).toJson()` when the object has one
   (dynamic calls work in AOT), so `json_serializable`/`freezed` models work without
-  `Serializable`. Then, is `Serializable` still needed?
-- [ ] **Strict or lenient types** (`"12"` as an `int`), and whether it's configurable.
-- [ ] **Error format:** a field path (`$.address.zip: expected a String, got a number`) and a 400
-  without Dart details, consistent with the error format of phase 2.3.
-- [ ] **Subtypes:** fall back to the serializer of a supertype, or keep exact types (faster and
-  predictable) and document it.
-- [ ] **Options:** omit `null` fields, naming strategy (`snake_case`), `Duration` as milliseconds
+  `Serializable`. Then, is `Serializable` still needed? → No: `Serializable` was removed.
+- [x] **Strict or lenient types** (`"12"` as an `int`), and whether it's configurable. → Strict,
+  not configurable.
+- [x] **Error format:** a field path (`$.address.zip: expected a String, got a number`) and a 400
+  without Dart details, consistent with the error format of phase 2.3. → Done for the message; the
+  body format goes with 2.3.
+- [x] **Subtypes:** fall back to the serializer of a supertype, or keep exact types (faster and
+  predictable) and document it. → Fall back, cached per type (needed by `freezed`).
+- [x] **Options:** omit `null` fields, naming strategy (`snake_case`), `Duration` as milliseconds
   vs ISO-8601. Possibly none of them (the model's `toJson` decides), but say so in the docs.
-- [ ] **Performance:** benchmark `serialize` + `jsonEncode` of a big list (it's done in two passes
-  and fully in memory) and compare it with a direct `jsonEncode` of the `toJson()`.
+  → `includeNulls`, `fieldNaming`, `durationFormat` and `prettyPrint` (on by default) (§2.8).
+- [x] **Performance:** benchmark `serialize` + `jsonEncode` of a big list (it's done in two passes
+  and fully in memory) and compare it with a direct `jsonEncode` of the `toJson()`. → It was
+  ×3.5–4.2 in AOT; `encode` is now a single pass, ×1.1–1.2 (§2.9).
 
 ### 2.2 Validation
 
@@ -211,7 +235,7 @@ validators as extensions, `throwOnFailure()` → 422, messages in the language o
   `if (e is X)`. A registry `handler.on<MyException>((req, e) => ...)` (Spring's
   `@ControllerAdvice`, without annotations).
 - [ ] **More exceptions:** `MethodNotAllowedException` (405), `NotAcceptableException` (406),
-  `UnsupportedMediaTypeException` (415), `TooManyRequestsException` (429),
+  `UnsupportedMediaTypeException` (415, already added in 2.1), `TooManyRequestsException` (429),
   `ServiceUnavailableException` (503). Or a single `ApiException(StatusCode.x)` and fewer classes.
 
 ### 2.4 Dependency injection
@@ -305,13 +329,13 @@ Winter ~12 500. Record the decision in `DECISIONS.md` when it's done.
 **Where shelf is used today** (everything else, router, filters, security, DI, object mapper, i18n,
 is already independent):
 
-| Where | What it uses |
-|---|---|
-| `winter_server.dart` | `shelf_io.serve(...)`: bind, connections, writing the response |
-| `RequestEntity extends Request`, `ResponseEntity<T> extends Response` | Headers, body and its encoding, `context`, `change()` |
-| `Winter.buildHandler` → `Handler` | `WinterTestClient` calls the pipeline in memory |
-| `context['shelf.io.connection_info']` | The IP of the client (`clientIp`) |
-| `export 'package:shelf/shelf.dart'` | All of shelf re-exported (tests use `Response.ok` with `addVary`, `shelf_change_test.dart`) |
+| Where                                                                 | What it uses                                                                                |
+|-----------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
+| `winter_server.dart`                                                  | `shelf_io.serve(...)`: bind, connections, writing the response                              |
+| `RequestEntity extends Request`, `ResponseEntity<T> extends Response` | Headers, body and its encoding, `context`, `change()`                                       |
+| `Winter.buildHandler` → `Handler`                                     | `WinterTestClient` calls the pipeline in memory                                             |
+| `context['shelf.io.connection_info']`                                 | The IP of the client (`clientIp`)                                                           |
+| `export 'package:shelf/shelf.dart'`                                   | All of shelf re-exported (tests use `Response.ok` with `addVary`, `shelf_change_test.dart`) |
 
 **Tasks:**
 
@@ -326,14 +350,14 @@ is already independent):
   an `HttpRequest` and another one is built in memory (tests). It keeps the names the users know
   (`method`, `headers`, `requestedUri`, `body<T>()`, `pathParams`, `queryParams`, `context`…)
   and adds what shelf didn't have:
-  - Headers that are case-insensitive and multi-value (`header('x')`, `headerAll('x')`).
-  - `cookies` (`HttpRequest.cookies` of `dart:io`).
-  - `clientIp` from `HttpRequest.connectionInfo`, without context keys.
-  - A body read once (single subscription), with the charset of the `Content-Type` and the
-    `maxBodySize` limit.
-  - Decide `copyWith` (async) vs `change` (sync): today they do almost the same, keep one.
-  - Drop what only shelf needed: `handlerPath`, `url` relative to the handler, the unmodifiable
-    `context` that Winter had to override.
+    - Headers that are case-insensitive and multi-value (`header('x')`, `headerAll('x')`).
+    - `cookies` (`HttpRequest.cookies` of `dart:io`).
+    - `clientIp` from `HttpRequest.connectionInfo`, without context keys.
+    - A body read once (single subscription), with the charset of the `Content-Type` and the
+      `maxBodySize` limit.
+    - Decide `copyWith` (async) vs `change` (sync): today they do almost the same, keep one.
+    - Drop what only shelf needed: `handlerPath`, `url` relative to the handler, the unmodifiable
+      `context` that Winter had to override.
 - [ ] **Own response model:** `ResponseEntity<T>` with status, multi-value headers (several
   `Set-Cookie`), a body as a value, String, bytes or Stream, the encoding, and automatic
   `Content-Type`/`Content-Length` (the logic of phase 1 is already Winter's).
@@ -364,9 +388,9 @@ is already independent):
   values of `StatusCode`.
 - [ ] **Exported surface:** `winter.dart` exports everything. Decide what is really public API and
   what is an internal detail (once in 1.0, changing it is breaking):
-  - Loose helpers: `addVary`, `limitBodySize`, `isValidUri`, `normalizePath`,
-    `methodNotAllowedOrNotFound`, `internalServerErrorResponse`,
-    `warnLocalesWithoutWinterMessages` and `console_style` (`stylize` on `String`).
+    - Loose helpers: `addVary`, `limitBodySize`, `isValidUri`, `normalizePath`,
+      `methodNotAllowedOrNotFound`, `internalServerErrorResponse`,
+      `warnLocalesWithoutWinterMessages` and `console_style` (`stylize` on `String`).
 - [ ] Read the whole public API once more (`dart doc` output) looking for inconsistent names and
   parameters.
 
@@ -459,6 +483,9 @@ CONTRIBUTING.md
 CHANGELOG.md
 ```
 
+- [x] `doc/README.md`: the index, with the state of each planned document (written, planned or
+  outdated). Update it every time a document is added.
+
 ### 5.2 Content of each document
 
 Every document follows the same outline: **what it is → minimal example → how it works inside →
@@ -471,14 +498,14 @@ written twice. The rest can be written now.
 - [ ] **`getting-started.md`:** requirements (SDK), installation, first endpoint, a CRUD with JSON
   and validation, how to run it and test it. From zero to a working API in 10 minutes.
 - [ ] **`architecture.md`:**
-  - The path of a request: `Request` → `RequestEntity` → `RequestScope` (Zone) → `resolveRoute` →
-    `FilterChain` (CORS, global and route filters, sorted by `order`) → handler →
-    `ExceptionHandler` → `Vary`.
-  - Include a diagram.
-  - What lives in `BuildContext` (`om`, `eh`, `di`, `env`, `logger`, `localeConfig`) and the model
-    of one server per isolate.
-  - How to scale with several isolates (`shared: true`, see
-    `benchmark/server_shared_benchmark.dart`).
+    - The path of a request: `Request` → `RequestEntity` → `RequestScope` (Zone) → `resolveRoute` →
+      `FilterChain` (CORS, global and route filters, sorted by `order`) → handler →
+      `ExceptionHandler` → `Vary`.
+    - Include a diagram.
+    - What lives in `BuildContext` (`om`, `eh`, `di`, `env`, `logger`, `localeConfig`) and the model
+      of one server per isolate.
+    - How to scale with several isolates (`shared: true`, see
+      `benchmark/server_shared_benchmark.dart`).
 - [ ] **`routing.md`:** `Route.get/post/...`, nested routes and `Route.parent`, path params (`{id}`,
   `{id|regex}`, decoding), regex routes, priority (static routes first, then declaration order),
   trailing slash, HEAD→GET, 404 vs 405 + `Allow`, `basePath`, `addRoute`, route keys and duplicates,
@@ -492,54 +519,55 @@ written twice. The rest can be written now.
   `queryParams`, `clientIp`, `change`) and `ResponseEntity` (constructors, automatic `Content-Type`
   and `Content-Length`, streams), body limit (413), cookies, forms, multipart and static files
   (once they exist).
-- [ ] **`object-mapper.md`** (after 2.1):
-  - `Serializable`, `Serializer<T>`, `Deserializer<T>` and `Deserializer<T>.json(fromJson)`.
-  - Registration in `ObjectMapper(...)` and in `Winter.context.setUp(objectMapper: ...)`.
-  - Default types (`DateTime`, `Duration`) and the rules of serialization (recursion, enums,
-    iterables, map keys).
-  - Deserialization of lists, maps and generics, as decided in 2.1.
-  - Which error each failure gives and its format.
-  - How to use it with `json_serializable`/`freezed`.
+- [x] **`object-mapper.md`** (after 2.1), its snippets checked by running them:
+    - `toJson()`, `Serializer<T>`, `Deserializer<T>` and `Deserializer<T>.json(fromJson)`.
+    - Registration in `ObjectMapper(...)` and in `Winter.context.setUp(objectMapper: ...)`.
+    - Default types (`DateTime`, `Duration`) and the rules of serialization (recursion, enums,
+      iterables, map keys).
+    - Deserialization of lists, maps and generics, as decided in 2.1.
+    - Which error each failure gives and its format.
+    - How to use it with `json_serializable`/`freezed`.
 - [ ] **`validation.md`** (after 2.2):
-  - `Validatable`, `ConstraintValidatorContext`, `buildValidator(name)`.
-  - Every validator with its semantics: `null` passes except with `notNull`, `stopOnFailure`,
-    `inclusive`.
-  - Sensitive fields (`sensitive: true`).
-  - Nested objects and lists (`merge(prefix:)`, `List<Validatable>.validate()` → `items[0].name`).
-  - `throwOnFailure()` → 422 and the format of the response.
-  - Custom and translated messages (link to `i18n.md`).
-  - Writing your own validators as an extension of `ConstraintValidator` with `addRule`.
-  - **Pitfall:** build the validators inside `validate()`, never in a `static final`.
+    - `Validatable`, `ConstraintValidatorContext`, `buildValidator(name)`.
+    - Every validator with its semantics: `null` passes except with `notNull`, `stopOnFailure`,
+      `inclusive`.
+    - Sensitive fields (`sensitive: true`).
+    - Nested objects and lists (`merge(prefix:)`, `List<Validatable>.validate()` → `items[0].name`).
+    - `throwOnFailure()` → 422 and the format of the response.
+    - Custom and translated messages (link to `i18n.md`).
+    - Writing your own validators as an extension of `ConstraintValidator` with `addRule`.
+    - **Pitfall:** build the validators inside `validate()`, never in a `static final`.
 - [ ] **`error-handling.md`** (after 2.3): the exception hierarchy, which status each one gives,
   why a 500 never exposes details, how to customize the `ExceptionHandler`, the error format and
   the difference between `Exception` and `Error`.
 - [ ] **`i18n.md`**, with this outline:
-  1. **What it solves:** answering in the language of the client, both Winter's validation messages
-     and the texts of the app.
-  2. **Enabling it:** `Winter.context.setUp(localeConfig: LocaleConfig(supported: [english,
+    1. **What it solves:** answering in the language of the client, both Winter's validation
+       messages
+       and the texts of the app.
+    2. **Enabling it:** `Winter.context.setUp(localeConfig: LocaleConfig(supported: [english,
      spanish], fallback: english))`. By default there is only English, so an existing app doesn't
-     change its responses by surprise.
-  3. **How the language is chosen:** `Accept-Language` per RFC 9110 (sorted by `q`, `q=0` = not
-     acceptable, `es-MX` → `es` → any `es-*`, `fallback`), with a table of examples of header →
-     chosen language.
-  4. **Reading the language:** `request.locale` vs `requestLocale` (from any code thanks to the
-     `RequestScope`), and what it returns outside a request.
-  5. **Winter's messages:** which validators are translated, the included languages (en, es), the
-     warning on start about languages without translations, and how to contribute a new language
-     (`*.i18n.yaml` + `dart run slang`).
-  6. **Translating the texts of your app with slang**, step by step as in `example/04_i18n`:
-     `slang.yaml` with the same options as Winter (`locale_handling: false`,
-     `string_interpolation: braces`, `fallback_strategy: none`), nested YAML, typed parameters,
-     generating the code and the getter `t => appMessages(requestLocale)` (**a getter, never a
-     `final`**). Using it in validators (`message: t.x`), exceptions and responses.
-  7. **Automatic `Vary: Accept-Language`:** when it's added (when the language is read and more
-     than one language is supported), how it's merged with the `Vary: Origin` of CORS, and why it
-     matters for caches.
-  8. **Tests:** `WinterTestClient` with the `Accept-Language` header, and
-     `RequestScope.run(RequestScope(locale: ...))` to test a service without a server.
-  9. **Limitations and decisions:** what is not translated on purpose (HTTP reason phrases,
-     technical deserialization errors), the mix of languages when the app supports a language that
-     Winter doesn't have, and a link to `DECISIONS.md` §1 for why slang and YAML.
+       change its responses by surprise.
+    3. **How the language is chosen:** `Accept-Language` per RFC 9110 (sorted by `q`, `q=0` = not
+       acceptable, `es-MX` → `es` → any `es-*`, `fallback`), with a table of examples of header →
+       chosen language.
+    4. **Reading the language:** `request.locale` vs `requestLocale` (from any code thanks to the
+       `RequestScope`), and what it returns outside a request.
+    5. **Winter's messages:** which validators are translated, the included languages (en, es), the
+       warning on start about languages without translations, and how to contribute a new language
+       (`*.i18n.yaml` + `dart run slang`).
+    6. **Translating the texts of your app with slang**, step by step as in `example/04_i18n`:
+       `slang.yaml` with the same options as Winter (`locale_handling: false`,
+       `string_interpolation: braces`, `fallback_strategy: none`), nested YAML, typed parameters,
+       generating the code and the getter `t => appMessages(requestLocale)` (**a getter, never a
+       `final`**). Using it in validators (`message: t.x`), exceptions and responses.
+    7. **Automatic `Vary: Accept-Language`:** when it's added (when the language is read and more
+       than one language is supported), how it's merged with the `Vary: Origin` of CORS, and why it
+       matters for caches.
+    8. **Tests:** `WinterTestClient` with the `Accept-Language` header, and
+       `RequestScope.run(RequestScope(locale: ...))` to test a service without a server.
+    9. **Limitations and decisions:** what is not translated on purpose (HTTP reason phrases,
+       technical deserialization errors), the mix of languages when the app supports a language that
+       Winter doesn't have, and a link to `DECISIONS.md` §1 for why slang and YAML.
 - [ ] **`security.md`** (after 2.7): how to authenticate with your own filter (Bearer/JWT, as in
   `example/03_auth_security`), `Authentication` and `RequestSecurityContext`,
   `requestAuthentication` from services, `AuthFilter` (401 vs 403), rules (`hasRole`,
@@ -567,12 +595,12 @@ written twice. The rest can be written now.
   including the move away from shelf (the shelf types that are gone, and how to turn a shelf
   middleware into a filter).
 - [ ] **Rewritten `README.md`:**
-  - Badges (pub, CI, coverage, license), the value proposition in 3 lines, installation with the
-    real version (today it says `^latest_version`) and hello world.
-  - A feature table with a link to each doc, a link to the examples, and removing the "not
-    production-ready" warning in 1.0.
-  - Fix the SDK: the README says `>= 3.12`, `pubspec.yaml` `^3.13.0` and `CLAUDE.md` `^3.12.0`.
-  - Tone down the "protect from DDoS" of the rate limiter, it promises more than it does.
+    - Badges (pub, CI, coverage, license), the value proposition in 3 lines, installation with the
+      real version (today it says `^latest_version`) and hello world.
+    - A feature table with a link to each doc, a link to the examples, and removing the "not
+      production-ready" warning in 1.0.
+    - Fix the SDK: the README says `>= 3.12`, `pubspec.yaml` `^3.13.0` and `CLAUDE.md` `^3.12.0`.
+    - Tone down the "protect from DDoS" of the rate limiter, it promises more than it does.
 - [ ] **`CONTRIBUTING.md`:** FVM, commands, style (lints), how to add a language, commit convention
   (`[module] ...`), and how to update the CHANGELOG and `DECISIONS.md`.
 
@@ -580,7 +608,7 @@ written twice. The rest can be written now.
 
 - [ ] Enable the `public_member_api_docs` lint and document the whole public API, with an example
   in the main classes (`Winter`, `WinterRouter`, `Route`, `Filter`, `ResponseEntity`,
-  `ObjectMapper`, `ConstraintValidator`, `AuthFilter`).
+  `ObjectMapper`, `ConstraintValidator`, `AuthFilter`). The object mapper already passes the lint.
 - [ ] Clean up the comments copied from Spring with Javadoc syntax (`{@link ...}`, `{@code ...}`,
   `@see <a href=...>` with broken URLs) in `http_status_code.dart` and `status_code.dart`.
 - [ ] Use dartdoc categories (`{@category Routing}`) to group the reference by module.
@@ -608,6 +636,10 @@ The current 4 are fine. Missing:
 - [ ] `pana` in CI with a score threshold (goal: the maximum pub points).
 - [ ] Check that the snippets of the docs compile (extract them to `doc/snippets/*.dart` and analyze
   them, or use a tool like `code_excerpter`).
+- [ ] Build an obfuscated AOT executable (`dart compile exe
+  --extra-gen-snapshot-options=--obfuscate`) that serializes and deserializes generic types, two
+  classes with the same name and a failing `fromJson`: the object mapper must work and its errors
+  must not contain obfuscated names (checked by hand in 2.1).
 
 ### 6.2 Package 🔴
 
@@ -625,8 +657,8 @@ The current 4 are fine. Missing:
 
 - [ ] A full security review (path traversal in static files, multipart limits, headers, errors
   never leaking internal data).
-- [ ] Publish the benchmarks (routing and server) and compare them with `dart:io` (the ceiling) and
-  with the last version on shelf, in the README or in `doc/`.
+- [ ] Publish the benchmarks (routing, server and object mapper) and compare them with `dart:io`
+  (the ceiling) and with the last version on shelf, in the README or in `doc/`.
 - [ ] Keep the coverage of the new modules at the current level (~99%).
 
 ### 6.4 Release
