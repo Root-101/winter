@@ -13,7 +13,7 @@ This directory contains independent examples demonstrating the core features and
 2.  **[02_routing](./02_routing)**: Advanced routing, services, and data handling.
     - a) **Dynamic CRUD**: Full lifecycle (GET, POST, PUT, DELETE) with path parameters.
     - b) **Dependency Injection**: Decoupling logic using `di.put()` and `di.find()`.
-    - c) **ObjectMapper**: Automatic JSON serialization/deserialization using `Serializable`.
+    - c) **ObjectMapper**: Automatic JSON serialization with `toJson()` and deserialization with a registered `Deserializer`.
     - d) **Exception Handling**: Using `ApiException` (like `NotFoundException`) to handle business errors cleanly.
 
 3.  **[03_auth_security](./03_auth_security)**: Complete Authentication and Authorization flow.

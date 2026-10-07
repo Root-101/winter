@@ -47,6 +47,8 @@ abstract class _MapperEntity<T> {
 class Serializer<T> extends _MapperEntity<T> {
   final Object? Function(T object, ObjectMapper mapper) _serialize;
 
+  /// [serializer] converts a [T] (or a subtype) into a JSON value; what it returns is serialized
+  /// again. If it throws, the response is a 500 ([SerializationException]).
   Serializer(Object? Function(T object) serializer)
     : _serialize = ((object, _) => serializer(object));
 
@@ -185,6 +187,7 @@ class ObjectMapper {
   /// inside it). Never the keys of a [Map] serialized or deserialized directly.
   final FieldNaming fieldNaming;
 
+  /// How a [Duration] is written and read: milliseconds (default) or ISO-8601.
   final DurationFormat durationFormat;
 
   /// Indent the JSON of [encode] (and so of the responses), on by default so they are easy to
@@ -204,6 +207,8 @@ class ObjectMapper {
   final Map<String, String> _dartToJsonKeys = {};
   final Map<String, String> _jsonToDartKeys = {};
 
+  /// A mapper with the default serializers and deserializers (`DateTime`, `Duration`, primitives),
+  /// plus [serializers] and [deserializers] (which replace a default of the same type).
   ObjectMapper({
     List<Serializer>? serializers,
     List<Deserializer>? deserializers,
@@ -631,20 +636,24 @@ String _describe(Object? data) => switch (data) {
 
 /// No [Serializer], `toJson()` nor enum for a type: a bug of the server (500)
 class MissingSerializerError extends StateError {
+  /// The type of the object that couldn't be serialized
   final Type type;
 
+  /// [type] has no serializer, `toJson()` nor enum `name`
   MissingSerializerError(this.type)
     : super(
-        '$type has no toJson() and no Serializer is registered for it. '
-        'Add a toJson() method or register one with '
+        '$type has no toJson() without parameters and no Serializer is registered '
+        'for it. Add a toJson() method or register one with '
         'om.addSerializer(Serializer<$type>((value) => ...))',
       );
 }
 
 /// No [Deserializer] for a type: a bug of the server (500)
 class MissingDeserializerError extends StateError {
+  /// The type that was asked for
   final Type type;
 
+  /// No deserializer registered nor derived for [type]
   MissingDeserializerError(this.type)
     : super(
         'No deserializer found for type: <$type>. '
@@ -654,9 +663,12 @@ class MissingDeserializerError extends StateError {
       );
 }
 
+/// Base of the errors of the [ObjectMapper] that are [Exception]s (a bad value, not a bug)
 class ObjectMapperException implements Exception {
+  /// What went wrong
   final String message;
 
+  /// An error of the mapper, described by [message]
   ObjectMapperException(this.message);
 
   @override
@@ -665,7 +677,9 @@ class ObjectMapperException implements Exception {
   }
 }
 
+/// A serializer or a `toJson()` failed: a 500, its [message] is only logged
 class SerializationException extends ObjectMapperException {
+  /// A failed serialization, described by [message]
   SerializationException(super.message);
 
   @override
@@ -689,6 +703,7 @@ class DeserializationException extends ObjectMapperException {
   /// The original error, only for the logs (never sent to the client)
   final Object? cause;
 
+  /// [reason] of the value at [path] (`$` by default: the root), with the original error as [cause]
   DeserializationException(this.reason, {this.path = r'$', this.cause})
     : super(path == null ? reason : '$path: $reason');
 
@@ -707,6 +722,7 @@ class DeserializationException extends ObjectMapperException {
 
 /// The body is not valid JSON (or it's empty)
 class DeserializationFormatException extends DeserializationException {
+  /// The body is not valid JSON or it's empty ([reason]), with the parser error as [cause]
   DeserializationFormatException(super.reason, {super.cause})
     : super(path: null);
 
