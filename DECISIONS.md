@@ -409,3 +409,27 @@ can replace), `notEmpty` (collections) and `oneOf` (literal values).
   `ConflictException` or a `ValidationException`.
 - **The format of `fieldName`** (`items[0].name`) vs the path of the 400 of the object mapper
   (`$.items[0].name`): decided in 2.3 with the error format (Problem Details).
+
+### 3.9 Second review
+
+A review of the new API, from zero, found:
+
+- **Chaining lost the type of the field**: every validator returned the type of its extension
+  (`notEmpty()` gave a `FieldValidator<Iterable<Object?>?>`), so
+  `field('items', items).notEmpty().validEach()` didn't compile, nor an `int` validator after
+  `min()`, and `custom()` after `min()` received a `num?`. The extensions are now generic with a
+  bound (`NumberValidators<T extends num?> on FieldValidator<T>`) and return `FieldValidator<T>`.
+- **`url()` accepted `http://exa mple.com`**: `Uri.tryParse` takes a space in the host. Whitespace
+  is now rejected.
+- **`fieldName` didn't follow `fieldNaming`**: with `snakeCase` the client sent `first_name` and
+  the 422 said `firstName` (while its keys were renamed: `field_name`). The exception handler now
+  converts every name of the path with `ObjectMapper.jsonFieldName` (`items[0].first_name`).
+- **`params` could turn the 422 into a 500**, like the value did: the allowed values of `oneOf()`
+  and `isEnum()` were sent as they were. Now only JSON values: an enum as its name, anything else
+  as its text.
+- `email()` checks the lengths of RFC 5321 (254 in total, 64 before the `@`).
+- `violationsOf(fieldName)` for tests. A `Matcher` (`hasViolation(...)`) was considered, but it
+  would make `package:matcher` a dependency of every app at runtime.
+- The docs recommend `validate()` with cascades (`=> ConstraintValidatorContext()..field(...)`),
+  and a model of its own for a PATCH (optional fields are only validated when they come) instead of
+  `validate: false`.

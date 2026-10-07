@@ -173,8 +173,10 @@ type.
 
 **Done** (2026-10-06): every decision is in `DECISIONS.md` §3, the behavior in
 `test/validation/validation_behavior_test.dart` (100% line coverage of the validation), and the
-guide in `doc/validation.md`. Left for other phases: the format of `fieldName` vs the `$` path of
-the 400 (2.3), async validations (4.3) and example `05` (5.4).
+guide in `doc/validation.md`. A second review from zero fixed the chaining of types, `url()`,
+`fieldName` with `fieldNaming` and the `params` that could give a 500 (§3.9). Left for other
+phases: the format of `fieldName` vs the `$` path of the 400 (2.3), async validations and the
+improvements below in 4.3, and example `05` (5.4).
 
 **Before the review:** `Validatable`, `ConstraintValidatorContext`, a fluent `ConstraintValidator` with
 validators as extensions, `throwOnFailure()` → 422, messages in the language of the request.
@@ -459,6 +461,16 @@ They don't block 1.0 and shouldn't delay it (they can be added in 1.x without br
 - [ ] Configuration with annotations / package scanning (with codegen).
 - [ ] A tree-based (trie) router if benchmarks with hundreds of routes justify it (today the lookup
   is linear).
+
+**Validation** (proposed in the second review of 2.2, none of them is breaking):
+
+- [ ] **Validate a `Map<String, Validatable>`**: `body<T>()` validates a `Validatable` or a list of
+  them, not a map of them; and a `validEach()` for the values of a map (`prices["eur"].amount`).
+- [ ] **Limit the cache of `pattern()`**: a regular expression given as a String is compiled once
+  and kept forever. It only grows with dynamic patterns (built from data), which are rare; an LRU
+  or no cache for them.
+- [ ] **`ConstraintViolation.copyWith` can't clear a field**: `copyWith(code: null)` keeps the old
+  code (`??`). Use sentinels or explicit `clearCode`/`clearValue` flags if it's ever needed.
 
 **Object mapper** (proposed after the review 2.1, none of them is breaking):
 

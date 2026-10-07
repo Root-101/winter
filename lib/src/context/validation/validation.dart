@@ -60,6 +60,16 @@ class ConstraintValidatorContext {
   /// The violations found so far, in order (read-only)
   List<ConstraintViolation> get violations => UnmodifiableListView(_violations);
 
+  /// The violations of [fieldName], in order. Handy in tests:
+  ///
+  /// ```dart
+  /// expect(user.validate().violationsOf('email').single.code, 'email');
+  /// ```
+  List<ConstraintViolation> violationsOf(String fieldName) => [
+    for (final violation in _violations)
+      if (violation.fieldName == fieldName) violation,
+  ];
+
   /// Starts the validation of the field [name], whose value is [value]. Every validator chained
   /// on the result runs right away:
   ///
@@ -119,11 +129,12 @@ class ConstraintValidatorContext {
 /// `FieldValidator<num?>`...), and each one runs as soon as it's chained. Every validator except
 /// `notNull()` passes on `null`.
 ///
-/// To write your own validator, add an extension that calls [addRule]:
+/// To write your own validator, add a generic extension (so the type of the field is kept along
+/// the chain) that calls [addRule]:
 ///
 /// ```dart
-/// extension EvenValidator on FieldValidator<int?> {
-///   FieldValidator<int?> even() => addRule(
+/// extension EvenValidator<T extends int?> on FieldValidator<T> {
+///   FieldValidator<T> even() => addRule(
 ///     (value) => value == null || value.isEven,
 ///     message: () => 'The value must be even',
 ///     code: 'even',
@@ -189,10 +200,10 @@ class FieldValidator<T> {
   }
 }
 
-extension NestedValidator on FieldValidator<Validatable?> {
+extension NestedValidator<T extends Validatable?> on FieldValidator<T> {
   /// Validates the nested object, prefixing its violations with the name of the field:
   /// `cvc.field('address', address).notNull().valid()` gives `address.zip`.
-  FieldValidator<Validatable?> valid() {
+  FieldValidator<T> valid() {
     final Validatable? nested = value;
     return nested == null
         ? this
@@ -200,10 +211,11 @@ extension NestedValidator on FieldValidator<Validatable?> {
   }
 }
 
-extension NestedListValidator on FieldValidator<Iterable<Validatable?>?> {
+extension NestedListValidator<T extends Iterable<Validatable?>?>
+    on FieldValidator<T> {
   /// Validates every element of the list, prefixing its violations with the name of the field and
   /// the index: `cvc.field('items', items).validEach()` gives `items[0].quantity`.
-  FieldValidator<Iterable<Validatable?>?> validEach() {
+  FieldValidator<T> validEach() {
     final Iterable<Validatable?>? elements = value;
     if (elements == null) return this;
     final cvc = ConstraintValidatorContext(clock: context.clock);

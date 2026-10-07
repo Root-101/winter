@@ -31,13 +31,10 @@ class CreateUser implements Validatable {
   );
 
   @override
-  ConstraintValidatorContext validate() {
-    final cvc = ConstraintValidatorContext();
-    cvc.field('email', email).notNull().email();
-    cvc.field('password', password, sensitive: true).notNull().size(min: 8);
-    cvc.field('age', age).min(18);
-    return cvc;
-  }
+  ConstraintValidatorContext validate() => ConstraintValidatorContext()
+    ..field('email', email).notNull().email()
+    ..field('password', password, sensitive: true).notNull().size(min: 8)
+    ..field('age', age).min(18);
 }
 
 void main() async {
@@ -77,6 +74,12 @@ void main() async {
 `T` is the type of the value. Each validator chained on it **runs right away**, and a failure adds
 a `ConstraintViolation` to the context.
 
+`validate()` is usually written with cascades (`..field(...)`), one per field, as in the minimal
+example. A block body with a `final cvc` works the same, and is clearer when a rule needs an `if`.
+
+Every validator returns the same `FieldValidator<T>`, so the type is kept along the chain:
+`field('count', 3).min(1).custom((count) => ...)` receives an `int`.
+
 - Every validator except `notNull()` **passes on `null`**: an optional field is only checked when
   it has a value. Add `notNull()` first for a required one.
 - A rule with `stopOnFailure: true` skips the next rules of **that field** (not of the others).
@@ -93,9 +96,9 @@ a `ConstraintViolation` to the context.
 | Any                    | `custom((value) => message?)`                   | the function returns a message                  | the one you give, or none      |
 | `String`               | `notBlank()`                                    | it's empty or only whitespace                   | `notBlank`                     |
 | `String`               | `size(min:, max:)`                              | its length is out of the range (inclusive)      | `size.min`, `size.max`         |
-| `String`               | `email()`                                       | it's not an email (`<input type="email">` rules, with a dot in the domain) | `email` |
+| `String`               | `email()`                                       | it's not an email (`<input type="email">` rules, with a dot in the domain, at most 254 characters and 64 before the `@`) | `email` |
 | `String`               | `pattern(regExpOrString)`                       | it has no match (anchor it with `^...$`)        | `pattern`                      |
-| `String`               | `url(schemes: ['http', 'https'])`               | it's not an absolute URL with one of the schemes and a host | `url`              |
+| `String`               | `url(schemes: ['http', 'https'])`               | it's not an absolute URL with one of the schemes and a host, or it has whitespace | `url` |
 | `String`               | `uuid(version:)`                                | it's not `8-4-4-4-12` hex digits (of the version, if given) | `uuid`             |
 | `num`                  | `min(n, inclusive: true)`, `max(n, ...)`        | it's below / above `n` (or equal, when not inclusive) | `min.inclusive`, `min.exclusive`, `max.*` |
 | `num`                  | `positive()`, `positiveOrZero()`                | it's `<= 0` / `< 0`                             | `positive`, `positiveOrZero`   |
@@ -118,32 +121,43 @@ with the list of violations:
 
 | Key         | Content                                                                 |
 |-------------|-------------------------------------------------------------------------|
-| `fieldName` | The name of the field, with its path when it's nested: `address.zip`, `items[0].quantity` |
+| `fieldName` | The name of the field, with its path when it's nested: `address.zip`, `items[0].quantity`. With `ObjectMapper(fieldNaming: snakeCase)` every name is converted (`home_address.zip_code`), so it's the name the client sent |
 | `message`   | The text, in the language of the request (`Accept-Language`)            |
 | `code`      | The validator, for the validators of Winter (the key of its text)       |
-| `params`    | The parameters of the text, when there are: `{"value": 18}`, `{"values": ["S", "M"]}` |
+| `params`    | The parameters of the text, when there are: `{"value": 18}`, `{"values": ["S", "M"]}`. Only JSON values: an allowed value that is an object is sent as its text |
 
 **The value that failed is never in the response**: the client knows what it sent, and repeating
 it would put personal data and long texts back in the response. It's kept in
 `ConstraintViolation.value` (for logs), except for a `sensitive` field, whose value is never
 stored.
 
-To read a body without validating it, as in a partial update (PATCH):
+A partial update (PATCH) is usually a model of its own, whose fields are all optional: since every
+validator except `notNull()` passes on `null`, only the fields that came are validated, and the
+body is still validated by default:
 
 ```dart
-final changes = await request.body<UpdateUser>(validate: false);
+class UpdateUser implements Validatable {
+  final String? email;
+  final int? age;
+
+  UpdateUser({this.email, this.age});
+
+  @override
+  ConstraintValidatorContext validate() => ConstraintValidatorContext()
+    ..field('email', email).email() // no notNull(): it may not come
+    ..field('age', age).min(18);
+}
 ```
+
+`body<T>(validate: false)` reads a body without validating it at all.
 
 ### Nested objects and lists
 
 ```dart
 @override
-ConstraintValidatorContext validate() {
-  final cvc = ConstraintValidatorContext();
-  cvc.field('address', address).notNull().valid(); // address.zip
-  cvc.field('items', items).notEmpty().validEach(); // items[0].quantity
-  return cvc;
-}
+ConstraintValidatorContext validate() => ConstraintValidatorContext()
+  ..field('address', address).notNull().valid() // address.zip
+  ..field('items', items).notEmpty().validEach(); // items[0].quantity
 ```
 
 `valid()` and `validEach()` call the `validate()` of the nested objects and prefix their
@@ -180,11 +194,11 @@ cvc.field('booking', booking).valid(); // booking.date.future() compares with 20
 
 ### Your own validator
 
-Write an extension on the `FieldValidator` of the type it validates, and call `addRule`:
+Write a generic extension on the `FieldValidator` of the type it validates, and call `addRule`:
 
 ```dart
-extension SlugValidator on FieldValidator<String?> {
-  FieldValidator<String?> slug({String? message}) => addRule(
+extension SlugValidator<T extends String?> on FieldValidator<T> {
+  FieldValidator<T> slug({String? message}) => addRule(
     (value) => value == null || RegExp(r'^[a-z0-9-]+$').hasMatch(value),
     message: () => message ?? 'Only lowercase letters, digits and -',
     code: 'slug',
@@ -194,6 +208,9 @@ extension SlugValidator on FieldValidator<String?> {
 cvc.field('slug', slug).notNull().slug();
 ```
 
+- `<T extends String?> on FieldValidator<T>` (and returning `FieldValidator<T>`) keeps the exact
+  type of the field along the chain, like the validators of Winter. With
+  `on FieldValidator<String?>`, a validator chained after it would see a `String?`.
 - `isValid` returns whether the value passes (pass on `null` like the validators of Winter).
 - `message` is a function: it's only called when the rule fails, so it can read `requestLocale`.
 - Give a `code` (and `params`) if clients need one.
@@ -215,6 +232,22 @@ cvc.field('endDate', endDate).notNull().custom(
 
 `cvc.field('password', password, sensitive: true)` never stores the value in the violation, so it
 can't appear in a log or in `toString()`. The response never has values anyway.
+
+### Testing a model
+
+`violationsOf(fieldName)` gives the violations of a field, in order:
+
+```dart
+test('the email must be valid', () {
+  final violations = CreateUser(email: 'x', password: '12345678').validate();
+
+  expect(violations.violationsOf('email').single.code, 'email');
+  expect(violations.violationsOf('password'), isEmpty);
+});
+```
+
+Compare the `code` instead of the `message`: it doesn't change with the language. For a date,
+give the context a fixed `clock` (see [Configuration](#configuration)).
 
 ### Checks that need a database ("the email already exists")
 

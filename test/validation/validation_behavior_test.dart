@@ -131,7 +131,7 @@ void main() {
       );
 
       expect(order.validate().violations.map((v) => v.fieldName), [
-        'address.zip',
+        'address.zipCode',
         'items[2].quantity',
       ]);
     });
@@ -309,6 +309,156 @@ void main() {
     });
   });
 
+  group('Chaining keeps the type of the field (§3.9)', () {
+    test('validEach() after notEmpty()', () {
+      cvc.field('items', [_Item(quantity: 0)]).notEmpty().validEach();
+
+      expect(cvc.violations.single.fieldName, 'items[0].quantity');
+    });
+
+    test('valid() after notNull()', () {
+      cvc.field('address', _Address(zip: '')).notNull().valid();
+
+      expect(cvc.violations.single.fieldName, 'address.zipCode');
+    });
+
+    test('your own validator of int after min()', () {
+      cvc.field('count', 3).min(1).even();
+
+      expect(cvc.violations.single.code, 'even');
+    });
+
+    test('custom() after min() receives the type of the field', () {
+      cvc
+          .field('count', 3)
+          .min(1)
+          .custom((count) => count.isOdd ? 'odd' : null);
+      cvc
+          .field('name', 'Ann')
+          .notBlank()
+          .custom((name) => name.length < 5 ? 'short' : null);
+
+      expect(cvc.violations.map((v) => v.message), ['odd', 'short']);
+    });
+  });
+
+  group('fieldName follows the fieldNaming of the mapper (§3.9)', () {
+    late WinterTestClient client;
+
+    setUp(() {
+      final previous = om;
+      Winter.context.setUp(
+        objectMapper: ObjectMapper(
+          fieldNaming: FieldNaming.snakeCase,
+          deserializers: [Deserializer<_Signup>.json(_Signup.fromJson)],
+        ),
+      );
+      addTearDown(() => Winter.context.setUp(objectMapper: previous));
+      client = WinterTestClient.build(
+        router: WinterRouter(
+          routes: [
+            Route.post(
+              path: '/',
+              handler: (request) async {
+                await request.body<_Signup>();
+                return ResponseEntity.ok();
+              },
+            ),
+          ],
+        ),
+      );
+    });
+
+    test('the 422 names the fields as the client sent them', () async {
+      final response = await client.post(
+        '/',
+        body: '{"first_name": "", "home_address": {"zip_code": ""}}',
+        headers: {HttpHeader.contentType: 'application/json'},
+      );
+
+      expect(response.statusCode, 422);
+      expect((response.json as List).map((v) => (v as Map)['field_name']), [
+        'first_name',
+        'home_address.zip_code',
+      ]);
+    });
+
+    test('jsonFieldName() converts every name of a path, not the indexes', () {
+      final snake = ObjectMapper(fieldNaming: FieldNaming.snakeCase);
+      final kebab = ObjectMapper(fieldNaming: FieldNaming.kebabCase);
+
+      expect(
+        snake.jsonFieldName('lineItems[10].unitPrice'),
+        'line_items[10].unit_price',
+      );
+      expect(
+        kebab.jsonFieldName('homeAddress.zipCode'),
+        'home-address.zip-code',
+      );
+      expect(
+        ObjectMapper().jsonFieldName('homeAddress.zipCode'),
+        'homeAddress.zipCode',
+      );
+    });
+  });
+
+  group('Fixes of the second review (§3.9)', () {
+    test('url() rejects whitespace', () {
+      cvc.field('host', 'http://exa mple.com').url();
+      cvc.field('tab', 'http://example.com/\ta').url();
+
+      expect(cvc.violations.map((v) => v.fieldName), ['host', 'tab']);
+    });
+
+    test('email() checks the lengths of RFC 5321', () {
+      final local64 = '${'a' * 64}@example.com';
+      final local65 = '${'a' * 65}@example.com';
+      final total255 = 'a@${'b' * 63}.${'c' * 63}.${'d' * 63}.${'e' * 58}.co';
+
+      cvc.field('local64', local64).email();
+      cvc.field('local65', local65).email();
+      cvc.field('total255', total255).email();
+
+      expect(total255.length, 255);
+      expect(cvc.violations.map((v) => v.fieldName), ['local65', 'total255']);
+    });
+
+    test('the params of oneOf() and isEnum() are JSON values', () async {
+      final point = _Point();
+      cvc.field('point', _Point()).oneOf([point]);
+      cvc.field('code', 'x').isEnum(_Color.values, resolver: (_) => point);
+
+      expect(cvc.violations[0].params['values'], ["Instance of '_Point'"]);
+      expect(cvc.violations[1].params['values'], [
+        "Instance of '_Point'",
+        "Instance of '_Point'",
+      ]);
+      // So the 422 is never a 500
+      expect(() => om.encode(cvc.violations), returnsNormally);
+    });
+
+    test('violationsOf() gives the violations of a field', () {
+      cvc.field('email', 'x').email();
+      cvc.field('age', 1).min(18).max(0);
+
+      expect(cvc.violationsOf('email').single.code, 'email');
+      expect(cvc.violationsOf('age').map((v) => v.code), [
+        'min.inclusive',
+        'max.inclusive',
+      ]);
+      expect(cvc.violationsOf('name'), isEmpty);
+    });
+
+    test('a validate() written with cascades', () {
+      final violations = _Signup(
+        firstName: '',
+        address: null,
+      ).validate().violations;
+
+      expect(violations.map((v) => v.fieldName), ['firstName']);
+    });
+  });
+
   group('Validators (§3.7)', () {
     test('pattern() uses a RegExp as it is, flags included', () {
       cvc.field('a', 'abc').pattern(RegExp(r'^abc$'));
@@ -462,6 +612,29 @@ class _Contains implements Pattern {
 
 class _Point {}
 
+class _Signup implements Validatable {
+  final String? firstName;
+  final _Address? address;
+
+  _Signup({this.firstName, this.address});
+
+  factory _Signup.fromJson(Map<String, dynamic> json) => _Signup(
+    firstName: json['firstName'] as String?,
+    address: json['homeAddress'] == null
+        ? null
+        : _Address(
+            zip:
+                (json['homeAddress'] as Map<String, dynamic>)['zipCode']
+                    as String?,
+          ),
+  );
+
+  @override
+  ConstraintValidatorContext validate() => ConstraintValidatorContext()
+    ..field('firstName', firstName).notBlank()
+    ..field('homeAddress', address).valid();
+}
+
 class _User implements Validatable {
   final String? email;
 
@@ -486,11 +659,8 @@ class _Address implements Validatable {
   _Address({this.zip});
 
   @override
-  ConstraintValidatorContext validate() {
-    final cvc = ConstraintValidatorContext();
-    cvc.field('zip', zip).notBlank();
-    return cvc;
-  }
+  ConstraintValidatorContext validate() =>
+      ConstraintValidatorContext()..field('zipCode', zip).notBlank();
 }
 
 class _Item implements Validatable {

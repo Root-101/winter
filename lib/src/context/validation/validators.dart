@@ -53,7 +53,7 @@ extension CommonValidators<T> on FieldValidator<T> {
           message ??
           _intl.errors.validations.oneOf(values: _joinValues(allowed)),
       code: 'oneOf',
-      params: {'values': allowed},
+      params: {'values': _jsonValues(allowed)},
       stopOnFailure: stopOnFailure,
     );
   }
@@ -76,16 +76,28 @@ extension CommonValidators<T> on FieldValidator<T> {
           message ??
           _intl.errors.validations.isEnum(values: _joinValues(allowed)),
       code: 'isEnum',
-      params: {'values': allowed},
+      params: {'values': _jsonValues(allowed)},
       stopOnFailure: stopOnFailure,
     );
   }
 }
 
-String _joinValues(Iterable<Object?> values) =>
-    values.map((value) => value is Enum ? value.name : '$value').join(', ');
+String _joinValues(Iterable<Object?> values) => _jsonValues(values).join(', ');
 
-/// Same rules as the HTML5 spec (WHATWG) for `<input type="email">`, but requiring a dot in the domain:
+/// The values for the `params` of a violation, that are serialized in the 422: JSON values as they
+/// are, an enum as its name and anything else as its text, so an object without `toJson()` never
+/// turns the 422 into a 500
+List<Object?> _jsonValues(Iterable<Object?> values) => [
+  for (final value in values)
+    switch (value) {
+      null || String() || num() || bool() => value,
+      Enum() => value.name,
+      _ => '$value',
+    },
+];
+
+/// Same rules as the HTML5 spec (WHATWG) for `<input type="email">`, but requiring a dot in the domain
+/// (the lengths, 254 in total and 64 for the local part, are checked apart):
 /// - local part: letters, digits and the special characters allowed by the spec (so `user+tag@x.com` is valid)
 /// - domain: labels of letters, digits and `-` (not at the start/end of the label), any TLD length
 final RegExp _emailRegex = RegExp(
@@ -98,45 +110,48 @@ final RegExp _uuidRegex = RegExp(
   r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-([0-9a-fA-F])[0-9a-fA-F]{3}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
 );
 
+final RegExp _whitespace = RegExp(r'\s');
+
 /// The regular expressions given as a String, compiled once
 final Map<String, RegExp> _patterns = {};
 
 /// For a String
-extension StringValidators on FieldValidator<String?> {
+extension StringValidators<T extends String?> on FieldValidator<T> {
   /// The value is not empty nor only whitespace
-  FieldValidator<String?> notBlank({
-    String? message,
-    bool stopOnFailure = false,
-  }) => addRule(
-    (value) => value == null || value.trim().isNotEmpty,
-    message: () => message ?? _intl.errors.validations.notBlank,
-    code: 'notBlank',
-    stopOnFailure: stopOnFailure,
-  );
+  FieldValidator<T> notBlank({String? message, bool stopOnFailure = false}) =>
+      addRule(
+        (value) => value == null || value.trim().isNotEmpty,
+        message: () => message ?? _intl.errors.validations.notBlank,
+        code: 'notBlank',
+        stopOnFailure: stopOnFailure,
+      );
 
   /// The length is between [min] and [max] (both inclusive)
-  FieldValidator<String?> size({
+  FieldValidator<T> size({
     int? min,
     int? max,
     String? message,
     bool stopOnFailure = false,
   }) => _size(this, value?.length, min, max, message, stopOnFailure);
 
-  /// The value is an email (the rules of `<input type="email">`, with a dot in the domain)
-  FieldValidator<String?> email({
-    String? message,
-    bool stopOnFailure = false,
-  }) => addRule(
-    (value) => value == null || _emailRegex.hasMatch(value),
-    message: () => message ?? _intl.errors.validations.email,
-    code: 'email',
-    stopOnFailure: stopOnFailure,
-  );
+  /// The value is an email: the rules of `<input type="email">`, with a dot in the domain, and
+  /// the lengths of RFC 5321 (254 characters in total, 64 before the `@`)
+  FieldValidator<T> email({String? message, bool stopOnFailure = false}) =>
+      addRule(
+        (value) =>
+            value == null ||
+            (value.length <= 254 &&
+                value.indexOf('@') <= 64 &&
+                _emailRegex.hasMatch(value)),
+        message: () => message ?? _intl.errors.validations.email,
+        code: 'email',
+        stopOnFailure: stopOnFailure,
+      );
 
   /// The value has a match of [pattern]: a [RegExp] (used as it is, flags included), a String
   /// with a regular expression (compiled once), or any other [Pattern]. Anchor a regular
   /// expression (`^...$`) to match the whole value.
-  FieldValidator<String?> pattern(
+  FieldValidator<T> pattern(
     Pattern pattern, {
     String? message,
     bool stopOnFailure = false,
@@ -154,14 +169,16 @@ extension StringValidators on FieldValidator<String?> {
     );
   }
 
-  /// The value is an absolute URL with one of the [schemes] and a host
-  FieldValidator<String?> url({
+  /// The value is an absolute URL with one of the [schemes] and a host, without whitespace
+  FieldValidator<T> url({
     List<String> schemes = const ['http', 'https'],
     String? message,
     bool stopOnFailure = false,
   }) => addRule(
     (value) {
       if (value == null) return true;
+      // Uri.tryParse accepts a space in the host (`http://exa mple.com`)
+      if (value.contains(_whitespace)) return false;
       final Uri? uri = Uri.tryParse(value);
       return uri != null &&
           schemes.contains(uri.scheme.toLowerCase()) &&
@@ -174,7 +191,7 @@ extension StringValidators on FieldValidator<String?> {
   );
 
   /// The value is a UUID (`8-4-4-4-12` hexadecimal digits), of the given [version] if any
-  FieldValidator<String?> uuid({
+  FieldValidator<T> uuid({
     int? version,
     String? message,
     bool stopOnFailure = false,
@@ -193,9 +210,9 @@ extension StringValidators on FieldValidator<String?> {
 }
 
 /// For a number
-extension NumberValidators on FieldValidator<num?> {
+extension NumberValidators<T extends num?> on FieldValidator<T> {
   /// The value is at least [min] (`inclusive`, the default) or greater than [min]
-  FieldValidator<num?> min(
+  FieldValidator<T> min(
     num min, {
     String? message,
     bool inclusive = true,
@@ -213,7 +230,7 @@ extension NumberValidators on FieldValidator<num?> {
   );
 
   /// The value is at most [max] (`inclusive`, the default) or less than [max]
-  FieldValidator<num?> max(
+  FieldValidator<T> max(
     num max, {
     String? message,
     bool inclusive = true,
@@ -231,18 +248,16 @@ extension NumberValidators on FieldValidator<num?> {
   );
 
   /// The value is greater than 0
-  FieldValidator<num?> positive({
-    String? message,
-    bool stopOnFailure = false,
-  }) => addRule(
-    (value) => value == null || value > 0,
-    message: () => message ?? _intl.errors.validations.positive,
-    code: 'positive',
-    stopOnFailure: stopOnFailure,
-  );
+  FieldValidator<T> positive({String? message, bool stopOnFailure = false}) =>
+      addRule(
+        (value) => value == null || value > 0,
+        message: () => message ?? _intl.errors.validations.positive,
+        code: 'positive',
+        stopOnFailure: stopOnFailure,
+      );
 
   /// The value is 0 or greater
-  FieldValidator<num?> positiveOrZero({
+  FieldValidator<T> positiveOrZero({
     String? message,
     bool stopOnFailure = false,
   }) => addRule(
@@ -253,18 +268,16 @@ extension NumberValidators on FieldValidator<num?> {
   );
 
   /// The value is less than 0
-  FieldValidator<num?> negative({
-    String? message,
-    bool stopOnFailure = false,
-  }) => addRule(
-    (value) => value == null || value < 0,
-    message: () => message ?? _intl.errors.validations.negative,
-    code: 'negative',
-    stopOnFailure: stopOnFailure,
-  );
+  FieldValidator<T> negative({String? message, bool stopOnFailure = false}) =>
+      addRule(
+        (value) => value == null || value < 0,
+        message: () => message ?? _intl.errors.validations.negative,
+        code: 'negative',
+        stopOnFailure: stopOnFailure,
+      );
 
   /// The value is 0 or less
-  FieldValidator<num?> negativeOrZero({
+  FieldValidator<T> negativeOrZero({
     String? message,
     bool stopOnFailure = false,
   }) => addRule(
@@ -276,9 +289,10 @@ extension NumberValidators on FieldValidator<num?> {
 }
 
 /// For a list, a set or any [Iterable]
-extension IterableValidators on FieldValidator<Iterable<Object?>?> {
+extension IterableValidators<T extends Iterable<Object?>?>
+    on FieldValidator<T> {
   /// The number of elements is between [min] and [max] (both inclusive)
-  FieldValidator<Iterable<Object?>?> size({
+  FieldValidator<T> size({
     int? min,
     int? max,
     String? message,
@@ -286,21 +300,19 @@ extension IterableValidators on FieldValidator<Iterable<Object?>?> {
   }) => _size(this, value?.length, min, max, message, stopOnFailure);
 
   /// The value has at least one element
-  FieldValidator<Iterable<Object?>?> notEmpty({
-    String? message,
-    bool stopOnFailure = false,
-  }) => addRule(
-    (value) => value == null || value.isNotEmpty,
-    message: () => message ?? _intl.errors.validations.notEmpty,
-    code: 'notEmpty',
-    stopOnFailure: stopOnFailure,
-  );
+  FieldValidator<T> notEmpty({String? message, bool stopOnFailure = false}) =>
+      addRule(
+        (value) => value == null || value.isNotEmpty,
+        message: () => message ?? _intl.errors.validations.notEmpty,
+        code: 'notEmpty',
+        stopOnFailure: stopOnFailure,
+      );
 }
 
 /// For a [Map]
-extension MapValidators on FieldValidator<Map<Object?, Object?>?> {
+extension MapValidators<T extends Map<Object?, Object?>?> on FieldValidator<T> {
   /// The number of entries is between [min] and [max] (both inclusive)
-  FieldValidator<Map<Object?, Object?>?> size({
+  FieldValidator<T> size({
     int? min,
     int? max,
     String? message,
@@ -308,15 +320,13 @@ extension MapValidators on FieldValidator<Map<Object?, Object?>?> {
   }) => _size(this, value?.length, min, max, message, stopOnFailure);
 
   /// The value has at least one entry
-  FieldValidator<Map<Object?, Object?>?> notEmpty({
-    String? message,
-    bool stopOnFailure = false,
-  }) => addRule(
-    (value) => value == null || value.isNotEmpty,
-    message: () => message ?? _intl.errors.validations.notEmpty,
-    code: 'notEmpty',
-    stopOnFailure: stopOnFailure,
-  );
+  FieldValidator<T> notEmpty({String? message, bool stopOnFailure = false}) =>
+      addRule(
+        (value) => value == null || value.isNotEmpty,
+        message: () => message ?? _intl.errors.validations.notEmpty,
+        code: 'notEmpty',
+        stopOnFailure: stopOnFailure,
+      );
 }
 
 FieldValidator<T> _size<T>(
@@ -349,20 +359,18 @@ FieldValidator<T> _size<T>(
 }
 
 /// For a [DateTime], compared with the `clock` of the [ConstraintValidatorContext]
-extension DateTimeValidators on FieldValidator<DateTime?> {
+extension DateTimeValidators<T extends DateTime?> on FieldValidator<T> {
   /// The date is before now
-  FieldValidator<DateTime?> past({
-    String? message,
-    bool stopOnFailure = false,
-  }) => _compareWithNow(
-    (date, now) => date.isBefore(now),
-    () => message ?? _intl.errors.validations.past,
-    'past',
-    stopOnFailure,
-  );
+  FieldValidator<T> past({String? message, bool stopOnFailure = false}) =>
+      _compareWithNow(
+        (date, now) => date.isBefore(now),
+        () => message ?? _intl.errors.validations.past,
+        'past',
+        stopOnFailure,
+      );
 
   /// The date is now or before
-  FieldValidator<DateTime?> pastOrPresent({
+  FieldValidator<T> pastOrPresent({
     String? message,
     bool stopOnFailure = false,
   }) => _compareWithNow(
@@ -373,18 +381,16 @@ extension DateTimeValidators on FieldValidator<DateTime?> {
   );
 
   /// The date is after now
-  FieldValidator<DateTime?> future({
-    String? message,
-    bool stopOnFailure = false,
-  }) => _compareWithNow(
-    (date, now) => date.isAfter(now),
-    () => message ?? _intl.errors.validations.future,
-    'future',
-    stopOnFailure,
-  );
+  FieldValidator<T> future({String? message, bool stopOnFailure = false}) =>
+      _compareWithNow(
+        (date, now) => date.isAfter(now),
+        () => message ?? _intl.errors.validations.future,
+        'future',
+        stopOnFailure,
+      );
 
   /// The date is now or after
-  FieldValidator<DateTime?> futureOrPresent({
+  FieldValidator<T> futureOrPresent({
     String? message,
     bool stopOnFailure = false,
   }) => _compareWithNow(
@@ -394,7 +400,7 @@ extension DateTimeValidators on FieldValidator<DateTime?> {
     stopOnFailure,
   );
 
-  FieldValidator<DateTime?> _compareWithNow(
+  FieldValidator<T> _compareWithNow(
     bool Function(DateTime date, DateTime now) isValid,
     String Function() message,
     String code,
