@@ -447,11 +447,11 @@ They don't block 1.0 and shouldn't delay it (they can be added in 1.x without br
 
 ## Phase 5: documentation 🔴
 
-The part with the most pending work. Today there is only `README.md` (very general),
-`doc/routing/winter_router.md` (incomplete and **outdated**: it uses `ParentRoute`, says the first
-declared route wins when now the static one does, and the *Router Config* and *Base path* sections
-are empty), `doc/vs/vs.md` (**obsolete**: it describes a `ValidationService` with `@Valid`
-annotations that no longer exists) and `DECISIONS.md`.
+The part with the most pending work. Today there is `README.md` (very general), `DECISIONS.md`,
+the index `doc/README.md` and `doc/object-mapper.md`. The old `doc/routing/winter_router.md`
+(outdated: `ParentRoute`, the first declared route winning, empty sections) and `doc/vs/vs.md`
+(obsolete: a `ValidationService` with `@Valid` annotations that no longer exists) were deleted;
+`routing.md` and `validation.md` replace them.
 
 The docs are written in English, like the code, the comments and `DECISIONS.md` (pub.dev is
 international).
@@ -464,11 +464,11 @@ doc/
   README.md                  ← index of the documentation
   getting-started.md
   architecture.md            ← pipeline of a request, BuildContext, global state, request scope
-  routing.md                 ← replaces doc/routing/winter_router.md
+  routing.md
   filters.md
   requests-and-responses.md
   object-mapper.md
-  validation.md              ← replaces doc/vs/vs.md
+  validation.md
   error-handling.md
   i18n.md
   security.md
@@ -483,8 +483,8 @@ CONTRIBUTING.md
 CHANGELOG.md
 ```
 
-- [x] `doc/README.md`: the index, with the state of each planned document (written, planned or
-  outdated). Update it every time a document is added.
+- [x] `doc/README.md`: the index, with the state of each planned document (written or
+  planned). Update it every time a document is added.
 
 ### 5.2 Content of each document
 

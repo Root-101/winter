@@ -7,7 +7,7 @@ The documents are written once the review of their module (phase 2 of the
 [roadmap](../ROADMAP.md)) is done, so they describe the API that will be stable in 1.0. Until
 then, this index says which ones exist.
 
-**State:** ✅ written · 🕓 planned · ⚠️ exists but outdated
+**State:** ✅ written · 🕓 planned
 
 ## Guides
 
@@ -15,11 +15,11 @@ then, this index says which ones exist.
 |------------------------------------------------------|-------|------------------------------------------------------------------------------|
 | Getting started                                      | 🕓    | Installation, first endpoint, a CRUD with JSON and validation, tests         |
 | Architecture                                         | 🕓    | The path of a request, `BuildContext`, global state, request scope, isolates |
-| Routing                                              | ⚠️    | Routes, path params, priority, 404/405, `MultiRouter` — today in [`routing/winter_router.md`](routing/winter_router.md), outdated |
+| Routing                                              | 🕓    | Routes, path params, priority, 404/405, `MultiRouter`, your own router       |
 | Filters                                              | 🕓    | `Filter`, the chain, `order`, global and route filters, the default filters  |
 | Requests and responses                               | 🕓    | `RequestEntity`, `ResponseEntity`, body limit, cookies, forms, files         |
 | [Object mapper](object-mapper.md)                    | ✅    | JSON ↔ objects: `toJson()`, serializers, deserializers, generics, errors, options |
-| Validation                                           | ⚠️    | Validators and the 422 response, after the review 2.2 — [`vs/vs.md`](vs/vs.md) is obsolete |
+| Validation                                           | 🕓    | Validators and the 422 response, after the review 2.2                        |
 | Error handling                                       | 🕓    | Exceptions, their status, the `ExceptionHandler`, the error format (2.3)     |
 | i18n                                                 | 🕓    | The language of the request, Winter's messages, translating an app with slang |
 | Security                                             | 🕓    | Authentication, `AuthFilter`, rules, CORS, rate limiter (2.7)                |
