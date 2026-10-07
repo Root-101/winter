@@ -15,7 +15,7 @@ void main() {
 
     setUpAll(() async {
       await Winter.start(
-        config: ServerConfig(port: port),
+        config: const ServerConfig(port: port),
         router: WinterRouter(
           routes: [
             Route(

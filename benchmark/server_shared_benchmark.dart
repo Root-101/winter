@@ -73,9 +73,8 @@ void _startServerIsolate(Map<String, dynamic> message) async {
   try {
     // We use the shared property to allow multiple isolates to bind to the same port
     await Winter.start(
-      config: ServerConfig(port: port),
+      config: ServerConfig(port: port, shared: true),
       router: router,
-      shared: true,
     );
 
     final stopPort = ReceivePort();

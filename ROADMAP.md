@@ -44,7 +44,8 @@ way we want to maintain it**. Exit criteria:
 | Validation                                                                              | ✅ Reviewed (2.2), `doc/validation.md`      |
 | Exceptions and error handling                                                           | ✅ Reviewed (2.3), `doc/error-handling.md`  |
 | Dependency injection                                                                    | ✅ Reviewed (2.4), `doc/dependency-injection.md` |
-| Env, logging, security                                                                  | ⚠️ Work, to be reviewed → phase 2          |
+| Configuration (`Env`, `ServerConfig`)                                                   | ✅ Reviewed (2.5), `doc/configuration.md`   |
+| Logging, security                                                                       | ⚠️ Work, to be reviewed → phase 2          |
 | Documentation                                                                           | ❌ The biggest gap                          |
 | CI / publishing                                                                         | ❌ No CI                                    |
 
@@ -295,19 +296,32 @@ scope), and the guide in `doc/dependency-injection.md`. A second review fixed tw
 - [x] Decide the scope: stay a minimal service locator (and document it as such), or grow towards a
   container. A service locator is enough for 1.0. → A service locator, by exact type (§5.1).
 
-### 2.5 Configuration (`Env` and `ServerConfig`)
+### 2.5 Configuration (`Env` and `ServerConfig`) ✅
 
-- [ ] **Load a `.env` file** (`Env.load('.env')`) and **profiles** (`WINTER_PROFILE=prod`), with a
-  documented precedence (process variables > `.env` > defaults).
-- [ ] The "unsupported type" message of `Env.find` doesn't mention `List<bool>`, even though it is
-  supported.
-- [ ] `Env.put` returns the value read again with `find` (it fails for an unsupported type even if
-  it was stored); `caseSensitive: false` scans every variable.
-- [ ] `ServerConfig` uses `late final` fields assigned in the constructor body: move them to
+**Done** (2026-10-07): every decision is in `DECISIONS.md` §6, the behavior in
+`test/env/config_behavior_test.dart` (100% line coverage of `Env` and `ServerConfig`), and the
+guide in `doc/configuration.md`. Left for phase 3.1 and 4: `securityContext` (HTTPS) and
+`requestTimeout`.
+
+- [x] **Load a `.env` file** (`Env.load('.env')`) and **profiles** (`WINTER_PROFILE=prod`), with a
+  documented precedence (process variables > `.env` > defaults). → `Env.load()`: process >
+  `.env.<profile>` > `.env`, missing files ignored (§6.3).
+- [x] The "unsupported type" message of `Env.find` doesn't mention `List<bool>`, even though it is
+  supported. → It lists every type (§6.2).
+- [x] `Env.put` returns the value read again with `find` (it fails for an unsupported type even if
+  it was stored); `caseSensitive: false` scans every variable. → `put` returns the value given.
+- [x] ✔️ **The error of a wrong type showed the value** (`found with value 'hunter2'`): a secret
+  could end in the logs. → Errors never show a value (§6.1).
+- [x] ✔️ `find(required: true)` returned a `T?`, `find<int?>` was unsupported, a `String` secret was
+  trimmed and `List<bool>` didn't accept `TRUE`. → `require<T>`, nullable types, no trim of
+  `String`, any case (§6.1, §6.2).
+- [x] `ServerConfig` uses `late final` fields assigned in the constructor body: move them to
   initializers so it can be `const`, and move `shared` there too (today it's a separate parameter of
-  `Winter.start`). Add `securityContext` (HTTPS) and `requestTimeout` (phase 4).
-- [ ] Typed configuration of the app: a pattern (or helper) to read a config class from `Env` once
-  at start-up and fail fast if a required variable is missing.
+  `Winter.start`). Add `securityContext` (HTTPS) and `requestTimeout` (phase 4). → `const`, `host`,
+  `shared`, validated by `Winter.start`, and `ServerConfig.fromEnv` (§6.5).
+- [x] Typed configuration of the app: a pattern (or helper) to read a config class from `Env` once
+  at start-up and fail fast if a required variable is missing. → The `AppConfig.fromEnv` pattern
+  and `requireAll` (§6.4).
 
 ### 2.6 Logging
 
@@ -678,7 +692,7 @@ written twice. The rest can be written now.
 - [x] **`dependency-injection.md`** (after 2.4), its snippets checked by running them: the API, tags, the global `di` instance, what
   `Winter.start` registers and how it's restored, common patterns (repository → service →
   controller), and how to replace dependencies in tests.
-- [ ] **`configuration.md`** (after 2.5): every option of `ServerConfig`, `Env` (supported types,
+- [x] **`configuration.md`** (after 2.5), its snippets checked by running them: every option of `ServerConfig`, `Env` (supported types,
   `required`, lists, `.env`), `BuildContext` and `setUp`, and the order in which `Winter.start`
   resolves the configuration (argument → DI → default).
 - [ ] **`logging.md`** (after 2.6): `WinterLogger`, levels, `ConsoleLogger(minLevel:)`, writing
