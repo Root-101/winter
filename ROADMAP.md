@@ -43,7 +43,8 @@ way we want to maintain it**. Exit criteria:
 | Object mapper                                                                           | ✅ Reviewed (2.1), `doc/object-mapper.md`   |
 | Validation                                                                              | ✅ Reviewed (2.2), `doc/validation.md`      |
 | Exceptions and error handling                                                           | ✅ Reviewed (2.3), `doc/error-handling.md`  |
-| DI, Env, logging, security                                                              | ⚠️ Work, to be reviewed → phase 2          |
+| Dependency injection                                                                    | ✅ Reviewed (2.4), `doc/dependency-injection.md` |
+| Env, logging, security                                                                  | ⚠️ Work, to be reviewed → phase 2          |
 | Documentation                                                                           | ❌ The biggest gap                          |
 | CI / publishing                                                                         | ❌ No CI                                    |
 
@@ -269,21 +270,28 @@ exceptions and the handler), and the guide in `doc/error-handling.md`. Left for 
   → `ApiException(status)` for any status, shortcuts for the common ones with 405, 429 and 503;
   `PaymentRequiredException` removed (§4.2).
 
-### 2.4 Dependency injection
+### 2.4 Dependency injection ✅
 
-**Today:** `put`/`find`/`tryFind`/`delete` by `(Type, tag)`, singletons only.
+**Done** (2026-10-07): every decision is in `DECISIONS.md` §5, the behavior in
+`test/dependency_injection/di_behavior_test.dart` (100% line coverage of the DI and the request
+scope), and the guide in `doc/dependency-injection.md`.
 
-- [ ] `find` checks `!= null`, so a `null` value can't be registered and `tryFind` can't tell "not
-  registered" from "registered as null". Add `isRegistered<T>()`.
-- [ ] `notFound` is a public method of `DependencyInjection` (it should be private), and the map is
-  named `_singl`.
-- [ ] **Lazy singletons** (`putLazy`, created on the first `find`) and **factories** (a new
-  instance per `find`).
-- [ ] **`dispose`/`onClose`** called on the graceful shutdown (to close database connections), in
-  reverse order of registration.
-- [ ] A clear error on circular dependencies between lazy ones.
-- [ ] Decide the scope: stay a minimal service locator (and document it as such), or grow towards a
-  container. A service locator is enough for 1.0.
+**Before the review:** `put`/`find`/`tryFind`/`delete` by `(Type, tag)`, singletons only.
+
+- [x] `find` checks `!= null`, so a `null` value can't be registered and `tryFind` can't tell "not
+  registered" from "registered as null". Add `isRegistered<T>()`. → Done (§5.4).
+- [x] ✔️ **A dependency registered from a nullable variable wasn't found**: `di.put(maybeService)`
+  registered it as `<Service?>`, and `find<Service>()` failed. → `T` and `T?` are the same key
+  (§5.1).
+- [x] `notFound` is a public method of `DependencyInjection` (it should be private), and the map is
+  named `_singl`. → Fixed.
+- [x] **Lazy singletons** (`putLazy`, created on the first `find`) and **factories** (a new
+  instance per `find`). → Both, and `putScoped` (one per request) (§5.2).
+- [x] **`dispose`/`onClose`** called on the graceful shutdown (to close database connections), in
+  reverse order of registration. → `onDispose`, run by `Winter.shutdown()` (§5.3).
+- [x] A clear error on circular dependencies between lazy ones. → `Circular dependency: A -> B -> A`.
+- [x] Decide the scope: stay a minimal service locator (and document it as such), or grow towards a
+  container. A service locator is enough for 1.0. → A service locator, by exact type (§5.1).
 
 ### 2.5 Configuration (`Env` and `ServerConfig`)
 
@@ -648,7 +656,7 @@ written twice. The rest can be written now.
   (`SecurityConfig.cors()`, credentials, preflight), rate limiter (sliding window, `X-RateLimit-*`
   headers, per IP, `trustedProxies`, its limits with several isolates), and a production checklist
   (HTTPS, security headers, body limit, never log secrets, `sensitive: true`).
-- [ ] **`dependency-injection.md`** (after 2.4): the API, tags, the global `di` instance, what
+- [x] **`dependency-injection.md`** (after 2.4), its snippets checked by running them: the API, tags, the global `di` instance, what
   `Winter.start` registers and how it's restored, common patterns (repository → service →
   controller), and how to replace dependencies in tests.
 - [ ] **`configuration.md`** (after 2.5): every option of `ServerConfig`, `Env` (supported types,

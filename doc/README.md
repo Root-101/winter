@@ -23,7 +23,7 @@ then, this index says which ones exist.
 | [Error handling](error-handling.md)                  | ✅    | Problem Details, `ApiException` and its shortcuts, `on<T>()`, the 500        |
 | i18n                                                 | 🕓    | The language of the request, Winter's messages, translating an app with slang |
 | Security                                             | 🕓    | Authentication, `AuthFilter`, rules, CORS, rate limiter (2.7)                |
-| Dependency injection                                 | 🕓    | `di`, tags, what `Winter.start` registers, tests (2.4)                       |
+| [Dependency injection](dependency-injection.md)      | ✅    | `put`, `putLazy`, `putFactory`, `putScoped`, `onDispose`, tests              |
 | Configuration                                        | 🕓    | `ServerConfig`, `Env`, `.env`, `BuildContext` (2.5)                          |
 | Logging                                              | 🕓    | `WinterLogger`, levels, what the framework logs (2.6)                        |
 | Testing                                              | 🕓    | `WinterTestClient`, tests without ports, `RequestScope.run`, fake clocks     |
@@ -33,8 +33,8 @@ then, this index says which ones exist.
 ## Other references
 
 - [`DECISIONS.md`](../DECISIONS.md): **why** the framework behaves the way it does (the guides
-  explain **how**). Today: i18n (§1), the object mapper (§2), validation (§3) and error handling
-  (§4).
+  explain **how**). Today: i18n (§1), the object mapper (§2), validation (§3), error handling
+  (§4) and dependency injection (§5).
 - [`CHANGELOG.md`](../CHANGELOG.md): what changed in each version, breaking changes included.
 - [`ROADMAP.md`](../ROADMAP.md): what is left for 1.0.
 - [`example/`](../example): standalone apps, from a basic server to authentication and i18n.

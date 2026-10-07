@@ -74,12 +74,13 @@ class Winter {
     DependencyInjection injection,
     S value,
   ) {
-    final S? previous = injection.tryFind<S>();
+    final bool hadPrevious = injection.isRegistered<S>();
+    final S? previous = hadPrevious ? injection.find<S>() : null;
     injection.put<S>(value);
     return () {
-      if (previous != null) {
-        injection.put<S>(previous);
-      } else if (injection.tryFind<S>() != null) {
+      if (hadPrevious) {
+        injection.put<S>(previous as S);
+      } else if (injection.isRegistered<S>()) {
         injection.delete<S>();
       }
     };
@@ -248,7 +249,8 @@ class Winter {
 
   ///Graceful shutdown, called on SIGINT/SIGTERM (see [ServerConfig.handleSignals]):
   ///waits for the requests in progress (up to [ServerConfig.shutdownTimeout]),
-  ///then calls [ServerConfig.onShutdown].
+  ///then calls [ServerConfig.onShutdown], and then disposes the dependencies
+  ///(`di.disposeAll()`, their `onDispose` in reverse order of registration).
   ///
   ///Calling it again while it's shutting down (ex: a second Ctrl+C) forces the close.
   ///It never calls `exit`: once the signals are released, a new signal has its default behavior.
@@ -268,6 +270,9 @@ class Winter {
     );
     await close(timeout: current.config.shutdownTimeout);
     await current.config.onShutdown?.call();
+
+    ///The `onDispose` of the dependencies (close the database...), after the requests and onShutdown
+    await di.disposeAll();
     logger.info('Server stopped');
   }
 
@@ -371,14 +376,18 @@ class Winter {
       securityContext: requestEntity.securityContext,
       locale: requestEntity.locale,
     );
-    final Response response = await RequestScope.run(
-      scope,
-      () => _runPipeline(
-        requestEntity: requestEntity,
-        router: router,
-        globalFilterConfig: globalFilterConfig,
-      ),
-    );
+    final Response response = await RequestScope.run(scope, () async {
+      try {
+        return await _runPipeline(
+          requestEntity: requestEntity,
+          router: router,
+          globalFilterConfig: globalFilterConfig,
+        );
+      } finally {
+        ///The callbacks of `scope.onComplete` (the scoped dependencies are disposed there)
+        await scope.complete();
+      }
+    });
 
     ///Some code used the language of the request, so the response depends on it
     ///(only if the app answers in more than one language)
