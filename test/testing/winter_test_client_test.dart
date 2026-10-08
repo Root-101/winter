@@ -82,7 +82,7 @@ void main() {
 
     final notAllowed = await client.delete('/items/1');
     expect(notAllowed.statusCode, 405);
-    expect(notAllowed.headers['allow'], 'GET, HEAD');
+    expect(notAllowed.headers['allow'], 'GET, HEAD, OPTIONS');
 
     final head = await client.head('/items/1');
     expect(head.statusCode, 200);

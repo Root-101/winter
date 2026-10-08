@@ -1,16 +1,19 @@
 import 'package:winter/winter.dart';
 
+import 'package:collection/collection.dart';
+
+/// The filters of a route (or the global ones). Immutable: combine them with [merge].
 class FilterConfig {
-  final List<Filter> filters;
+  final List<Filter> _filters;
 
-  const FilterConfig(this.filters);
+  const FilterConfig(this._filters);
 
+  /// The filters, read-only
+  List<Filter> get filters => UnmodifiableListView(_filters);
+
+  /// A new config with these filters followed by the ones of [other]
   FilterConfig merge(FilterConfig? other) {
-    return FilterConfig([...filters, ...(other?.filters ?? [])]);
-  }
-
-  void add(Filter filter) {
-    filters.add(filter);
+    return FilterConfig([..._filters, ...?other?._filters]);
   }
 
   @override

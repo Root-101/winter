@@ -27,8 +27,9 @@ void main() {
   tearDown(() => Winter.context.setUp(logger: const ConsoleLogger()));
 
   group('RouterConfig', () {
-    test('invalid urls are excluded and logged as warnings by default', () {
+    test('invalid urls are excluded and logged as warnings with ignore()', () {
       final router = WinterRouter(
+        config: RouterConfig(onInvalidUrl: DefaultOnInvalidUrl.ignore()),
         routes: [Route.get(path: '/in valid', handler: ok)],
       );
 

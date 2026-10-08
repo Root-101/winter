@@ -104,6 +104,9 @@ void main() {
 
     test('Router warnings (duplicated routes) are logged as warnings', () {
       WinterRouter(
+        config: RouterConfig(
+          onDuplicatedRoute: DefaultOnDuplicatedRoute.ignore(),
+        ),
         routes: [
           Route.get(path: '/a', handler: (r) => ResponseEntity.ok()),
           Route.get(path: '/a', handler: (r) => ResponseEntity.ok()),

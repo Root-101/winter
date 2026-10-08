@@ -190,12 +190,7 @@ class MethodNotAllowedException extends ApiException {
     Map<String, Object>? headers,
   }) : super(
          StatusCode.methodNotAllowed,
-         headers: {
-           ...?headers,
-           HttpHeader.allow: allowedMethods
-               .map((method) => method.name.toUpperCase())
-               .join(', '),
-         },
+         headers: {...?headers, HttpHeader.allow: allowHeader(allowedMethods)},
        );
 }
 

@@ -103,6 +103,28 @@ class ResponseEntity<T> extends Response {
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this(StatusCode.ok.value, body: body, headers: headers);
 
+  ///201: [body] was created at [location] (the `Location` header)
+  ResponseEntity.created({
+    String? location,
+    T? body,
+    Map<String, /* String | List<String> */ Object>? headers,
+  }) : this(
+         StatusCode.created.value,
+         body: body,
+         headers: {...?headers, HttpHeader.location: ?location},
+       );
+
+  ///202: the request was accepted, and will be processed later
+  ResponseEntity.accepted({
+    T? body,
+    Map<String, /* String | List<String> */ Object>? headers,
+  }) : this(StatusCode.accepted.value, body: body, headers: headers);
+
+  ///204: done, without a body
+  ResponseEntity.noContent({
+    Map<String, /* String | List<String> */ Object>? headers,
+  }) : this(StatusCode.noContent.value, headers: headers);
+
   ResponseEntity.badRequest({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,

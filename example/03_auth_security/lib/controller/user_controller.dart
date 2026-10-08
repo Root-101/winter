@@ -42,7 +42,7 @@ class UserController {
   }
 
   Future<ResponseEntity> deleteUser(RequestEntity request) async {
-    final id = int.tryParse(request.pathParams['id'] ?? '') ?? 0;
+    final id = request.pathParam<int>('id');
     return ResponseEntity.ok(body: userService.delete(id));
   }
 }

@@ -1,15 +1,19 @@
+/// Whether [path] is a valid route path: its literal parts must be a valid url path, and it can't
+/// start with `//`. The params (`{id}`, `{id|[0-9]+}`) and the regex characters (`.*`, `[a-z]+`)
+/// can have any character.
 bool isValidUri(String path) {
-  // Try to create an Uri with only the path
-  try {
-    String escapedPath = path
-        .replaceAll('{', '%7B')
-        .replaceAll('}', '%7D')
-        .replaceAll('|', '%7C');
+  if (path.startsWith('//')) return false;
 
-    Uri uri = Uri(path: escapedPath);
-    // The path must not contain invalid characters nor start with "//"
-    return !path.startsWith('//') && uri.path == escapedPath;
+  final String literal = path
+      .replaceAll(_paramPattern, 'p')
+      .replaceAll(_regexCharacters, 'x');
+  try {
+    return Uri(path: literal).path == literal;
   } catch (e) {
     return false;
   }
 }
+
+final RegExp _paramPattern = RegExp(r'{[^}]*}');
+
+final RegExp _regexCharacters = RegExp(r'[*+?()\[\]|\\^$]');

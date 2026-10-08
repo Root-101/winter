@@ -37,12 +37,18 @@ void main() {
     ]);
   });
 
-  test('Filters can be added to the default FilterConfig of a Route', () {
+  test('FilterConfig is immutable, merge gives a new one', () {
     final route = Route.get(path: '/a', handler: (r) => ResponseEntity.ok());
+    final merged = route.filterConfig.merge(
+      FilterConfig([_NamedFilter('added', [])]),
+    );
 
-    route.filterConfig.add(_NamedFilter('added', []));
-
-    expect(route.filterConfig.filters, hasLength(1));
+    expect(route.filterConfig.filters, isEmpty);
+    expect(merged.filters, hasLength(1));
+    expect(
+      () => merged.filters.add(_NamedFilter('other', [])),
+      throwsUnsupportedError,
+    );
   });
 
   test('MediaType values are constants', () {

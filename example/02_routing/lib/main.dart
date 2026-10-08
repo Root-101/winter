@@ -34,7 +34,7 @@ class RoutingServer {
           Route.get(
             path: '/users/{id}',
             handler: (request) {
-              final id = int.tryParse(request.pathParams['id'] ?? '') ?? 0;
+              final id = request.pathParam<int>('id');
               final service = di.find<UserService>();
               return ResponseEntity.ok(body: service.getById(id));
             },
@@ -51,7 +51,7 @@ class RoutingServer {
           Route.put(
             path: '/users/{id}',
             handler: (request) async {
-              final id = int.tryParse(request.pathParams['id'] ?? '') ?? 0;
+              final id = request.pathParam<int>('id');
               final userUpdates = await request.body<User>();
 
               final service = di.find<UserService>();
@@ -61,7 +61,7 @@ class RoutingServer {
           Route.delete(
             path: '/users/{id}',
             handler: (request) {
-              final id = int.tryParse(request.pathParams['id'] ?? '') ?? 0;
+              final id = request.pathParam<int>('id');
               final service = di.find<UserService>();
               return ResponseEntity.ok(body: service.delete(id));
             },

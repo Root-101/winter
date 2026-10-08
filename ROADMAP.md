@@ -34,7 +34,7 @@ way we want to maintain it**. Exit criteria:
 | Module                                                                                  | State                                      |
 |-----------------------------------------------------------------------------------------|--------------------------------------------|
 | Pipeline (`buildHandler`, filters, exception handler inside the chain)                  | ✅ Solid                                    |
-| Router (nested, regex, static routes first, 404/405 + `Allow`, HEAD→GET, `MultiRouter`) | ✅ Solid, with benchmark                    |
+| Router (nested, regex, static routes first, 404/405 + `Allow`, HEAD→GET, `MultiRouter`) | ✅ Reviewed (2.8), `doc/routing.md`         |
 | Lifecycle (graceful shutdown, signals, body limit with 413)                             | ✅                                          |
 | Request scope (`Zone`): `requestAuthentication`, `requestLocale`                        | ✅                                          |
 | i18n (slang + YAML, `Accept-Language`, automatic `Vary`)                                | ✅ Documented in `DECISIONS.md`             |
@@ -46,7 +46,7 @@ way we want to maintain it**. Exit criteria:
 | Dependency injection                                                                    | ✅ Reviewed (2.4), `doc/dependency-injection.md` |
 | Configuration (`Env`, `ServerConfig`)                                                   | ✅ Reviewed (2.5), `doc/configuration.md`   |
 | Logging                                                                                 | ✅ Reviewed (2.6), `doc/logging.md`         |
-| Security                                                                                | ✅ Reviewed (2.7)                           |
+| Security                                                                                | ✅ Reviewed (2.7), `doc/security.md`        |
 | Documentation                                                                           | ❌ The biggest gap                          |
 | CI / publishing                                                                         | ❌ No CI                                    |
 
@@ -381,11 +381,28 @@ any code; rules that see the request; security headers; an asynchronous rate lim
 They're the most solid part (phase 1 covers their bugs), so this is only an API review. The
 entities (`RequestEntity`, `ResponseEntity`) are redesigned in phase 3.1, without shelf.
 
-- [ ] `WinterRouter.routes` is a public, mutable `List`: expose it read-only and leave `addRoute` as
-  the only way to add routes.
-- [ ] `FilterConfig.add` mutates a list that may be `const` (it throws then).
-- [ ] i18n was reviewed recently (`DECISIONS.md` §1): only check that it fits with the decisions of
-  2.2 (violation codes) and 2.3 (error format).
+**Done** (`DECISIONS.md` §9, guides in `doc/routing.md` and `doc/filters.md`): a broken route
+table fails at start, duplicates by method and shape, typed path and query params, automatic
+`OPTIONS`, an immutable `FilterConfig`, read-only routes, and two fixes (`GET //...` was a 500
+outside the pipeline, a param with a regex was dropped).
+
+- [x] `WinterRouter.routes` is a public, mutable `List`: expose it read-only and leave `addRoute` as
+  the only way to add routes. → Read-only; `MultiRouter.routes` => `routers` (§9.6).
+- [x] `FilterConfig.add` mutates a list that may be `const` (it throws then). → Immutable, `add`
+  removed (§9.5).
+- [x] i18n was reviewed recently (`DECISIONS.md` §1): only check that it fits with the decisions of
+  2.2 (violation codes) and 2.3 (error format). → It fits: the codes of the violations are the keys
+  of the YAML, and the `title` of a Problem Details is not translated.
+- [x] ✔️ **`GET //users` was a 500 outside the pipeline** (shelf rejected its url): no request id,
+  no security headers, logged without the `logger`. → A 404 like `/users//1` (§9.1).
+- [x] ✔️ **A param with a regex (`{id|[0-9]+}`) was dropped as an invalid URL**, with a warning.
+  → Only the literal parts are validated, and a broken route table fails at start (§9.2, §9.3).
+- [x] Duplicated routes with another key or param name (`/users/{id}` and `/users/{name}`) were not
+  detected. → The same method and shape is a duplicate; the keys stay (§9.3).
+- [x] `int.parse(request.pathParams['id']!)` is a 500 for `/users/abc`. → `pathParam<T>` and
+  `queryParam<T>`, a 400 (§9.7).
+- [x] `OPTIONS` without CORS was a 405. → A 204 with `Allow` (§9.4).
+- [x] `ResponseEntity.created(location:)`, `accepted()`, `noContent()` (§9.8).
 
 
 ### 2.9 Review all of the above
@@ -643,12 +660,12 @@ written twice. The rest can be written now.
       of one server per isolate.
     - How to scale with several isolates (`shared: true`, see
       `benchmark/server_shared_benchmark.dart`).
-- [ ] **`routing.md`:** `Route.get/post/...`, nested routes and `Route.parent`, path params (`{id}`,
+- [x] **`routing.md`** (after 2.8), its snippets checked by running them: `Route.get/post/...`, nested routes and `Route.parent`, path params (`{id}`,
   `{id|regex}`, decoding), regex routes, priority (static routes first, then declaration order),
   trailing slash, HEAD→GET, 404 vs 405 + `Allow`, `basePath`, `addRoute`, route keys and duplicates,
   the `RouterConfig` hooks (`ignore`/`fail`/`log`), `MultiRouter`, `ServeRouter`, and how to write
   your own router (override `resolveRoute`, or the route filters are skipped).
-- [ ] **`filters.md`:** `Filter`, `doFilter`/`chain.doFilter`, short-circuiting the chain, `order`,
+- [x] **`filters.md`** (after 2.8), its snippets checked by running them: `Filter`, `doFilter`/`chain.doFilter`, short-circuiting the chain, `order`,
   `shouldFilter`, global vs route filters (inherited in nested routes), why a filter never receives
   an exception (it becomes a response where it's thrown), `LogsFilter`, `CorsFilter`,
   `RateLimiterFilter`.

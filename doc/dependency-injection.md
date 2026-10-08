@@ -47,7 +47,7 @@ void main() async {
           path: '/users/{id}',
           handler: (request) =>
               ResponseEntity.ok(
-                body: di.find<UserService>().name(int.parse(request.pathParams['id']!)),
+                body: di.find<UserService>().name(request.pathParam<int>('id')),
               ),
         ),
       ],

@@ -101,7 +101,7 @@ class I18nServer {
       Route.get(
         path: '/orders/{id}',
         handler: (request) {
-          final order = service.find(int.parse(request.pathParams['id']!));
+          final order = service.find(request.pathParam<int>('id'));
           return ResponseEntity.ok(
             body: {'product': order.product, 'quantity': order.quantity},
           );
