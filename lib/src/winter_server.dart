@@ -100,6 +100,10 @@ class Winter {
 
   bool _shuttingDown = false;
 
+  ///Completed when the server starts closing: the streams of Server-Sent Events end then, so they
+  ///don't hold the graceful shutdown (see [serverClosing])
+  final Completer<void> _closing = Completer<void>();
+
   Winter._({
     required this.serverContext,
     required this.config,
@@ -288,6 +292,7 @@ class Winter {
   }) async {
     if (isRunning) {
       final Winter current = server;
+      if (!current._closing.isCompleted) current._closing.complete();
 
       if (force) {
         ///Not awaited: if the server is already closing, this future never completes
@@ -619,6 +624,11 @@ class Winter {
     }
   }
 }
+
+/// Completes when the running server starts closing (`Winter.close`, `Winter.shutdown`); never
+/// without a server (`WinterTestClient`). Internal: the streams of Server-Sent Events end with it.
+Future<void> get serverClosing =>
+    Winter._server?._closing.future ?? Completer<void>().future;
 
 /// Add [header] to the `Vary` of [response] (a comma separated list), unless it's already there or `*`
 ///

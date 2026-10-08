@@ -329,6 +329,13 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
   (`StreamIterator`), so every error is thrown by the read that waits for it, as a 400 (or the 413).
   A file name is given as the browser sent it (WHATWG: no backslash escapes) and never cleaned:
   it's not a path.
+- **Server-Sent Events** (`ResponseEntity.sse`, `ServerSentEvent`): a stream response, not a
+  route of its own, so the filters (auth, CORS) and the request scope apply as to any request. A
+  comment first (the headers leave at once) and every `keepAlive` (proxies close idle
+  connections), `X-Accel-Buffering: no` for nginx, and the stream ends when the server starts
+  closing: an endless stream would otherwise hold every graceful shutdown until its timeout, and
+  the browser reconnects anyway. `event` and `id` with a line break are an `ArgumentError`: they
+  would inject another event.
 - **WebSockets** (planned): a response of its own kind, recognized by the server before writing,
   will hand the `HttpRequest` to `WebSocketTransformer.upgrade` after the filters ran. Nothing in
   the current API blocks it.

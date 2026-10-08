@@ -611,7 +611,9 @@ first, small and independent; then the new features, from the most used to the l
 - [ ] **WebSockets**, implemented by Winter on `WebSocketTransformer` of `dart:io` (no shelf):
   routes for WebSockets that go through the filters (auth, CORS) before the upgrade, as designed
   in 3.1.
-- [ ] **Server-Sent Events** on the streaming responses of 3.1.
+- [x] **Server-Sent Events** on the streaming responses of 3.1. → `ResponseEntity.sse` and
+  `ServerSentEvent`; the streams end when the server starts closing (`DECISIONS.md` §10).
+  `example/06_files` sends the new photos.
 - [ ] Scheduled tasks (cron), it was in `todo.md`.
 - [ ] OpenAPI generation from the routes.
 - [ ] Async validations: an `AsyncValidatable` interface with a `Future` `validate()`, also run by

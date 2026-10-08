@@ -9,6 +9,10 @@ class HttpHeader {
   /// (de facto standard, not in the HTTP spec).
   static const String xForwardedFor = 'X-Forwarded-For';
 
+  /// The `X-Accel-Buffering` header: `no` tells nginx not to buffer a response that is streamed
+  /// (Server-Sent Events).
+  static const String xAccelBuffering = 'X-Accel-Buffering';
+
   /// The HTTP `Accept` header.
   /// See [Section 5.3.2 of RFC 7231](https://tools.ietf.org/html/rfc7231#section-5.3.2).
   static const String accept = 'Accept';
@@ -166,6 +170,10 @@ class HttpHeader {
   /// The HTTP `If-Unmodified-Since` header.
   /// See [Section 3.4 of RFC 7232](https://tools.ietf.org/html/rfc7232#section-3.4).
   static const String ifUnmodifiedSince = 'If-Unmodified-Since';
+
+  /// The `Last-Event-ID` header: the id of the last Server-Sent Event a client got, sent when it
+  /// reconnects.
+  static const String lastEventId = 'Last-Event-ID';
 
   /// The HTTP `Last-Modified` header.
   /// See [Section 2.2 of RFC 7232](https://tools.ietf.org/html/rfc7232#section-2.2).

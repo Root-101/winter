@@ -265,22 +265,75 @@ Route.get(
 - Code that doesn't receive the request (a service) reads the request scope instead:
   `requestPrincipal<T>()`, `requestLocale`, `requestId`.
 
-### Server-Sent Events and other streams
+### Server-Sent Events
+
+A stream of events from the server to the browser (notifications, progress, a live feed) over a
+normal HTTP response. `ResponseEntity.sse` sends a `Stream<ServerSentEvent>`:
 
 ```dart
 Route.get(
-  path: '/events',
-  handler: (request) => ResponseEntity<Stream<List<int>>>(
-    200,
-    body: clock().map((time) => utf8.encode('data: $time\n\n')),
-    headers: {'content-type': 'text/event-stream', 'cache-control': 'no-cache'},
+  path: '/orders/events',
+  handler: (request) => ResponseEntity.sse(
+    orders.changes.map(
+      (order) => ServerSentEvent.json(order, event: 'order', id: '${order.version}'),
+    ),
   ),
 )
 ```
 
-Every chunk is sent as it's produced. `dart:io` sends the headers with the first chunk, so a stream
-of events usually starts with one (or a comment, `: ok\n\n`). If the client leaves, or the stream
-fails, the connection is closed and it's logged at debug: the server goes on.
+```js
+// In the browser
+const events = new EventSource('/orders/events');
+events.addEventListener('order', (event) => render(JSON.parse(event.data)));
+```
+
+What goes through the connection:
+
+```text
+:
+
+event: order
+id: 7
+data: {"id":42,"status":"paid"}
+
+:
+```
+
+`ServerSentEvent` builds each event:
+
+| Code                                              | Sent                                            |
+|---------------------------------------------------|-------------------------------------------------|
+| `ServerSentEvent(data: 'Hello')`                  | `data: Hello` (an `onmessage` in the browser)   |
+| `ServerSentEvent(data: 'a\nb')`                   | `data: a` and `data: b` (the client joins them) |
+| `ServerSentEvent(event: 'order', data: ...)`      | `event: order` (`addEventListener('order')`)    |
+| `ServerSentEvent(id: '42', ...)`                  | `id: 42`, sent back in `Last-Event-ID` on reconnect |
+| `ServerSentEvent(retry: Duration(seconds: 5))`    | `retry: 5000`: how long the client waits to reconnect |
+| `ServerSentEvent.json(order, event: 'order')`     | the data as JSON in one line, by the object mapper |
+| `ServerSentEvent.comment('note')`                 | `: note`, ignored by the client                 |
+
+- **Headers**: `Content-Type: text/event-stream; charset=utf-8`, `Cache-Control: no-cache` and
+  `X-Accel-Buffering: no` (nginx would buffer the events otherwise).
+- **At once**: a comment is sent first, so the browser gets the headers (and its `open` event)
+  without waiting for the first event.
+- **Keep-alive**: a comment every `keepAlive` (15 seconds by default; `null` for none) without
+  events, so a proxy doesn't close the connection as idle.
+- **The client leaves**: the subscription to your stream is cancelled; free what it uses in its
+  `onCancel` (`StreamController(onCancel: ...)`), or use a broadcast stream.
+- **The server shuts down**: the streams end when `Winter.close`/`shutdown` starts, so an endless
+  stream never holds the graceful shutdown; the browser reconnects by itself (to another
+  instance). An error of your stream is logged and ends it.
+- **Reconnecting**: read the last id the client got with
+  `request.headers[HttpHeader.lastEventId]` and send what it missed.
+- `event` and `id` can't have a line break (it would start another event): an `ArgumentError`.
+
+`example/06_files` sends every new photo to the open pages this way.
+
+### Other streams
+
+Any `Stream<List<int>>` body is sent as it's produced (chunked), with `application/octet-stream`
+unless you give a `Content-Type`. `dart:io` sends the headers with the first chunk. If the client
+leaves, or the stream fails, the connection is closed and it's logged at debug: the server goes
+on.
 
 ### How a response is written
 

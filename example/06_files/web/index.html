@@ -36,20 +36,22 @@
   <h2>Photos</h2>
   <div id="photos">Log in to see them.</div>
   <script>
-    fetch('/photos').then((response) => response.ok ? response.json() : []).then((photos) => {
-      if (photos.length === 0) return;
+    function show(photo) {
       const list = document.getElementById('photos');
-      list.textContent = '';
-      for (const photo of photos) {
-        const figure = document.createElement('figure');
-        const image = document.createElement('img');
-        image.src = photo.url;
-        image.alt = photo.title;
-        const caption = document.createElement('figcaption');
-        caption.textContent = `${photo.title} (${photo.owner})`;
-        figure.append(image, caption);
-        list.append(figure);
-      }
+      if (list.dataset.loaded !== 'yes') { list.textContent = ''; list.dataset.loaded = 'yes'; }
+      const figure = document.createElement('figure');
+      const image = document.createElement('img');
+      image.src = photo.url;
+      image.alt = photo.title;
+      const caption = document.createElement('figcaption');
+      caption.textContent = `${photo.title} (${photo.owner})`;
+      figure.append(image, caption);
+      list.append(figure);
+    }
+    // Server-Sent Events: the photos uploaded from now on, by anyone
+    new EventSource('/photos/events').addEventListener('photo', (event) => show(JSON.parse(event.data)));
+    fetch('/photos').then((response) => response.ok ? response.json() : []).then((photos) => {
+      for (const photo of photos) show(photo);
     });
   </script>
 </body>

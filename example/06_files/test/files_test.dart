@@ -241,6 +241,44 @@ void main() {
     });
   });
 
+  group('Server-Sent Events: GET /photos/events', () {
+    test('a new photo is sent as an event, as it is saved', () async {
+      final String cookie = await login();
+      final ResponseEntity events = await client.handler(
+        RequestEntity(
+          'GET',
+          Uri.parse('http://localhost/photos/events'),
+          headers: {'cookie': cookie},
+        ),
+      );
+      final List<String> received = [];
+      final subscription = events.read().map(utf8.decode).listen(received.add);
+      addTearDown(subscription.cancel);
+
+      final TestResponse uploaded = await upload(
+        '/photos',
+        multipart(
+          fields: {'title': 'Live'},
+          files: {'photo': ('live.png', 'image/png', png)},
+        ),
+        cookie: cookie,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(events.headers['content-type'], startsWith('text/event-stream'));
+      final String id = uploaded.headers['location']!.split('/').last;
+      expect(received, [
+        ':\n\n',
+        'event: photo\nid: $id\n'
+            'data: {"id":"$id","title":"Live","owner":"ann","url":"/photos/$id"}\n\n',
+      ]);
+    });
+
+    test('without the session cookie it is a 401', () async {
+      expect((await client.get('/photos/events')).statusCode, 401);
+    });
+  });
+
   group('Videos: multipart() streamed to disk', () {
     test('a video is copied while it arrives, and served with Range', () async {
       final String cookie = await login();
