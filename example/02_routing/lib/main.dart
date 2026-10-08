@@ -15,9 +15,9 @@ class RoutingServer {
     final userService = UserService();
     di.put(userService);
 
-    Winter.context.objectMapper.addDeserializer(
-      Deserializer<User>.json(User.fromJson),
-    );
+    Winter.context.objectMapper
+      ..addDeserializer(Deserializer<User>.json(User.fromJson))
+      ..addDeserializer(Deserializer<UserUpdate>.json(UserUpdate.fromJson));
 
     await Winter.start(
       config: ServerConfig(port: port),
@@ -56,6 +56,17 @@ class RoutingServer {
 
               final service = di.find<UserService>();
               return ResponseEntity.ok(body: service.update(id, userUpdates));
+            },
+          ),
+          // Only the fields sent change: {"nickname": null} clears it, {} changes nothing
+          Route.patch(
+            path: '/users/{id}',
+            handler: (request) async {
+              final id = request.pathParam<int>('id');
+              final update = await request.body<UserUpdate>();
+
+              final service = di.find<UserService>();
+              return ResponseEntity.ok(body: service.patch(id, update));
             },
           ),
           Route.delete(

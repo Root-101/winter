@@ -10,11 +10,14 @@ A `WinterRouter` is defined with support for path parameters and multiple HTTP m
 *   `GET /api/v1/users/{id}`: Retrieves a specific user via a path parameter.
 *   `POST /api/v1/users`: Creates a new user.
 *   `PUT /api/v1/users/{id}`: Updates an existing user.
+*   `PATCH /api/v1/users/{id}`: Changes only the fields sent (`UserUpdate` with `PatchValue`):
+    `{"nickname": null}` clears the nickname, `{}` changes nothing, `{"name": null}` is a 400.
 *   `DELETE /api/v1/users/{id}`: Deletes a user.
 
 ### 2. ObjectMapper (Serialization)
 *   **Models**: The `User` class has a `toJson()` method, which the object mapper calls to write the responses (no interface to implement).
-*   **Deserialization**: Registration of a `Deserializer<User>` to automatically process request bodies (`request.body<User>()`).
+*   **Deserialization**: Registration of a `Deserializer<User>` to automatically process request bodies (`request.body<User>()`), with typed fields (`json.field<String>('name')`).
+*   **Partial updates**: `json.patch<String?>('nickname')` gives a `PatchValue`, absent or a value (`null` included), and `orElse(current)` gives the value after the update.
 
 ### 3. Dependency Injection (DI)
 *   Use of `di.put()` to register the `UserService`.

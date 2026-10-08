@@ -149,7 +149,9 @@ violation.copyWith(code: () => 'email.taken');                  // sets a code
 
 A partial update (PATCH) is usually a model of its own, whose fields are all optional: since every
 validator except `notNull()` passes on `null`, only the fields that came are validated, and the
-body is still validated by default:
+body is still validated by default (to tell a missing field from one sent as `null`, read them as
+`PatchValue`s and validate their `valueOrNull`, see
+[partial updates](object-mapper.md#partial-updates-patch-absent-vs-null)):
 
 ```dart
 class UpdateUser implements Validatable {

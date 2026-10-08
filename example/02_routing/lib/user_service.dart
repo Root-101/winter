@@ -30,6 +30,9 @@ class UserService {
     return userUpdates;
   }
 
+  User patch(int id, UserUpdate update) =>
+      this.update(id, update.applyTo(getById(id)));
+
   User delete(int id) {
     final index = _users.indexWhere((u) => u.id == id);
     if (index == -1) {

@@ -673,8 +673,9 @@ first, small and independent; then the new features, from the most used to the l
   stream), keeping the cache of the raw body that `body<T>()` needs. → `om.decodeBytes` on the
   cached bytes, used by `body<T>()` for UTF-8: 20 % to 25 % faster. The 415 is now checked before
   reading the body.
-- [ ] **Absent vs `null`** for partial updates (PATCH): today a missing field and a `null` one are
-  the same; `body<Map<String, dynamic>>()` is the workaround.
+- [x] **Absent vs `null`** for partial updates (PATCH): today a missing field and a `null` one are
+  the same; `body<Map<String, dynamic>>()` is the workaround. → `PatchValue<T>` from
+  `json.patch<T>()` (`isPresent`, `value`, `orElse`, `valueOrNull`); example 02 has a PATCH.
 - [x] **Reject unknown fields** (optional, against mass assignment): needs to know which keys the
   `fromJson` read (see the typed field access above). → `ObjectMapper(rejectUnknownFields: true)`, and
   per type in `Deserializer.json`: the map given to the `fromJson` records the keys read, so it
