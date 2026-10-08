@@ -29,6 +29,19 @@ This directory contains independent examples demonstrating the core features and
     - c) **Translated validations**: A 422 mixes the texts of the app and of Winter in the same language.
     - d) **In-memory tests**: `WinterTestClient` and `RequestScope.run`.
 
+5.  **[05_validation_object_mapper](./05_validation_object_mapper)**: An orders API with nested DTOs.
+    - a) **Object mapper**: snake_case JSON, `includeNulls: false`, a `Serializer`/`Deserializer` of its own (`Money` as `"12.50 EUR"`) and enums by name.
+    - b) **Nested validation**: `valid()` and `validEach()`, a `custom()` rule with its code, and a 422 whose fields follow the JSON (`shipping_address.zip_code`, `items[0].quantity`).
+    - c) **Typed params**: `pathParam<int>`, `queryParam<int>`, an enum from the query.
+
+6.  `06_files` (multipart, static files): once they exist (phase 4 of the roadmap).
+
+7.  **[07_production](./07_production)**: Ready for a container.
+    - a) **Configuration**: `.env` and profiles under the variables of the process, `requireAll`, `ServerConfig.fromEnv`.
+    - b) **Operations**: `JsonLogger`, liveness and readiness checks, a 503 with `Retry-After`.
+    - c) **Security behind a proxy**: rate limit by client IP with `trustedProxies`, CORS and HSTS from the environment.
+    - d) **Graceful shutdown & Docker**: `onShutdown`, a "database" closed by its `onDispose`, and a native `scratch` image.
+
 ## How to run an example
 
 Each example is a standalone Dart project. To run one:
