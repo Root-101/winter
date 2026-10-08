@@ -2,6 +2,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:io' show Cookie;
 
 import 'package:test/test.dart';
 import 'package:winter/src/utils/valid_url.dart';
@@ -464,16 +465,66 @@ void main() {
           ResponseEntity<void>.forbidden(),
           ResponseEntity<void>.notFound(),
           ResponseEntity<void>.methodNotAllowed(),
+          ResponseEntity<void>.conflict(),
+          ResponseEntity<void>.unprocessableEntity(),
           ResponseEntity<void>.tooManyRequests(),
           ResponseEntity<void>.internalServerError(),
+          ResponseEntity<void>.serviceUnavailable(),
         ].map((response) => response.statusCode),
-        [400, 401, 403, 404, 405, 429, 500],
+        [400, 401, 403, 404, 405, 409, 422, 429, 500, 503],
       );
       expect(
         ResponseEntity<void>.tooManyRequests(retryAfter: 3)
             .headers['retry-after'],
         '3',
       );
+      expect(
+        ResponseEntity<void>.serviceUnavailable(retryAfter: 30)
+            .headers['retry-after'],
+        '30',
+      );
+    });
+
+    test('every redirect has its status and a Location', () {
+      final redirects = [
+        ResponseEntity<void>.redirect('/a'),
+        ResponseEntity<void>.seeOther('/a'),
+        ResponseEntity<void>.temporaryRedirect('/a'),
+        ResponseEntity<void>.permanentRedirect('/a'),
+      ];
+
+      expect(redirects.map((response) => response.statusCode), [
+        302,
+        303,
+        307,
+        308,
+      ]);
+      for (final response in redirects) {
+        expect(response.headers['location'], '/a');
+        expect(response.contentLength, 0);
+      }
+    });
+
+    test('a redirect keeps its headers and cookies', () async {
+      final response = await WinterTestClient.build(
+        router: WinterRouter(
+          routes: [
+            Route.post(
+              path: '/login',
+              handler: (r) => ResponseEntity.seeOther(
+                '/home',
+                headers: {'X-Extra': '1', 'Location': '/ignored'},
+                cookies: [Cookie('session', 'abc')],
+              ),
+            ),
+          ],
+        ),
+      ).post('/login');
+
+      expect(response.statusCode, 303);
+      expect(response.headers['location'], '/home');
+      expect(response.headers['x-extra'], '1');
+      expect(response.headers['set-cookie'], startsWith('session=abc'));
     });
 
     test('an error shortcut without a body sends none', () async {

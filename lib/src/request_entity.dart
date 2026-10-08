@@ -310,6 +310,34 @@ class RequestEntity {
     }
   }
 
+  /// The fields of a form sent as `application/x-www-form-urlencoded` (an HTML `<form>`).
+  ///
+  /// Any other `Content-Type` is a 415 ([UnsupportedMediaTypeException]), and a body that isn't
+  /// valid URL-encoded text a 400. The raw body is cached like in [body], so it can be called
+  /// multiple times; after it, [read] and [readAsString] fail.
+  Future<FormData> formData() async {
+    final String expected = MediaType.applicationFormUrlencoded.mimeType;
+    if (mimeType != expected) {
+      throw UnsupportedMediaTypeException(
+        detail: mimeType == null
+            ? 'Missing Content-Type, expected $expected'
+            : 'Unsupported Content-Type $mimeType, expected $expected',
+      );
+    }
+    final Encoding encoding = this.encoding ?? utf8;
+    try {
+      return FormData._parse(await _body.text(encoding), encoding);
+    } on FormatException {
+      throw const BadRequestException(detail: _invalidForm);
+    } on ArgumentError {
+      // Uri.decodeQueryComponent throws it for a bad percent-encoding (`%zz`)
+      throw const BadRequestException(detail: _invalidForm);
+    }
+  }
+
+  static const String _invalidForm =
+      'The body is not a valid application/x-www-form-urlencoded form';
+
   static bool _isJson(String? mimeType) =>
       mimeType == MediaType.applicationJson.mimeType ||
       (mimeType != null && mimeType.endsWith('+json'));
@@ -341,6 +369,56 @@ class RequestEntity {
 
   @override
   String toString() => 'RequestEntity{$method ${requestedUri.path}}';
+}
+
+/// The fields of a form sent as `application/x-www-form-urlencoded`, read with
+/// [RequestEntity.formData]
+final class FormData {
+  /// Every value of each field, in order (`tag=a&tag=b` => `{tag: [a, b]}`, as several
+  /// checkboxes with the same name send). Read-only.
+  final Map<String, List<String>> fieldsAll;
+
+  /// The fields, with the last value of a repeated one (`tag=a&tag=b` => `{tag: b}`). Read-only.
+  late final Map<String, String> fields = Map.unmodifiable({
+    for (final entry in fieldsAll.entries) entry.key: entry.value.last,
+  });
+
+  FormData._(this.fieldsAll);
+
+  /// [raw] is `name=Ann+Lee&age=30`: `+` is a space, and the percent-encoded bytes are decoded
+  /// with [encoding]. A field without `=` has an empty value.
+  factory FormData._parse(String raw, Encoding encoding) {
+    final Map<String, List<String>> fields = {};
+    for (final String pair in raw.split('&')) {
+      if (pair.isEmpty) continue;
+      final int equals = pair.indexOf('=');
+      final String name = equals < 0 ? pair : pair.substring(0, equals);
+      final String value = equals < 0 ? '' : pair.substring(equals + 1);
+      (fields[Uri.decodeQueryComponent(name, encoding: encoding)] ??= []).add(
+        Uri.decodeQueryComponent(value, encoding: encoding),
+      );
+    }
+    return FormData._(
+      Map.unmodifiable({
+        for (final entry in fields.entries)
+          entry.key: List<String>.unmodifiable(entry.value),
+      }),
+    );
+  }
+
+  /// The field [name] (its last value), or null
+  String? operator [](String name) => fields[name];
+
+  /// The field [name] as a [T], or null if it's missing or empty. The types and the errors are
+  /// those of [RequestEntity.pathParam] (a value that isn't a [T] is a 400).
+  T? field<T extends Object>(String name, {List<T>? values}) {
+    final String? raw = fields[name];
+    if (raw == null || raw.isEmpty) return null;
+    return RequestEntity._parseParam<T>('form field', name, raw, values);
+  }
+
+  @override
+  String toString() => 'FormData{${fieldsAll.keys.join(', ')}}';
 }
 
 /// The body of a request: a stream that is read once, and the bytes cached when they are read

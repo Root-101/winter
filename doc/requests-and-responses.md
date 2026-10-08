@@ -89,12 +89,30 @@ final String text = await request.body<String>();
 - A body over `ServerConfig.maxBodySize` (10 MB) is a **413** when it's read; a body nobody reads
   is never rejected.
 
+### A form
+
+An HTML `<form>` sends `application/x-www-form-urlencoded`, read with `formData()`:
+
+```dart
+final FormData form = await request.formData();   // name=Ann+Lee&tag=a&tag=b&age=30
+form['name'];                                     // 'Ann Lee' (or null)
+form.fieldsAll['tag'];                            // ['a', 'b']
+form.field<int>('age');                           // 30, typed like queryParam<T>
+```
+
+- `fields` has the last value of a repeated field, `fieldsAll` every value (several checkboxes).
+- `field<T>(name, values:)` parses the same types as `queryParam<T>`: null if it's missing or
+  empty, a **400** naming the field (never the value) if it isn't a `T`.
+- Another `Content-Type`, or none, is a **415**; a bad percent-encoding is a **400**.
+- It's cached like `body<T>()`, and the same 413 applies.
+
 ### The response
 
 ```dart
 ResponseEntity.ok(body: user)                         // 200, JSON
 ResponseEntity.created(location: '/users/7', body: user)
 ResponseEntity.noContent()                            // 204, no body
+ResponseEntity.seeOther('/orders/7')                  // 303 + Location
 ResponseEntity(418, body: 'I am a teapot', headers: {'X-Tea': 'green'})
 ```
 
@@ -115,9 +133,12 @@ The type of the body decides how it's written:
 - Several values of a header are a list: `headers: {'Link': ['<a>; rel=next', '<b>; rel=last']}`,
   and every cookie of `cookies:` is a `Set-Cookie` of its own.
 
-The shortcuts: `ok`, `created`, `accepted`, `noContent`, and `badRequest`, `unauthorized`,
-`forbidden`, `notFound`, `methodNotAllowed`, `tooManyRequests`, `internalServerError`. For an error,
-throwing an `ApiException` gives a Problem Details (see [error handling](error-handling.md)).
+The shortcuts: `ok`, `created`, `accepted`, `noContent`; the redirects `redirect` (302),
+`seeOther` (303), `temporaryRedirect` (307) and `permanentRedirect` (308), which take the
+`Location`; and `badRequest`, `unauthorized`, `forbidden`, `notFound`, `methodNotAllowed`,
+`conflict`, `unprocessableEntity`, `tooManyRequests`, `internalServerError`, `serviceUnavailable`
+(`retryAfter:` in seconds, like `tooManyRequests`). A browser follows a 302 or a 303 with a `GET`;
+a 307 or a 308 repeats the method and the body. For an error, throwing an `ApiException` gives a Problem Details (see [error handling](error-handling.md)).
 
 ### `copyWith`
 
@@ -264,7 +285,7 @@ has every value of each header.
 
 ## Typical mistakes and limitations
 
-- **`read()` after `body<T>()`**: the stream is consumed; use `body<String>()`.
+- **`read()` after `body<T>()`** (or `formData()`): the stream is consumed; use `body<String>()`.
 - **Changing `request.headers` or `queryParams`**: they are read-only; pass
   `request.copyWith(...)` to the chain.
 - **A stream response without a first chunk**: the client waits for the headers until it comes.

@@ -127,6 +127,41 @@ class ResponseEntity<T> {
          ),
        );
 
+  ///302: the resource is temporarily at [location]. A browser follows it with a `GET`, even
+  ///after a `POST`: use [ResponseEntity.temporaryRedirect] to keep the method.
+  ResponseEntity.redirect(
+    String location, {
+    Map<String, /* String | List<String> */ Object>? headers,
+    List<Cookie>? cookies,
+  }) : this._from(_redirect<T>(StatusCode.found, location, headers, cookies));
+
+  ///303: the result is at [location], read it with a `GET` (the answer to a form sent with `POST`)
+  ResponseEntity.seeOther(
+    String location, {
+    Map<String, /* String | List<String> */ Object>? headers,
+    List<Cookie>? cookies,
+  }) : this._from(
+         _redirect<T>(StatusCode.seeOther, location, headers, cookies),
+       );
+
+  ///307: the resource is temporarily at [location], requested again with the same method and body
+  ResponseEntity.temporaryRedirect(
+    String location, {
+    Map<String, /* String | List<String> */ Object>? headers,
+    List<Cookie>? cookies,
+  }) : this._from(
+         _redirect<T>(StatusCode.temporaryRedirect, location, headers, cookies),
+       );
+
+  ///308: the resource moved to [location] for good, requested again with the same method and body
+  ResponseEntity.permanentRedirect(
+    String location, {
+    Map<String, /* String | List<String> */ Object>? headers,
+    List<Cookie>? cookies,
+  }) : this._from(
+         _redirect<T>(StatusCode.permanentRedirect, location, headers, cookies),
+       );
+
   ResponseEntity.badRequest({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
@@ -152,6 +187,16 @@ class ResponseEntity<T> {
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this._from(_status<T>(StatusCode.methodNotAllowed, body, headers));
 
+  ResponseEntity.conflict({
+    T? body,
+    Map<String, /* String | List<String> */ Object>? headers,
+  }) : this._from(_status<T>(StatusCode.conflict, body, headers));
+
+  ResponseEntity.unprocessableEntity({
+    T? body,
+    Map<String, /* String | List<String> */ Object>? headers,
+  }) : this._from(_status<T>(StatusCode.unprocessableEntity, body, headers));
+
   ResponseEntity.tooManyRequests({
     T? body,
     int? retryAfter,
@@ -168,6 +213,18 @@ class ResponseEntity<T> {
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this._from(_status<T>(StatusCode.internalServerError, body, headers));
 
+  ///503: the server can't answer now; [retryAfter] is in seconds (`Retry-After`)
+  ResponseEntity.serviceUnavailable({
+    T? body,
+    int? retryAfter,
+    Map<String, /* String | List<String> */ Object>? headers,
+  }) : this._from(
+         _status<T>(StatusCode.serviceUnavailable, body, {
+           ...?headers,
+           if (retryAfter != null) HttpHeader.retryAfter: '$retryAfter',
+         }),
+       );
+
   ResponseEntity._from(ResponseEntity<T> response)
     : this._(
         statusCode: response.statusCode,
@@ -183,6 +240,17 @@ class ResponseEntity<T> {
     T? body,
     Map<String, Object>? headers,
   ) => ResponseEntity<T>(status.value, body: body, headers: headers);
+
+  static ResponseEntity<T> _redirect<T>(
+    StatusCode status,
+    String location,
+    Map<String, Object>? headers,
+    List<Cookie>? cookies,
+  ) => ResponseEntity<T>(
+    status.value,
+    headers: {...?headers, HttpHeader.location: location},
+    cookies: cookies,
+  );
 
   /// One value per header, case insensitive (several values are joined with `, `). Read-only.
   late final Map<String, String> headers = joinHeaders(headersAll);
