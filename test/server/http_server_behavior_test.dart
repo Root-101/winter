@@ -48,6 +48,11 @@ void main() {
         handler: (request) => ResponseEntity.noContent(),
       ),
       Route.get(
+        path: '/status/{code}',
+        handler: (request) =>
+            ResponseEntity<void>(request.pathParam<int>('code')),
+      ),
+      Route.get(
         path: '/broken',
         handler: (request) => ResponseEntity<Stream<List<int>>>(
           200,
@@ -221,6 +226,29 @@ void main() {
         contains(startsWith('LogLevel.debug The response of GET could not')),
       );
       expect(await utf8.decodeStream(await get('/text')), 'año');
+    });
+
+    test('the status line has the reason phrase of StatusCode', () async {
+      Future<String> statusLine(int code) async {
+        final socket = await Socket.connect('localhost', port);
+        socket.write(
+          'GET /status/$code HTTP/1.1\r\nHost: localhost\r\n'
+          'Connection: close\r\n\r\n',
+        );
+        final String answer = await utf8.decodeStream(socket);
+        socket.destroy();
+        return answer.split('\r\n').first;
+      }
+
+      // dart:io alone sends `422 Status 422`
+      expect(await statusLine(422), 'HTTP/1.1 422 Unprocessable Entity');
+      expect(await statusLine(429), 'HTTP/1.1 429 Too Many Requests');
+      expect(await statusLine(418), "HTTP/1.1 418 I'm a teapot");
+      // A code with a deprecated twin: the current phrase
+      expect(await statusLine(413), 'HTTP/1.1 413 Payload Too Large');
+      expect(await statusLine(200), 'HTTP/1.1 200 OK');
+      // A code that StatusCode doesn't know keeps the one of dart:io
+      expect(await statusLine(799), 'HTTP/1.1 799 Status 799');
     });
 
     test(
