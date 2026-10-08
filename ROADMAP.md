@@ -542,13 +542,17 @@ cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `
 
 ### 4.1 Basic HTTP 🔴
 
-- [ ] **More `ResponseEntity` constructors:** `created` (201, with `Location`), `accepted` (202),
+- [x] **More `ResponseEntity` constructors:** `created` (201, with `Location`), `accepted` (202),
   `noContent` (204), `conflict` (409), `unprocessableEntity` (422), `serviceUnavailable` (503) and
-  redirects (`redirect`/`seeOther`/`permanentRedirect` with `Location`).
-- [ ] **Typed access to params:** `request.pathParam<int>('id')` and
+  redirects (`redirect`/`seeOther`/`permanentRedirect` with `Location`). → `created`, `accepted`
+  and `noContent` in 2.8; the rest, plus `temporaryRedirect` (307), here. `redirect` is a 302.
+- [x] **Typed access to params:** `request.pathParam<int>('id')` and
   `request.queryParam<int>('page', defaultValue: 1)`. If the value can't be converted, a **400**
-  (today every handler runs `int.parse`, and an error there ends in a 500).
-- [ ] **`application/x-www-form-urlencoded` forms:** `request.formData()`.
+  (today every handler runs `int.parse`, and an error there ends in a 500). → Done in 2.8
+  (`pathParam<T>`/`queryParam<T>`, §9).
+- [x] **`application/x-www-form-urlencoded` forms:** `request.formData()`. → A `FormData` with
+  `fields`/`fieldsAll` and `field<T>()` typed like `queryParam<T>`; 415 for another
+  `Content-Type`, 400 for a bad encoding, cached like `body<T>()`.
 - [ ] **Multipart / file uploads:** `request.multipart()` with fields and files as streams,
   respecting `maxBodySize` (possible base: `MimeMultipartTransformer` of `package:mime`, from
   the Dart team, or an own parser). It was in `todo.md`.
@@ -565,7 +569,8 @@ cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `
 
 - [ ] **Timeout per request** (`ServerConfig.requestTimeout`): a stuck handler returns a 503 and
   doesn't hold the graceful shutdown until its timeout.
-- [ ] Optional **gzip compression** (`HttpServer.autoCompress`, exposed by the server of 3.1).
+- [x] Optional **gzip compression** (`HttpServer.autoCompress`, exposed by the server of 3.1).
+  → Done in 3.1: `ServerConfig.autoCompress`.
 - [ ] **Health check:** `Route.health('/health')` or a documented example (needed for Docker and
   Kubernetes).
 - [ ] **`di.createAll()`**: create every lazy dependency at start-up (opt-in), so a broken
