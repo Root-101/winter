@@ -57,6 +57,9 @@ Guide: [`doc/object-mapper.md`](doc/object-mapper.md).
 - **A serializer applies to subtypes** (`freezed` and sealed classes generate private subclasses):
   exact type → the first serializer of a supertype → `toJson()` → enum `name`, decided once per
   `runtimeType` and cached. Deserializers stay exact: the target type is the one asked for.
+- **Absent vs `null`** (a PATCH) is a value of its own, `PatchValue<T>` read with
+  `json.patch<T>()`, not a mode of the mapper: only the models of a partial update need it, and
+  the rest keep plain fields. Its value is read like `json.field<T>()`.
 - **Unknown fields are ignored by default, rejected on request** (`rejectUnknownFields`): a known
   field is one the `fromJson` *reads*, tracked by the map it receives, so it works with any
   `fromJson` (casts, `json.field`, generated code) without declaring the fields twice. Off by

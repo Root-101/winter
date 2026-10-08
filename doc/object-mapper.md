@@ -331,6 +331,62 @@ What the client gets for a wrong body (with `fieldNaming: FieldNaming.snakeCase`
 The models of `json_serializable` and `freezed` (below) don't need it: their generated `fromJson`
 is used as it is.
 
+### Partial updates (PATCH): absent vs `null`
+
+In a PATCH, a missing field and a field sent as `null` mean different things: `{}` leaves the
+nickname as it is, `{"nickname": null}` clears it. With `json.field<String?>` both are `null`;
+`json.patch<T>()` keeps the difference in a `PatchValue<T>`:
+
+```dart
+class UserUpdate {
+  final PatchValue<String> name;      // absent, or a String (null is a 400)
+  final PatchValue<String?> nickname; // absent, null (clear it), or a String
+
+  UserUpdate({required this.name, required this.nickname});
+
+  factory UserUpdate.fromJson(Map<String, dynamic> json) => UserUpdate(
+    name: json.patch<String>('name'),
+    nickname: json.patch<String?>('nickname'),
+  );
+
+  /// The user after this update: what is absent keeps its value
+  User applyTo(User user) => user.copyWith(
+    name: name.orElse(user.name),
+    nickname: nickname.orElse(user.nickname),
+  );
+}
+
+Route.patch(
+  path: '/users/{id}',
+  handler: (request) async {
+    final update = await request.body<UserUpdate>();
+    final user = users.find(request.pathParam<int>('id'));
+    return ResponseEntity.ok(body: users.save(update.applyTo(user)));
+  },
+)
+```
+
+| Body                      | `name`                  | `nickname`                       | Result                     |
+|---------------------------|-------------------------|----------------------------------|----------------------------|
+| `{}`                      | absent                  | absent                           | nothing changes            |
+| `{"nickname": "annie"}`   | absent                  | `PatchValue.of('annie')`         | the nickname changes       |
+| `{"nickname": null}`      | absent                  | `PatchValue.of(null)`            | the nickname is cleared    |
+| `{"name": null}`          | 400 `$.name: expected a string, got null` | |                            |
+
+- `isPresent` tells whether the field came; `value` is its value (a `StateError` when absent);
+  `orElse(current)` is the value after the update; `valueOrNull` is for validating (below).
+- The value is read like `json.field<T>()`: any type of the mapper, with the path in the errors.
+- To validate only what came, validate `valueOrNull`: an absent field is `null`, and every
+  validator except `notNull()` passes on `null`:
+
+  ```dart
+  @override
+  ConstraintValidatorContext validate() => ConstraintValidatorContext()
+    ..field('name', name.valueOrNull).size(min: 2);
+  ```
+
+`example/02_routing` has a `PATCH /users/{id}` built this way.
+
 ### Rejecting unknown fields
 
 By default a key the model doesn't know is ignored: `{"name": "Ann", "is_admin": true}` creates a

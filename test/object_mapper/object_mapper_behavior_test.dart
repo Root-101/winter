@@ -1294,6 +1294,107 @@ void main() {
     });
   });
 
+  group('PatchValue: absent vs null, for a PATCH', () {
+    final mapper = ObjectMapper(
+      rejectUnknownFields: true,
+      deserializers: [Deserializer<_UpdateUser>.json(_UpdateUser.fromJson)],
+    );
+
+    test('absent, null and a value are different', () {
+      final _UpdateUser empty = mapper.deserialize<_UpdateUser>({});
+      final _UpdateUser cleared = mapper.deserialize<_UpdateUser>({
+        'nickname': null,
+      });
+      final _UpdateUser changed = mapper.deserialize<_UpdateUser>({
+        'name': 'Bob',
+        'nickname': 'bobby',
+      });
+
+      expect(empty.name.isPresent, isFalse);
+      expect(empty.nickname, const PatchValue<String?>.absent());
+      expect(cleared.nickname.isPresent, isTrue);
+      expect(cleared.nickname.value, isNull);
+      expect(changed.name.value, 'Bob');
+      expect(changed.nickname, const PatchValue<String?>.of('bobby'));
+    });
+
+    test('orElse gives the value after the update', () {
+      final _UpdateUser cleared = mapper.deserialize<_UpdateUser>({
+        'nickname': null,
+      });
+
+      expect(cleared.name.orElse('Ann'), 'Ann');
+      expect(cleared.nickname.orElse('annie'), isNull);
+      expect(cleared.name.valueOrNull, isNull);
+      expect(() => cleared.name.value, throwsStateError);
+      expect(cleared.name.toString(), 'PatchValue.absent()');
+      expect(cleared.nickname.toString(), 'PatchValue(null)');
+    });
+
+    test('a non-nullable field can be absent, never null', () {
+      expect(
+        () => mapper.deserialize<_UpdateUser>({'name': null}),
+        throwsA(
+          isA<DeserializationException>().having(
+            (e) => e.message,
+            'message',
+            r'$.name: expected a string, got null',
+          ),
+        ),
+      );
+    });
+
+    test(
+      'through a PATCH handler: only what came is changed and validated',
+      () async {
+        final previous = om;
+        Winter.context.setUp(objectMapper: mapper);
+        addTearDown(() => Winter.context.setUp(objectMapper: previous));
+        String name = 'Ann';
+        String? nickname = 'annie';
+        final client = WinterTestClient.build(
+          router: WinterRouter(
+            routes: [
+              Route.patch(
+                path: '/me',
+                handler: (request) async {
+                  final update = await request.body<_UpdateUser>();
+                  name = update.name.orElse(name);
+                  nickname = update.nickname.orElse(nickname);
+                  return ResponseEntity.ok(
+                    body: {'name': name, 'nickname': nickname},
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+
+        expect((await client.patch('/me', body: {})).json, {
+          'name': 'Ann',
+          'nickname': 'annie',
+        });
+        expect((await client.patch('/me', body: {'nickname': null})).json, {
+          'name': 'Ann',
+          'nickname': null,
+        });
+        expect((await client.patch('/me', body: {'name': 'Bob'})).json, {
+          'name': 'Bob',
+          'nickname': null,
+        });
+        final TestResponse invalid = await client.patch(
+          '/me',
+          body: {'name': 'B'},
+        );
+        expect(invalid.statusCode, 422);
+        expect(
+          ((invalid.json as Map)['violations'] as List).single['fieldName'],
+          'name',
+        );
+      },
+    );
+  });
+
   group('Replacing the mapper warns about what is lost', () {
     late List<String> logs;
     late ObjectMapper previous;
@@ -1528,4 +1629,21 @@ class _HomeAddress {
 
   factory _HomeAddress.fromJson(Map<String, dynamic> json) =>
       _HomeAddress(json.field<String>('zipCode'));
+}
+
+class _UpdateUser implements Validatable {
+  final PatchValue<String> name;
+  final PatchValue<String?> nickname;
+
+  _UpdateUser(this.name, this.nickname);
+
+  factory _UpdateUser.fromJson(Map<String, dynamic> json) =>
+      _UpdateUser(json.patch<String>('name'), json.patch<String?>('nickname'));
+
+  @override
+  ConstraintValidatorContext validate() {
+    final cvc = ConstraintValidatorContext();
+    cvc.field('name', name.valueOrNull).size(min: 2);
+    return cvc;
+  }
 }

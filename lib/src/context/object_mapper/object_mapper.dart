@@ -317,6 +317,17 @@ extension JsonObjectFields on Map<String, dynamic> {
     });
   }
 
+  /// The field [name] for a partial update (PATCH): [PatchValue.absent] when the JSON doesn't
+  /// have it, and the value (read like [field]) when it has it, `null` included when [T] is
+  /// nullable. So `{"nickname": null}` (clear it) and `{}` (leave it) are different:
+  ///
+  /// ```dart
+  /// nickname: json.patch<String?>('nickname'), // absent, null or a String
+  /// ```
+  PatchValue<T> patch<T>(String name) => containsKey(name)
+      ? PatchValue<T>.of(field<T>(name))
+      : PatchValue<T>.absent();
+
   /// The field [name], a JSON object, read by [fromJson] (for a class that isn't registered in the
   /// mapper). Missing or not an object is a [DeserializationException] (400) at its path.
   T object<T>(String name, T Function(Map<String, dynamic> json) fromJson) {
@@ -327,6 +338,65 @@ extension JsonObjectFields on Map<String, dynamic> {
       return Deserializer<T>.json(fromJson)._call(this[name], mapper);
     });
   }
+}
+
+/// A field of a partial update (PATCH): absent from the JSON, or present with a [value] (`null`
+/// too, when [T] is nullable). Read it with `json.patch<T>(name)`:
+///
+/// ```dart
+/// class UpdateUser {
+///   final PatchValue<String> name;      // absent or a String
+///   final PatchValue<String?> nickname; // absent, null (clear it) or a String
+///
+///   UpdateUser(this.name, this.nickname);
+///
+///   factory UpdateUser.fromJson(Map<String, dynamic> json) =>
+///       UpdateUser(json.patch<String>('name'), json.patch<String?>('nickname'));
+/// }
+///
+/// final User updated = user.copyWith(
+///   name: update.name.orElse(user.name),
+///   nickname: update.nickname.orElse(user.nickname),
+/// );
+/// ```
+///
+/// {@category Object mapper}
+final class PatchValue<T> {
+  final bool _present;
+  final T? _value;
+
+  /// A field the JSON doesn't have: keep the current value
+  const PatchValue.absent() : _present = false, _value = null;
+
+  /// A field the JSON has, with its [value]
+  const PatchValue.of(T value) : _present = true, _value = value;
+
+  /// Whether the JSON has the field (even with `null`)
+  bool get isPresent => _present;
+
+  /// The value the JSON has: a [StateError] when it's absent (check [isPresent], or use [orElse])
+  T get value => _present
+      ? _value as T
+      : throw StateError('The field is absent: check isPresent or use orElse');
+
+  /// The value of the JSON, or [current] when it's absent: the value after the update
+  T orElse(T current) => _present ? _value as T : current;
+
+  /// The value, or `null` when it's absent: for validating only what came
+  /// (`cvc.field('name', update.name.valueOrNull).size(min: 2)`)
+  T? get valueOrNull => _value;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PatchValue<T> &&
+      other._present == _present &&
+      other._value == _value;
+
+  @override
+  int get hashCode => Object.hash(_present, _value);
+
+  @override
+  String toString() => _present ? 'PatchValue($_value)' : 'PatchValue.absent()';
 }
 
 /// A JSON object that remembers which keys were read, for [ObjectMapper.rejectUnknownFields]. A

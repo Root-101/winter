@@ -68,6 +68,51 @@ void main() {
       expect(jsonDecode(response.body)['name'], equals('Alice Updated'));
     });
 
+    test(
+      'PATCH /users/{id}: absent keeps, null clears, a value changes',
+      () async {
+        Future<Map<String, dynamic>> patch(Map<String, Object?> body) async {
+          final response = await http.patch(
+            Uri.parse('$baseUrl/users/1'),
+            body: jsonEncode(body),
+            headers: {'Content-Type': 'application/json'},
+          );
+          return jsonDecode(response.body) as Map<String, dynamic>;
+        }
+
+        expect(await patch({'nickname': 'ali'}), {
+          'id': 1,
+          'name': 'Alice',
+          'nickname': 'ali',
+        });
+        expect(await patch({'name': 'Alicia'}), {
+          'id': 1,
+          'name': 'Alicia',
+          'nickname': 'ali',
+        });
+        expect(await patch({'nickname': null}), {
+          'id': 1,
+          'name': 'Alicia',
+          'nickname': null,
+        });
+        expect(await patch({}), {'id': 1, 'name': 'Alicia', 'nickname': null});
+      },
+    );
+
+    test('PATCH /users/{id} with a null name is a 400', () async {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/users/1'),
+        body: jsonEncode({'name': null}),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      expect(response.statusCode, 400);
+      expect(
+        jsonDecode(response.body)['detail'],
+        r'$.name: expected a string, got null',
+      );
+    });
+
     test('DELETE /users/{id} removes user via service', () async {
       final response = await http.delete(Uri.parse('$baseUrl/users/1'));
       expect(response.statusCode, equals(200));
