@@ -379,7 +379,7 @@ void main() {
       expect(response.statusCode, 422);
       expect(
         ((response.json as Map)['violations'] as List).map(
-          (v) => (v as Map)['field_name'],
+          (v) => (v as Map)['fieldName'],
         ),
         ['first_name', 'home_address.zip_code'],
       );

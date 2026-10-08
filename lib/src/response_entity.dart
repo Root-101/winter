@@ -55,19 +55,26 @@ class ResponseEntity<T> extends Response {
   static String? _contentTypeOfValue(int statusCode, Object? body) {
     if (body == null) return null;
     if (body is Stream) return MediaType.applicationOctetStream.mimeType;
-    if (body is String) return MediaType.textPlain.mimeType;
-    return statusCode >= 400
-        ? MediaType.applicationProblemJson.mimeType
-        : MediaType.applicationJson.mimeType;
+    if (body is String) return _utf8(MediaType.textPlain);
+    return _utf8(
+      statusCode >= 400
+          ? MediaType.applicationProblemJson
+          : MediaType.applicationJson,
+    );
   }
 
   /// Content-Type of a body given to [change], which is used as it is (never serialized):
   /// a String is text, bytes or a Stream are binary
   static String? _contentTypeOfRawBody(Object? body) {
     if (body == null) return null;
-    if (body is String) return MediaType.textPlain.mimeType;
+    if (body is String) return _utf8(MediaType.textPlain);
     return MediaType.applicationOctetStream.mimeType;
   }
+
+  /// A text body always says its charset: without it, shelf added `; charset=utf-8` only to a
+  /// body with non-ASCII characters, so the same response changed with its language
+  static String _utf8(MediaType mediaType) =>
+      '${mediaType.mimeType}; charset=utf-8';
 
   /// Resolve the headers, adding [contentType] and the Content-Length when needed.
   static Map<String, Object>? _resolveHeaders(

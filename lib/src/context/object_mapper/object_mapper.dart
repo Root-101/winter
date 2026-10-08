@@ -485,6 +485,15 @@ class ObjectMapper {
     if (serializer != null) {
       return (object) => _applyObjectOptions(serializer._call(object, this));
     }
+
+    ///The error format of Winter has fixed names (`requestId`, `fieldName`), whatever the
+    ///[fieldNaming] of the app: a client reads the errors of every Winter app the same way
+    if (object is ProblemDetails) {
+      return (object) => (object as ProblemDetails).toJson();
+    }
+    if (object is ConstraintViolation) {
+      return (object) => (object as ConstraintViolation).toJson();
+    }
     if (_hasToJson(object)) {
       return (object) => _applyObjectOptions((object as dynamic).toJson());
     }

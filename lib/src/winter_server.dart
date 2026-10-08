@@ -147,7 +147,9 @@ class Winter {
     final HttpServer rawServer;
     try {
       rawServer = await shelf_io.serve(
-        poweredByHeader: 'Winter-Server',
+        ///No `X-Powered-By`: an API doesn't announce its framework (OWASP), and the real
+        ///server sends the same headers as `WinterTestClient`
+        poweredByHeader: null,
         _buildHandler(
           router: nonNullRouter,
           globalFilterConfig: nonNullGlobalFilterConfig,

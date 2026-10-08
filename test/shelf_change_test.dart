@@ -76,7 +76,10 @@ void main() {
       expect(changed, isA<ResponseEntity<Map<String, int>>>());
       expect(changed.body(), {'id': 1});
       expect(changed.headers['x-new'], '1');
-      expect(changed.headers['content-type'], 'application/json');
+      expect(
+        changed.headers['content-type'],
+        'application/json; charset=utf-8',
+      );
       expect(jsonDecode(await changed.readAsString()), {'id': 1});
     });
 

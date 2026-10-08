@@ -72,6 +72,10 @@ WinterRouter(
 )
 ```
 
+A route can have a handler and children at the same time: `Route.get(path: '/orders', handler:
+list, routes: [...])` answers `/orders` and its children inherit its filters. A child with
+`path: '/'` answers the path of its parent too. An empty path (`''`) is not a route.
+
 `basePath` is added to every route of the router.
 
 ### Path params
