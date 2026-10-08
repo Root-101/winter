@@ -831,7 +831,8 @@ The current 4 are fine. Missing:
 - [x] `05_validation_object_mapper`: nested DTOs, lists, `Map<String, T>`, custom serializers and a
   422 response (after 2.1 and 2.2). → Done in 3.2 (it found that `enumByName` inside a list was a
   `Deserializer<Enum>`, `DECISIONS.md` §2).
-- [ ] `06_files`: multipart, static files and cookies (once they exist).
+- [x] `06_files`: multipart, static files and cookies (once they exist). → A photo gallery; it
+  found that `TestResponse` could not read a binary body (now `bodyBytes`).
 - [x] `07_production`: `.env`, JSON logger, request id, health check, Dockerfile and graceful
   shutdown with `onShutdown` closing a "database". → Done in 3.2.
 

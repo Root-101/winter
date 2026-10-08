@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io' show HttpConnectionInfo;
+import 'dart:typed_data';
 
 import 'package:winter/winter.dart';
 
@@ -69,15 +70,17 @@ class WinterTestClient {
     );
 
     ///Like a real server: the body of a HEAD response is never sent
-    final String responseBody = method.toUpperCase() == 'HEAD'
-        ? ''
-        : await response.readAsString();
+    final BytesBuilder bytes = BytesBuilder(copy: false);
+    if (method.toUpperCase() != 'HEAD') {
+      await response.read().forEach(bytes.add);
+    }
 
     return TestResponse(
       statusCode: response.statusCode,
       headers: response.headers,
       headersAll: response.headersAll,
-      body: responseBody,
+      bodyBytes: bytes.takeBytes(),
+      encoding: response.encoding,
     );
   }
 
@@ -119,14 +122,22 @@ class TestResponse {
   /// Every value of each header, case insensitive (several `Set-Cookie`)
   final Map<String, List<String>> headersAll;
 
-  final String body;
+  /// The body as it was sent (an image, a file)
+  final Uint8List bodyBytes;
+
+  final Encoding? _encoding;
 
   TestResponse({
     required this.statusCode,
     required this.headers,
     required this.headersAll,
-    required this.body,
+    required this.bodyBytes,
+    this._encoding,
   });
+
+  /// The body as text, decoded with the encoding of the response (UTF-8 by default). Only when
+  /// it's read, so a binary body (see [bodyBytes]) never fails.
+  late final String body = (_encoding ?? utf8).decode(bodyBytes);
 
   /// The body decoded as JSON
   dynamic get json => jsonDecode(body);

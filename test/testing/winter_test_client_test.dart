@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
@@ -153,4 +155,41 @@ void main() {
     expect((await echo.put('/echo', body: 'a')).body, 'put a');
     expect((await echo.patch('/echo', body: 'b')).body, 'patch b');
   });
+
+  test(
+    'a binary body is in bodyBytes, and body decodes text with its charset',
+    () async {
+      final Uint8List image = Uint8List.fromList([
+        0x89,
+        0x50,
+        0xFF,
+        0x00,
+        0xC3,
+      ]);
+      final files = WinterTestClient.build(
+        router: WinterRouter(
+          routes: [
+            Route.get(
+              path: '/image',
+              handler: (request) => ResponseEntity<Uint8List>.ok(body: image),
+            ),
+            Route.get(
+              path: '/latin',
+              handler: (request) =>
+                  ResponseEntity<String>(200, body: 'España', encoding: latin1),
+            ),
+          ],
+        ),
+      );
+
+      final TestResponse binary = await files.get('/image');
+      final TestResponse latin = await files.get('/latin');
+
+      expect(binary.bodyBytes, image);
+      expect(() => binary.body, throwsFormatException);
+      expect(latin.bodyBytes, latin1.encode('España'));
+      expect(latin.body, 'España');
+      expect((await files.head('/image')).bodyBytes, isEmpty);
+    },
+  );
 }

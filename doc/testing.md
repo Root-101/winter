@@ -58,7 +58,8 @@ void main() {
 - `connectionInfo` gives the request a client IP (for `clientIp()` and the rate limiter).
 
 `TestResponse` has `statusCode`, `headers` (case insensitive), `headersAll` (every value: several
-`Set-Cookie`), `body` (a `String`; empty for a `HEAD`) and `json` (the body decoded).
+`Set-Cookie`), `bodyBytes` (the body as it was sent: an image, a file; empty for a `HEAD`), `body`
+(the text, decoded with the charset of the response when it's read) and `json` (the body decoded).
 
 The responses are indented by default (`ObjectMapper.prettyPrint`): compare `response.json`, never
 the text.

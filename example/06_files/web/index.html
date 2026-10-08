@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Winter files</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; }
+    form { display: grid; gap: .5rem; margin-bottom: 1.5rem; }
+    img { max-width: 12rem; display: block; }
+  </style>
+</head>
+<body>
+  <h1>Winter files</h1>
+
+  <h2>1. Log in (a form and a cookie)</h2>
+  <form method="post" action="/login">
+    <input name="user" placeholder="Your name" required>
+    <button>Log in</button>
+  </form>
+  <form method="post" action="/logout"><button>Log out</button></form>
+
+  <h2>2. Upload a photo (multipart/form-data)</h2>
+  <form method="post" action="/photos" enctype="multipart/form-data">
+    <input name="title" placeholder="Title" required>
+    <input name="photo" type="file" accept="image/png,image/jpeg" required>
+    <button>Upload</button>
+  </form>
+
+  <h2>3. Upload a video (streamed to disk)</h2>
+  <form method="post" action="/videos" enctype="multipart/form-data">
+    <input name="video" type="file" accept="video/mp4" required>
+    <button>Upload</button>
+  </form>
+
+  <h2>Photos</h2>
+  <div id="photos">Log in to see them.</div>
+  <script>
+    fetch('/photos').then((response) => response.ok ? response.json() : []).then((photos) => {
+      if (photos.length === 0) return;
+      const list = document.getElementById('photos');
+      list.textContent = '';
+      for (const photo of photos) {
+        const figure = document.createElement('figure');
+        const image = document.createElement('img');
+        image.src = photo.url;
+        image.alt = photo.title;
+        const caption = document.createElement('figcaption');
+        caption.textContent = `${photo.title} (${photo.owner})`;
+        figure.append(image, caption);
+        list.append(figure);
+      }
+    });
+  </script>
+</body>
+</html>
