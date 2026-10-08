@@ -624,8 +624,10 @@ first, small and independent; then the new features, from the most used to the l
 
 **Dependency injection** (proposed in the second review of 2.4, none of them is breaking):
 
-- [ ] **Async initialization**: `putLazyAsync<T>(() async => ...)` and `await di.ready()`, for a
-  dependency that needs a connection opened; today it's awaited before `put`.
+- [x] **Async initialization**: `putLazyAsync<T>(() async => ...)` and `await di.ready()`, for a
+  dependency that needs a connection opened; today it's awaited before `put`. → Plus `findAsync`;
+  `Winter.start` awaits `ready()` before opening the port, and a cycle is a `StateError`
+  (`DECISIONS.md` §5).
 - [x] **Child containers for tests**: `di.child()` falls back to its parent, so a test registers
   its fakes in a child without touching the global `di`. → It takes the recipes of the parent,
   not its instances (except those of `put`), so a lazy service of the app uses the fakes

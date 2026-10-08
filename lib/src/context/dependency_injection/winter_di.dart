@@ -88,6 +88,31 @@ class DependencyInjection {
     ),
   );
 
+  /// Registers a singleton created by an asynchronous [create] (a connection that must be opened):
+  ///
+  /// ```dart
+  /// di.putLazyAsync<Database>(() => Database.connect(env.require('DATABASE_URL')),
+  ///     onDispose: (db) => db.close());
+  /// await di.ready();               // Winter.start does it before opening the port
+  /// final db = di.find<Database>(); // synchronous from then on
+  /// ```
+  ///
+  /// It's created by [ready] (or by the first [findAsync]); a [find] before that is a
+  /// [StateError]. [create] can find the dependencies registered before it with [findAsync].
+  void putLazyAsync<S>(
+    Future<S> Function() create, {
+    String? tag,
+    FutureOr<void> Function(S dependency)? onDispose,
+  }) => _register<S>(
+    tag,
+    _Registration(
+      DependencyKind.lazyAsync,
+      type: S,
+      create: create,
+      onDispose: _typedDispose(onDispose),
+    ),
+  );
+
   /// Registers a factory: every [find] returns a new instance from [create]. They are never
   /// disposed by Winter (whoever finds one owns it).
   void putFactory<S>(S Function() create, {String? tag}) => _register<S>(
@@ -144,6 +169,53 @@ class DependencyInjection {
     return _resolve(key, registration) as S;
   }
 
+  /// The dependency of [S] and [tag], waiting for it if it's created asynchronously
+  /// ([putLazyAsync]): the first call creates it, and the calls while it's being created share that
+  /// creation. Any other dependency is found as with [find].
+  Future<S> findAsync<S>({String? tag}) async {
+    final _Key key = _key<S>(tag);
+    final _Registration registration =
+        _lookup(key) ?? (throw _notFound('$S', tag));
+    if (registration.kind != DependencyKind.lazyAsync) {
+      return _resolve(key, registration) as S;
+    }
+    return await _createAsync(key, registration) as S;
+  }
+
+  /// Creates every asynchronous dependency ([putLazyAsync]) not created yet, one after the other
+  /// in order of registration (each one can use the ones before it). Those of a [parent] are
+  /// created in this container. `Winter.start` calls it before opening the port; call it yourself
+  /// before using [find] without a server (a test, a script).
+  ///
+  /// Every one is tried: each failure is logged with its stack trace, and then a [StateError]
+  /// names all of them. One that fails stays registered and not created.
+  Future<void> ready() async {
+    final List<String> failures = [];
+    for (final _Key key in _asyncKeys()) {
+      final _Registration registration = _lookup(key)!;
+      if (registration.hasValue) continue;
+      try {
+        await _createAsync(key, registration);
+      } catch (error, stackTrace) {
+        logger.error(
+          'The dependency <${registration.name}> could not be created',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        failures.add('<${registration.name}>: $error');
+      }
+    }
+    if (failures.isNotEmpty) throw _notCreated(failures);
+  }
+
+  /// The keys of the asynchronous dependencies of this container and its parents, the oldest
+  /// first, without the ones this container overrides with another kind
+  List<_Key> _asyncKeys() => {
+    ...?parent?._asyncKeys(),
+    for (final MapEntry(:key, :value) in _registrations.entries)
+      if (value.kind == DependencyKind.lazyAsync) key,
+  }.where((key) => _recipe(key)?.kind == DependencyKind.lazyAsync).toList();
+
   /// The registration of [key] here, or the one of the closest [parent]
   _Registration? _recipe(_Key key) =>
       _registrations[key] ?? parent?._recipe(key);
@@ -156,11 +228,13 @@ class DependencyInjection {
     final _Registration? own = _registrations[key];
     if (own != null) return own;
     final _Registration? inherited = parent?._recipe(key);
-    if (inherited == null || inherited.kind != DependencyKind.lazy) {
+    if (inherited == null ||
+        (inherited.kind != DependencyKind.lazy &&
+            inherited.kind != DependencyKind.lazyAsync)) {
       return inherited;
     }
     return _registrations[key] = _Registration(
-      DependencyKind.lazy,
+      inherited.kind,
       type: inherited.type,
       create: inherited.create,
       onDispose: inherited.onDispose,
@@ -208,14 +282,14 @@ class DependencyInjection {
         failures.add('<${registration.name}>: $error');
       }
     }
-    if (failures.isNotEmpty) {
-      throw StateError(
-        '${failures.length == 1 ? 'A dependency' : '${failures.length} dependencies'} '
-        'could not be created:\n'
-        '${failures.map((failure) => '- $failure').join('\n')}',
-      );
-    }
+    if (failures.isNotEmpty) throw _notCreated(failures);
   }
+
+  static StateError _notCreated(List<String> failures) => StateError(
+    '${failures.length == 1 ? 'A dependency' : '${failures.length} dependencies'} '
+    'could not be created:\n'
+    '${failures.map((failure) => '- $failure').join('\n')}',
+  );
 
   /// Calls the `onDispose` of every created dependency, in reverse order of registration, and
   /// removes all of them. An `onDispose` that fails is logged and the others still run.
@@ -246,6 +320,12 @@ class DependencyInjection {
           registration.value = _create(key, registration);
         }
         return registration.value;
+      case DependencyKind.lazyAsync:
+        if (registration.hasValue) return registration.value;
+        throw StateError(
+          'The dependency <${registration.name}> is created asynchronously and is not ready: '
+          'await di.ready() (Winter.start does it) or di.findAsync<${registration.name}>() first',
+        );
       case DependencyKind.factory:
         return _create(key, registration);
       case DependencyKind.scoped:
@@ -280,9 +360,14 @@ class DependencyInjection {
   /// A lazy singleton being created can't depend on a scoped dependency: it would keep the
   /// instance of the first request (disposed when that request ends) forever
   void _failOnCaptive(String scopedName) {
-    for (final creating in _creating) {
+    final List<_Key> creatingAsync =
+        (Zone.current[_asyncChainKey] as List<_Key>?) ?? const [];
+    for (final creating in [...creatingAsync, ..._creating]) {
       final _Registration? lazy = _registrations[creating];
-      if (lazy?.kind != DependencyKind.lazy) continue;
+      if (lazy?.kind != DependencyKind.lazy &&
+          lazy?.kind != DependencyKind.lazyAsync) {
+        continue;
+      }
       throw StateError(
         'The lazy singleton <${lazy!.name}> depends on <$scopedName>, which is scoped to a '
         'request: it would keep the instance of the first request (disposed when it ends) '
@@ -309,6 +394,48 @@ class DependencyInjection {
     } finally {
       _creating.removeLast();
     }
+  }
+
+  /// The keys of the asynchronous dependencies being created in this chain of `await`s, in a
+  /// [Zone]: a cycle (`A` awaits `B`, which awaits `A`) would otherwise wait forever
+  static final Object _asyncChainKey = Object();
+
+  /// Creates an asynchronous dependency once: the calls while it's being created share the same
+  /// future, and a failed creation is tried again by the next call
+  Future<Object?> _createAsync(_Key key, _Registration registration) {
+    if (registration.hasValue) return Future.value(registration.value);
+    final List<_Key> chain =
+        (Zone.current[_asyncChainKey] as List<_Key>?) ?? const [];
+    final int index = chain.indexOf(key);
+    if (index >= 0) {
+      final cycle = [
+        for (final creating in chain.sublist(index))
+          _registrations[creating]?.name ?? '$creating',
+        registration.name,
+      ];
+      return Future.error(
+        StateError('Circular dependency: ${cycle.join(' -> ')}'),
+      );
+    }
+    final Future<Object?>? pending = registration.pending;
+    if (pending != null) return pending;
+    final Future<Object?> creation = runZoned(
+      () async {
+        try {
+          final Object? value =
+              await (registration.create!() as Future<Object?>);
+          registration.value = value;
+          return value;
+        } finally {
+          registration.pending = null;
+        }
+      },
+      zoneValues: {
+        _asyncChainKey: [...chain, key],
+      },
+    );
+    registration.pending = creation;
+    return creation;
   }
 
   static Future<void> _dispose(
@@ -358,6 +485,9 @@ enum DependencyKind {
   /// `putLazy`: one instance, created by the first find
   lazy,
 
+  /// `putLazyAsync`: one instance, created asynchronously by `ready` (or the first `findAsync`)
+  lazyAsync,
+
   /// `putFactory`: a new instance by every find
   factory,
 
@@ -394,7 +524,8 @@ final class DependencyRegistration {
   String toString() {
     final String state = switch (kind) {
       DependencyKind.instance ||
-      DependencyKind.lazy => created ? ', created' : ', not created',
+      DependencyKind.lazy ||
+      DependencyKind.lazyAsync => created ? ', created' : ', not created',
       DependencyKind.factory || DependencyKind.scoped => '',
     };
     return '$type${tag == null ? '' : ' [$tag]'} (${kind.name}$state)';
@@ -411,6 +542,9 @@ class _Registration {
 
   Object? _value;
   bool hasValue = false;
+
+  /// The creation in progress of an asynchronous one
+  Future<Object?>? pending;
 
   _Registration(this.kind, {required this.type, this.create, this.onDispose});
 

@@ -140,7 +140,10 @@ Guide: [`doc/dependency-injection.md`](doc/dependency-injection.md).
   looking up subtypes would be slower and ambiguous. `T` and `T?` are the same key.
 - **Lifetimes**: `put` (an instance), `putLazy` (created by the first `find`; a cycle is a
   `StateError` with the chain), `putFactory` (one per `find`) and `putScoped` (one per request, in
-  its `RequestScope`). The functions are synchronous: await an async initialization before.
+  its `RequestScope`). The functions are synchronous, except `putLazyAsync`: created by
+  `ready()`, which `Winter.start` awaits before opening the port, so `find` stays synchronous
+  everywhere (an async `find` would turn every handler and constructor into a `Future`). A cycle
+  between async ones is detected through a `Zone`: with `await` it would wait forever.
 - **Child containers** (`di.child()`) take the recipes of their parent, not its instances (only
   the instances given with `put` are shared): a lazy singleton of the parent gets its own instance
   in the child, so it's built with the fakes of a test and the parent never changes (sharing the

@@ -721,6 +721,181 @@ void main() {
     });
   });
 
+  group('putLazyAsync, findAsync and ready (§5)', () {
+    late List<String> logs;
+
+    setUp(() {
+      logs = [];
+      Winter.context.setUp(logger: _MemoryLogger(logs));
+      addTearDown(() => Winter.context.setUp(logger: const ConsoleLogger()));
+    });
+
+    test('is created by ready; a find before that is a StateError', () async {
+      int created = 0;
+      di.putLazyAsync<String>(() async {
+        created++;
+        return 'connected';
+      });
+
+      expect(
+        () => di.find<String>(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('<String>'), contains('await di.ready()')),
+          ),
+        ),
+      );
+      expect(
+        di.registrations.single.toString(),
+        'String (lazyAsync, not created)',
+      );
+
+      await di.ready();
+      await di.ready();
+
+      expect(di.find<String>(), 'connected');
+      expect(created, 1);
+      expect(di.registrations.single.toString(), 'String (lazyAsync, created)');
+    });
+
+    test('findAsync creates it once, also for concurrent calls', () async {
+      int created = 0;
+      di
+        ..putLazyAsync<String>(() async {
+          created++;
+          await Future<void>.delayed(Duration.zero);
+          return 'connected';
+        })
+        ..put<int>(1);
+
+      final List<String> results = await Future.wait([
+        di.findAsync<String>(),
+        di.findAsync<String>(),
+      ]);
+
+      expect(results, ['connected', 'connected']);
+      expect(created, 1);
+      expect(await di.findAsync<int>(), 1);
+      await expectLater(di.findAsync<bool>(), throwsStateError);
+    });
+
+    test(
+      'ready creates them in order: one can use the ones before it',
+      () async {
+        final List<String> order = [];
+        di
+          ..putLazyAsync<String>(() async {
+            order.add('url');
+            return 'postgres://db';
+          })
+          ..putLazyAsync<int>(() async {
+            order.add('pool');
+            return (await di.findAsync<String>()).length;
+          });
+
+        await di.ready();
+
+        expect(order, ['url', 'pool']);
+        expect(di.find<int>(), 'postgres://db'.length);
+      },
+    );
+
+    test('every failure is named; a failed one is created again', () async {
+      bool fail = true;
+      di
+        ..putLazyAsync<String>(() async {
+          if (fail) throw StateError('no database');
+          return 'connected';
+        })
+        ..putLazyAsync<int>(() async => throw StateError('no queue'))
+        ..putLazyAsync<bool>(() async => true);
+
+      await expectLater(
+        di.ready(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              startsWith('2 dependencies could not be created:\n'),
+              contains('- <String>: Bad state: no database'),
+              contains('- <int>: Bad state: no queue'),
+            ),
+          ),
+        ),
+      );
+      expect(logs, [
+        'The dependency <String> could not be created',
+        'The dependency <int> could not be created',
+      ]);
+      expect(di.find<bool>(), isTrue);
+
+      fail = false;
+      expect(await di.findAsync<String>(), 'connected');
+    });
+
+    test('a cycle is a StateError, never a wait forever', () async {
+      di
+        ..putLazyAsync<String>(() async => '${await di.findAsync<int>()}')
+        ..putLazyAsync<int>(() async => (await di.findAsync<String>()).length);
+
+      await expectLater(
+        di.findAsync<String>().timeout(const Duration(seconds: 5)),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'Circular dependency: String -> int -> String',
+          ),
+        ),
+      );
+    });
+
+    test('it can be disposed, and a child creates its own', () async {
+      final List<String> disposed = [];
+      di.putLazyAsync<String>(
+        () async => 'parent',
+        onDispose: (value) => disposed.add(value),
+      );
+      final DependencyInjection child = di.child();
+
+      await child.ready();
+
+      expect(child.find<String>(), 'parent');
+      expect(() => di.find<String>(), throwsStateError);
+      await child.disposeAll();
+      expect(disposed, ['parent']);
+    });
+
+    test('it can\'t depend on a scoped one', () async {
+      di
+        ..putScoped<_UnitOfWork>(_UnitOfWork.new)
+        ..putLazyAsync<_OrderService>(
+          () async => _OrderService(di.find<_UnitOfWork>()),
+        );
+
+      await RequestScope.run(RequestScope(), () async {
+        await expectLater(
+          di.findAsync<_OrderService>(),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              allOf(
+                contains(
+                  'The lazy singleton <_OrderService> depends on <_UnitOfWork>',
+                ),
+                contains('putFactory'),
+              ),
+            ),
+          ),
+        );
+      });
+    });
+  });
+
   group('Use cases (§5, §5)', () {
     test('tags with every kind of registration', () {
       di

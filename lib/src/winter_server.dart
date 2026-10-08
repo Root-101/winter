@@ -133,7 +133,8 @@ class Winter {
   /// [context] replaces the global [context]. Starting a second server is a [StateError].
   ///
   /// [globalFilterConfig] runs on every request, sorted by `order`, before the filters of the
-  /// route.
+  /// route. The asynchronous dependencies (`di.putLazyAsync`) are created before the port is
+  /// opened (`di.ready()`): if one fails, the server doesn't start.
   static Future<Winter> start({
     WinterContext? context,
     ServerConfig? config,
@@ -189,6 +190,14 @@ class Winter {
       globalFilterConfig,
       nonNullConfig.requestTimeout,
     );
+
+    ///The asynchronous dependencies (putLazyAsync) are created before the first request
+    try {
+      await injection.ready();
+    } catch (_) {
+      restoreDependencies();
+      rethrow;
+    }
 
     final _InFlightRequests inFlightRequests = _InFlightRequests();
     final HttpServer rawServer;
