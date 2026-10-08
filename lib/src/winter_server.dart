@@ -525,8 +525,8 @@ class Winter {
   ) {
     for (final MapEntry(key: name, value: values)
         in response.headersAll.entries) {
-      final bool validName = _headerName.hasMatch(name);
-      if (validName && values.every(_headerValue.hasMatch)) continue;
+      final bool validName = _isHeaderName(name);
+      if (validName && values.every(_isHeaderValue)) continue;
       logger.error(
         'The response of ${request.method} ${request.requestedUri.path} has '
         '${validName ? 'an invalid value in the header $name' : 'a header with an invalid name'} '
@@ -538,10 +538,33 @@ class Winter {
     return response;
   }
 
-  static final RegExp _headerName = RegExp(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$");
+  /// A token (RFC 9110): letters, digits and the symbols of [_tokenChars]. A loop, not a regex:
+  /// it runs for every header of every response
+  static bool _isHeaderName(String name) {
+    if (name.isEmpty) return false;
+    for (final int char in name.codeUnits) {
+      if (char >= 128 || !_tokenChars[char]) return false;
+    }
+    return true;
+  }
+
+  static final List<bool> _tokenChars = List<bool>.generate(
+    128,
+    (char) =>
+        (char >= 0x30 && char <= 0x39) || // 0-9
+        (char >= 0x41 && char <= 0x5A) || // A-Z
+        (char >= 0x61 && char <= 0x7A) || // a-z
+        "!#\$%&'*+-.^_`|~".codeUnits.contains(char),
+    growable: false,
+  );
 
   /// A tab and the visible ASCII characters (and DEL, which `dart:io` accepts)
-  static final RegExp _headerValue = RegExp(r'^[\t\x20-\x7F]*$');
+  static bool _isHeaderValue(String value) {
+    for (final int char in value.codeUnits) {
+      if ((char < 0x20 && char != 0x09) || char > 0x7F) return false;
+    }
+    return true;
+  }
 
   /// Routing, filters and handler of [requestEntity], with the exception handler
   static Future<ResponseEntity> _runPipeline({

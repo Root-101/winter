@@ -906,9 +906,15 @@ Postponed to a later version: until then, the same checks are run by hand before
   - Documented, not fixed (a proxy's job, `doc/security.md`): slow clients (no timeout to read the
     headers), the size of the headers, and connections per client. A response that is a JSON
     nested thousands of levels (echoed from the client) overflows the stack of the encoder: a 500.
-- [ ] Publish the benchmarks (routing, server and object mapper) and compare them with `dart:io`
-  (the ceiling) and with the last version on shelf, in the README or in `doc/`.
-- [ ] Keep the coverage of the new modules at the current level (~99%).
+- [x] Publish the benchmarks (routing, server and object mapper) and compare them with `dart:io`
+  (the ceiling) and with the last version on shelf, in the README or in `doc/`. → `doc/benchmarks.md`:
+  Winter at ~85 % of `dart:io` (63 % on shelf). The check of the response headers of the security
+  review cost ~2 % with regular expressions; as a loop it's within the noise.
+- [x] Keep the coverage of the new modules at the current level (~99%). → 99.64 % of the lines
+  (2737 of 2747, without the generated code). Not covered: the end of a filter chain without a
+  handler, the race between `stat` and resolving the links of a static file, a folder at the root
+  of a drive, the branches of other platforms (Linux paths, SIGTERM on Windows), a connection that
+  fails before its request, and a logger that throws outside the pipeline.
 
 ### 6.4 Release
 

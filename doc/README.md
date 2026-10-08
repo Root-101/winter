@@ -38,4 +38,5 @@ then, this index says which ones exist.
 - [`CHANGELOG.md`](../CHANGELOG.md): what each version contains.
 - [`ROADMAP.md`](../ROADMAP.md): what is left for 1.0.
 - [`example/`](../example): standalone apps, from a basic server to authentication and i18n.
-- [`benchmark/`](../benchmark): routing, server and object mapper benchmarks.
+- [Benchmarks](benchmarks.md): the results of [`benchmark/`](../benchmark) (HTTP against `dart:io`,
+  the pipeline in memory, the object mapper) and how to run them.

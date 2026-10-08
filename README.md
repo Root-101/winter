@@ -100,6 +100,8 @@ with JWT, i18n, nested DTOs with validation, and a production setup with Docker.
 - [`DECISIONS.md`](DECISIONS.md): why Winter works the way it does.
 - [`CHANGELOG.md`](CHANGELOG.md) and [`ROADMAP.md`](ROADMAP.md).
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): how to work on Winter.
+- [Benchmarks](doc/benchmarks.md): Winter serves ~85 % of the requests per second of raw
+  `dart:io`, and the object mapper costs about a tenth more than JSON written by hand.
 
 ## License
 
