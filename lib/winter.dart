@@ -17,4 +17,6 @@ export 'src/security/security.dart';
 export 'src/server_config.dart';
 export 'src/testing/winter_test_client.dart';
 export 'src/server_sent_events.dart' hide serverSentEventsBody;
+export 'src/websocket.dart'
+    hide WebSocketUpgrade, webSocketUpgradeKey, webSocketRouteHandler;
 export 'src/winter_server.dart' hide addVary, serverClosing;

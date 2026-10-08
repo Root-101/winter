@@ -86,6 +86,25 @@ setUp(() {
 tearDown(() => Winter.context.setUp(objectMapper: ObjectMapper()));
 ```
 
+A WebSocket needs a real connection, which `WinterTestClient` doesn't have (it gets the 426 of a
+`GET` that isn't a handshake, which is a fine test of the route itself). Start the server and
+connect with `dart:io`; listen to the socket, or its `done` never completes:
+
+```dart
+test('the chat sends the messages back', () async {
+  await Winter.start(config: const ServerConfig(port: 9201, handleSignals: false), router: router);
+  addTearDown(() => Winter.close(force: true));
+
+  final socket = await WebSocket.connect('ws://localhost:9201/chat', headers: {'cookie': session});
+  final messages = StreamIterator(socket);
+  socket.add('Hi!');
+
+  await messages.moveNext();
+  expect(jsonDecode(messages.current as String), {'from': 'ann', 'text': 'Hi!'});
+  await socket.close();
+});
+```
+
 `WinterTestClient` doesn't start a server, so it doesn't create the asynchronous dependencies
 (`putLazyAsync`): `await di.ready()` in `setUp` when the app has any.
 

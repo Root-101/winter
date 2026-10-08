@@ -40,9 +40,19 @@ videos streamed to disk while they arrive, and the files served back with `ETag`
     reloading; the browser reconnects by itself.
 *   Behind the login like the rest: the cookie goes with the `EventSource` request.
 
-### 6. Tests in memory (`test/files_test.dart`)
+### 6. WebSocket chat (`/chat`)
+*   `Route.websocket(path: '/chat', filterConfig: _loggedIn, allowedOrigins: [...], handler: chat.join)`:
+    the handshake goes through `SessionFilter` and `AuthFilter` like any request, so the handler
+    knows the user (`request.principal<String>()`), and a browser can't open it from another
+    website (`allowedOrigins`: browsers send the cookie, CORS doesn't apply).
+*   `Chat.join` keeps the open sockets and sends every message to all of them with `sendJson`;
+    `await for` ends when the client leaves.
+*   The page connects with `new WebSocket('ws://.../chat')`: the session cookie goes with it.
+
+### 7. Tests in memory (`test/files_test.dart`)
 `WinterTestClient` sends the multipart bodies built by the test, and `response.bodyBytes` compares
-the photo byte by byte. Each test uses its own temporary folder.
+the photo byte by byte. Each test uses its own temporary folder. The chat needs a real connection:
+its test starts the server (`test/chat_test.dart`).
 
 ## How to Run
 

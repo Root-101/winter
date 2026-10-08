@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:winter/src/router/health.dart' show healthHandler;
 import 'package:winter/src/router/path_template.dart';
+import 'package:winter/src/websocket.dart' show webSocketRouteHandler;
 import 'package:winter/src/utils/valid_url.dart';
 import 'package:winter/winter.dart';
 
@@ -548,6 +549,54 @@ class Route {
   }
 
   static const String _staticFileParam = 'staticFile';
+
+  ///A WebSocket at [path]: the handshake (a `GET`) goes through the filters like any request, and
+  ///then [handler] gets the socket.
+  ///
+  ///```dart
+  ///Route.websocket(
+  ///  path: '/chat/{room}',
+  ///  filterConfig: FilterConfig([AuthFilter()]),
+  ///  allowedOrigins: ['https://app.example.com'],
+  ///  handler: (socket, request) async {
+  ///    final String room = request.pathParam<String>('room');
+  ///    await for (final message in socket) {
+  ///      socket.sendJson({'room': room, 'echo': message});
+  ///    }
+  ///  },
+  ///)
+  ///```
+  ///
+  ///- A request that isn't a WebSocket handshake is a 426 (`Upgrade Required`).
+  ///- [allowedOrigins]: the `Origin` a browser may connect from (a 403 otherwise; `'*'` for any).
+  ///  Browsers don't apply CORS to WebSockets, so without it any website can open the socket with
+  ///  the cookies of its user (cross-site WebSocket hijacking). A client without `Origin` (not a
+  ///  browser) is let in.
+  ///- [protocols]: the subprotocols spoken, in order of preference; the first one the client
+  ///  asks for is chosen, and a client that asks only for others is refused.
+  ///- [pingInterval]: a ping every 30 seconds by default, so a dead client is found and closed.
+  ///- The handler runs in a request scope of its own (`requestPrincipal`, `requestId`); an error
+  ///  in it is logged and closes the socket (1011). The server closes every socket (1001) when it
+  ///  shuts down.
+  factory Route.websocket({
+    required String path,
+    required WebSocketHandler handler,
+    List<String>? allowedOrigins,
+    List<String> protocols = const [],
+    Duration? pingInterval = const Duration(seconds: 30),
+    String? key,
+    FilterConfig? filterConfig,
+  }) => Route.get(
+    path: path,
+    handler: webSocketRouteHandler(
+      handler: handler,
+      protocols: protocols,
+      pingInterval: pingInterval,
+      allowedOrigins: allowedOrigins,
+    ),
+    key: key,
+    filterConfig: filterConfig,
+  );
 
   ///GET (and HEAD) [path]: a health check for a load balancer, Docker or Kubernetes.
   ///

@@ -612,9 +612,10 @@ first, small and independent; then the new features, from the most used to the l
 8. **Annotations / package scanning** needs code generation, which the project avoids
    (`DECISIONS.md`): decide whether it's done at all before starting it.
 
-- [ ] **WebSockets**, implemented by Winter on `WebSocketTransformer` of `dart:io` (no shelf):
+- [x] **WebSockets**, implemented by Winter on `WebSocketTransformer` of `dart:io` (no shelf):
   routes for WebSockets that go through the filters (auth, CORS) before the upgrade, as designed
-  in 3.1.
+  in 3.1. → `Route.websocket` (`DECISIONS.md` §10), with `allowedOrigins`
+  against cross-site WebSocket hijacking; `example/06_files` has a chat.
 - [x] **Server-Sent Events** on the streaming responses of 3.1. → `ResponseEntity.sse` and
   `ServerSentEvent`; the streams end when the server starts closing (`DECISIONS.md` §10).
   `example/06_files` sends the new photos.

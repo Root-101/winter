@@ -263,6 +263,56 @@ Route.health(
 - It's a normal route: add `filterConfig:` to protect it, or let `LoggingFilter.shouldFilter` skip
   it (`request.route?.key`) so the probes don't fill the logs.
 
+### WebSockets
+
+`Route.websocket` opens a WebSocket at a path. The handshake is a `GET` that goes through the
+filters like any request (authentication, rate limit, logs), and then the handler gets the socket:
+
+```dart
+Route.websocket(
+  path: '/chat/{room}',
+  filterConfig: FilterConfig([AuthFilter()]),         // a 401 before the upgrade
+  allowedOrigins: ['https://app.example.com'],         // a 403 from another website
+  handler: (socket, request) async {
+    final User user = request.principal<User>();       // the user of the handshake
+    final String room = request.pathParam<String>('room');
+    await for (final Object? message in socket) {      // ends when the client leaves
+      socket.sendJson({'room': room, 'from': user.name, 'text': message});
+    }
+  },
+)
+```
+
+```js
+const socket = new WebSocket('wss://api.example.com/chat/lobby'); // the cookies go with it
+socket.onmessage = (event) => console.log(JSON.parse(event.data));
+socket.send('Hello');
+```
+
+- The socket is the `WebSocket` of `dart:io`: a stream of the messages of the client (`String`
+  or bytes), `add` to send one, `close(code, reason)` to end it, and `sendJson(value)` to send a
+  value as JSON with the object mapper. It stays open when the handler returns: keep it in a list
+  to send to it later (a broadcast, see `example/06_files`).
+- **A request that isn't a WebSocket handshake** (a plain `GET`) is a **426 Upgrade Required**.
+- **`allowedOrigins`**: browsers don't apply CORS to WebSockets and send the cookies of the user to
+  a socket of any website. With a session in a cookie, list the origins of your pages, or any
+  website can open the socket as the user (cross-site WebSocket hijacking). A client without
+  `Origin` (not a browser) is let in; `'*'` allows any.
+- **`protocols`**: the subprotocols the route speaks (`['graphql-ws']`), in order of preference;
+  the first one the client asks for is chosen, and a client that asks only for others is refused.
+- **`pingInterval`**: a ping every 30 seconds by default, so a client that disappeared without
+  closing is found and closed; `null` for none.
+- **The handler runs in a request scope of its own**: `requestPrincipal()`, `requestId` and
+  `requestLocale` work, and the scoped dependencies live as long as the socket.
+- **An error of the handler** is logged and closes the socket with 1011.
+- **When the server shuts down**, every socket is closed with 1001 (going away): they never hold
+  the graceful shutdown, and a browser can reconnect to another instance.
+- A browser can't send an `Authorization` header with a WebSocket: authenticate it with the
+  cookie of the session, or with a token in the query (`?token=...`) read by your filter.
+
+Testing a WebSocket needs a real connection: start the server in the test and connect with
+`WebSocket.connect('ws://localhost:$port/chat')` of `dart:io` (see [testing](testing.md)).
+
 ### Testing the routes
 
 ```dart
