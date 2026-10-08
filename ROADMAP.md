@@ -9,6 +9,11 @@ README: once adopted, delete `todo.md` and link this file from the README.
 
 **Legend:** 🔴 blocks 1.0 · 🟡 should be in 1.0 · 🟢 after 1.0 (1.x) · ✔️ confirmed with a script
 
+> **Decision (2026-10-08): no release for now.** Phases 1 to 6.3 are done, but instead of
+> publishing a release candidate, everything still pending is finished first, starting with
+> **4.3** (in the order given there). The release (6.4) comes after that; the CI (6.1) stays
+> postponed.
+
 ---
 
 ## 0. What "1.0" means
@@ -586,9 +591,22 @@ cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `
   starts instead of in the first request that needs it. Proposed in the second review of 2.4.
   → Opt-in, every failure named in one `StateError` (`DECISIONS.md` §5).
 
-### 4.3 After 1.0 🟢
+### 4.3 More features 🟢 (next, before the release)
 
-They don't block 1.0 and shouldn't delay it (they can be added in 1.x without breaking changes):
+They were planned for 1.x (none of them breaks the API), but they are done before the first
+release (see the decision at the top). Order of work: what makes the existing modules complete
+first, small and independent; then the new features, from the most used to the least:
+
+1. **Dependency injection, validation and object mapper** (the three lists below): small
+   improvements of reviewed modules, each one on its own.
+2. **Server-Sent Events**: the streaming responses already exist (3.1).
+3. **Async validations**.
+4. **WebSockets**: the biggest one, already designed in 3.1.
+5. **OpenAPI** generation from the routes.
+6. **Scheduled tasks**, a **Redis `RateLimiterStore`**, **more languages**.
+7. A **trie router**, only if a benchmark with hundreds of routes justifies it.
+8. **Annotations / package scanning** needs code generation, which the project avoids
+   (`DECISIONS.md`): decide whether it's done at all before starting it.
 
 - [ ] **WebSockets**, implemented by Winter on `WebSocketTransformer` of `dart:io` (no shelf):
   routes for WebSockets that go through the filters (auth, CORS) before the upgrade, as designed
@@ -916,7 +934,10 @@ Postponed to a later version: until then, the same checks are run by hand before
   of a drive, the branches of other platforms (Linux paths, SIGTERM on Windows), a connection that
   fails before its request, and a logger that throws outside the pipeline.
 
-### 6.4 Release
+### 6.4 Release ⏸️ (on hold)
+
+On hold until 4.3 is done (see the decision at the top). Then the version is decided (`0.1.0`
+today in `pubspec.yaml` and the CHANGELOG, or the plan below), and the checks of 6.1 run by hand.
 
 1. [ ] `1.0.0-dev.x` with phases 1 to 3, a first preview.
 2. [ ] `1.0.0-rc.1` with phase 4 🔴 and the documentation. Use it in a real project for a few weeks.
@@ -928,15 +949,17 @@ Postponed to a later version: until then, the same checks are run by hand before
 ## 7. Recommended order
 
 ```
-Phase 1      Phase 2 (system by system)             Phase 3       Phase 4       rc.1 ──► 1.0.0
-(core bugs)  2.1 object mapper ──► 2.2 validation   3.1 dart:io   (features)
-                                                    3.2 freeze
-             ──► 2.3 exceptions ──► 2.4-2.8                │             │
-                    │                                      │             │
-                    └── each system's doc, once reviewed ──┴── docs of the new features
-                                                               + examples 05-07
+Phase 1      Phase 2 (system by system)             Phase 3       Phase 4.1-4.2   Phases 5, 6.2, 6.3
+(core bugs)  2.1 object mapper ──► 2.2 validation   3.1 dart:io   (features)      (docs, package,
+                                                    3.2 freeze                     final review)
+             ──► 2.3 exceptions ──► 2.4-2.8                │             │                │
+                    │                                      │             │                │
+                    └── each system's doc, once reviewed ──┴── docs of the new features   │
+                                                               + examples 05-07           │
+                                                                                          ▼
+                                     done up to here ──► 4.3 (now) ──► 6.4 release (on hold)
 
-CI (phase 6.1) comes after 1.0; until then its checks run by hand before each release.
+CI (phase 6.1) stays postponed; until then its checks run by hand before each release.
 ```
 
 Phase 3.1 goes before the features of phase 4 because cookies, static files, multipart, HTTPS and
