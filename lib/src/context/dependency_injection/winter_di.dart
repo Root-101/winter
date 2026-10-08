@@ -41,8 +41,8 @@ class DependencyInjection {
   }) => _register<S>(
     tag,
     _Registration(
-      _Kind.instance,
-      name: '$S',
+      DependencyKind.instance,
+      type: S,
       onDispose: _typedDispose(onDispose),
     )..value = dependency,
   );
@@ -57,8 +57,8 @@ class DependencyInjection {
   }) => _register<S>(
     tag,
     _Registration(
-      _Kind.lazy,
-      name: '$S',
+      DependencyKind.lazy,
+      type: S,
       create: create,
       onDispose: _typedDispose(onDispose),
     ),
@@ -68,7 +68,7 @@ class DependencyInjection {
   /// disposed by Winter (whoever finds one owns it).
   void putFactory<S>(S Function() create, {String? tag}) => _register<S>(
     tag,
-    _Registration(_Kind.factory, name: '$S', create: create),
+    _Registration(DependencyKind.factory, type: S, create: create),
   );
 
   /// Registers a dependency with one instance per request, created by [create] the first time
@@ -82,12 +82,31 @@ class DependencyInjection {
   }) => _register<S>(
     tag,
     _Registration(
-      _Kind.scoped,
-      name: '$S',
+      DependencyKind.scoped,
+      type: S,
       create: create,
       onDispose: _typedDispose(onDispose),
     ),
   );
+
+  /// What is registered, in order of registration: the type, tag and kind of each dependency, and
+  /// whether its instance was created. A snapshot, read-only:
+  ///
+  /// ```dart
+  /// logger.info('Dependencies:\n${di.registrations.join('\n')}');
+  /// // UserService (instance, created)
+  /// // Database [main] (lazy, not created)
+  /// ```
+  List<DependencyRegistration> get registrations => List.unmodifiable([
+    for (final MapEntry(key: (_, tag), value: registration)
+        in _registrations.entries)
+      DependencyRegistration._(
+        type: registration.type,
+        tag: tag,
+        kind: registration.kind,
+        created: registration.hasValue,
+      ),
+  ]);
 
   /// Whether something (even `null`) is registered for [S] and [tag]
   bool isRegistered<S>({String? tag}) =>
@@ -128,7 +147,9 @@ class DependencyInjection {
     for (final MapEntry<_Key, _Registration> entry
         in _registrations.entries.toList()) {
       final _Registration registration = entry.value;
-      if (registration.kind != _Kind.lazy || registration.hasValue) continue;
+      if (registration.kind != DependencyKind.lazy || registration.hasValue) {
+        continue;
+      }
       try {
         _resolve(entry.key, registration);
       } catch (error, stackTrace) {
@@ -171,16 +192,16 @@ class DependencyInjection {
 
   Object? _resolve(_Key key, _Registration registration) {
     switch (registration.kind) {
-      case _Kind.instance:
+      case DependencyKind.instance:
         return registration.value;
-      case _Kind.lazy:
+      case DependencyKind.lazy:
         if (!registration.hasValue) {
           registration.value = _create(key, registration);
         }
         return registration.value;
-      case _Kind.factory:
+      case DependencyKind.factory:
         return _create(key, registration);
-      case _Kind.scoped:
+      case DependencyKind.scoped:
         // First: it's the real mistake also outside a request (createAll)
         _failOnCaptive(registration.name);
         final RequestScope scope =
@@ -214,7 +235,7 @@ class DependencyInjection {
   void _failOnCaptive(String scopedName) {
     for (final creating in _creating) {
       final _Registration? lazy = _registrations[creating];
-      if (lazy?.kind != _Kind.lazy) continue;
+      if (lazy?.kind != DependencyKind.lazy) continue;
       throw StateError(
         'The lazy singleton <${lazy!.name}> depends on <$scopedName>, which is scoped to a '
         'request: it would keep the instance of the first request (disposed when it ends) '
@@ -280,20 +301,74 @@ Type _typeOf<T>() => T;
 
 typedef _Key = (Type type, String? tag);
 
-enum _Kind { instance, lazy, factory, scoped }
+/// How a dependency was registered, which decides how many instances it has
+///
+/// {@category Dependency injection}
+enum DependencyKind {
+  /// `put`: the instance given
+  instance,
+
+  /// `putLazy`: one instance, created by the first find
+  lazy,
+
+  /// `putFactory`: a new instance by every find
+  factory,
+
+  /// `putScoped`: one instance per request
+  scoped,
+}
+
+/// A registration of a [DependencyInjection], as [DependencyInjection.registrations] lists it
+///
+/// {@category Dependency injection}
+final class DependencyRegistration {
+  /// The type it was registered with (`di.put<UserRepository>(...)`: `UserRepository`)
+  final Type type;
+
+  /// Its tag, or null
+  final String? tag;
+
+  /// How it was registered
+  final DependencyKind kind;
+
+  /// Whether its single instance exists: always for an [DependencyKind.instance], after the first
+  /// find for a [DependencyKind.lazy] one; never for a factory or a scoped one (they have one per
+  /// find, or per request)
+  final bool created;
+
+  const DependencyRegistration._({
+    required this.type,
+    required this.tag,
+    required this.kind,
+    required this.created,
+  });
+
+  @override
+  String toString() {
+    final String state = switch (kind) {
+      DependencyKind.instance ||
+      DependencyKind.lazy => created ? ', created' : ', not created',
+      DependencyKind.factory || DependencyKind.scoped => '',
+    };
+    return '$type${tag == null ? '' : ' [$tag]'} (${kind.name}$state)';
+  }
+}
 
 class _Registration {
-  final _Kind kind;
+  final DependencyKind kind;
 
-  /// The type as it was registered, for the messages
-  final String name;
+  /// The type as it was registered
+  final Type type;
   final Object? Function()? create;
   final FutureOr<void> Function(Object? value)? onDispose;
 
   Object? _value;
   bool hasValue = false;
 
-  _Registration(this.kind, {required this.name, this.create, this.onDispose});
+  _Registration(this.kind, {required this.type, this.create, this.onDispose});
+
+  /// The type as it was registered, for the messages
+  String get name => '$type';
 
   Object? get value => _value;
 

@@ -119,6 +119,24 @@ di
 A cycle (`A` needs `B`, which needs `A`) is a `StateError` with the chain:
 `Circular dependency: OrderService -> PaymentClient -> OrderService`.
 
+### What is registered: `registrations`
+
+`di.registrations` lists every registration in order: its type, tag, kind and whether its
+instance exists. Log it at start-up, or look at it when a `find` says a dependency is missing:
+
+```dart
+logger.info('Dependencies:
+${di.registrations.join('
+')}');
+// UserService (instance, created)
+// Database [main] (lazy, not created)
+// Clock (factory)
+// UnitOfWork (scoped)
+```
+
+It's a read-only snapshot. Each `DependencyRegistration` has `type` (the type it was registered
+with), `tag`, `kind` (`DependencyKind.instance`, `lazy`, `factory` or `scoped`) and `created`.
+
 ### Failing at start-up: `createAll`
 
 A lazy singleton that can't be created (a missing dependency, a cycle, a constructor that throws)
