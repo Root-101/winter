@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:collection/collection.dart';
 import 'package:winter/winter.dart';
@@ -242,6 +243,31 @@ extension NestedListValidator<T extends Iterable<Validatable?>?>
   }
 }
 
+/// The validation of every value of a map of [Validatable]s (`validEach()`)
+///
+/// {@category Validation}
+extension NestedMapValidator<T extends Map<String, Validatable?>?>
+    on FieldValidator<T> {
+  /// Validates every value of the map, prefixing its violations with the name of the field and the
+  /// key, quoted as in JSON: `cvc.field('prices', prices).validEach()` gives
+  /// `prices["eur"].amount`. The key is never renamed by `fieldNaming`: it's data, not a field.
+  FieldValidator<T> validEach() {
+    final Map<String, Validatable?>? entries = value;
+    if (entries == null) return this;
+    final cvc = ConstraintValidatorContext(clock: context.clock);
+    for (final MapEntry(:key, :value) in entries.entries) {
+      if (value != null) {
+        cvc.merge(context._validateNested(value), prefix: mapKeyPath(key));
+      }
+    }
+    return _mergeNested(cvc, prefix: name);
+  }
+}
+
+/// The step of a path for the value of [key] in a map: `["eur"]` (the key quoted as in JSON, so a
+/// key with a dot or a bracket stays one step). Internal.
+String mapKeyPath(String key) => '[${jsonEncode(key)}]';
+
 /// A failed validation of a field.
 ///
 /// Its JSON (the body of the 422) has the [fieldName], the [message] (in the language of the
@@ -281,20 +307,21 @@ class ConstraintViolation {
     this.sensitive = false,
   });
 
-  /// A copy with the given fields replaced
+  /// A copy with the given fields replaced. [value] and [code] can be null, so they're given as a
+  /// function: `copyWith(code: () => null)` clears the code, `copyWith(code: () => 'x')` sets it.
   ConstraintViolation copyWith({
-    Object? value,
+    Object? Function()? value,
     String? fieldName,
     String? message,
-    String? code,
+    String? Function()? code,
     Map<String, Object?>? params,
     bool? sensitive,
   }) {
     return ConstraintViolation(
-      value: value ?? this.value,
+      value: value == null ? this.value : value(),
       fieldName: fieldName ?? this.fieldName,
       message: message ?? this.message,
-      code: code ?? this.code,
+      code: code == null ? this.code : code(),
       params: params ?? this.params,
       sensitive: sensitive ?? this.sensitive,
     );

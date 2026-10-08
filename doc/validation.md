@@ -115,6 +115,7 @@ Every validator returns the same `FieldValidator<T>`, so the type is kept along 
 | `DateTime`             | `future()`, `futureOrPresent()`                 | it's not after now / it's before now            | `future`, `futureOrPresent`    |
 | A `Validatable`        | `valid()`                                       | its own `validate()` has violations             | the ones of its rules          |
 | A list of `Validatable`| `validEach()`                                   | any element has violations                      | the ones of its rules          |
+| A `Map<String, Validatable>` | `validEach()`                             | any value has violations                        | the ones of its rules          |
 
 Every validator takes `message:` (your own text) and `stopOnFailure:`.
 
@@ -163,11 +164,18 @@ class UpdateUser implements Validatable {
 @override
 ConstraintValidatorContext validate() => ConstraintValidatorContext()
   ..field('address', address).notNull().valid() // address.zip
-  ..field('items', items).notEmpty().validEach(); // items[0].quantity
+  ..field('items', items).notEmpty().validEach() // items[0].quantity
+  ..field('prices', prices).validEach(); // prices["eur"].amount
 ```
 
 `valid()` and `validEach()` call the `validate()` of the nested objects and prefix their
 violations with the path. A `null` nested object or element is skipped (check it with `notNull()`).
+The key of a map is quoted as in JSON (`["eur"]`, so a key with a dot stays one step) and is never
+renamed by `fieldNaming`: it's data, not a field. `body<Map<String, Price>>()` validates every value
+the same way (`["eur"].amount`).
+
+A pattern given as a String (`pattern('^[A-Z]+$')`) is compiled once and cached, up to 256 of
+them (the least recently used is dropped): a pattern built from data doesn't grow memory forever.
 For anything else, `cvc.merge(other.validate(), prefix: 'name')` merges a context by hand.
 
 ### Messages and languages

@@ -3,4 +3,4 @@ export 'exception/default_exceptions.dart';
 export 'exception/exception_handler.dart';
 export 'object_mapper/object_mapper.dart';
 export 'validation/validators.dart';
-export 'validation/validation.dart';
+export 'validation/validation.dart' hide mapKeyPath;

@@ -597,10 +597,13 @@ class ObjectMapper {
 
   /// The name of a field (or a path: `items[0].firstName`) in JSON, following [fieldNaming]:
   /// `items[0].first_name` with `snakeCase`. Used for the `fieldName` of the 422, so it's the
-  /// name the client sent.
+  /// name the client sent. A quoted key of a map (`prices["eurPrice"]`) is data: never renamed.
   String jsonFieldName(String name) => fieldNaming == FieldNaming.none
       ? name
-      : name.replaceAllMapped(_nameInPath, (m) => _dartKeyToJson(m[0]!));
+      : name.replaceAllMapped(
+          _nameInPath,
+          (m) => m[1] ?? _dartKeyToJson(m[0]!),
+        );
 
   String _dartKeyToJson(String key) => switch (fieldNaming) {
     FieldNaming.none => key,
@@ -718,7 +721,10 @@ R _at<R>(String segment, R Function() body) {
 final RegExp _identifier = RegExp(r'^[a-zA-Z_][a-zA-Z0-9_]*$');
 
 /// Each name of a field path (`items[0].firstName`: `items` and `firstName`, not the index)
-final RegExp _nameInPath = RegExp(r'[a-zA-Z_][a-zA-Z0-9_]*');
+/// A quoted key of a map (`["eur"]`, kept as it is in group 1) or a name of a field
+final RegExp _nameInPath = RegExp(
+  r'(\["(?:[^"\\]|\\.)*"\])|[a-zA-Z_][a-zA-Z0-9_]*',
+);
 
 /// `.name`, or `["first name"]` when the key is not an identifier
 String _keySegment(String key) =>

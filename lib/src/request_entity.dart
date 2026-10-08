@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
 import 'package:winter/src/http/headers.dart';
+import 'package:winter/src/context/validation/validation.dart' show mapKeyPath;
 import 'package:winter/src/multipart.dart'
     show multipartBoundary, parseMultipart;
 import 'package:winter/src/router/path_template.dart';
@@ -300,7 +301,8 @@ class RequestEntity {
     return body;
   }
 
-  /// Validates a [Validatable] body, or every one in a list (prefixed with its index: `[0].email`)
+  /// Validates a [Validatable] body, every one in a list (prefixed with its index: `[0].email`), or
+  /// every value of a map (prefixed with its key: `["eur"].amount`)
   static void _validate(Object? body) {
     if (body is Validatable) {
       body.validate().throwOnFailure();
@@ -312,6 +314,14 @@ class RequestEntity {
           cvc.merge(element.validate(), prefix: '[$index]');
         }
         index++;
+      }
+      cvc.throwOnFailure();
+    } else if (body is Map<Object?, Object?>) {
+      final cvc = ConstraintValidatorContext();
+      for (final MapEntry(:key, :value) in body.entries) {
+        if (value is Validatable) {
+          cvc.merge(value.validate(), prefix: mapKeyPath('$key'));
+        }
       }
       cvc.throwOnFailure();
     }
