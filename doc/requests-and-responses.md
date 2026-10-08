@@ -91,7 +91,8 @@ final String text = await request.body<String>();
 
 ### A form
 
-An HTML `<form>` sends `application/x-www-form-urlencoded`, read with `formData()`:
+An HTML `<form>` sends `application/x-www-form-urlencoded`, or `multipart/form-data` when it
+uploads files. `formData()` reads both:
 
 ```dart
 final FormData form = await request.formData();   // name=Ann+Lee&tag=a&tag=b&age=30
@@ -103,8 +104,42 @@ form.field<int>('age');                           // 30, typed like queryParam<T
 - `fields` has the last value of a repeated field, `fieldsAll` every value (several checkboxes).
 - `field<T>(name, values:)` parses the same types as `queryParam<T>`: null if it's missing or
   empty, a **400** naming the field (never the value) if it isn't a `T`.
-- Another `Content-Type`, or none, is a **415**; a bad percent-encoding is a **400**.
+- Another `Content-Type`, or none, is a **415**; a malformed body is a **400**.
 - It's cached like `body<T>()`, and the same 413 applies.
+
+The files of a `multipart/form-data` form are in `files` (`filesAll` for `<input multiple>`):
+
+```dart
+final UploadedFile? photo = form.files['photo'];
+photo?.filename;   // 'beach.png', as the client sent it
+photo?.mimeType;   // 'image/png', as the client declared it
+photo?.bytes;      // the content, a Uint8List
+```
+
+- A file input left empty (no name, no content) is not in `files`.
+- **Never use `filename` as a path**: it can be `../../etc/passwd`. Save the file with a name of
+  your own, and don't trust `mimeType` either: check the content if it matters.
+
+### Big uploads: `multipart()`
+
+`formData()` keeps the whole body in memory. To stream a big file to disk, read the parts as they
+arrive:
+
+```dart
+await for (final MultipartPart part in request.multipart()) {
+  if (part.isFile) {
+    await part.read().pipe(File('uploads/${newId()}').openWrite());
+  } else {
+    fields[part.name!] = await part.readAsString();
+  }
+}
+```
+
+- Read each part (`read()`, `readAsBytes()`, `readAsString()`) before asking for the next one. A
+  part you skip is discarded without keeping it, and can't be read later.
+- `ServerConfig.maxBodySize` still applies (10 MB by default): raise it for big uploads.
+- A malformed body, or one that ends early, is a **400** thrown where it's being read.
+- Like `read()`, it consumes the body: once, and not after `body<T>()` or `formData()`.
 
 ### The response
 
@@ -286,6 +321,8 @@ has every value of each header.
 ## Typical mistakes and limitations
 
 - **`read()` after `body<T>()`** (or `formData()`): the stream is consumed; use `body<String>()`.
+- **Collecting the parts of `multipart()` to read them later** (`toList()`): each part must be read
+  before the next one arrives; use `formData()` to have every file at once.
 - **Changing `request.headers` or `queryParams`**: they are read-only; pass
   `request.copyWith(...)` to the chain.
 - **A stream response without a first chunk**: the client waits for the headers until it comes.

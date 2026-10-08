@@ -553,9 +553,12 @@ cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `
 - [x] **`application/x-www-form-urlencoded` forms:** `request.formData()`. → A `FormData` with
   `fields`/`fieldsAll` and `field<T>()` typed like `queryParam<T>`; 415 for another
   `Content-Type`, 400 for a bad encoding, cached like `body<T>()`.
-- [ ] **Multipart / file uploads:** `request.multipart()` with fields and files as streams,
+- [x] **Multipart / file uploads:** `request.multipart()` with fields and files as streams,
   respecting `maxBodySize` (possible base: `MimeMultipartTransformer` of `package:mime`, from
-  the Dart team, or an own parser). It was in `todo.md`.
+  the Dart team, or an own parser). It was in `todo.md`. → An own parser (`mime` leaves a reader
+  waiting forever and throws uncaught errors on malformed bodies, `DECISIONS.md` §10):
+  `multipart()` streams `MultipartPart`s, and `formData()` also reads `multipart/form-data` with
+  its `files` (`UploadedFile`) in memory.
 - [x] **Cookies:** read (`request.cookies`, from 3.1) and write (`ResponseEntity` with
   `setCookie(...)`, with `HttpOnly`, `Secure`, `SameSite`, `Max-Age`; `Cookie` of `dart:io`).
   → Done in 3.1: `request.cookies`/`cookie(name)` and `cookies:` in `ResponseEntity`.
