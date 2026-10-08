@@ -664,11 +664,14 @@ first, small and independent; then the new features, from the most used to the l
   ...)` drops what was registered in the previous `om`, and the missing deserializer is only seen
   as a 500 at runtime. → A warning with the types of the app (not the defaults)
   that the new mapper has not.
-- [ ] **Encode straight to bytes** with `JsonUtf8Encoder` (today `encode` makes a String that is
+- [x] **Encode straight to bytes** with `JsonUtf8Encoder` (today `encode` makes a String that is
   encoded to UTF-8 again), on the response model of 3.1. Measure it with
-  `benchmark/object_mapper_benchmark.dart` first.
-- [ ] **Decode without the intermediate String** (`utf8.decoder.fuse(json.decoder)` on the body
-  stream), keeping the cache of the raw body that `body<T>()` needs.
+  `benchmark/object_mapper_benchmark.dart` first. → `om.encodeBytes`, used by `ResponseEntity`
+  for UTF-8: 16 % to 46 % faster.
+- [x] **Decode without the intermediate String** (`utf8.decoder.fuse(json.decoder)` on the body
+  stream), keeping the cache of the raw body that `body<T>()` needs. → `om.decodeBytes` on the
+  cached bytes, used by `body<T>()` for UTF-8: 20 % to 25 % faster. The 415 is now checked before
+  reading the body.
 - [ ] **Absent vs `null`** for partial updates (PATCH): today a missing field and a `null` one are
   the same; `body<Map<String, dynamic>>()` is the workaround.
 - [ ] **Reject unknown fields** (optional, against mass assignment): needs to know which keys the

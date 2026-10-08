@@ -262,8 +262,14 @@ A response with a text body says its charset: `application/json; charset=utf-8` 
 `application/problem+json; charset=utf-8`, `text/plain; charset=utf-8`).
 
 The responses are indented by default (`prettyPrint`), which makes them easy to read in a browser
-or with curl. Turn it off when the size of the responses matters, and in tests compare the decoded
-JSON (`jsonDecode(response.body)`) instead of the text.
+or with curl. It has a cost: indenting a big response takes several times longer than writing it
+compact, so turn it off in production when the responses are big. In tests compare the decoded
+JSON (`response.json`) instead of the text.
+
+A response and a request are bytes, so Winter uses `om.encodeBytes(object)` (JSON straight to
+UTF-8) and `om.decodeBytes<T>(bytes)` (without the intermediate `String`): a fifth to a half faster
+than `utf8.encode(om.encode(...))` and `om.decode(utf8.decode(...))` (see
+[benchmarks](benchmarks.md#object-mapper)). `encode`/`decode` stay for JSON as text.
 
 ## Common cases
 

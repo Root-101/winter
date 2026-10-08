@@ -370,9 +370,11 @@ class ResponseEntity<T> {
       ),
       _ => (
         _ResponseBody.bytes(
-          textEncoding.encode(
-            (objectMapper ?? Winter.context.objectMapper).encode(body),
-          ),
+          identical(textEncoding, utf8)
+              ? (objectMapper ?? Winter.context.objectMapper).encodeBytes(body)
+              : textEncoding.encode(
+                  (objectMapper ?? Winter.context.objectMapper).encode(body),
+                ),
         ),
         text(
           statusCode >= 400
