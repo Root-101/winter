@@ -274,13 +274,21 @@ A `freezed` class is implemented by a private subclass (`_$OrderImpl`), so a
 
 ### A type you don't own
 
-Register a `Serializer` and a `Deserializer` for it:
+Register both directions at once with a `JsonAdapter`:
 
 ```dart
-om
-  ..addSerializer(Serializer<Uri>((uri) => uri.toString()))
-  ..addDeserializer(Deserializer<Uri>.string(Uri.parse));
+ObjectMapper(adapters: [
+  JsonAdapter<Uri>.string(toJson: (uri) => uri.toString(), fromJson: Uri.parse),
+  JsonAdapter<Money>.json(toJson: (money) => money.toMap(), fromJson: Money.fromMap),
+])
+// or later: om.addAdapter(JsonAdapter<Uri>.string(...))
 ```
+
+`JsonAdapter<T>.string`, `.integer`, `.number` and `.json` check the JSON type like the
+`Deserializer` of the same name; `.value` takes any JSON value. It's a `Serializer` and a
+`Deserializer` (`JsonAdapter(serializer, deserializer)` builds one from both), so `List<Uri>` and the
+other derived types come with it. It's not `JsonConverter`, so it doesn't clash with the one of
+`json_annotation` when both are imported.
 
 A value that is not a string is a 400 `expected a string, got ...`, and an invalid URI (`Uri.parse`
 throws) a 400 `invalid value`, both at the path of the value.

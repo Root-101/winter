@@ -59,7 +59,12 @@ void main() {
 
 `TestResponse` has `statusCode`, `headers` (case insensitive), `headersAll` (every value: several
 `Set-Cookie`), `bodyBytes` (the body as it was sent: an image, a file; empty for a `HEAD`), `body`
-(the text, decoded with the charset of the response when it's read) and `json` (the body decoded).
+(the text, decoded with the charset of the response when it's read), `json` (the body decoded,
+`dynamic`) and `as<T>()`, the body read by the object mapper like `body<T>()` reads a request:
+
+```dart
+final List<User> users = response.as<List<User>>(); // the global om, or objectMapper:
+```
 
 The responses are indented by default (`ObjectMapper.prettyPrint`): compare `response.json`, never
 the text.
