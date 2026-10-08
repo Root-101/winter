@@ -562,6 +562,165 @@ void main() {
     });
   });
 
+  group('child (§5)', () {
+    late DependencyInjection previous;
+
+    setUp(() => previous = Winter.context.dependencyInjection);
+
+    tearDown(() => Winter.context.setUp(dependencyInjection: previous));
+
+    test('what the child registers wins; the rest comes from the parent', () {
+      final _Service service = _Service();
+      di
+        ..put<_Service>(service)
+        ..put<String>('parent');
+      final DependencyInjection child = di.child()..put<String>('child');
+
+      expect(child.find<String>(), 'child');
+      expect(child.find<_Service>(), same(service));
+      expect(di.find<String>(), 'parent');
+      expect(child.parent, same(di));
+      expect(di.parent, isNull);
+    });
+
+    test('a lazy one of the parent uses the dependencies of the child', () {
+      // The real case: the global `di` of the test is a child with a fake
+      Winter.context.setUp(dependencyInjection: di);
+      di
+        ..putLazy<_Repository>(_SqlRepository.new)
+        ..putLazy<_OrderService>(
+          // `di` of an app is the global getter: the container of Winter.context
+          () => _OrderService(
+            _UnitOfWork(),
+            repository: Winter.context.dependencyInjection.find(),
+          ),
+        );
+      final DependencyInjection first = di.child()
+        ..put<_Repository>(_FakeRepository());
+      final DependencyInjection second = di.child();
+
+      Winter.context.setUp(dependencyInjection: first);
+      final _OrderService withFake = Winter.context.dependencyInjection
+          .find<_OrderService>();
+      Winter.context.setUp(dependencyInjection: second);
+      final _OrderService withReal = Winter.context.dependencyInjection
+          .find<_OrderService>();
+
+      expect(withFake.repository, isA<_FakeRepository>());
+      expect(withReal.repository, isA<_SqlRepository>());
+      expect(withFake, isNot(same(withReal)));
+      // The parent never changed: its lazy one is still not created
+      expect(di.registrations.map((r) => r.created), everyElement(isFalse));
+    });
+
+    test('a lazy one already created in the parent gets its own instance', () {
+      di.putLazy<_Service>(_Service.new);
+      final _Service parentInstance = di.find<_Service>();
+
+      final DependencyInjection child = di.child();
+
+      expect(child.find<_Service>(), isNot(same(parentInstance)));
+      expect(child.find<_Service>(), same(child.find<_Service>()));
+      expect(di.find<_Service>(), same(parentInstance));
+    });
+
+    test('isRegistered and tryFind see the parent; delete only the child', () {
+      di.put<String>('parent');
+      final DependencyInjection child = di.child();
+
+      expect(child.isRegistered<String>(), isTrue);
+      expect(child.tryFind<String>(), 'parent');
+      expect(child.tryFind<int>(), isNull);
+      expect(() => child.delete<String>(), throwsStateError);
+
+      child.put<String>('child');
+      expect(child.delete<String>(), 'child');
+      expect(child.find<String>(), 'parent');
+    });
+
+    test(
+      'disposeAll of the child only disposes what the child created',
+      () async {
+        final List<String> disposed = [];
+        di
+          ..put<_Service>(
+            _Service(),
+            onDispose: (_) => disposed.add('instance'),
+          )
+          ..putLazy<String>(
+            () => 'lazy',
+            onDispose: (_) => disposed.add('lazy'),
+          );
+        di.find<String>();
+        final DependencyInjection child = di.child()
+          ..put<int>(1, onDispose: (_) => disposed.add('child'));
+        child
+          ..find<String>()
+          ..find<_Service>();
+
+        expect(child.registrations.map((r) => r.toString()), [
+          'int (instance, created)',
+          'String (lazy, created)',
+        ]);
+        await child.disposeAll();
+
+        expect(disposed, ['lazy', 'child']);
+        expect(di.find<String>(), 'lazy');
+        expect(di.find<_Service>(), isA<_Service>());
+      },
+    );
+
+    test(
+      'factories and scoped ones of the parent are created in the child',
+      () {
+        Winter.context.setUp(dependencyInjection: di);
+        di
+          ..put<String>('parent')
+          ..putFactory<List<String>>(
+            () => [Winter.context.dependencyInjection.find<String>()],
+          )
+          ..putScoped<_UnitOfWork>(_UnitOfWork.new);
+        final DependencyInjection child = di.child()..put<String>('child');
+        Winter.context.setUp(dependencyInjection: child);
+
+        expect(child.find<List<String>>(), ['child']);
+        RequestScope.run(RequestScope(), () {
+          expect(child.find<_UnitOfWork>(), same(child.find<_UnitOfWork>()));
+          expect(
+            child.find<_UnitOfWork>(),
+            isNot(same(di.find<_UnitOfWork>())),
+          );
+        });
+      },
+    );
+
+    test('a grandchild falls back through every parent', () {
+      di.put<String>('root');
+      final DependencyInjection grandchild = di.child().child()..put<int>(1);
+
+      expect(grandchild.find<String>(), 'root');
+      expect(grandchild.find<int>(), 1);
+      expect(() => grandchild.find<bool>(), throwsStateError);
+    });
+
+    test('createAll of the child only creates its own lazy ones', () {
+      final List<String> created = [];
+      di.putLazy<String>(() {
+        created.add('parent');
+        return 'parent';
+      });
+      final DependencyInjection child = di.child()
+        ..putLazy<int>(() {
+          created.add('child');
+          return 1;
+        });
+
+      child.createAll();
+
+      expect(created, ['child']);
+    });
+  });
+
   group('Use cases (§5, §5)', () {
     test('tags with every kind of registration', () {
       di
@@ -693,8 +852,9 @@ class _FakeRepository implements _Repository {}
 
 class _OrderService {
   final _UnitOfWork unitOfWork;
+  final _Repository? repository;
 
-  _OrderService(this.unitOfWork);
+  _OrderService(this.unitOfWork, {this.repository});
 }
 
 class _Controller {

@@ -19,10 +19,13 @@ import 'package:winter/winter.dart';
 /// are the same key.
 ///
 /// Every instance has its own dependencies; the global one is `di` (from the current
-/// `Winter.context`).
+/// `Winter.context`). A [child] falls back to it, so a test can replace some of them.
 ///
 /// {@category Dependency injection}
 class DependencyInjection {
+  /// The container a [child] falls back to; null for a root one
+  final DependencyInjection? parent;
+
   /// In order of registration (a registration again moves to the end)
   final Map<_Key, _Registration> _registrations = {};
 
@@ -31,6 +34,27 @@ class DependencyInjection {
 
   /// The instances of the scoped dependencies of each request
   final Expando<Map<_Key, Object?>> _scopedInstances = Expando();
+
+  /// A root container, without dependencies
+  DependencyInjection() : parent = null;
+
+  DependencyInjection._child(DependencyInjection this.parent);
+
+  /// A container that falls back to this one: what it registers wins, and what it doesn't have
+  /// comes from here. A test replaces some dependencies without touching the global `di`:
+  ///
+  /// ```dart
+  /// setUp(() => Winter.context.setUp(
+  ///   dependencyInjection: di.child()..put<UserRepository>(FakeUserRepository()),
+  /// ));
+  /// ```
+  ///
+  /// It takes the *recipes* of this container, not its instances (except those given with
+  /// [put]): a [putLazy] of the parent gets its own instance in the child, created when the child
+  /// finds it, so it uses the dependencies of the child (the fakes). This container never changes:
+  /// [registrations], [delete], [createAll] and [disposeAll] of the child only see what the child
+  /// registered or created.
+  DependencyInjection child() => DependencyInjection._child(this);
 
   /// Registers [dependency] (replacing what was registered with the same type and tag).
   /// [onDispose] is called by [disposeAll] (and so by `Winter.shutdown()`).
@@ -108,16 +132,39 @@ class DependencyInjection {
       ),
   ]);
 
-  /// Whether something (even `null`) is registered for [S] and [tag]
-  bool isRegistered<S>({String? tag}) =>
-      _registrations.containsKey(_key<S>(tag));
+  /// Whether something (even `null`) is registered for [S] and [tag], here or in a [parent]
+  bool isRegistered<S>({String? tag}) => _recipe(_key<S>(tag)) != null;
 
-  /// The dependency of [S] and [tag]: a [StateError] if none is registered
+  /// The dependency of [S] and [tag] (from a [parent] if this container doesn't have it): a
+  /// [StateError] if none is registered
   S find<S>({String? tag}) {
     final _Key key = _key<S>(tag);
     final _Registration registration =
-        _registrations[key] ?? (throw _notFound('$S', tag));
+        _lookup(key) ?? (throw _notFound('$S', tag));
     return _resolve(key, registration) as S;
+  }
+
+  /// The registration of [key] here, or the one of the closest [parent]
+  _Registration? _recipe(_Key key) =>
+      _registrations[key] ?? parent?._recipe(key);
+
+  /// The registration that resolves [key] for a find. A lazy one of a [parent] is copied here
+  /// (without its instance): its instance belongs to this container, and the parent never
+  /// changes. An instance, a factory and a scoped one are used as they are (resolving them
+  /// changes nothing in their registration).
+  _Registration? _lookup(_Key key) {
+    final _Registration? own = _registrations[key];
+    if (own != null) return own;
+    final _Registration? inherited = parent?._recipe(key);
+    if (inherited == null || inherited.kind != DependencyKind.lazy) {
+      return inherited;
+    }
+    return _registrations[key] = _Registration(
+      DependencyKind.lazy,
+      type: inherited.type,
+      create: inherited.create,
+      onDispose: inherited.onDispose,
+    );
   }
 
   /// The dependency of [S] and [tag], or `null` if none is registered
@@ -125,9 +172,9 @@ class DependencyInjection {
   S? tryFind<S>({String? tag}) =>
       isRegistered<S>(tag: tag) ? find<S>(tag: tag) : null;
 
-  /// Removes the dependency of [S] and [tag] (a [StateError] if none is registered) and returns its
-  /// instance, if it was created (`null` for a lazy one never found, a factory or a scoped one).
-  /// It's not disposed.
+  /// Removes the dependency of [S] and [tag] (a [StateError] if none is registered here; the one of
+  /// a [parent] stays) and returns its instance, if it was created (`null` for a lazy one never
+  /// found, a factory or a scoped one). It's not disposed.
   S? delete<S>({String? tag}) {
     final _Registration registration =
         _registrations.remove(_key<S>(tag)) ?? (throw _notFound('$S', tag));

@@ -626,8 +626,10 @@ first, small and independent; then the new features, from the most used to the l
 
 - [ ] **Async initialization**: `putLazyAsync<T>(() async => ...)` and `await di.ready()`, for a
   dependency that needs a connection opened; today it's awaited before `put`.
-- [ ] **Child containers for tests**: `di.child()` falls back to its parent, so a test registers
-  its fakes in a child without touching the global `di`.
+- [x] **Child containers for tests**: `di.child()` falls back to its parent, so a test registers
+  its fakes in a child without touching the global `di`. → It takes the recipes of the parent,
+  not its instances (except those of `put`), so a lazy service of the app uses the fakes
+  (`DECISIONS.md` §5).
 - [x] **A listing of the registrations** (`di.registrations`: type, tag, kind, created or not), to
   log them at start-up or debug a missing one. → `DependencyRegistration` and the public
   `DependencyKind`, with a `toString` for the logs.

@@ -249,6 +249,36 @@ setUp(() {
 Registering it again replaces the registration, even a `putLazy` already created, so the next
 `find` returns the fake. What was found before keeps the instance it got.
 
+To leave the registrations of the app untouched, give each test a **child** container with its
+fakes:
+
+```dart
+late DependencyInjection appDependencies;
+
+setUpAll(() {
+  registerDependencies();                       // the real ones, in the global di
+  appDependencies = Winter.context.dependencyInjection;
+});
+
+setUp(() => Winter.context.setUp(
+  dependencyInjection: appDependencies.child()..put<PaymentClient>(FakePaymentClient()),
+));
+
+tearDown(() => di.disposeAll());                // only what this child created
+```
+
+- What the child registers wins; the rest comes from its `parent`.
+- The child takes the **recipes** of the parent, not its instances (except those given with
+  `put`): a `putLazy` of the parent gets its own instance in each child, created when the child
+  finds it, so a service of the app uses the fakes of the test. The parent never changes.
+- `registrations`, `delete`, `createAll` and `disposeAll` of a child only see what the child
+  registered or created.
+- The fakes only reach code that finds its dependencies through the global `di` (the container of
+  `Winter.context`), which is what a `putLazy(() => Service(di.find()))` of the app does. A
+  function that captured a container in a variable keeps using that container.
+- A lazy singleton that is expensive to create (a connection pool) is created again in each
+  child: register it with `put` in the parent to share it.
+
 ### Several implementations of the same type
 
 ```dart
