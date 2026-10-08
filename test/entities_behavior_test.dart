@@ -6,7 +6,7 @@ import 'dart:typed_data';
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
-/// The request and response of Winter, without shelf (DECISIONS.md §11)
+/// The request and response of Winter, without shelf (DECISIONS.md §10)
 void main() {
   final Uri uri = Uri.parse('http://localhost/users?page=2');
 

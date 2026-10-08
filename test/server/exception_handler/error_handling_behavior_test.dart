@@ -6,7 +6,7 @@ import 'package:winter/winter.dart';
 
 /// The behavior decided in the review of the error handling (DECISIONS.md §4)
 void main() {
-  group('An Error (a bug) inside the chain (§4.3)', () {
+  group('An Error (a bug) inside the chain (§4)', () {
     late List<int> seenByFilter;
     late WinterTestClient client;
 
@@ -41,7 +41,7 @@ void main() {
     });
   });
 
-  group('A custom ExceptionHandler (§4.3)', () {
+  group('A custom ExceptionHandler (§4)', () {
     test('also handles the Errors, not only the Exceptions', () async {
       Winter.context.setUp(exceptionHandler: _AlwaysTeapot());
       addTearDown(
@@ -61,7 +61,7 @@ void main() {
     });
   });
 
-  group('Every error is a Problem Details (§4.1, §4.5)', () {
+  group('Every error is a Problem Details (§4, §4)', () {
     late WinterTestClient client;
 
     setUp(() {
@@ -192,7 +192,7 @@ void main() {
     });
   });
 
-  group('ApiException (§4.2)', () {
+  group('ApiException (§4)', () {
     late WinterTestClient client;
 
     WinterTestClient clientThrowing(Object error) => WinterTestClient.build(
@@ -362,7 +362,7 @@ void main() {
     );
   });
 
-  group('on<T>() (§4.4)', () {
+  group('on<T>() (§4)', () {
     late SimpleExceptionHandler handler;
 
     setUp(() {

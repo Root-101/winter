@@ -10,7 +10,7 @@ void main() {
 
   setUp(() => cvc = ConstraintValidatorContext());
 
-  group('field(name, value): the rules run as they are chained (§3.1)', () {
+  group('field(name, value): the rules run as they are chained (§3)', () {
     test('there is no final call to forget', () {
       cvc.field('name', null).notNull();
 
@@ -48,7 +48,7 @@ void main() {
     });
   });
 
-  group('body<T>() validates by default (§3.2)', () {
+  group('body<T>() validates by default (§3)', () {
     late WinterTestClient client;
 
     setUp(() {
@@ -123,7 +123,7 @@ void main() {
     });
   });
 
-  group('Nested objects: valid() and validEach() (§3.3)', () {
+  group('Nested objects: valid() and validEach() (§3)', () {
     test('the violations are prefixed with the path', () {
       final order = _Order(
         address: _Address(zip: ''),
@@ -156,7 +156,7 @@ void main() {
     });
   });
 
-  group('code and params (§3.4)', () {
+  group('code and params (§3)', () {
     test('the JSON has the code and the parameters of the message', () {
       cvc.field('name', null).notNull();
       cvc.field('password', 'short', sensitive: true).size(min: 8);
@@ -210,7 +210,7 @@ void main() {
     });
   });
 
-  group('The 422 never has the value (§3.5)', () {
+  group('The 422 never has the value (§3)', () {
     test('a value without toJson() is still a 422', () async {
       final client = WinterTestClient.build(
         router: WinterRouter(
@@ -267,7 +267,7 @@ void main() {
     });
   });
 
-  group('ConstraintViolation equality (§3.6)', () {
+  group('ConstraintViolation equality (§3)', () {
     test('equal violations have the same hashCode', () {
       ConstraintViolation violation() =>
           (ConstraintValidatorContext()..field('c', 'x').oneOf(['a', 'b']))
@@ -309,7 +309,7 @@ void main() {
     });
   });
 
-  group('Chaining keeps the type of the field (§3.9)', () {
+  group('Chaining keeps the type of the field (§3)', () {
     test('validEach() after notEmpty()', () {
       cvc.field('items', [_Item(quantity: 0)]).notEmpty().validEach();
 
@@ -342,7 +342,7 @@ void main() {
     });
   });
 
-  group('fieldName follows the fieldNaming of the mapper (§3.9)', () {
+  group('fieldName follows the fieldNaming of the mapper (§3)', () {
     late WinterTestClient client;
 
     setUp(() {
@@ -404,7 +404,7 @@ void main() {
     });
   });
 
-  group('Fixes of the second review (§3.9)', () {
+  group('Fixes of the second review (§3)', () {
     test('url() rejects whitespace', () {
       cvc.field('host', 'http://exa mple.com').url();
       cvc.field('tab', 'http://example.com/\ta').url();
@@ -461,7 +461,7 @@ void main() {
     });
   });
 
-  group('Validators (§3.7)', () {
+  group('Validators (§3)', () {
     test('pattern() uses a RegExp as it is, flags included', () {
       cvc.field('a', 'abc').pattern(RegExp(r'^abc$'));
       cvc.field('b', 'ABC').pattern(RegExp(r'^abc$', caseSensitive: false));

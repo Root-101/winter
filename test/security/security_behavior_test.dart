@@ -25,7 +25,7 @@ void main() {
     ),
   );
 
-  group('CORS (§8.1)', () {
+  group('CORS (§8)', () {
     test('"*" with credentials logs a warning (and still echoes)', () async {
       final logs = <String>[];
       Winter.context.setUp(logger: _MemoryLogger(logs));
@@ -81,7 +81,7 @@ void main() {
     });
   });
 
-  group('AuthFilter (§8.2)', () {
+  group('AuthFilter (§8)', () {
     WinterTestClient authClient(AuthFilter filter) => clientWith(
       routes: [
         Route.get(
@@ -131,7 +131,7 @@ void main() {
     });
   });
 
-  group('Rules that see the request (§8.4)', () {
+  group('Rules that see the request (§8)', () {
     late WinterTestClient client;
 
     setUp(() {
@@ -191,7 +191,7 @@ void main() {
     });
   });
 
-  group('The typed principal (§8.3)', () {
+  group('The typed principal (§8)', () {
     late WinterTestClient client;
 
     setUp(() {
@@ -275,7 +275,7 @@ void main() {
     });
   });
 
-  group('Security headers (§8.5)', () {
+  group('Security headers (§8)', () {
     test('nosniff and DENY on every response, error ones included', () async {
       final client = clientWith();
 

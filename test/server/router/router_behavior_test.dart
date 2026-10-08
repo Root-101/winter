@@ -12,7 +12,7 @@ import 'package:winter/winter.dart';
 void main() {
   ResponseEntity ok(RequestEntity request) => ResponseEntity.ok(body: 'ok');
 
-  group('Repeated slashes (§9.1)', () {
+  group('Repeated slashes (§9)', () {
     final client = WinterTestClient.build(
       router: WinterRouter(
         routes: [Route.get(path: '/users/{id}', handler: ok)],
@@ -45,7 +45,7 @@ void main() {
     });
   });
 
-  group('A broken route table fails at start (§9.2)', () {
+  group('A broken route table fails at start (§9)', () {
     test('an invalid path', () {
       expect(
         () => WinterRouter(
@@ -88,7 +88,7 @@ void main() {
     });
   });
 
-  group('Paths and duplicates (§9.3)', () {
+  group('Paths and duplicates (§9)', () {
     test('a param with a regex is a valid route', () async {
       final client = WinterTestClient.build(
         router: WinterRouter(
@@ -167,7 +167,7 @@ void main() {
     });
   });
 
-  group('OPTIONS (§9.4)', () {
+  group('OPTIONS (§9)', () {
     final router = WinterRouter(
       routes: [
         Route.get(path: '/users', handler: ok),
@@ -241,7 +241,7 @@ void main() {
     });
   });
 
-  group('Immutable configuration (§9.5, §9.6)', () {
+  group('Immutable configuration (§9, §9)', () {
     test('FilterConfig cannot be changed', () {
       const config = FilterConfig([]);
 
@@ -288,7 +288,7 @@ void main() {
     });
   });
 
-  group('Typed params (§9.7)', () {
+  group('Typed params (§9)', () {
     final client = WinterTestClient.build(
       router: WinterRouter(
         routes: [
@@ -413,7 +413,7 @@ void main() {
     });
   });
 
-  group('Responses (§9.8)', () {
+  group('Responses (§9)', () {
     final client = WinterTestClient.build(
       router: WinterRouter(
         routes: [
