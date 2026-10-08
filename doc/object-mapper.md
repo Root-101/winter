@@ -330,6 +330,10 @@ email...) are a 422 of the validation, see [validation](validation.md).
   writing them needs nothing.
 - **Asking for a type that is not registered**, like `List<List<User>>` without registering
   `List<User>`, is a `MissingDeserializerError` (500), not a 400.
+- **Registering in `om` and then replacing it**: `Winter.context.setUp(objectMapper: ObjectMapper(...))`
+  starts from the defaults, so what was registered in the previous mapper is gone. Winter logs a
+  warning with the types it lost; set up the mapper first, or pass them in `deserializers:`,
+  `serializers:` or `adapters:`.
 - **`deserialize` with JSON text**: `om.deserialize<User>('{"id":1}')` receives a String, not an
   object (400). Use `om.decode<User>(...)` for text.
 - **A `toJson` with parameters** (`toJson({bool full = true})` works, `toJson(bool full)` doesn't)

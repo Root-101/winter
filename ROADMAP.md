@@ -660,9 +660,10 @@ first, small and independent; then the new features, from the most used to the l
   scenes.
 - [x] **`TestResponse.as<T>()`**: deserialize a response of `WinterTestClient` with the mapper,
   instead of `json` (`dynamic`) and a manual `fromJson`.
-- [ ] **Warn when the mapper is replaced after registering**: `Winter.context.setUp(objectMapper:
+- [x] **Warn when the mapper is replaced after registering**: `Winter.context.setUp(objectMapper:
   ...)` drops what was registered in the previous `om`, and the missing deserializer is only seen
-  as a 500 at runtime.
+  as a 500 at runtime. → A warning with the types of the app (not the defaults)
+  that the new mapper has not.
 - [ ] **Encode straight to bytes** with `JsonUtf8Encoder` (today `encode` makes a String that is
   encoded to UTF-8 again), on the response model of 3.1. Measure it with
   `benchmark/object_mapper_benchmark.dart` first.
