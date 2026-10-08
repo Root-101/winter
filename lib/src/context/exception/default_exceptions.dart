@@ -9,6 +9,8 @@ import 'package:winter/winter.dart';
 /// ```
 ///
 /// The [extensions] are added as members of their own (`"violations": [...]` in a 422).
+///
+/// {@category Errors}
 class ProblemDetails {
   /// A URI reference that identifies the kind of problem; `about:blank` when it's just the status
   final String type;
@@ -64,6 +66,8 @@ class ProblemDetails {
 
 /// Ends the request with [responseEntity] as it is, when an error needs a response of its own
 /// (not a Problem Details)
+///
+/// {@category Errors}
 class ResponseException implements Exception {
   /// The response sent to the client
   final ResponseEntity responseEntity;
@@ -81,6 +85,8 @@ class ResponseException implements Exception {
 ///
 /// The subclasses are shortcuts for the common statuses. The [detail] is sent to the client, so
 /// it must never contain internal details; write it in the language of the request (`t(...)`).
+///
+/// {@category Errors}
 class ApiException implements Exception {
   /// The status of the response
   final StatusCode status;
@@ -129,6 +135,8 @@ class ApiException implements Exception {
 }
 
 /// 400: the request is malformed
+///
+/// {@category Errors}
 class BadRequestException extends ApiException {
   /// A 400
   const BadRequestException({
@@ -141,6 +149,8 @@ class BadRequestException extends ApiException {
 }
 
 /// 401: nobody is authenticated (or the credentials are invalid)
+///
+/// {@category Errors}
 class UnauthorizedException extends ApiException {
   /// A 401
   const UnauthorizedException({
@@ -153,6 +163,8 @@ class UnauthorizedException extends ApiException {
 }
 
 /// 403: the authenticated user can't do this
+///
+/// {@category Errors}
 class ForbiddenException extends ApiException {
   /// A 403
   const ForbiddenException({
@@ -165,6 +177,8 @@ class ForbiddenException extends ApiException {
 }
 
 /// 404: the resource doesn't exist
+///
+/// {@category Errors}
 class NotFoundException extends ApiException {
   /// A 404
   const NotFoundException({
@@ -177,6 +191,8 @@ class NotFoundException extends ApiException {
 }
 
 /// 405: the path exists, but not for this method. The `Allow` header lists the [allowedMethods].
+///
+/// {@category Errors}
 class MethodNotAllowedException extends ApiException {
   /// The methods allowed for the path
   final Set<HttpMethod> allowedMethods;
@@ -196,6 +212,8 @@ class MethodNotAllowedException extends ApiException {
 }
 
 /// 409: the request conflicts with the current state (ex: the email is already registered)
+///
+/// {@category Errors}
 class ConflictException extends ApiException {
   /// A 409
   const ConflictException({
@@ -208,6 +226,8 @@ class ConflictException extends ApiException {
 }
 
 /// 413: the body is bigger than `ServerConfig.maxBodySize`
+///
+/// {@category Errors}
 class PayloadTooLargeException extends ApiException {
   /// A 413
   const PayloadTooLargeException({
@@ -220,6 +240,8 @@ class PayloadTooLargeException extends ApiException {
 }
 
 /// 415: the body is not in a format the endpoint understands
+///
+/// {@category Errors}
 class UnsupportedMediaTypeException extends ApiException {
   /// A 415
   const UnsupportedMediaTypeException({
@@ -232,6 +254,8 @@ class UnsupportedMediaTypeException extends ApiException {
 }
 
 /// 422: the body has the right shape, but invalid values
+///
+/// {@category Errors}
 class UnprocessableEntityException extends ApiException {
   /// A 422
   const UnprocessableEntityException({
@@ -244,6 +268,8 @@ class UnprocessableEntityException extends ApiException {
 }
 
 /// 422 with the [violations] of a validation, sent as the `violations` member of the problem
+///
+/// {@category Errors}
 class ValidationException extends UnprocessableEntityException {
   /// What failed, field by field
   final List<ConstraintViolation> violations;
@@ -262,6 +288,8 @@ class ValidationException extends UnprocessableEntityException {
 }
 
 /// 429: too many requests. [retryAfter] (seconds) is sent as the `Retry-After` header.
+///
+/// {@category Errors}
 class TooManyRequestsException extends ApiException {
   /// A 429
   TooManyRequestsException({
@@ -282,6 +310,8 @@ class TooManyRequestsException extends ApiException {
 
 /// 500: an error of the server. Unexpected errors become a 500 by themselves; throw it only
 /// to answer one on purpose.
+///
+/// {@category Errors}
 class InternalServerErrorException extends ApiException {
   /// A 500
   const InternalServerErrorException({
@@ -295,6 +325,8 @@ class InternalServerErrorException extends ApiException {
 
 /// 503: the server can't answer now (maintenance, a dependency is down). [retryAfter] (seconds)
 /// is sent as the `Retry-After` header.
+///
+/// {@category Errors}
 class ServiceUnavailableException extends ApiException {
   /// A 503
   ServiceUnavailableException({

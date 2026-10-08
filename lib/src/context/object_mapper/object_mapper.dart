@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:winter/winter.dart';
 
 /// How the field names of the objects are written in JSON, see [ObjectMapper.fieldNaming]
+///
+/// {@category Object mapper}
 enum FieldNaming {
   /// As the model writes them (`userId`)
   none,
@@ -15,6 +17,8 @@ enum FieldNaming {
 }
 
 /// How a [Duration] is written in JSON, see [ObjectMapper.durationFormat]
+///
+/// {@category Object mapper}
 enum DurationFormat {
   /// An integer: `5400000`
   milliseconds,
@@ -46,6 +50,8 @@ abstract class _MapperEntity<T> {
 /// (when they have no serializer of their own), so it works with `freezed` and sealed classes.
 ///
 /// The result is serialized again, so it can return maps with any serializable value.
+///
+/// {@category Object mapper}
 class Serializer<T> extends _MapperEntity<T> {
   final Object? Function(T object, ObjectMapper mapper) _serialize;
 
@@ -68,6 +74,8 @@ class Serializer<T> extends _MapperEntity<T> {
 /// `Set<T>`, `Map<String, T>`, the nullable form of each collection, `List<T?>` and
 /// `Map<String, T?>`. Deeper types are registered explicitly with [list], [set], [map] and
 /// [nullable]: `Deserializer<User>.json(User.fromJson).list()` gives `List<List<User>>` too.
+///
+/// {@category Object mapper}
 class Deserializer<T> extends _MapperEntity<T> {
   final T Function(Object? data, ObjectMapper mapper) _deserialize;
 
@@ -243,6 +251,18 @@ class Deserializer<T> extends _MapperEntity<T> {
 ///   `toJson()`, else enums with their `name`. Maps, iterables and primitives are serialized as
 ///   they are, recursively.
 /// - Deserialization is strict: `"12"` is not an `int`, but `12.0` is.
+///
+/// ```dart
+/// Winter.context.setUp(
+///   objectMapper: ObjectMapper(fieldNaming: FieldNaming.snakeCase)
+///     ..addDeserializer(Deserializer<User>.json(User.fromJson)),
+/// );
+///
+/// final User user = await request.body<User>(); // a 400 with the path of a wrong value
+/// return ResponseEntity.ok(body: user);          // written with its toJson()
+/// ```
+///
+/// {@category Object mapper}
 class ObjectMapper {
   /// `false` drops the keys with a `null` value of the objects (the maps returned by a
   /// `toJson()` or a serializer), never of a [Map] serialized directly.
@@ -720,6 +740,8 @@ String _describe(Object? data) => switch (data) {
 };
 
 /// No [Serializer], `toJson()` nor enum for a type: a bug of the server (500)
+///
+/// {@category Object mapper}
 class MissingSerializerError extends StateError {
   /// The type of the object that couldn't be serialized
   final Type type;
@@ -734,6 +756,8 @@ class MissingSerializerError extends StateError {
 }
 
 /// No [Deserializer] for a type: a bug of the server (500)
+///
+/// {@category Object mapper}
 class MissingDeserializerError extends StateError {
   /// The type that was asked for
   final Type type;
@@ -749,6 +773,8 @@ class MissingDeserializerError extends StateError {
 }
 
 /// Base of the errors of the [ObjectMapper] that are [Exception]s (a bad value, not a bug)
+///
+/// {@category Object mapper}
 class ObjectMapperException implements Exception {
   /// What went wrong
   final String message;
@@ -763,6 +789,8 @@ class ObjectMapperException implements Exception {
 }
 
 /// A serializer or a `toJson()` failed: a 500, its [message] is only logged
+///
+/// {@category Object mapper}
 class SerializationException extends ObjectMapperException {
   /// A failed serialization, described by [message]
   SerializationException(super.message);
@@ -777,6 +805,8 @@ class SerializationException extends ObjectMapperException {
 ///
 /// The [message] never contains Dart details: it's the [path] of the value (`$.items[1]`)
 /// and the [reason] (`expected a string, got an integer`).
+///
+/// {@category Object mapper}
 class DeserializationException extends ObjectMapperException {
   /// What is wrong with the value
   final String reason;
@@ -806,6 +836,8 @@ class DeserializationException extends ObjectMapperException {
 }
 
 /// The body is not valid JSON (or it's empty)
+///
+/// {@category Object mapper}
 class DeserializationFormatException extends DeserializationException {
   /// The body is not valid JSON or it's empty ([reason]), with the parser error as [cause]
   DeserializationFormatException(super.reason, {super.cause})

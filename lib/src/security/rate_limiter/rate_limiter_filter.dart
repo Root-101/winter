@@ -7,6 +7,8 @@ import 'package:winter/winter.dart';
 /// It uses a [RateLimiter] to track requests, per client: [clientId] identifies it (by default, the
 /// IP of the client; behind proxies use
 /// `clientId: (request) => request.clientIp(trustedProxies: 1) ?? 'unknown'`).
+///
+/// {@category Security}
 class RateLimiterFilter extends Filter {
   /// The underlying rate limiter implementation.
   final RateLimiter rateLimiter;
@@ -17,6 +19,7 @@ class RateLimiterFilter extends Filter {
   /// Called for every rejected request (a debug log by default), or null for nothing
   final void Function(RequestEntity request, String clientId)? onLimited;
 
+  /// At most [maxRequests] per client in every [window] (a sliding window, in memory)
   RateLimiterFilter({
     required int maxRequests,
     required Duration window,
@@ -24,6 +27,8 @@ class RateLimiterFilter extends Filter {
     this.onLimited = defaultLogRateLimiter,
   }) : rateLimiter = RateLimiter(maxRequests, window);
 
+  /// A filter over [rateLimiter]: a [RateLimiter] with another store (shared by several
+  /// instances) or clock
   RateLimiterFilter.fromRateLimiter({
     required this.rateLimiter,
     this.clientId = defaultClientId,
@@ -67,6 +72,8 @@ class RateLimiterFilter extends Filter {
 
 /// Debug level: under an attack there is one log per rejected request,
 /// at info level it would flood the logs
+///
+/// {@category Security}
 void defaultLogRateLimiter(RequestEntity request, String clientId) {
   ///Skipped before building the message: under an attack there is one per rejected request
   if (!logger.isEnabled(LogLevel.debug)) return;
@@ -76,5 +83,7 @@ void defaultLogRateLimiter(RequestEntity request, String clientId) {
 }
 
 /// Identify the client by its IP (the address of the connection, see [RequestEntity.clientIp])
+///
+/// {@category Security}
 String defaultClientId(RequestEntity request) =>
     request.clientIp() ?? 'unknown';

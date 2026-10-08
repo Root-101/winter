@@ -4,10 +4,22 @@ import 'package:collection/collection.dart';
 import 'package:winter/src/router/winter_router.dart' show noRouteResponse;
 import 'package:winter/winter.dart';
 
-///A router made of [routers]: a request goes to the first one that can handle it
+///A router made of [routers]: a request goes to the first one that can handle it. Without one,
+///the 404/405 and the `Allow` header take the methods of every router.
+///
+///```dart
+///MultiRouter([
+///  WinterRouter(basePath: '/v1', routes: v1Routes),
+///  WinterRouter(basePath: '/v2', routes: v2Routes),
+///])
+///```
+///
+/// {@category Routing}
 class MultiRouter extends BaseRouter {
+  /// The routers, in the order they're tried. Read-only.
   final List<BaseRouter> routers;
 
+  /// A router that tries each one of [routers], in order
   MultiRouter(List<BaseRouter> routers) : routers = List.unmodifiable(routers);
 
   @override

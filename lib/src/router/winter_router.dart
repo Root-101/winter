@@ -6,9 +6,16 @@ import 'package:winter/src/router/path_template.dart';
 import 'package:winter/src/utils/valid_url.dart';
 import 'package:winter/winter.dart';
 
+/// What every router is: [WinterRouter] (routes), [MultiRouter] (several routers) and
+/// [ServeRouter] (one function). Extend it for a router of your own.
+///
+/// {@category Routing}
 abstract class BaseRouter {
+  /// Whether this router has a route for [request] (its method and path)
   bool canHandle(RequestEntity request);
 
+  /// Answers [request]. The server only calls it when [resolveRoute] found no route: a 404, a
+  /// 405, an automatic `OPTIONS`, or every request of a router without routes.
   FutureOr<ResponseEntity> handler(RequestEntity request);
 
   ///Return the [Route] that will handle the request (if any).
@@ -17,12 +24,18 @@ abstract class BaseRouter {
   Route? resolveRoute(RequestEntity request) => null;
 }
 
-///Example:
-///ServeRouter((request) => ResponseEntity.ok(body: 'Hello world!!!'))
-///This will handle all request and always return a 200:Hello world!!!
+/// A router of a single function that answers every request (no routes, no 404):
+///
+/// ```dart
+/// await Winter.start(router: ServeRouter((request) => ResponseEntity.ok(body: 'Hello')));
+/// ```
+///
+/// {@category Routing}
 class ServeRouter extends BaseRouter {
+  /// The function that answers every request
   final RequestHandler function;
 
+  /// A router that answers every request with [function]
   ServeRouter(this.function);
 
   @override
@@ -39,6 +52,8 @@ class ServeRouter extends BaseRouter {
 ///What happens when no route can handle a request: a [MethodNotAllowedException] (405, with the
 ///`Allow` header) if the path exists for other methods, a [NotFoundException] (404) otherwise.
 ///They go through the exception handler like any other error.
+///
+/// {@category Routing}
 Never methodNotAllowedOrNotFound(Set<HttpMethod> allowedMethods) {
   if (allowedMethods.isEmpty) throw const NotFoundException();
   throw MethodNotAllowedException(allowedMethods);
@@ -46,6 +61,8 @@ Never methodNotAllowedOrNotFound(Set<HttpMethod> allowedMethods) {
 
 ///The answer of a router for a request without a route: an `OPTIONS` to a path that exists is a
 ///204 with `Allow` (RFC 9110); anything else is [methodNotAllowedOrNotFound]
+///
+/// {@category Routing}
 ResponseEntity noRouteResponse(
   RequestEntity request,
   Set<HttpMethod> allowedMethods,
@@ -59,12 +76,39 @@ ResponseEntity noRouteResponse(
 }
 
 ///The value of an `Allow` header: `GET, HEAD, OPTIONS`
+///
+/// {@category Routing}
 String allowHeader(Set<HttpMethod> methods) =>
     methods.map((method) => method.name.toUpperCase()).join(', ');
 
+/// The router of an app: a list of [Route]s, nested or not, flattened and checked when it's built.
+///
+/// ```dart
+/// final router = WinterRouter(
+///   basePath: '/api',
+///   routes: [
+///     Route.get(path: '/users/{id}', handler: (request) => users.find(request.pathParam<int>('id'))),
+///     Route.parent(
+///       path: '/admin',
+///       filterConfig: FilterConfig([AuthFilter(rules: hasRole('admin'))]),
+///       routes: [Route.delete(path: '/users/{id}', handler: users.delete)],
+///     ),
+///   ],
+/// );
+/// ```
+///
+/// - A static route (`/users/me`) wins over one with params (`/users/{id}`); among the rest, the
+///   first declared.
+/// - A trailing slash is ignored, `HEAD` uses the `GET` route, and `OPTIONS` is automatic.
+/// - No route for the path is a 404; a path with routes for other methods, a 405 with `Allow`.
+/// - An invalid or duplicated route fails when the router is built (see [RouterConfig]).
+///
+/// {@category Routing}
 class WinterRouter extends BaseRouter {
+  /// What happens with an invalid or a duplicated route, and with the loaded routes
   final RouterConfig config;
 
+  /// The prefix of every route (`/api`), empty by default
   final String basePath;
 
   final List<Route> _routes;
@@ -78,6 +122,8 @@ class WinterRouter extends BaseRouter {
     required this.config,
   }) : _routes = routes; // ignore: prefer_initializing_formals
 
+  /// A router with [routes] under [basePath]: they're flattened (a child joins the path of its
+  /// parent and inherits its filters) and checked by [config] now.
   factory WinterRouter({
     List<Route>? routes,
     RouterConfig? config,
@@ -252,14 +298,38 @@ class WinterRouter extends BaseRouter {
   }
 }
 
+/// A route: a [method], a [path] and the [handler] that answers it, with its [filterConfig].
+///
+/// ```dart
+/// Route.get(path: '/users/{id}', handler: (request) => ...)      // a path param
+/// Route.get(path: r'/files/{name|[a-z]+\.pdf}', handler: ...)     // a param with a regex
+/// Route.parent(path: '/admin', filterConfig: adminOnly, routes: [...]) // a common prefix
+/// Route.static(path: '/assets', directory: 'public')           // the files of a folder
+/// Route.health(checks: {'database': db.ping})                   // a health check
+/// ```
+///
+/// A path param is `{name}` or `{name|regex}` (the regex can't contain `{` or `}`), read with
+/// `request.pathParam<T>(name)`.
+///
+/// {@category Routing}
 class Route {
+  /// The path, from `/` (`/users/{id}`); inside a [WinterRouter], the full one
   final String path;
+
+  /// The method it answers; null for a parent route (only a prefix for its [routes])
   final HttpMethod? method;
+
+  /// The function that answers it; null for a parent route
   final RequestHandler? handler;
+
+  /// The filters of this route (and, for a parent, of its children)
   final FilterConfig filterConfig;
 
+  /// The children of a parent route: their paths are joined to [path]
   final List<Route> routes;
 
+  /// Recognizes the route (`request.route?.key`): the one given, or its method and path
+  /// (`GET /users/{id}`)
   final String key;
 
   ///True if the key was provided by the user (not generated from the path & method)
@@ -275,6 +345,8 @@ class Route {
     required this._hasCustomKey,
   });
 
+  /// A route of [method] at [path]. [method] and [handler] go together: without both it's a
+  /// parent route. Use the constructors of each method (`Route.get`...) instead.
   factory Route({
     required String path,
     String? key,
@@ -316,8 +388,8 @@ class Route {
     );
   }
 
-  ///Create a prent route, a route without method nor handler
-  ///Designed to be acommon ancestor to it's childs
+  ///A parent route: no method nor handler, only a common [path] and [filterConfig] for its
+  ///[routes]
   factory Route.parent({
     required String path,
     String? key,
@@ -334,6 +406,7 @@ class Route {
     );
   }
 
+  /// `GET` [path]: read a resource (it answers `HEAD` too)
   factory Route.get({
     required String path,
     required RequestHandler handler,
@@ -351,6 +424,7 @@ class Route {
     );
   }
 
+  /// `QUERY` [path]: a safe read with a body
   factory Route.query({
     required String path,
     required RequestHandler handler,
@@ -368,6 +442,7 @@ class Route {
     );
   }
 
+  /// `POST` [path]: create a resource, or run an action
   factory Route.post({
     required String path,
     required RequestHandler handler,
@@ -385,6 +460,7 @@ class Route {
     );
   }
 
+  /// `PUT` [path]: replace a resource
   factory Route.put({
     required String path,
     required RequestHandler handler,
@@ -402,6 +478,7 @@ class Route {
     );
   }
 
+  /// `PATCH` [path]: change part of a resource
   factory Route.patch({
     required String path,
     required RequestHandler handler,
@@ -419,6 +496,7 @@ class Route {
     );
   }
 
+  /// `DELETE` [path]: remove a resource
   factory Route.delete({
     required String path,
     required RequestHandler handler,
@@ -504,6 +582,7 @@ class Route {
   ///Compiled once and reused for every request
   late final PathTemplate _template = PathTemplate.of(path);
 
+  /// Whether the path of an url (`/users/7`, a query is ignored) matches [path]
   bool match(String rawActualUrl) => _template.match(rawActualUrl);
 
   ///The path without the names of its params (`/users/{id|[0-9]+}` => `/users/{|[0-9]+}`):

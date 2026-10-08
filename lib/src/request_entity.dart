@@ -22,6 +22,8 @@ import 'package:winter/winter.dart';
 ///   body: '{"name": "Ann"}',
 /// );
 /// ```
+///
+/// {@category Requests and responses}
 class RequestEntity {
   /// The method, in upper case (`GET`, `POST`...)
   final String method;
@@ -109,6 +111,7 @@ class RequestEntity {
   Cookie? cookie(String name) =>
       cookies.firstWhereOrNull((cookie) => cookie.name == name);
 
+  /// The [method] as an [HttpMethod]
   HttpMethod get httpMethod => HttpMethod(method);
 
   /// The MIME type of the `Content-Type` (`application/json`), without its parameters
@@ -179,6 +182,8 @@ class RequestEntity {
       entry.key: List<String>.unmodifiable(entry.value),
   });
 
+  /// The path params of the route, URL-decoded (`/users/{id}` for `/users/7`: `{id: 7}`); empty
+  /// without a route. Read them typed with [pathParam].
   Map<String, String> get pathParams => _pathParams ?? const {};
 
   /// The path param [name] as a [T]: `String`, `int`, `double`, `num`, `bool`, `DateTime`
@@ -414,6 +419,8 @@ class RequestEntity {
 
 /// The fields and files of a form (`application/x-www-form-urlencoded` or
 /// `multipart/form-data`), read with [RequestEntity.formData]
+///
+/// {@category Requests and responses}
 final class FormData {
   /// Every value of each field, in order (`tag=a&tag=b` => `{tag: [a, b]}`, as several
   /// checkboxes with the same name send). Read-only.
@@ -586,6 +593,8 @@ String _decodePathParam(String value) {
 /// The request of `dart:io` that the server received, its headers read without copying them.
 /// The server limits the size of its body (`ServerConfig.maxBodySize`) in the pipeline, like for a
 /// request built in memory. Internal: not exported by `winter.dart`.
+///
+/// {@category Requests and responses}
 RequestEntity requestFromHttpRequest(HttpRequest request) =>
     RequestEntity._copy(
       method: request.method.toUpperCase(),
@@ -599,6 +608,8 @@ RequestEntity requestFromHttpRequest(HttpRequest request) =>
 
 /// Sets the route that answers [request] (the server does it once it's resolved). Internal: not
 /// exported by `winter.dart`.
+///
+/// {@category Requests and responses}
 void attachRoute(RequestEntity request, Route route) {
   if (request._route != null) {
     throw StateError('The route of $request is already ${request._route}');
@@ -608,6 +619,8 @@ void attachRoute(RequestEntity request, Route route) {
 
 /// Limits the body of [request] to [maxBytes] (`ServerConfig.maxBodySize`): reading a bigger one is
 /// a [PayloadTooLargeException] (413); a body nobody reads is never rejected. Internal.
+///
+/// {@category Requests and responses}
 void limitRequestBody(RequestEntity request, int maxBytes) {
   final _RequestBody body = request._body;
   body._stream = limitBodySize(
@@ -623,6 +636,8 @@ void limitRequestBody(RequestEntity request, int maxBytes) {
 /// and the body is never fully loaded in memory:
 /// - if the `Content-Length` header is bigger than the limit, it fails before reading anything
 /// - otherwise (ex: chunked requests) it fails as soon as the read bytes exceed the limit
+///
+/// {@category Requests and responses}
 Stream<List<int>> limitBodySize(
   Stream<List<int>> body, {
   required int maxBytes,

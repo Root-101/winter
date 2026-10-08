@@ -3,9 +3,12 @@ import 'package:winter/winter.dart';
 import 'package:collection/collection.dart';
 
 /// The filters of a route (or the global ones). Immutable: combine them with [merge].
+///
+/// {@category Filters}
 class FilterConfig {
   final List<Filter> _filters;
 
+  /// The configuration of these filters
   const FilterConfig(this._filters);
 
   /// The filters, read-only

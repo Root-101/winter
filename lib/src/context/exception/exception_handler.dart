@@ -7,6 +7,8 @@ import 'package:winter/winter.dart';
 /// The filter chain calls it where the error is thrown, so every outer filter (CORS, logs...) gets
 /// a response. It receives [Exception]s and [Error]s alike: an [Error] is a bug, so it must become
 /// a 500 that never shows its details.
+///
+/// {@category Errors}
 abstract class ExceptionHandler {
   /// The response for [error], thrown while handling [request]
   Future<ResponseEntity> call(
@@ -18,6 +20,8 @@ abstract class ExceptionHandler {
 
 /// Log an unexpected error (the ones that end in a 500) with its stack trace.
 /// The details are only logged, never sent to the client.
+///
+/// {@category Errors}
 void defaultLogUnhandledError(
   RequestEntity request,
   Object error,
@@ -32,6 +36,8 @@ void defaultLogUnhandledError(
 
 /// Generic 500, without any internal detail of the error. Inside a request it has the
 /// `requestId`, so the client can report it and the logs of that request can be found.
+///
+/// {@category Errors}
 ResponseEntity internalServerErrorResponse() => ProblemDetails.of(
   StatusCode.internalServerError,
   extensions: {'requestId': ?requestId},
@@ -52,6 +58,8 @@ ResponseEntity internalServerErrorResponse() => ProblemDetails.of(
 /// SimpleExceptionHandler()
 ///   ..on<EmailTakenException>((request, e) => ConflictException(detail: e.message));
 /// ```
+///
+/// {@category Errors}
 class SimpleExceptionHandler extends ExceptionHandler {
   /// Logs the errors that end in a 500
   final void Function(

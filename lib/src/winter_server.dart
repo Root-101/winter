@@ -8,19 +8,48 @@ import 'package:winter/src/response_entity.dart' show writeResponse;
 import 'package:winter/winter.dart';
 
 ///Dependency Injection: easy access to the current dependency injection instance
+///
+/// {@category Server}
 DependencyInjection get di => Winter.context.dependencyInjection;
 
 ///Dependency Injection: easy access to the current object mapper instance
+///
+/// {@category Server}
 ObjectMapper get om => Winter.context.objectMapper;
 
 ///Exception Handler: easy access to the current exception handler instance
+///
+/// {@category Server}
 ExceptionHandler get eh => Winter.context.exceptionHandler;
 
+///Env: easy access to the configuration of the current context (see [Env])
+///
+/// {@category Server}
 Env get env => Winter.context.env;
 
 ///Logger: easy access to the current logger instance
+///
+/// {@category Server}
 WinterLogger get logger => Winter.context.logger;
 
+/// The server: [start] it with a router, and [close] or [shutdown] it. There is at most one per
+/// isolate, and the [context] (object mapper, exception handler, dependencies, env, logger) is
+/// global.
+///
+/// ```dart
+/// void main() async {
+///   await Winter.start(
+///     config: const ServerConfig(port: 8080),
+///     router: WinterRouter(
+///       routes: [Route.get(path: '/hello', handler: (request) => ResponseEntity.ok(body: 'Hello'))],
+///     ),
+///   );
+/// }
+/// ```
+///
+/// Tests don't need a server: `WinterTestClient` runs the same pipeline in memory.
+///
+/// {@category Server}
 class Winter {
   static WinterContext _context = WinterContext();
 
@@ -37,12 +66,22 @@ class Winter {
     return _server!;
   }
 
+  /// Whether a server is running in this isolate
   static bool get isRunning => _server != null;
 
+  /// The context the server started with
   final WinterContext serverContext;
+
+  /// The configuration of the server
   final ServerConfig config;
+
+  /// The router of the server
   final BaseRouter router;
+
+  /// The filters of every request (CORS and the security headers first, when they're on)
   final FilterConfig globalFilterConfig;
+
+  /// CORS and the security headers of the server
   final SecurityConfig securityConfig;
 
   final HttpServer _rawServer;
@@ -89,6 +128,12 @@ class Winter {
     };
   }
 
+  /// Starts the server. Each of [config], [router] and [securityConfig] is the one given, or the
+  /// one registered in `di`, or the default; [config] is validated before the port is opened.
+  /// [context] replaces the global [context]. Starting a second server is a [StateError].
+  ///
+  /// [globalFilterConfig] runs on every request, sorted by `order`, before the filters of the
+  /// route.
   static Future<Winter> start({
     WinterContext? context,
     ServerConfig? config,
@@ -515,6 +560,8 @@ class Winter {
 }
 
 /// Add [header] to the `Vary` of [response] (a comma separated list), unless it's already there or `*`
+///
+/// {@category Server}
 ResponseEntity<T> addVary<T>(ResponseEntity<T> response, String header) {
   final String? current = response.headers[HttpHeader.vary];
   if (current == null || current.trim().isEmpty) {

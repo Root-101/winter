@@ -11,6 +11,8 @@ import 'package:winter/winter.dart';
 /// - `Range` requests (one range: a 206, or a 416 when it's out of the file), as video players and
 ///   resumed downloads send them, checked with `If-Range`.
 /// - The file is streamed, never read whole into memory.
+///
+/// {@category Routing}
 final class StaticFiles {
   /// The directory, canonical (absolute, links resolved)
   final String directory;

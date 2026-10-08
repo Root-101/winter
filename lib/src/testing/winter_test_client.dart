@@ -17,9 +17,13 @@ import 'package:winter/winter.dart';
 /// final response = await client.get('/hello');
 /// expect(response.statusCode, 200);
 /// ```
+///
+/// {@category Testing}
 class WinterTestClient {
+  /// The pipeline the requests go to
   final RequestHandler handler;
 
+  /// A client of [handler] (usually built with [WinterTestClient.build])
   WinterTestClient(this.handler);
 
   /// Build the client with the same parameters as [Winter.buildHandler]
@@ -84,27 +88,33 @@ class WinterTestClient {
     );
   }
 
+  /// A `GET` of [path] (with its query: `/users?page=2`)
   Future<TestResponse> get(String path, {Map<String, Object>? headers}) =>
       request('GET', path, headers: headers);
 
+  /// A `HEAD` of [path]: the headers, without a body
   Future<TestResponse> head(String path, {Map<String, Object>? headers}) =>
       request('HEAD', path, headers: headers);
 
+  /// A `DELETE` of [path]
   Future<TestResponse> delete(String path, {Map<String, Object>? headers}) =>
       request('DELETE', path, headers: headers);
 
+  /// A `POST` of [path] with [body] (see [request])
   Future<TestResponse> post(
     String path, {
     Map<String, Object>? headers,
     Object? body,
   }) => request('POST', path, headers: headers, body: body);
 
+  /// A `PUT` of [path] with [body] (see [request])
   Future<TestResponse> put(
     String path, {
     Map<String, Object>? headers,
     Object? body,
   }) => request('PUT', path, headers: headers, body: body);
 
+  /// A `PATCH` of [path] with [body] (see [request])
   Future<TestResponse> patch(
     String path, {
     Map<String, Object>? headers,
@@ -113,7 +123,10 @@ class WinterTestClient {
 }
 
 /// A response of the [WinterTestClient], with the body already read
+///
+/// {@category Testing}
 class TestResponse {
+  /// The status code (`200`)
   final int statusCode;
 
   /// One value per header, case insensitive (several values joined with `, `)
@@ -127,6 +140,7 @@ class TestResponse {
 
   final Encoding? _encoding;
 
+  /// A response read by the client
   TestResponse({
     required this.statusCode,
     required this.headers,

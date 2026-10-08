@@ -27,12 +27,16 @@ import 'package:winter/winter.dart';
 ///
 /// Build the validators inside [validate] (never in a `static final`), so their messages are in
 /// the language of the request.
+///
+/// {@category Validation}
 abstract interface class Validatable {
   /// The violations of this object, in a new [ConstraintValidatorContext]
   ConstraintValidatorContext validate();
 }
 
 /// Collects the [ConstraintViolation]s of a validation.
+///
+/// {@category Validation}
 class ConstraintValidatorContext {
   /// The current time for `past()`, `future()`... Tests can give a fixed one.
   final DateTime Function() clock;
@@ -141,6 +145,8 @@ class ConstraintValidatorContext {
 ///   );
 /// }
 /// ```
+///
+/// {@category Validation}
 class FieldValidator<T> {
   /// The context where the violations are added
   final ConstraintValidatorContext context;
@@ -200,6 +206,9 @@ class FieldValidator<T> {
   }
 }
 
+/// The validation of a nested [Validatable] field (`valid()`)
+///
+/// {@category Validation}
 extension NestedValidator<T extends Validatable?> on FieldValidator<T> {
   /// Validates the nested object, prefixing its violations with the name of the field:
   /// `cvc.field('address', address).notNull().valid()` gives `address.zip`.
@@ -211,6 +220,9 @@ extension NestedValidator<T extends Validatable?> on FieldValidator<T> {
   }
 }
 
+/// The validation of every element of a list of [Validatable]s (`validEach()`)
+///
+/// {@category Validation}
 extension NestedListValidator<T extends Iterable<Validatable?>?>
     on FieldValidator<T> {
   /// Validates every element of the list, prefixing its violations with the name of the field and
@@ -235,6 +247,8 @@ extension NestedListValidator<T extends Iterable<Validatable?>?>
 /// Its JSON (the body of the 422) has the [fieldName], the [message] (in the language of the
 /// request) and, for the validators of Winter, a [code] and its [params] that a client can use to
 /// show its own text. The [value] is never in the JSON: the client knows what it sent.
+///
+/// {@category Validation}
 class ConstraintViolation {
   /// The value that failed the validation, null for a [sensitive] field. Never in the JSON.
   final Object? value;

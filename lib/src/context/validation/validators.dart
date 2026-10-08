@@ -12,6 +12,8 @@ import 'package:winter/winter.dart';
 WinterMessages get _intl => winterMessages(requestLocale);
 
 /// For any type of value
+///
+/// {@category Validation}
 extension CommonValidators<T> on FieldValidator<T> {
   /// The value is not null. By default a null value stops the validation of the field.
   FieldValidator<T> notNull({String? message, bool stopOnFailure = true}) =>
@@ -117,6 +119,8 @@ final RegExp _whitespace = RegExp(r'\s');
 final Map<String, RegExp> _patterns = {};
 
 /// For a String
+///
+/// {@category Validation}
 extension StringValidators<T extends String?> on FieldValidator<T> {
   /// The value is not empty nor only whitespace
   FieldValidator<T> notBlank({String? message, bool stopOnFailure = false}) =>
@@ -211,6 +215,8 @@ extension StringValidators<T extends String?> on FieldValidator<T> {
 }
 
 /// For a number
+///
+/// {@category Validation}
 extension NumberValidators<T extends num?> on FieldValidator<T> {
   /// The value is at least [min] (`inclusive`, the default) or greater than [min]
   FieldValidator<T> min(
@@ -290,6 +296,8 @@ extension NumberValidators<T extends num?> on FieldValidator<T> {
 }
 
 /// For a list, a set or any [Iterable]
+///
+/// {@category Validation}
 extension IterableValidators<T extends Iterable<Object?>?>
     on FieldValidator<T> {
   /// The number of elements is between [min] and [max] (both inclusive)
@@ -311,6 +319,8 @@ extension IterableValidators<T extends Iterable<Object?>?>
 }
 
 /// For a [Map]
+///
+/// {@category Validation}
 extension MapValidators<T extends Map<Object?, Object?>?> on FieldValidator<T> {
   /// The number of entries is between [min] and [max] (both inclusive)
   FieldValidator<T> size({
@@ -360,6 +370,8 @@ FieldValidator<T> _size<T>(
 }
 
 /// For a [DateTime], compared with the `clock` of the [ConstraintValidatorContext]
+///
+/// {@category Validation}
 extension DateTimeValidators<T extends DateTime?> on FieldValidator<T> {
   /// The date is before now
   FieldValidator<T> past({String? message, bool stopOnFailure = false}) =>

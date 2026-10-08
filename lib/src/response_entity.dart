@@ -12,6 +12,19 @@ import 'package:winter/winter.dart';
 /// `Stream<List<int>>` as a stream (Server-Sent Events, files), and anything else is serialized
 /// as JSON with the object mapper. The `Content-Type` and the `Content-Length` are added when the
 /// [headers] don't have them.
+///
+/// ```dart
+/// ResponseEntity.ok(body: user)                                  // 200, JSON
+/// ResponseEntity.created(location: '/users/7', body: user)       // 201 + Location
+/// ResponseEntity.seeOther('/orders/7')                            // 303 after a form
+/// ResponseEntity(200, body: File('report.pdf').openRead(), headers: {
+///   HttpHeader.contentType: 'application/pdf',
+/// })
+/// ```
+///
+/// For an error, throw an [ApiException] instead: it becomes a Problem Details.
+///
+/// {@category Requests and responses}
 class ResponseEntity<T> {
   /// The status code (`200`)
   final int statusCode;
@@ -73,6 +86,7 @@ class ResponseEntity<T> {
     required this.context,
   });
 
+  ///200: [body], as JSON for an object (see the class)
   ResponseEntity.ok({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
@@ -162,41 +176,52 @@ class ResponseEntity<T> {
          _redirect<T>(StatusCode.permanentRedirect, location, headers, cookies),
        );
 
+  ///400: the request is invalid.
+  ///
+  ///For an error, throwing an [ApiException] (`throw const BadRequestException()`) gives a
+  ///Problem Details; this and the other error shortcuts build the response by hand.
   ResponseEntity.badRequest({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this._from(_status<T>(StatusCode.badRequest, body, headers));
 
+  ///401: nobody is authenticated
   ResponseEntity.unauthorized({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this._from(_status<T>(StatusCode.unauthorized, body, headers));
 
+  ///403: authenticated, but not allowed
   ResponseEntity.forbidden({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this._from(_status<T>(StatusCode.forbidden, body, headers));
 
+  ///404: the resource doesn't exist
   ResponseEntity.notFound({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this._from(_status<T>(StatusCode.notFound, body, headers));
 
+  ///405: the path exists, but not for this method
   ResponseEntity.methodNotAllowed({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this._from(_status<T>(StatusCode.methodNotAllowed, body, headers));
 
+  ///409: the request conflicts with the state of the resource
   ResponseEntity.conflict({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this._from(_status<T>(StatusCode.conflict, body, headers));
 
+  ///422: the body is well formed, but invalid
   ResponseEntity.unprocessableEntity({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this._from(_status<T>(StatusCode.unprocessableEntity, body, headers));
 
+  ///429: too many requests; [retryAfter] is in seconds (`Retry-After`)
   ResponseEntity.tooManyRequests({
     T? body,
     int? retryAfter,
@@ -208,6 +233,7 @@ class ResponseEntity<T> {
          }),
        );
 
+  ///500: the server failed
   ResponseEntity.internalServerError({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
@@ -431,6 +457,8 @@ class _ResponseBody {
 ///
 /// A client that disconnects in the middle, or a stream body that fails, is logged at debug and
 /// the connection is closed: it never fails the server.
+///
+/// {@category Requests and responses}
 Future<void> writeResponse(
   ResponseEntity response,
   HttpResponse output, {

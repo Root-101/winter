@@ -4,9 +4,15 @@ import 'package:winter/src/winter_server.dart' show addVary;
 import 'package:winter/winter.dart';
 
 /// A filter that handles CORS preflight requests and adds CORS headers to responses.
+/// Added by Winter when `SecurityConfig.cors()` returns a configuration; it runs first.
+///
+/// {@category Security}
 class CorsFilter extends Filter {
+  /// The origins, methods and headers allowed
   final CorsConfig config;
 
+  /// The filter of [config], before every other one (order -100). It warns about `'*'` with
+  /// credentials.
   CorsFilter({this.config = const CorsConfig(), super.order = -100}) {
     if (config.allowCredentials && config.allowedOrigins.contains('*')) {
       logger.warning(

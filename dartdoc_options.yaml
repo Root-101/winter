@@ -1,0 +1,18 @@
+# The API reference (pub.dev), grouped by module with `{@category ...}` in the doc of each
+# declaration. The guides of each module are in doc/.
+dartdoc:
+  categoryOrder:
+    - Server
+    - Routing
+    - Filters
+    - Requests and responses
+    - HTTP
+    - Object mapper
+    - Validation
+    - Errors
+    - Security
+    - Dependency injection
+    - Configuration
+    - Logging
+    - i18n
+    - Testing

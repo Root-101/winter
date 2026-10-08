@@ -11,6 +11,8 @@ import 'package:winter/winter.dart';
 /// The parts come in order and the body of each one is read while it arrives, so read it (or
 /// leave it) before asking for the next part: the part you skip is discarded without keeping it
 /// in memory, and it can't be read later.
+///
+/// {@category Requests and responses}
 final class MultipartPart {
   /// The headers of the part, with lowercase names (`content-disposition`, `content-type`).
   /// Read-only.
@@ -110,6 +112,8 @@ final class MultipartPart {
 }
 
 /// A file of a `multipart/form-data` form, read whole by [RequestEntity.formData]
+///
+/// {@category Requests and responses}
 final class UploadedFile {
   /// The name of the field
   final String name;
@@ -124,6 +128,7 @@ final class UploadedFile {
   /// The content of the file
   final Uint8List bytes;
 
+  /// A file of the field [name] (a test can build one)
   UploadedFile({
     required this.name,
     required this.filename,
@@ -147,11 +152,15 @@ final class UploadedFile {
 ///
 /// A malformed body is a [BadRequestException] (400), thrown where it's being read: by the
 /// stream of the parts, or by the body of a part.
+///
+/// {@category Requests and responses}
 Stream<MultipartPart> parseMultipart(Stream<List<int>> body, String boundary) =>
     _MultipartParser(body, boundary)._parts();
 
 /// The boundary of a multipart [contentType]. A missing or invalid one is a
 /// [BadRequestException] (400). Internal.
+///
+/// {@category Requests and responses}
 String multipartBoundary(String contentType) {
   String? boundary;
   try {

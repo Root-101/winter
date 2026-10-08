@@ -2,6 +2,8 @@ import 'package:winter/winter.dart';
 
 /// The security of the server: CORS and the security headers of every response.
 /// Users can extend this class to customize them.
+///
+/// {@category Security}
 class SecurityConfig {
   final CorsConfig? _cors;
 
@@ -9,6 +11,7 @@ class SecurityConfig {
   /// beyond the basic ones (`X-Content-Type-Options` and `X-Frame-Options`, always there)
   final SecurityHeaders? securityHeaders;
 
+  /// CORS ([cors]) and the security headers, both off by default
   SecurityConfig({this._cors, this.securityHeaders});
 
   /// Returns the CORS configuration.
@@ -21,16 +24,30 @@ class SecurityConfig {
 /// With [allowCredentials], list the [allowedOrigins]: with `'*'`, the origin of every request is
 /// echoed (a browser rejects `'*'` with credentials), so any website can read the API with the
 /// cookies of its user. Winter logs a warning when the server is built with that.
+///
+/// {@category Security}
 class CorsConfig {
+  /// The origins that may call the API (`https://app.example.com`), or `'*'` for any
   final List<String> allowedOrigins;
+
+  /// The methods a preflight allows (`Access-Control-Allow-Methods`)
   final List<String> allowedMethods;
+
+  /// The request headers a preflight allows (`Access-Control-Allow-Headers`), or `'*'` for any
   final List<String> allowedHeaders;
 
   /// Headers a browser lets the client read, besides `X-Request-Id` (always exposed)
   final List<String> exposedHeaders;
+
+  /// Whether a browser sends the cookies (and `Authorization`) of its user: list the
+  /// [allowedOrigins] then
   final bool allowCredentials;
+
+  /// How many seconds a browser keeps a preflight (`Access-Control-Max-Age`), or null for its
+  /// default
   final int? maxAge;
 
+  /// The CORS of the server; by default any origin, without credentials
   const CorsConfig({
     this.allowedOrigins = const ['*'],
     this.allowedMethods = const [
@@ -58,6 +75,8 @@ class CorsConfig {
 ///
 /// `X-Content-Type-Options: nosniff` and `X-Frame-Options: DENY` are always there, with or without
 /// this configuration.
+///
+/// {@category Security}
 class SecurityHeaders {
   /// `Referrer-Policy`, null to leave it out
   final String? referrerPolicy;
@@ -98,9 +117,13 @@ class SecurityHeaders {
 
 /// Adds the [SecurityHeaders] to every response, error ones included. Added by Winter when
 /// [SecurityConfig.securityHeaders] is set.
+///
+/// {@category Security}
 class SecurityHeadersFilter extends Filter {
+  /// The headers it adds
   final SecurityHeaders config;
 
+  /// The filter of [config], right after CORS (order -99)
   SecurityHeadersFilter({
     this.config = const SecurityHeaders(),
     super.order = -99,
