@@ -24,7 +24,9 @@ way we want to maintain it**. Exit criteria:
    environment, logs, tests and deployment.
 3. Every module has its own document in `doc/`, and the whole public API has dartdoc. 1.0 is a
    first version: there is no migration guide from 0.x.
-4. There is CI (analyze, format, tests, coverage, examples) and a good pana score (pub points).
+4. Before each release the checks pass locally (format, analyze, tests, examples, a publish dry
+   run) with a good pana score (pub points). The CI that runs them on every push comes after 1.0
+   (6.1).
 5. At least one release candidate (`1.0.0-rc.1`) was published and used in a real project.
 
 ---
@@ -840,7 +842,17 @@ The current 4 are fine. Missing:
 
 ## Phase 6: quality, tooling and publishing
 
-### 6.1 CI 🔴
+### 6.1 CI 🟢 (after 1.0)
+
+Postponed to a later version: until then, the same checks are run by hand before each release
+(the commands of `CONTRIBUTING.md`). Notes from a first draft of the workflow:
+
+- Run it on a push to any branch (not only `main`) and on pull requests: a feature branch is
+  checked before its pull request exists, and `workflow_dispatch` only shows up once the workflow
+  is on the default branch.
+- `pana` fails on Windows (its sandbox rejects paths with `:`), so its first score comes from a
+  Linux runner: start it as report-only and add the threshold after 5.3.
+- Coverage to Codecov needs the `CODECOV_TOKEN` secret.
 
 - [ ] GitHub Actions (there is no `.github/`): `dart format --set-exit-if-changed`, `dart analyze`,
   `dart test` with coverage (uploaded to Codecov), and `dart pub get && dart test` in every example,
@@ -901,8 +913,7 @@ Phase 1      Phase 2 (system by system)             Phase 3       Phase 4       
                     └── each system's doc, once reviewed ──┴── docs of the new features
                                                                + examples 05-07
 
-Can start now: CI and pubspec/.pubignore (phase 6.1, 6.2), and the docs of the modules that
-won't change (i18n, routing, filters, testing, architecture, deployment).
+CI (phase 6.1) comes after 1.0; until then its checks run by hand before each release.
 ```
 
 Phase 3.1 goes before the features of phase 4 because cookies, static files, multipart, HTTPS and
