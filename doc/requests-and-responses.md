@@ -66,7 +66,8 @@ void main() async {
 | `mimeType`, `encoding`             | Of the `Content-Type` (`application/json`, its charset)        |
 | `contentLength`                    | The `Content-Length`, if it's known                            |
 | `clientIp()`, `connectionInfo`     | The client (see [security](security.md#rate-limiter))          |
-| `context`                          | Data of this request for the filters (the security context, the route...) |
+| `route`                            | The `Route` that answers it (its `key`, its `path`), null without one |
+| `context`                          | Data attached to the request, found by a typed `ContextKey` (see [below](#extending-a-request-the-context)) |
 | `locale`, `securityContext`, `principal<T>()` | Extensions of i18n and security                     |
 
 Every map is read-only: a filter that needs to change the request passes a copy to the chain (see
@@ -130,10 +131,80 @@ return response.copyWith(statusCode: 202, headers: {'X-Version': '2'});
 ```
 
 - `headers` are added to the current ones; `null` removes one (`{'X-Debug': null}`).
-- The request takes `context` (added too), a new `body` and a new `requestedUri`. Without a new
-  body, the copy shares the one of the original: it's read once, and cached by `body<T>()` for both.
+- The request takes a new `body` and a new `requestedUri`; its `route` and the values of its
+  `context` are kept. Without a new body, the copy shares the one of the original: it's read once,
+  and cached by `body<T>()` for both.
 - The response takes `statusCode`, `body` (resolved again, with its `Content-Type`), `cookies`
-  (added), `encoding` and `context`. Without a new body it's never serialized again.
+  (added) and `encoding`; the values of its `context` are kept. Without a new body it's never
+  serialized again, and a body of text or bytes can be read again (`readAsString()`), so a filter
+  can look at it; a stream only once.
+
+### Extending a request: the context
+
+A filter often finds something that the handler needs: the user of a token, the tenant of a
+subdomain, the version of the API. It's saved in the `context` of the request, under a typed
+`ContextKey`, and read through an extension, so the rest of the code sees a normal property.
+
+It's how Winter itself adds the security to the request:
+
+```dart
+// lib/src/security/request_security_context.dart (Winter)
+final ContextKey<RequestSecurityContext> _securityContextKey =
+    ContextKey<RequestSecurityContext>('winter.security');
+
+extension RequestSecurityContextX on RequestEntity {
+  RequestSecurityContext get securityContext => context.putIfAbsent(
+    _securityContextKey,
+    RequestSecurityContext<dynamic>.empty,
+  );
+}
+```
+
+The same for data of your app, a tenant read from the subdomain:
+
+```dart
+class Tenant {
+  final String id;
+
+  const Tenant(this.id);
+}
+
+/// The key: private to this file, so nobody else reads or overwrites it
+final ContextKey<Tenant> _tenantKey = ContextKey<Tenant>('tenant');
+
+/// The extension: `request.tenant` everywhere, with its type
+extension TenantX on RequestEntity {
+  Tenant? get tenant => context.get(_tenantKey);
+  set tenant(Tenant? value) => context.set(_tenantKey, value);
+}
+
+/// The filter that sets it, before the handler
+class TenantFilter extends Filter {
+  @override
+  Future<ResponseEntity> doFilter(RequestEntity request, FilterChain chain) async {
+    final String host = request.requestedUri.host; // acme.example.com
+    if (!host.contains('.')) throw const BadRequestException(detail: 'No tenant');
+    request.tenant = Tenant(host.split('.').first);
+    return chain.doFilter(request);
+  }
+}
+
+// The handler
+Route.get(
+  path: '/projects',
+  handler: (request) => ResponseEntity.ok(body: projects.of(request.tenant!.id)),
+)
+```
+
+- A `ContextKey` is an object, not a name: two packages that both call their key `'tenant'` never
+  overwrite each other, and `get` returns the type of the key, without casts.
+- `context.get(key)`, `context.set(key, value)` (`null` removes it), `context.putIfAbsent(key,
+  create)` (created the first time, like the security context) and `context.contains(key)`.
+- A copy of the request (`copyWith`) starts with the same values; a value set on the copy (by a
+  later filter) isn't seen by the original.
+- A response has a `context` too, for a filter that marks a response for an outer filter.
+- Code that doesn't receive the request (a service) reads the request scope instead:
+  `requestPrincipal<T>()`, `requestLocale`, `requestId`.
 
 ### Server-Sent Events and other streams
 

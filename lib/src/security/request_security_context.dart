@@ -58,12 +58,17 @@ class Authentication<T> {
   }
 }
 
-extension RequestSecurityContextX on RequestEntity {
-  static const String _securityContextKey = 'winter.context.security';
+/// The key of the security context in the [ContextMap] of a request
+final ContextKey<RequestSecurityContext> _securityContextKey =
+    ContextKey<RequestSecurityContext>('winter.security');
 
+/// The security of a request: a value of its context, found by a typed key. The same pattern
+/// extends a request with data of the app (see [ContextMap]).
+extension RequestSecurityContextX on RequestEntity {
   /// Security context of this request, created the first time.
-  /// The server creates it before the filters, so the changes of the request share it.
-  RequestSecurityContext get securityContext =>
-      context.putIfAbsent(_securityContextKey, RequestSecurityContext.empty)
-          as RequestSecurityContext;
+  /// The server creates it before the filters, so the copies of the request share it.
+  RequestSecurityContext get securityContext => context.putIfAbsent(
+    _securityContextKey,
+    RequestSecurityContext<dynamic>.empty,
+  );
 }

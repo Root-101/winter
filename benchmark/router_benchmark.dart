@@ -30,17 +30,10 @@ void main() async {
   Future<void> run(int count) async {
     for (var i = 0; i < count; i++) {
       final request = RequestEntity('GET', uris[i % uris.length]);
+
+      ///Like the server: resolve the route once and call its handler
       final route = router.resolveRoute(request);
-      if (route != null) {
-        request.setRoutingContext(
-          RequestRoutingContext(
-            path: route.path,
-            key: route.key,
-            method: route.method!,
-          ),
-        );
-      }
-      await router.handler(request);
+      await (route?.handler ?? router.handler)(request);
     }
   }
 

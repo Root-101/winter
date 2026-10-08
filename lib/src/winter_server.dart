@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:winter/src/i18n/winter_messages.dart';
-import 'package:winter/src/request_entity.dart' show requestFromHttpRequest;
+import 'package:winter/src/request_entity.dart'
+    show attachRoute, limitRequestBody, requestFromHttpRequest;
 import 'package:winter/src/response_entity.dart' show writeResponse;
 import 'package:winter/winter.dart';
 
@@ -417,15 +418,8 @@ class Winter {
     required FilterConfig globalFilterConfig,
     required int? maxBodySize,
   }) async {
-    final RequestEntity requestEntity = maxBodySize == null
-        ? request
-        : request.copyWith(
-            body: limitBodySize(
-              request.read(),
-              maxBytes: maxBodySize,
-              contentLength: request.contentLength,
-            ),
-          );
+    final RequestEntity requestEntity = request;
+    if (maxBodySize != null) limitRequestBody(requestEntity, maxBodySize);
 
     ///Created now and not lazily, so the request, its changes (`change` copies the context)
     ///and the scope share the same security context and locale.
@@ -477,31 +471,17 @@ class Winter {
     required FilterConfig globalFilterConfig,
   }) async {
     try {
-      FilterConfig? routeFilterConfig;
-      Route? route = router.resolveRoute(requestEntity);
-
-      if (route != null) {
-        ///set-up the filter config from route
-        routeFilterConfig = route.filterConfig;
-
-        ///set-up path params
-        requestEntity.setRoutingContext(
-          RequestRoutingContext(
-            path: route.path,
-            key: route.key,
-            method: route.method!,
-          ),
-        );
-      }
+      ///The route is resolved before the filters, so the route filters run and the path params
+      ///are ready; the chain ends in its handler. Without a route, the router answers (a 404, a
+      ///405, an OPTIONS, or a ServeRouter)
+      final Route? route = router.resolveRoute(requestEntity);
+      if (route != null) attachRoute(requestEntity, route);
 
       ///The exception handler goes inside the chain, so every filter
       ///(CORS, logs, rate limiter...) also sees the error responses
       FilterChain filterChain = FilterChain(
-        [
-          ...globalFilterConfig.filters,
-          if (routeFilterConfig != null) ...routeFilterConfig.filters,
-        ],
-        router.handler,
+        [...globalFilterConfig.filters, ...?route?.filterConfig.filters],
+        route?.handler ?? router.handler,
         exceptionHandler: eh,
       );
 
@@ -543,31 +523,6 @@ ResponseEntity<T> addVary<T>(ResponseEntity<T> response, String header) {
     return response;
   }
   return response.copyWith(headers: {HttpHeader.vary: '$current, $header'});
-}
-
-/// Fail (with a [PayloadTooLargeException], a 413) when the body is bigger than [maxBytes].
-///
-/// The check is done while the body is read, so a request is only rejected if its body is used,
-/// and the body is never fully loaded in memory:
-/// - if the `Content-Length` header is bigger than the limit, it fails before reading anything
-/// - otherwise (ex: chunked requests) it fails as soon as the read bytes exceed the limit
-Stream<List<int>> limitBodySize(
-  Stream<List<int>> body, {
-  required int maxBytes,
-  int? contentLength,
-}) async* {
-  if (contentLength != null && contentLength > maxBytes) {
-    throw const PayloadTooLargeException();
-  }
-
-  int readBytes = 0;
-  await for (final chunk in body) {
-    readBytes += chunk.length;
-    if (readBytes > maxBytes) {
-      throw const PayloadTooLargeException();
-    }
-    yield chunk;
-  }
 }
 
 /// Counter of the requests being handled, to know when a server can be closed gracefully

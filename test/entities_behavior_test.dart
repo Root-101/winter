@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:test/test.dart';
+import 'package:winter/src/request_entity.dart' show attachRoute;
 import 'package:winter/winter.dart';
 
 /// The request and response of Winter, without shelf (DECISIONS.md §10)
@@ -118,17 +119,46 @@ void main() {
     });
 
     test('the path params are read-only', () {
-      final request = RequestEntity('GET', Uri.parse('http://localhost/u/7'))
-        ..setRoutingContext(
-          RequestRoutingContext(
-            path: '/u/{id}',
-            key: 'u',
-            method: HttpMethod.get,
-          ),
-        );
+      final request = RequestEntity('GET', Uri.parse('http://localhost/u/7'));
+      attachRoute(
+        request,
+        Route.get(
+          path: '/u/{id}',
+          key: 'u',
+          handler: (r) => ResponseEntity.ok(),
+        ),
+      );
 
       expect(request.pathParams, {'id': '7'});
       expect(() => request.pathParams.clear(), throwsUnsupportedError);
+    });
+  });
+
+  group('ContextMap', () {
+    test('a key is an object: the same name is another key', () {
+      final first = ContextKey<String>('user');
+      final second = ContextKey<String>('user');
+      final context = ContextMap()..set(first, 'ann');
+
+      expect(context.get(first), 'ann');
+      expect(context.get(second), isNull);
+      expect(context.contains(first), isTrue);
+      expect(context.keys, [first]);
+      expect(first.toString(), 'ContextKey<String>(user)');
+      expect(context.toString(), contains('ann'));
+    });
+
+    test('putIfAbsent creates once, null removes, a copy is independent', () {
+      final key = ContextKey<List<int>>('list');
+      final context = ContextMap();
+
+      final created = context.putIfAbsent(key, () => [1]);
+      expect(context.putIfAbsent(key, () => [2]), same(created));
+
+      final copy = ContextMap.from(context);
+      context.set(key, null);
+      expect(context.contains(key), isFalse);
+      expect(copy.get(key), [1]);
     });
   });
 
@@ -201,14 +231,34 @@ void main() {
     });
 
     test('a copy without a body shares it, never serialized again', () async {
-      final original = ResponseEntity.ok(body: {'a': 1});
-      final copy = original.copyWith(headers: {'x': '1'}, context: {'k': 'v'});
+      final original = ResponseEntity.ok(body: {'a': 1})
+        ..context.set(_mark, 'v');
+      final copy = original.copyWith(headers: {'x': '1'});
 
       expect(copy.body(), {'a': 1});
-      expect(copy.context, {'k': 'v'});
+      expect(copy.context.get(_mark), 'v');
       expect(jsonDecode(await copy.readAsString()), {'a': 1});
-      expect(() => original.read(), throwsStateError);
     });
+
+    test(
+      'a body of text or bytes can be read again; a stream only once',
+      () async {
+        final text = ResponseEntity.ok(body: 'hello');
+        final stream = ResponseEntity<Stream<List<int>>>(
+          200,
+          body: Stream.value([1]),
+        );
+
+        expect(await text.readAsString(), 'hello');
+        expect(
+          await text.readAsString(),
+          'hello',
+          reason: 'a filter can look at it',
+        );
+        await stream.read().drain<void>();
+        expect(() => stream.read(), throwsStateError);
+      },
+    );
   });
 }
 
@@ -224,3 +274,5 @@ class _Connection implements HttpConnectionInfo {
   @override
   int get remotePort => 50000;
 }
+
+final ContextKey<String> _mark = ContextKey<String>('mark');

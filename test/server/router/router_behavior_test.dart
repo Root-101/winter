@@ -502,8 +502,7 @@ class _OnlyKey extends Filter {
   _OnlyKey(this.key);
 
   @override
-  bool shouldFilter(RequestEntity request) =>
-      request.routingContext?.key == key;
+  bool shouldFilter(RequestEntity request) => request.route?.key == key;
 
   @override
   Future<ResponseEntity> doFilter(

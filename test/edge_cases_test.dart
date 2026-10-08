@@ -102,6 +102,25 @@ void main() {
     });
   });
 
+  group('WinterRouter', () {
+    test('called directly, its handler routes the request itself', () async {
+      final router = WinterRouter(
+        routes: [
+          Route.get(
+            path: '/a',
+            handler: (r) => ResponseEntity.ok(body: 'a'),
+          ),
+        ],
+      );
+
+      final response = await router.handler(
+        RequestEntity('GET', Uri.parse('http://localhost/a')),
+      );
+
+      expect(await response.readAsString(), 'a');
+    });
+  });
+
   group('WinterLocale', () {
     test('is equal only to a locale with the same language and country', () {
       expect(const WinterLocale('es'), const WinterLocale('es'));

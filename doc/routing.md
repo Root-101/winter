@@ -162,7 +162,7 @@ to recognize a route without depending on its path:
 ```dart
 class MetricsFilter extends Filter {
   @override
-  bool shouldFilter(RequestEntity request) => request.routingContext?.key != 'health';
+  bool shouldFilter(RequestEntity request) => request.route?.key != 'health';
 
   @override
   Future<ResponseEntity> doFilter(RequestEntity request, FilterChain chain) async {
