@@ -516,6 +516,52 @@ void main() {
     });
   });
 
+  group('registrations (§5)', () {
+    test('lists every registration in order, with its kind and state', () {
+      di
+        ..put<_Service>(_Service())
+        ..putLazy<_Repository>(_SqlRepository.new, tag: 'main')
+        ..putLazy<String>(() => 'url')
+        ..putFactory<int>(() => 1)
+        ..putScoped<_UnitOfWork>(_UnitOfWork.new);
+      di.find<String>();
+
+      final List<DependencyRegistration> registrations = di.registrations;
+
+      expect(registrations.map((r) => r.toString()), [
+        '_Service (instance, created)',
+        '_Repository [main] (lazy, not created)',
+        'String (lazy, created)',
+        'int (factory)',
+        '_UnitOfWork (scoped)',
+      ]);
+      expect(registrations[1].type, _Repository);
+      expect(registrations[1].tag, 'main');
+      expect(registrations[1].kind, DependencyKind.lazy);
+      expect(registrations[1].created, isFalse);
+    });
+
+    test('is a read-only snapshot, and follows a registration again', () {
+      di
+        ..put<int>(1)
+        ..put<String>('a');
+      final List<DependencyRegistration> before = di.registrations;
+
+      di.put<int>(2);
+
+      expect(() => before.add(before.first), throwsUnsupportedError);
+      expect(before.map((r) => r.type), [int, String]);
+      expect(di.registrations.map((r) => r.type), [String, int]);
+      expect(DependencyInjection().registrations, isEmpty);
+    });
+
+    test('a nullable registration keeps the type it was registered with', () {
+      di.put(_maybeService());
+
+      expect(di.registrations.single.type, _typeOf<_Service?>());
+    });
+  });
+
   group('Use cases (§5, §5)', () {
     test('tags with every kind of registration', () {
       di
@@ -689,3 +735,5 @@ class _MemoryLogger extends WinterLogger {
     Map<String, Object?> fields = const {},
   }) => logs.add(message);
 }
+
+Type _typeOf<T>() => T;

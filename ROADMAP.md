@@ -628,8 +628,9 @@ first, small and independent; then the new features, from the most used to the l
   dependency that needs a connection opened; today it's awaited before `put`.
 - [ ] **Child containers for tests**: `di.child()` falls back to its parent, so a test registers
   its fakes in a child without touching the global `di`.
-- [ ] **A listing of the registrations** (`di.registrations`: type, tag, kind, created or not), to
-  log them at start-up or debug a missing one.
+- [x] **A listing of the registrations** (`di.registrations`: type, tag, kind, created or not), to
+  log them at start-up or debug a missing one. → `DependencyRegistration` and the public
+  `DependencyKind`, with a `toString` for the logs.
 
 **Validation** (proposed in the second review of 2.2, none of them is breaking):
 
