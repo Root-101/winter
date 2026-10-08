@@ -141,6 +141,10 @@ Guide: [`doc/dependency-injection.md`](doc/dependency-injection.md).
 - **Lifetimes**: `put` (an instance), `putLazy` (created by the first `find`; a cycle is a
   `StateError` with the chain), `putFactory` (one per `find`) and `putScoped` (one per request, in
   its `RequestScope`). The functions are synchronous: await an async initialization before.
+- **Child containers** (`di.child()`) take the recipes of their parent, not its instances (only
+  the instances given with `put` are shared): a lazy singleton of the parent gets its own instance
+  in the child, so it's built with the fakes of a test and the parent never changes (sharing the
+  instance would leak a fake to the next test, or ignore it if it was already created).
 - **`createAll()`, optional**: lazy keeps the order of registration free and the start fast, but a
   broken registration only fails when it's first found. Without reflection the graph can't be
   checked without creating it, so `createAll()` creates every lazy singleton (not factories nor
