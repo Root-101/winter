@@ -66,7 +66,7 @@ void main() {
       String urlToTest = '/global-filter/55?some=123&another=963';
       http.Response response = await http.get(url(urlToTest));
       expect(response.statusCode, 200);
-      expect(response.body, 'path: {}, query: {}');
+      expect(response.body, 'path: {id: 55}, query: {}');
       expect(response.headers['x-global-filter'], 'true');
     });
 
@@ -74,7 +74,7 @@ void main() {
       String urlToTest = '/global-filter/2/66?some=456&another=852';
       http.Response response = await http.get(url(urlToTest));
       expect(response.statusCode, 200);
-      expect(response.body, 'path: {}, query: {}');
+      expect(response.body, 'path: {id: 66}, query: {}');
       expect(response.headers['x-global-filter'], 'true');
     });
 
@@ -125,9 +125,10 @@ class RemoveQueryParamsFilter extends Filter {
     RequestEntity request,
     FilterChain chain,
   ) async {
-    request.pathParams.clear();
-    request.queryParams.clear();
-    return await chain.doFilter(request);
+    ///The request is read-only: the next filters get a copy without the query
+    return await chain.doFilter(
+      request.copyWith(requestedUri: request.requestedUri.replace(query: '')),
+    );
   }
 }
 

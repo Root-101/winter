@@ -29,7 +29,7 @@ void main() {
             path: '/anything.*',
             method: HttpMethod.get,
             handler: (request) =>
-                ResponseEntity.ok(body: request.url.toString()),
+                ResponseEntity.ok(body: request.requestedUri.path.substring(1)),
           ),
           Route(
             path: '/param-regex/{key|.*}',

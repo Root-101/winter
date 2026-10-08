@@ -143,21 +143,26 @@ void main() {
   });
 
   group('addVary', () {
-    String? vary(Response response) => response.headers[HttpHeader.vary];
+    String? vary(ResponseEntity response) => response.headers[HttpHeader.vary];
 
     test('Without Vary', () {
-      expect(vary(addVary(Response.ok(''), 'Origin')), 'Origin');
+      expect(vary(addVary(ResponseEntity.ok(body: ''), 'Origin')), 'Origin');
     });
 
     test('Empty Vary', () {
       expect(
-        vary(addVary(Response.ok('', headers: {'Vary': ' '}), 'Origin')),
+        vary(
+          addVary(
+            ResponseEntity.ok(body: '', headers: {'Vary': ' '}),
+            'Origin',
+          ),
+        ),
         'Origin',
       );
     });
 
     test('Keeps the body', () async {
-      final response = addVary(Response.ok('body'), 'Origin');
+      final response = addVary(ResponseEntity.ok(body: 'body'), 'Origin');
       expect(await response.readAsString(), 'body');
     });
   });

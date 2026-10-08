@@ -198,7 +198,7 @@ void main() {
       router: ServeRouter((request) {
         final cvc = ConstraintValidatorContext();
         cvc
-            .field('code', request.url.queryParameters['code'])
+            .field('code', request.requestedUri.queryParameters['code'])
             .custom(
               (value) => value == 'ok'
                   ? null

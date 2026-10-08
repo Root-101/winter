@@ -491,7 +491,7 @@ class _ChangeRequest extends Filter {
   Future<ResponseEntity> doFilter(
     RequestEntity request,
     FilterChain chain,
-  ) async => chain.doFilter(request.change(headers: {'x-changed': 'yes'}));
+  ) async => chain.doFilter(request.copyWith(headers: {'x-changed': 'yes'}));
 }
 
 /// Marks the response of the route with the [key]
@@ -510,6 +510,6 @@ class _OnlyKey extends Filter {
     FilterChain chain,
   ) async {
     final response = await chain.doFilter(request);
-    return response.change(headers: {'x-key': key});
+    return response.copyWith(headers: {'x-key': key});
   }
 }

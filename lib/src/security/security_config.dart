@@ -116,6 +116,6 @@ class SecurityHeadersFilter extends Filter {
       for (final MapEntry(:key, :value) in config.headers.entries)
         if (!response.headers.containsKey(key)) key: value,
     };
-    return missing.isEmpty ? response : response.change(headers: missing);
+    return missing.isEmpty ? response : response.copyWith(headers: missing);
   }
 }

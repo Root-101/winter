@@ -1,5 +1,3 @@
-export 'package:shelf/shelf.dart';
-
 export 'src/build_context.dart';
 export 'src/context/context.dart';
 export 'src/env/env.dart';

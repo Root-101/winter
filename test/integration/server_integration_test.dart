@@ -4,6 +4,7 @@ library;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
@@ -257,10 +258,10 @@ void main() {
     });
 
     test('a body without text has no charset', () {
-      final bytes = ResponseEntity<void>(
+      final bytes = ResponseEntity<Object>(
         200,
         headers: {'x': '1'},
-      ).change(body: [1, 2]);
+      ).copyWith(body: Uint8List.fromList([1, 2]));
       final stream = ResponseEntity<Stream<List<int>>>(
         200,
         body: Stream.value([1]),

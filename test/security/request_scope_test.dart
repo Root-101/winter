@@ -27,7 +27,7 @@ class _ChangeRequestFilter extends Filter {
     FilterChain chain,
   ) async {
     final response = await chain.doFilter(
-      request.change(headers: {'X-Changed': 'true'}),
+      request.copyWith(headers: {'X-Changed': 'true'}),
     );
     userSeenAfterChain = request.securityContext.authentication?.name;
     return response;

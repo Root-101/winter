@@ -232,7 +232,7 @@ class FullChangeFilterFilter extends Filter {
     RequestEntity request,
     FilterChain chain,
   ) async {
-    RequestEntity newRequestEntity = await request.copyWith(
+    RequestEntity newRequestEntity = request.copyWith(
       headers: {...request.headers, 'before-request-header': 'before-request'},
     );
 
@@ -256,7 +256,7 @@ class BodyChangeFilter extends Filter {
     FilterChain chain,
   ) async {
     String? body = await request.body<String>();
-    RequestEntity newRequest = await request.copyWith(body: '$body modified');
+    RequestEntity newRequest = request.copyWith(body: '$body modified');
     return await chain.doFilter(newRequest);
   }
 }
