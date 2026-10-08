@@ -146,12 +146,12 @@ void main() {
       expect(json.statusCode, 415);
       expect(
         jsonDecode(json.body)['detail'],
-        'Unsupported Content-Type application/json, expected $form',
+        'Unsupported Content-Type application/json, expected $form or multipart/form-data',
       );
       expect(none.statusCode, 415);
       expect(
         jsonDecode(none.body)['detail'],
-        'Missing Content-Type, expected $form',
+        'Missing Content-Type, expected $form or multipart/form-data',
       );
     });
 

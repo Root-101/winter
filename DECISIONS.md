@@ -271,6 +271,16 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
   `dart:io` are cleared so the real server and `WinterTestClient` answer the same.
 - **`Winter.buildHandler`** returns the pipeline as a `RequestHandler`; `WinterTestClient` calls it
   in memory, so tests run the real pipeline.
+- **Forms and uploads**: `formData()` reads a whole form (`application/x-www-form-urlencoded` or
+  `multipart/form-data`) into memory, with the files as bytes, from the cached body: the simple
+  case, and `maxBodySize` bounds it. `multipart()` streams the parts so a big file goes to disk
+  without being held; its parts come in order and a part left unread is discarded, never buffered.
+  The multipart parser is Winter's own, not `package:mime`: `mime` throws a malformed header
+  inside its own `listen` (an uncaught error) and leaves the reader of a part waiting forever when
+  the body ends early or fails (a 413), and a client controls both. Winter's parser pulls the body
+  (`StreamIterator`), so every error is thrown by the read that waits for it, as a 400 (or the 413).
+  A file name is given as the browser sent it (WHATWG: no backslash escapes) and never cleaned:
+  it's not a path.
 - **WebSockets** (planned): a response of its own kind, recognized by the server before writing,
   will hand the `HttpRequest` to `WebSocketTransformer.upgrade` after the filters ran. Nothing in
   the current API blocks it.
@@ -279,8 +289,8 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
 
 - **One library**, `package:winter/winter.dart`. Internal helpers stay in `lib/src` and are hidden
   with `export ... hide`: `addVary`, `limitBodySize`, `isValidUri`, the router helpers,
-  `writeResponse`, the construction from an `HttpRequest`, Winter's own translations and the
-  console styles. Public on purpose: `internalServerErrorResponse` and `defaultLogUnhandledError`
+  `writeResponse`, the construction from an `HttpRequest`, the multipart parser, Winter's own
+  translations and the console styles. Public on purpose: `internalServerErrorResponse` and `defaultLogUnhandledError`
   (for an `ExceptionHandler` of the app), the defaults of the filters (`defaultLog*`,
   `defaultClientId`), and the shortcuts `di`, `om`, `eh`, `env`, `logger` (short on purpose; the
   long form is `Winter.context`).

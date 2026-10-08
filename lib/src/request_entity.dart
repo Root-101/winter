@@ -5,6 +5,8 @@ import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
 import 'package:winter/src/http/headers.dart';
+import 'package:winter/src/multipart.dart'
+    show multipartBoundary, parseMultipart;
 import 'package:winter/src/router/path_template.dart';
 import 'package:winter/winter.dart';
 
@@ -310,29 +312,68 @@ class RequestEntity {
     }
   }
 
-  /// The fields of a form sent as `application/x-www-form-urlencoded` (an HTML `<form>`).
+  /// The fields (and files) of a form: an HTML `<form>` sends `application/x-www-form-urlencoded`,
+  /// or `multipart/form-data` when it uploads files.
   ///
-  /// Any other `Content-Type` is a 415 ([UnsupportedMediaTypeException]), and a body that isn't
-  /// valid URL-encoded text a 400. The raw body is cached like in [body], so it can be called
-  /// multiple times; after it, [read] and [readAsString] fail.
+  /// The whole body is read into memory (up to `ServerConfig.maxBodySize`): use [multipart] to
+  /// stream big files. Any other `Content-Type` is a 415 ([UnsupportedMediaTypeException]), and a
+  /// malformed body a 400. The raw body is cached like in [body], so it can be called multiple
+  /// times; after it, [read] and [readAsString] fail.
   Future<FormData> formData() async {
-    final String expected = MediaType.applicationFormUrlencoded.mimeType;
-    if (mimeType != expected) {
+    final String urlencoded = MediaType.applicationFormUrlencoded.mimeType;
+    final String multipart = MediaType.multipartFormData.mimeType;
+    if (mimeType == urlencoded) {
+      final Encoding encoding = this.encoding ?? utf8;
+      try {
+        return FormData._parse(await _body.text(encoding), encoding);
+      } on FormatException {
+        throw const BadRequestException(detail: _invalidForm);
+      } on ArgumentError {
+        // Uri.decodeQueryComponent throws it for a bad percent-encoding (`%zz`)
+        throw const BadRequestException(detail: _invalidForm);
+      }
+    }
+    if (mimeType == multipart) {
+      final String boundary = multipartBoundary(
+        headers[HttpHeader.contentType]!,
+      );
+      return FormData._fromParts(
+        parseMultipart(Stream.value(await _body.bytes()), boundary),
+      );
+    }
+    final String expected = '$urlencoded or $multipart';
+    throw UnsupportedMediaTypeException(
+      detail: mimeType == null
+          ? 'Missing Content-Type, expected $expected'
+          : 'Unsupported Content-Type $mimeType, expected $expected',
+    );
+  }
+
+  /// The parts of a `multipart/*` body (`multipart/form-data`), streamed as they arrive: a file
+  /// is never kept whole in memory.
+  ///
+  /// ```dart
+  /// await for (final part in request.multipart()) {
+  ///   if (part.isFile) await part.read().pipe(File('uploads/$id').openWrite());
+  /// }
+  /// ```
+  ///
+  /// Read each part before asking for the next one (see [MultipartPart]). Another `Content-Type`
+  /// is a 415, and a malformed body a 400 thrown where it's read. `ServerConfig.maxBodySize` still
+  /// applies: raise it for big uploads. It reads the stream of the body: it can be called once,
+  /// and not after [body], [formData], [read] or [readAsString].
+  Stream<MultipartPart> multipart() {
+    final String? mimeType = this.mimeType;
+    if (mimeType == null || !mimeType.startsWith('multipart/')) {
+      final String expected = MediaType.multipartFormData.mimeType;
       throw UnsupportedMediaTypeException(
         detail: mimeType == null
             ? 'Missing Content-Type, expected $expected'
             : 'Unsupported Content-Type $mimeType, expected $expected',
       );
     }
-    final Encoding encoding = this.encoding ?? utf8;
-    try {
-      return FormData._parse(await _body.text(encoding), encoding);
-    } on FormatException {
-      throw const BadRequestException(detail: _invalidForm);
-    } on ArgumentError {
-      // Uri.decodeQueryComponent throws it for a bad percent-encoding (`%zz`)
-      throw const BadRequestException(detail: _invalidForm);
-    }
+    final String boundary = multipartBoundary(headers[HttpHeader.contentType]!);
+    return parseMultipart(read(), boundary);
   }
 
   static const String _invalidForm =
@@ -371,8 +412,8 @@ class RequestEntity {
   String toString() => 'RequestEntity{$method ${requestedUri.path}}';
 }
 
-/// The fields of a form sent as `application/x-www-form-urlencoded`, read with
-/// [RequestEntity.formData]
+/// The fields and files of a form (`application/x-www-form-urlencoded` or
+/// `multipart/form-data`), read with [RequestEntity.formData]
 final class FormData {
   /// Every value of each field, in order (`tag=a&tag=b` => `{tag: [a, b]}`, as several
   /// checkboxes with the same name send). Read-only.
@@ -383,7 +424,58 @@ final class FormData {
     for (final entry in fieldsAll.entries) entry.key: entry.value.last,
   });
 
-  FormData._(this.fieldsAll);
+  /// Every file of each field, in order (`<input type="file" multiple>`). Always empty for an
+  /// `application/x-www-form-urlencoded` form. Read-only.
+  final Map<String, List<UploadedFile>> filesAll;
+
+  /// The files, with the last one of a repeated field. Read-only.
+  late final Map<String, UploadedFile> files = Map.unmodifiable({
+    for (final entry in filesAll.entries) entry.key: entry.value.last,
+  });
+
+  FormData._(this.fieldsAll, [this.filesAll = const {}]);
+
+  /// The parts of a `multipart/form-data` body: a part with a `filename` is a file, and the rest
+  /// are fields (text in the charset of the part, or UTF-8). A part without a name is ignored, and
+  /// so is a file input left empty (no file name and no content).
+  static Future<FormData> _fromParts(Stream<MultipartPart> parts) async {
+    final Map<String, List<String>> fields = {};
+    final Map<String, List<UploadedFile>> files = {};
+    await for (final MultipartPart part in parts) {
+      final String? name = part.name;
+      final String? filename = part.filename;
+      if (name == null) continue;
+      if (filename == null) {
+        final String value;
+        try {
+          value = await part.readAsString();
+        } on FormatException {
+          throw const BadRequestException(
+            detail: 'The body is not a valid multipart body',
+          );
+        }
+        (fields[name] ??= []).add(value);
+        continue;
+      }
+      final Uint8List bytes = await part.readAsBytes();
+      if (filename.isEmpty && bytes.isEmpty) continue;
+      (files[name] ??= []).add(
+        UploadedFile(
+          name: name,
+          filename: filename,
+          bytes: bytes,
+          headers: part.headers,
+        ),
+      );
+    }
+    return FormData._(_unmodifiable(fields), _unmodifiable(files));
+  }
+
+  static Map<String, List<T>> _unmodifiable<T>(Map<String, List<T>> map) =>
+      Map.unmodifiable({
+        for (final entry in map.entries)
+          entry.key: List<T>.unmodifiable(entry.value),
+      });
 
   /// [raw] is `name=Ann+Lee&age=30`: `+` is a space, and the percent-encoded bytes are decoded
   /// with [encoding]. A field without `=` has an empty value.
@@ -398,12 +490,7 @@ final class FormData {
         Uri.decodeQueryComponent(value, encoding: encoding),
       );
     }
-    return FormData._(
-      Map.unmodifiable({
-        for (final entry in fields.entries)
-          entry.key: List<String>.unmodifiable(entry.value),
-      }),
-    );
+    return FormData._(_unmodifiable(fields));
   }
 
   /// The field [name] (its last value), or null
@@ -418,7 +505,8 @@ final class FormData {
   }
 
   @override
-  String toString() => 'FormData{${fieldsAll.keys.join(', ')}}';
+  String toString() =>
+      'FormData{${[...fieldsAll.keys, ...filesAll.keys].join(', ')}}';
 }
 
 /// The body of a request: a stream that is read once, and the bytes cached when they are read
@@ -463,10 +551,11 @@ class _RequestBody {
     return _stream;
   }
 
-  Future<String> text(Encoding encoding) async {
-    _bytes ??= _collect();
-    return _text ??= encoding.decode(await _bytes!);
-  }
+  /// The whole body, read once and cached
+  Future<List<int>> bytes() => _bytes ??= _collect();
+
+  Future<String> text(Encoding encoding) async =>
+      _text ??= encoding.decode(await bytes());
 
   Future<List<int>> _collect() async {
     final BytesBuilder builder = BytesBuilder(copy: false);
