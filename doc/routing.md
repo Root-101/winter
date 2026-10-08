@@ -239,6 +239,29 @@ WinterRouter(
 It matches every path under its prefix: declare it **after** the routes that share that prefix
 (`/assets/api`), and a `Route.static` at `/` last of all.
 
+### Health checks
+
+```dart
+Route.health(path: '/livez'),                       // liveness: the process answers
+Route.health(
+  path: '/readyz',                                  // readiness: it can serve requests
+  checks: {
+    'database': () => di.find<Database>().ping(),   // FutureOr<bool>
+    'queue': () => queue.isConnected,
+  },
+  timeout: const Duration(seconds: 2),              // per check, 5 s by default
+),
+```
+
+- A 200 `{"status": "UP", "checks": {"database": "UP", "queue": "UP"}}` when every check passes.
+- A **503** `{"status": "DOWN", ...}` when one returns `false`, throws or takes longer than
+  `timeout`: the load balancer (or Kubernetes) takes the instance out. The reason is logged as a
+  warning, never sent, and the format is the same (not a Problem Details).
+- The checks run at once; the response is never cached (`Cache-Control: no-store`), and `HEAD`
+  works. Without checks it's a 200 while the server answers (path `/health` by default).
+- It's a normal route: add `filterConfig:` to protect it, or let `LoggingFilter.shouldFilter` skip
+  it (`request.route?.key`) so the probes don't fill the logs.
+
 ### Testing the routes
 
 ```dart

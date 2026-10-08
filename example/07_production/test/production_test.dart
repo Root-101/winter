@@ -85,19 +85,19 @@ void main() {
       expect(response.headers['x-request-id'], isNotNull);
     });
 
-    test(
-      '/ready is a 503 with Retry-After while the database is down',
-      () async {
-        expect((await client.get('/ready')).statusCode, 200);
+    test('/ready is a 503 DOWN while the database is down', () async {
+      expect((await client.get('/ready')).statusCode, 200);
 
-        await database.close();
-        final response = await client.get('/ready');
+      await database.close();
+      final response = await client.get('/ready');
 
-        expect(response.statusCode, 503);
-        expect(response.headers['retry-after'], '5');
-        expect(response.headers['x-ratelimit-limit'], '100');
-      },
-    );
+      expect(response.statusCode, 503);
+      expect(response.json, {
+        'status': 'DOWN',
+        'checks': {'database': 'DOWN'},
+      });
+      expect(response.headers['x-ratelimit-limit'], '100');
+    });
   });
 
   test(
