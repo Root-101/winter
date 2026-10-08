@@ -4,7 +4,21 @@ import 'dart:io';
 import 'package:winter/winter.dart';
 
 /// Levels of a log, from the most verbose to the most important.
-enum LogLevel { debug, info, warning, error }
+///
+/// {@category Logging}
+enum LogLevel {
+  /// Details to find a problem; off by default
+  debug,
+
+  /// What the app does (a request, a start)
+  info,
+
+  /// Something unexpected that the app survives
+  warning,
+
+  /// A failure (an unhandled error is a 500)
+  error,
+}
 
 /// Every log of the framework goes through a [WinterLogger], so they can be
 /// filtered by level or sent anywhere (a file, a logging service...) by
@@ -17,7 +31,10 @@ enum LogLevel { debug, info, warning, error }
 ///
 /// Every level takes an [Object] error, its [StackTrace] and [fields] (structured data). Never
 /// log the body of a request, a token or a password.
+///
+/// {@category Logging}
 abstract class WinterLogger {
+  /// A logger (const, so a logger of its own can be a constant)
   const WinterLogger();
 
   /// Writes a log of [level]. A logger of its own implements only this (and [isEnabled]).
@@ -97,6 +114,8 @@ abstract class WinterLogger {
 ///
 /// The request id is there inside a request. Debug and info go to stdout, warning and error to
 /// stderr, with the error and the stack trace in the next lines. Logs below [minLevel] are ignored.
+///
+/// {@category Logging}
 class ConsoleLogger extends WinterLogger {
   /// The lowest level written
   final LogLevel minLevel;
@@ -145,6 +164,8 @@ class ConsoleLogger extends WinterLogger {
 /// `requestId` is there inside a request, `error` and `stackTrace` (as strings) when given, and the
 /// [fields] are members of their own (they never replace the keys above). A field that is not a
 /// JSON value is written as its text. Logs below [minLevel] are ignored.
+///
+/// {@category Logging}
 class JsonLogger extends WinterLogger {
   /// The lowest level written
   final LogLevel minLevel;

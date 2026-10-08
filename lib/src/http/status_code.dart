@@ -4,6 +4,8 @@
 /// throw ApiException(StatusCode.conflict, detail: 'The email is already registered');
 /// StatusCode.resolve(422)?.reasonPhrase; // Unprocessable Entity
 /// ```
+///
+/// {@category HTTP}
 enum StatusCode {
   // 1xx Informational
 
@@ -273,11 +275,22 @@ enum StatusCode {
 }
 
 /// The class of a status code, its first digit
+///
+/// {@category HTTP}
 enum Series {
+  /// 1xx: the request goes on
   informational(1),
+
+  /// 2xx: the request worked
   successful(2),
+
+  /// 3xx: the client must look elsewhere (a redirect, a 304)
   redirection(3),
+
+  /// 4xx: a mistake of the client
   clientError(4),
+
+  /// 5xx: a failure of the server
   serverError(5);
 
   /// The first digit of the codes of this series

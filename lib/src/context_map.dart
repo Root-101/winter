@@ -2,10 +2,13 @@
 ///
 /// Every key is a different object (there is no `const` constructor), so two packages that both
 /// use `'user'` as a name never overwrite each other.
+///
+/// {@category Requests and responses}
 final class ContextKey<T> {
   /// A name for messages and `toString`; it doesn't identify the key
   final String name;
 
+  /// A new key, different from every other one, with [name] for messages
   ContextKey(this.name);
 
   @override
@@ -26,6 +29,8 @@ final class ContextKey<T> {
 /// ```
 ///
 /// A copy of a request or a response (`copyWith`) starts with the same values.
+///
+/// {@category Requests and responses}
 final class ContextMap {
   final Map<ContextKey<Object?>, Object?> _values;
 

@@ -20,6 +20,8 @@ import 'package:winter/winter.dart';
 ///
 /// Every instance has its own dependencies; the global one is `di` (from the current
 /// `Winter.context`).
+///
+/// {@category Dependency injection}
 class DependencyInjection {
   /// In order of registration (a registration again moves to the end)
   final Map<_Key, _Registration> _registrations = {};

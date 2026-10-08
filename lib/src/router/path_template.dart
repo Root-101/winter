@@ -3,6 +3,8 @@
 ///
 /// Compiling the regex is expensive, so templates are cached by path and
 /// every request reuses them (routes are a small & fixed set of paths).
+///
+/// {@category Routing}
 class PathTemplate {
   /// Path params: `{name}` or `{name|regex}`
   static final RegExp _paramPattern = RegExp(r'{([^}]+)}');
@@ -16,6 +18,7 @@ class PathTemplate {
 
   PathTemplate._(this._regex, this._paramNames);
 
+  /// The template of [path], compiled the first time and cached
   factory PathTemplate.of(String path) =>
       _cache[path] ??= PathTemplate._compile(path);
 
@@ -82,6 +85,8 @@ class PathTemplate {
 
 /// Remove the trailing slash of a path (`/users/` => `/users`), except for the root (`/`).
 /// So a route match its path with or without the trailing slash.
+///
+/// {@category Routing}
 String normalizePath(String path) {
   String normalized = path;
   while (normalized.length > 1 && normalized.endsWith('/')) {

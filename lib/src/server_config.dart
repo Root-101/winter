@@ -3,9 +3,14 @@ import 'dart:io' show SecurityContext;
 
 import 'package:winter/winter.dart';
 
+/// The port of a server without one: 8080
+///
+/// {@category Server}
 const int defaultServerPort = 8080;
 
 ///10 MB
+///
+/// {@category Server}
 const int defaultMaxBodySize = 10 * 1024 * 1024;
 
 /// How the server runs: where it listens, the body limit and the graceful shutdown.
@@ -18,6 +23,8 @@ const int defaultMaxBodySize = 10 * 1024 * 1024;
 /// `Winter.start` validates it before opening the port (an [ArgumentError] for a port out of
 /// 0-65535, a negative [maxBodySize] or [shutdownTimeout], or a [requestTimeout] that isn't
 /// positive).
+///
+/// {@category Server}
 class ServerConfig {
   ///Address on which the server listens: `'0.0.0.0'` (default, every IPv4 interface),
   ///`'localhost'`, `'127.0.0.1'`, `'::'`...

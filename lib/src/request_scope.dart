@@ -12,6 +12,8 @@ import 'package:winter/winter.dart';
 /// (`SecurityContextHolder` in Spring), or the `AsyncLocalStorage` of Node.
 ///
 /// Outside a request (at start-up, in a global [Timer], in another isolate) there's no scope.
+///
+/// {@category Server}
 class RequestScope {
   static final Object _zoneKey = Object();
 
@@ -130,15 +132,21 @@ class RequestScope {
 
 /// The id of the request in progress (see [RequestScope.requestId]), or null outside a request.
 /// The loggers of Winter add it to every log.
+///
+/// {@category Server}
 String? get requestId => RequestScope.current?.requestId;
 
 /// Security context of the request in progress, or null outside a request.
 /// The same object as `request.securityContext`.
+///
+/// {@category Server}
 RequestSecurityContext? get requestSecurityContext =>
     RequestScope.current?.securityContext;
 
 /// Locale of the request in progress (the same as `request.locale`),
 /// or the fallback of `Winter.context.localeConfig` outside a request.
+///
+/// {@category Server}
 WinterLocale get requestLocale =>
     RequestScope.current?.locale ?? Winter.context.localeConfig.fallback;
 
@@ -147,6 +155,8 @@ WinterLocale get requestLocale =>
 ///
 /// Work started by a request (even an `unawaited` one that ends after the response)
 /// keeps seeing this user.
+///
+/// {@category Server}
 Authentication? get requestAuthentication =>
     requestSecurityContext?.authentication;
 
@@ -155,6 +165,9 @@ final ContextKey<WinterLocale> _localeKey = ContextKey<WinterLocale>(
   'winter.locale',
 );
 
+/// The language of a request (`request.locale`)
+///
+/// {@category Server}
 extension RequestLocaleX on RequestEntity {
   /// Locale of this request, chosen from its `Accept-Language` with `Winter.context.localeConfig`.
   /// Calculated the first time and cached in the request context.

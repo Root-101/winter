@@ -2,8 +2,24 @@ import 'package:winter/winter.dart';
 
 /// Lets a request go on only if it's authenticated ([authenticated]) and passes the [rules]:
 /// otherwise a 401 (nobody authenticated) or a 403 (authenticated, but not allowed).
+///
+/// ```dart
+/// Route.parent(
+///   path: '/admin',
+///   filterConfig: FilterConfig([AuthFilter(rules: hasRole('admin') | hasPermission('admin.read'))]),
+///   routes: adminRoutes,
+/// )
+/// ```
+///
+/// It only checks: the authentication is set before it by a filter of the app (see
+/// [RequestSecurityContext]).
+///
+/// {@category Security}
 class AuthFilter extends Filter {
+  /// Whether the request needs an authenticated user (a 401 without one)
   final bool authenticated;
+
+  /// The rules the user must pass (a 403 otherwise), or null for none
   final RuleBuilder? rules;
   final bool Function(RequestEntity)? _shouldFilter;
 
@@ -11,6 +27,8 @@ class AuthFilter extends Filter {
   /// `Basic realm="api"` for basic authentication
   final String challenge;
 
+  /// A filter that needs an authenticated user passing [rules]; the requests where
+  /// `shouldFilter` returns false skip it
   AuthFilter({
     this.authenticated = true,
     this.rules,

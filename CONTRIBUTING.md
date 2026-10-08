@@ -31,6 +31,9 @@ inside it.
   `export ... hide`).
 - The lints of `analysis_options.yaml`: single quotes, trailing commas, `const`, explicit casts of
   `dynamic`, explicit type arguments, no `print` (use `logger`).
+- Every public member has a dartdoc (the `public_member_api_docs` lint), and every public
+  top-level declaration ends its doc with `{@category <module>}` (the categories are listed in
+  `dartdoc_options.yaml`). Check the reference with `fvm dart doc --dry-run`: no warnings.
 - Framework code never writes to stdout or stderr: it logs through `logger`, and never logs bodies,
   query strings or tokens.
 

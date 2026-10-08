@@ -4,6 +4,8 @@ import 'package:winter/winter.dart';
 
 /// A check of something the app needs (the database, a queue), for [Route.health]: true when it
 /// works. Returning false, throwing or taking longer than the timeout of the route is a failure.
+///
+/// {@category Routing}
 typedef HealthCheck = FutureOr<bool> Function();
 
 /// The handler of [Route.health]: every check of [checks] at once, each one limited to [timeout].
@@ -11,6 +13,8 @@ typedef HealthCheck = FutureOr<bool> Function();
 ///
 /// A 200 `{"status": "UP", "checks": {"database": "UP"}}` when all of them pass, and a 503 with
 /// `"status": "DOWN"` otherwise. The reason of a failure is logged, never sent.
+///
+/// {@category Routing}
 RequestHandler healthHandler(
   Map<String, HealthCheck> checks,
   Duration timeout,

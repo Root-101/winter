@@ -6,15 +6,21 @@ import 'package:http_parser/http_parser.dart' show CaseInsensitiveMap;
 /// The headers of a request or a response, every value of each one: case insensitive and
 /// unmodifiable. [headers] maps a name to a `String` or a `List<String>` (several values, like
 /// `Set-Cookie`).
+///
+/// {@category HTTP}
 Map<String, List<String>> headersAllOf(Map<String, Object?>? headers) =>
     mergeHeaders(const {}, headers);
 
 /// The headers of a request of `dart:io`, read without copying them (they are already case
 /// insensitive)
+///
+/// {@category HTTP}
 Map<String, List<String>> ioHeaders(HttpHeaders headers) => _IoHeaders(headers);
 
 /// [current] with [changes] on top: a value replaces the one of the same name (any case), and
 /// `null` removes it
+///
+/// {@category HTTP}
 Map<String, List<String>> mergeHeaders(
   Map<String, List<String>> current,
   Map<String, Object?>? changes,
@@ -39,6 +45,8 @@ Map<String, List<String>> mergeHeaders(
 
 /// One value per header (several are joined with `, `): a view of [headersAll], case insensitive
 /// and unmodifiable
+///
+/// {@category HTTP}
 Map<String, String> joinHeaders(Map<String, List<String>> headersAll) =>
     _Joined(headersAll);
 

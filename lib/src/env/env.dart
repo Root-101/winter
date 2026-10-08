@@ -17,6 +17,8 @@ import 'package:collection/collection.dart';
 ///
 /// [Env.load] also reads `.env` files for local development. The errors never show a value: it
 /// may be a secret.
+///
+/// {@category Configuration}
 class Env {
   final Map<String, String> _env;
 

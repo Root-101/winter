@@ -6,6 +6,8 @@ import 'package:winter/winter.dart';
 /// and the whole pipeline that `Winter.buildHandler` returns (what `WinterTestClient` calls).
 ///
 /// Code that runs before or after a handler is a `Filter`.
+///
+/// {@category Routing}
 typedef RequestHandler = FutureOr<ResponseEntity> Function(
   RequestEntity request,
 );

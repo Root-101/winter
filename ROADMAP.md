@@ -819,12 +819,17 @@ written twice. The rest can be written now.
 
 ### 5.3 Dartdoc (API reference on pub.dev)
 
-- [ ] Enable the `public_member_api_docs` lint and document the whole public API, with an example
+- [x] Enable the `public_member_api_docs` lint and document the whole public API, with an example
   in the main classes (`Winter`, `WinterRouter`, `Route`, `Filter`, `ResponseEntity`,
   `ObjectMapper`, `FieldValidator`, `AuthFilter`). The object mapper already passes the lint.
-- [ ] Clean up the comments copied from Spring with Javadoc syntax (`{@link ...}`, `{@code ...}`,
+  → 229 members documented; `example/analysis_options.yaml` turns the lint off for the examples
+  (apps, not an API).
+- [x] Clean up the comments copied from Spring with Javadoc syntax (`{@link ...}`, `{@code ...}`,
   `@see <a href=...>` with broken URLs) in `http_status_code.dart` and `status_code.dart`.
-- [ ] Use dartdoc categories (`{@category Routing}`) to group the reference by module.
+  → They were left in `http_header.dart`, now markdown links.
+- [x] Use dartdoc categories (`{@category Routing}`) to group the reference by module. → 14
+  categories in `dartdoc_options.yaml`, one per module; every exported declaration has one, and
+  `dart doc` has no warnings.
 
 ### 5.4 Examples
 

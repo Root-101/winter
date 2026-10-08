@@ -1,8 +1,13 @@
 import 'package:winter/winter.dart';
 
 /// A language (`es`) with an optional region (`es-MX`).
+///
+/// {@category i18n}
 class WinterLocale {
+  /// English (`en`): the default language, and the fallback
   static const WinterLocale english = WinterLocale('en');
+
+  /// Spanish (`es`)
   static const WinterLocale spanish = WinterLocale('es');
 
   /// Lowercase ISO 639 code: `en`, `es`...
@@ -11,6 +16,7 @@ class WinterLocale {
   /// Uppercase ISO 3166 code: `US`, `MX`... or null
   final String? countryCode;
 
+  /// The language [languageCode], of the region [countryCode] if given
   const WinterLocale(this.languageCode, [this.countryCode]);
 
   /// Parse a language tag like `es`, `es-MX` or `es_mx`.
@@ -45,6 +51,8 @@ class WinterLocale {
 }
 
 /// Languages the app answers in. Configured in the [WinterContext] (`Winter.context.setUp(localeConfig: ...)`).
+///
+/// {@category i18n}
 class LocaleConfig {
   /// Languages the app can answer in, by preference when the client accepts several with the same `q`.
   /// Default to English only: an app opts in to other languages, so its responses don't change by surprise.
@@ -53,6 +61,7 @@ class LocaleConfig {
   /// Used without `Accept-Language` or when no accepted language is supported
   final WinterLocale fallback;
 
+  /// The languages of the app: English only by default
   LocaleConfig({
     this.supported = const [WinterLocale.english],
     this.fallback = WinterLocale.english,

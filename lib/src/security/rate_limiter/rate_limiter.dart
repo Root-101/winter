@@ -12,6 +12,8 @@ import 'dart:collection';
 /// The requests are kept in a [RateLimiterStore]. The default one is in memory, so the limit is
 /// **per isolate and per process**: four instances of the server allow four times the limit. A
 /// shared store (Redis) can implement the same interface.
+///
+/// {@category Security}
 class RateLimiter {
   /// Maximum number of requests allowed within the given [window].
   final int maxRequests;
@@ -68,6 +70,8 @@ class RateLimiter {
 }
 
 /// The state of an id after a request (see [RateLimiter.check])
+///
+/// {@category Security}
 class RateLimitResult {
   /// Whether the request is allowed (and was recorded)
   final bool allowed;
@@ -85,6 +89,7 @@ class RateLimitResult {
   /// Until a request is allowed again; zero when it's allowed now
   final Duration retryAfter;
 
+  /// The result of a check
   const RateLimitResult({
     required this.allowed,
     required this.limit,
@@ -96,6 +101,8 @@ class RateLimitResult {
 
 /// Where a [RateLimiter] keeps the requests of every id. It's asynchronous so a shared store
 /// (Redis, a database) can implement it; [hit] must be atomic for an id.
+///
+/// {@category Security}
 abstract interface class RateLimiterStore {
   /// The requests of [id] in the [window] that ends at [now]: if they are fewer than [limit],
   /// the request is allowed, and recorded when [record]
@@ -118,6 +125,8 @@ abstract interface class RateLimiterStore {
 ///
 /// Once per window it forgets the ids without requests in it, so the memory doesn't grow with
 /// every new id (ex: every new IP). It holds up to `limit` timestamps per active id.
+///
+/// {@category Security}
 class InMemoryRateLimiterStore implements RateLimiterStore {
   /// [Queue] for O(1) removal of expired timestamps from the front.
   final Map<String, Queue<DateTime>> _requestsLog = {};

@@ -1,9 +1,13 @@
 import 'package:winter/winter.dart';
 
 /// The authenticated user has the [role]
+///
+/// {@category Security}
 RuleBuilder hasRole(String role) => RuleBuilder(RoleRule(role));
 
 /// The authenticated user has the [permission]
+///
+/// {@category Security}
 RuleBuilder hasPermission(String permission) =>
     RuleBuilder(PermissionRule(permission));
 
@@ -17,6 +21,8 @@ RuleBuilder hasPermission(String permission) =>
 /// ```
 ///
 /// [describe] is how it's shown in logs and `toString`.
+///
+/// {@category Security}
 RuleBuilder rule(
   bool Function(Authentication authentication, RequestEntity request) check, {
   String describe = 'rule',
@@ -24,7 +30,10 @@ RuleBuilder rule(
 
 /// Whether a request can go on, from its [Authentication]. Combine them with `&` and `|`
 /// (see [RuleBuilder]), and write your own by extending this class.
+///
+/// {@category Security}
 abstract class AuthorizationRule {
+  /// A rule (const, so a rule of the app can be a constant)
   const AuthorizationRule();
 
   /// Whether [authentication] may make [request]
@@ -38,9 +47,14 @@ abstract class AuthorizationRule {
   String toString() => describe();
 }
 
+/// The authenticated user has [role] (built by [hasRole])
+///
+/// {@category Security}
 class RoleRule extends AuthorizationRule {
+  /// The role required
   final String role;
 
+  /// The rule of [role]
   const RoleRule(this.role);
 
   @override
@@ -51,9 +65,14 @@ class RoleRule extends AuthorizationRule {
   String describe() => 'hasRole($role)';
 }
 
+/// The authenticated user has [permission] (built by [hasPermission])
+///
+/// {@category Security}
 class PermissionRule extends AuthorizationRule {
+  /// The permission required
   final String permission;
 
+  /// The rule of [permission]
   const PermissionRule(this.permission);
 
   @override
@@ -64,10 +83,17 @@ class PermissionRule extends AuthorizationRule {
   String describe() => 'hasPermission($permission)';
 }
 
+/// Both rules pass (`a & b`)
+///
+/// {@category Security}
 class AndRule extends AuthorizationRule {
+  /// The first rule, evaluated first
   final AuthorizationRule left;
+
+  /// The second rule
   final AuthorizationRule right;
 
+  /// [left] & [right]
   const AndRule(this.left, this.right);
 
   @override
@@ -79,10 +105,17 @@ class AndRule extends AuthorizationRule {
   String describe() => '(${left.describe()} && ${right.describe()})';
 }
 
+/// One of the rules passes (`a | b`): [right] is only evaluated if [left] fails
+///
+/// {@category Security}
 class OrRule extends AuthorizationRule {
+  /// The first rule, evaluated first
   final AuthorizationRule left;
+
+  /// The second rule
   final AuthorizationRule right;
 
+  /// [left] | [right]
   const OrRule(this.left, this.right);
 
   @override
@@ -110,9 +143,12 @@ class _FunctionRule extends AuthorizationRule {
 }
 
 /// A rule that combines with others: `hasRole('admin') | hasPermission('users.read')`
+///
+/// {@category Security}
 class RuleBuilder extends AuthorizationRule {
   final AuthorizationRule _rule;
 
+  /// Wraps a rule so it can be combined; [hasRole], [hasPermission] and [rule] build one
   RuleBuilder(this._rule);
 
   @override
@@ -131,10 +167,12 @@ class RuleBuilder extends AuthorizationRule {
     return res;
   }
 
+  /// This rule and [other] must pass
   RuleBuilder operator &(AuthorizationRule other) {
     return RuleBuilder(AndRule(_rule, other));
   }
 
+  /// This rule or [other] must pass
   RuleBuilder operator |(AuthorizationRule other) {
     return RuleBuilder(OrRule(_rule, other));
   }
