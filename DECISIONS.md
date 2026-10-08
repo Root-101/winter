@@ -95,7 +95,8 @@ Guide: [`doc/validation.md`](doc/validation.md).
 - **`body<T>()` validates** a `Validatable` (or a list of them) by default: a model implements it to
   be validated. A PATCH opts out (`validate: false`) or uses a model of its own.
 - **Nested objects**: `valid()` and `validEach()` prefix the violations (`address.zip`,
-  `items[0].quantity`) and run the nested `validate()` with the clock of the parent.
+  `items[0].quantity`, `prices["eur"].amount`) and run the nested `validate()` with the clock of the
+  parent. A key of a map is quoted as in JSON and never renamed by `fieldNaming` (it's data).
 - **Each violation has a `code`** (the key of its text in `*.i18n.yaml`) and `params` (JSON values
   only), so a client can show its own text. The 422 **never includes the value**: the client knows
   what it sent, and repeating it leaks personal data; a `sensitive` field never even stores it.

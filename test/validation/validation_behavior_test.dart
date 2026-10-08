@@ -461,6 +461,115 @@ void main() {
     });
   });
 
+  group('Maps of Validatable (§3)', () {
+    test('validEach() names each value by its key, quoted as in JSON', () {
+      final cvc = ConstraintValidatorContext();
+      cvc.field('prices', <String, _Item?>{
+        'eur': _Item(quantity: -1),
+        'usd': _Item(quantity: 5),
+        'gbp': null,
+        'a."b': _Item(quantity: 0),
+      }).validEach();
+      cvc.field<Map<String, _Item>?>('none', null).validEach();
+
+      expect(cvc.violations.map((v) => v.fieldName), [
+        'prices["eur"].quantity',
+        r'prices["a.\"b"].quantity',
+      ]);
+    });
+
+    test(
+      'body<Map<String, T>>() validates every value, keys never renamed',
+      () async {
+        final previous = om;
+        Winter.context.setUp(
+          objectMapper: ObjectMapper(
+            fieldNaming: FieldNaming.snakeCase,
+            deserializers: [
+              Deserializer<_Item>.json(
+                (json) => _Item(quantity: json['quantity'] as int),
+              ),
+            ],
+          ),
+        );
+        addTearDown(() => Winter.context.setUp(objectMapper: previous));
+        final client = WinterTestClient.build(
+          router: WinterRouter(
+            routes: [
+              Route.post(
+                path: '/',
+                handler: (request) async {
+                  await request.body<Map<String, _Item>>();
+                  return ResponseEntity.ok();
+                },
+              ),
+            ],
+          ),
+        );
+
+        final response = await client.post(
+          '/',
+          body: '{"eurPrice": {"quantity": 0}, "usd": {"quantity": 2}}',
+          headers: {HttpHeader.contentType: 'application/json'},
+        );
+
+        expect(response.statusCode, 422);
+        expect(
+          ((response.json as Map)['violations'] as List).map(
+            (v) => (v as Map)['fieldName'],
+          ),
+          ['["eurPrice"].quantity'],
+        );
+      },
+    );
+
+    test('jsonFieldName() keeps a quoted key as it is', () {
+      final snake = ObjectMapper(fieldNaming: FieldNaming.snakeCase);
+
+      expect(
+        snake.jsonFieldName(r'unitPrices["eurPrice"].minAmount'),
+        r'unit_prices["eurPrice"].min_amount',
+      );
+      expect(
+        snake.jsonFieldName(r'["a\"b]c"].lineItems[0].unitPrice'),
+        r'["a\"b]c"].line_items[0].unit_price',
+      );
+    });
+  });
+
+  group('pattern() and copyWith (§3)', () {
+    test('pattern() keeps working past the size of its cache', () {
+      final cvc = ConstraintValidatorContext();
+      for (int i = 0; i < 300; i++) {
+        cvc.field('code$i', 'x$i').pattern('^x$i\$');
+      }
+      cvc.field('again', 'x0').pattern(r'^x0$');
+      cvc.field('bad', 'y').pattern(r'^x0$');
+
+      expect(cvc.violations.map((v) => v.fieldName), ['bad']);
+    });
+
+    test('copyWith() can clear the value and the code, or keep them', () {
+      const violation = ConstraintViolation(
+        fieldName: 'name',
+        message: 'm',
+        value: 'secret',
+        code: 'size.min',
+      );
+
+      final cleared = violation.copyWith(value: () => null, code: () => null);
+      final kept = violation.copyWith(fieldName: 'user.name');
+      final changed = violation.copyWith(code: () => 'custom');
+
+      expect(cleared.value, isNull);
+      expect(cleared.code, isNull);
+      expect(kept.value, 'secret');
+      expect(kept.code, 'size.min');
+      expect(kept.fieldName, 'user.name');
+      expect(changed.code, 'custom');
+    });
+  });
+
   group('Validators (§3)', () {
     test('pattern() uses a RegExp as it is, flags included', () {
       cvc.field('a', 'abc').pattern(RegExp(r'^abc$'));

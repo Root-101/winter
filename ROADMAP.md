@@ -638,13 +638,15 @@ first, small and independent; then the new features, from the most used to the l
 
 **Validation** (proposed in the second review of 2.2, none of them is breaking):
 
-- [ ] **Validate a `Map<String, Validatable>`**: `body<T>()` validates a `Validatable` or a list of
+- [x] **Validate a `Map<String, Validatable>`**: `body<T>()` validates a `Validatable` or a list of
   them, not a map of them; and a `validEach()` for the values of a map (`prices["eur"].amount`).
-- [ ] **Limit the cache of `pattern()`**: a regular expression given as a String is compiled once
+  → The key quoted as in JSON, and never renamed by `fieldNaming`.
+- [x] **Limit the cache of `pattern()`**: a regular expression given as a String is compiled once
   and kept forever. It only grows with dynamic patterns (built from data), which are rare; an LRU
-  or no cache for them.
-- [ ] **`ConstraintViolation.copyWith` can't clear a field**: `copyWith(code: null)` keeps the old
+  or no cache for them. → An LRU of 256.
+- [x] **`ConstraintViolation.copyWith` can't clear a field**: `copyWith(code: null)` keeps the old
   code (`??`). Use sentinels or explicit `clearCode`/`clearValue` flags if it's ever needed.
+  → The nullable fields take a function, typed: `copyWith(code: () => null)`.
 
 **Object mapper** (proposed after the review 2.1, none of them is breaking):
 

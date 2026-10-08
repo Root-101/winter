@@ -115,8 +115,20 @@ final RegExp _uuidRegex = RegExp(
 
 final RegExp _whitespace = RegExp(r'\s');
 
-/// The regular expressions given as a String, compiled once
+/// The regular expressions given as a String to [StringValidators.pattern], compiled once. At
+/// most [_maxPatterns], the least recently used dropped first: a pattern built from data (a new
+/// one per request) would otherwise grow it forever.
 final Map<String, RegExp> _patterns = {};
+
+const int _maxPatterns = 256;
+
+RegExp _compiledPattern(String source) {
+  final RegExp? cached = _patterns.remove(source);
+  final RegExp regex = cached ?? RegExp(source);
+  _patterns[source] = regex; // the most recently used, last
+  if (_patterns.length > _maxPatterns) _patterns.remove(_patterns.keys.first);
+  return regex;
+}
 
 /// For a String
 ///
@@ -163,7 +175,7 @@ extension StringValidators<T extends String?> on FieldValidator<T> {
   }) {
     final bool Function(String value) matches = switch (pattern) {
       RegExp() => pattern.hasMatch,
-      String() => (_patterns[pattern] ??= RegExp(pattern)).hasMatch,
+      String() => _compiledPattern(pattern).hasMatch,
       _ => (value) => pattern.allMatches(value).isNotEmpty,
     };
     return addRule(
