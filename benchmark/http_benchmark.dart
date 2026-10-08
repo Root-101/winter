@@ -13,7 +13,9 @@ import 'package:winter/winter.dart';
 /// - `winter`: `Winter.start` with a `WinterRouter` (the whole pipeline).
 ///
 /// Before phase 3.1, Winter ran on shelf. On the same machine (Windows, AOT, 64 connections):
-/// `dart:io` 6363 req/s, shelf alone 5561 (-13 %), Winter on shelf 3984 (-37 %).
+/// `dart:io` 6363 req/s, shelf alone 5561 (-13 %), Winter on shelf 3984 (-37 %). On `dart:io`
+/// (Dart 3.13.1, another day): `dart:io` ~14 000 req/s, Winter ~11 900 (-15 %). The results are in
+/// `doc/benchmarks.md`.
 ///
 /// Compile it to measure: `dart compile exe benchmark/http_benchmark.dart -o build/http_bench.exe`
 /// and run the executable (`dart run` is JIT, slower and noisier).

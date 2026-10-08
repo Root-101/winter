@@ -493,11 +493,12 @@ void main() {
             .headers['retry-after'],
         '3',
       );
-      expect(
-        ResponseEntity<void>.serviceUnavailable(retryAfter: 30)
-            .headers['retry-after'],
-        '30',
+      final unavailable = ResponseEntity<void>.serviceUnavailable(
+        retryAfter: 30,
+        headers: {'X-Maintenance': 'db'},
       );
+      expect(unavailable.headers['retry-after'], '30');
+      expect(unavailable.headers['x-maintenance'], 'db');
     });
 
     test('every redirect has its status and a Location', () {
