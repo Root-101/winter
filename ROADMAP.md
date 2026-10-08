@@ -576,8 +576,9 @@ cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `
   (`DECISIONS.md` §10); also in `buildHandler` and `WinterTestClient.build`.
 - [x] Optional **gzip compression** (`HttpServer.autoCompress`, exposed by the server of 3.1).
   → Done in 3.1: `ServerConfig.autoCompress`.
-- [ ] **Health check:** `Route.health('/health')` or a documented example (needed for Docker and
-  Kubernetes).
+- [x] **Health check:** `Route.health('/health')` or a documented example (needed for Docker and
+  Kubernetes). → `Route.health(path:, checks:, timeout:)` (`DECISIONS.md` §9), used by
+  `example/07_production`.
 - [ ] **`di.createAll()`**: create every lazy dependency at start-up (opt-in), so a broken
   registration (a missing dependency, a cycle, a constructor that throws) fails when the server
   starts instead of in the first request that needs it. Proposed in the second review of 2.4.

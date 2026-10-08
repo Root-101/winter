@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
+import 'package:winter/src/router/health.dart' show healthHandler;
 import 'package:winter/src/router/path_template.dart';
 import 'package:winter/src/utils/valid_url.dart';
 import 'package:winter/winter.dart';
@@ -472,6 +473,31 @@ class Route {
   }
 
   static const String _staticFileParam = 'staticFile';
+
+  ///GET (and HEAD) [path]: a health check for a load balancer, Docker or Kubernetes.
+  ///
+  ///Every one of [checks] runs at once, each limited to [timeout]: a 200
+  ///`{"status": "UP", "checks": {"database": "UP"}}` when all of them pass, and a 503 with
+  ///`"status": "DOWN"` when one returns false, throws or takes too long (the reason is logged,
+  ///never sent). Without checks it's a 200 while the server answers. Never cached
+  ///(`Cache-Control: no-store`).
+  ///
+  ///```dart
+  ///Route.health(path: '/livez'),                                  // the process is alive
+  ///Route.health(path: '/readyz', checks: {'database': db.ping}), // it can serve requests
+  ///```
+  factory Route.health({
+    String path = '/health',
+    Map<String, HealthCheck> checks = const {},
+    Duration timeout = const Duration(seconds: 5),
+    String? key,
+    FilterConfig? filterConfig,
+  }) => Route.get(
+    path: path,
+    handler: healthHandler(checks, timeout),
+    key: key,
+    filterConfig: filterConfig,
+  );
 
   ///A static route has no path params nor regex, it only match an exact path
   late final bool isStatic = !_dynamicPathPattern.hasMatch(path);

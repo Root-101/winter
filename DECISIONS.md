@@ -241,6 +241,11 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
   `Content-Length`. A folder redirects to its `/` before serving its index, with a relative
   `Location` that works behind a proxy prefix. MIME types are a short table of the web formats,
   extended by `mimeTypes:`, without a dependency.
+- **Health checks** (`Route.health`): a route, not a server feature, so the app decides its paths
+  (liveness and readiness are two of them) and its filters. Named checks (`FutureOr<bool>`) run at
+  once, each with a timeout (a hung database must not hang the probe); a false, an error or a
+  timeout is a 503 `DOWN` with the state of each check, never the reason (it's logged). Its own
+  JSON (`status`/`checks`, as Spring Actuator), not a Problem Details, also for the 503.
 - **A route path has no query**: a `?` in it belongs to a regex (`{id|\d?}`, `(/.*)?`).
 - **Immutable configuration**: `FilterConfig` (combined with `merge`) and the routes of a router
   (added with `addRoute`, validated like the constructor).

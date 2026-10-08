@@ -43,23 +43,12 @@ class ProductionApp {
   static WinterRouter router() => WinterRouter(
     routes: [
       /// Liveness: the process answers
-      Route.get(
-        path: '/health',
-        handler: (request) => ResponseEntity.ok(body: {'status': 'up'}),
-      ),
+      Route.health(path: '/health'),
 
       /// Readiness: the dependencies answer (a 503 takes the instance out of the load balancer)
-      Route.get(
+      Route.health(
         path: '/ready',
-        handler: (request) async {
-          if (!await di.find<Database>().ping()) {
-            throw ServiceUnavailableException(
-              detail: 'The database is not available',
-              retryAfter: 5,
-            );
-          }
-          return ResponseEntity.ok(body: {'status': 'ready'});
-        },
+        checks: {'database': () => di.find<Database>().ping()},
       ),
       Route.get(
         path: '/hello',

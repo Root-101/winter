@@ -21,9 +21,10 @@ JSON logs with the request id, it has health checks for the platform, it shuts d
 Logging, Datadog or Loki. Locally, a readable `ConsoleLogger` at `debug`.
 
 ### 3. Health checks
-*   `GET /health` (liveness): the process answers.
-*   `GET /ready` (readiness): the database answers; otherwise a 503 with `Retry-After`, which takes
-    the instance out of the load balancer without restarting it.
+*   `GET /health` (liveness, `Route.health()`): the process answers.
+*   `GET /ready` (readiness, `Route.health(checks: {'database': ...})`): the database answers;
+    otherwise a 503 `{"status": "DOWN", "checks": {"database": "DOWN"}}`, which takes the instance
+    out of the load balancer without restarting it.
 
 ### 4. Security behind a proxy
 *   `RateLimiterFilter` by client IP with `clientIp(trustedProxies: TRUSTED_PROXIES)`.
