@@ -4,6 +4,8 @@ import 'dart:io' show Cookie, HttpDate, HttpResponse;
 import 'dart:typed_data';
 
 import 'package:winter/src/http/headers.dart';
+import 'package:winter/src/server_sent_events.dart' show serverSentEventsBody;
+import 'package:winter/src/winter_server.dart' show serverClosing;
 import 'package:winter/winter.dart';
 
 /// An HTTP response: what a handler returns, and what every filter can change with [copyWith].
@@ -250,6 +252,43 @@ class ResponseEntity<T> {
            if (retryAfter != null) HttpHeader.retryAfter: '$retryAfter',
          }),
        );
+
+  ///200 with a stream of Server-Sent Events (`text/event-stream`): every event is sent as it comes.
+  ///
+  ///```dart
+  ///Route.get(path: '/orders/events', handler: (request) => ResponseEntity.sse(
+  ///  orders.changes.map((order) => ServerSentEvent.json(order, event: 'order')),
+  ///));
+  ///```
+  ///
+  ///- A comment is sent first, so the client gets the headers at once, and another one every
+  ///  [keepAlive] without events (proxies close idle connections); `null` sends none.
+  ///- The stream ends when [events] ends, and when the server starts closing (a browser
+  ///  reconnects by itself), so it never holds a graceful shutdown.
+  ///- When the client leaves, the subscription to [events] is cancelled: free what it uses in its
+  ///  `onCancel`. An error of [events] is logged and ends the stream.
+  ///- `Cache-Control: no-cache` and `X-Accel-Buffering: no` (nginx doesn't buffer it).
+  static ResponseEntity<Stream<List<int>>> sse(
+    Stream<ServerSentEvent> events, {
+    Duration? keepAlive = const Duration(seconds: 15),
+    Map<String, /* String | List<String> */ Object>? headers,
+    List<Cookie>? cookies,
+  }) => ResponseEntity<Stream<List<int>>>(
+    StatusCode.ok.value,
+    body: serverSentEventsBody(
+      events,
+      keepAlive: keepAlive,
+      closing: serverClosing,
+    ),
+    headers: {
+      HttpHeader.contentType:
+          '${MediaType.textEventStream.mimeType}; charset=utf-8',
+      HttpHeader.cacheControl: 'no-cache',
+      HttpHeader.xAccelBuffering: 'no',
+      ...?headers,
+    },
+    cookies: cookies,
+  );
 
   ResponseEntity._from(ResponseEntity<T> response)
     : this._(

@@ -39,6 +39,7 @@ This directory contains independent examples demonstrating the core features and
     - b) **Uploads in memory**: `formData()` of a `multipart/form-data` form, a random file name, and the type checked by the bytes (not the declared one).
     - c) **Streamed uploads**: `multipart()` copies a video to disk while it arrives.
     - d) **Static files**: `StaticFiles` behind the login with `ETag` and `Range`, and `Route.static` for the page.
+    - e) **Server-Sent Events**: `ResponseEntity.sse` sends every new photo to the open pages (`EventSource`).
 
 7.  **[07_production](./07_production)**: Ready for a container.
     - a) **Configuration**: `.env` and profiles under the variables of the process, `requireAll`, `ServerConfig.fromEnv`.

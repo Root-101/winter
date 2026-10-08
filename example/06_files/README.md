@@ -33,7 +33,14 @@ videos streamed to disk while they arrive, and the files served back with `ETag`
 *   `Route.static(path: '/', directory: 'web')` serves the page with the forms. It's declared last:
     it matches every `GET`.
 
-### 5. Tests in memory (`test/files_test.dart`)
+### 5. Server-Sent Events (`GET /photos/events`)
+*   `ResponseEntity.sse(files.added.map((photo) => ServerSentEvent.json(photo, event: 'photo', id: photo.id)))`:
+    every photo uploaded, by anyone, as it's saved.
+*   The page listens with `new EventSource('/photos/events')` and adds each photo without
+    reloading; the browser reconnects by itself.
+*   Behind the login like the rest: the cookie goes with the `EventSource` request.
+
+### 6. Tests in memory (`test/files_test.dart`)
 `WinterTestClient` sends the multipart bodies built by the test, and `response.bodyBytes` compares
 the photo byte by byte. Each test uses its own temporary folder.
 

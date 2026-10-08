@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
@@ -76,6 +77,11 @@ class FileStore {
   final Directory videos;
   final List<Photo> _photos = [];
 
+  /// Every photo saved, as it's saved: what `GET /photos/events` sends
+  final StreamController<Photo> _added = StreamController<Photo>.broadcast();
+
+  Stream<Photo> get added => _added.stream;
+
   /// The biggest photo, in bytes
   static const int maxPhotoSize = 5 * 1024 * 1024;
 
@@ -100,6 +106,7 @@ class FileStore {
     final Photo photo = Photo('${randomId()}.$extension', title, owner);
     await File('${photos.path}/${photo.id}').writeAsBytes(file.bytes);
     _photos.add(photo);
+    _added.add(photo);
     return photo;
   }
 
@@ -234,6 +241,19 @@ class FilesApp {
           // After a form, a 303 makes the browser show the photo with a GET
           return ResponseEntity.seeOther('/photos/${photo.id}');
         },
+      ),
+
+      /// Server-Sent Events: every new photo, as it's uploaded (the page adds it without reloading).
+      /// Declared before `/photos/{id}`: a static path wins anyway, but it reads better.
+      Route.get(
+        path: '/photos/events',
+        filterConfig: _loggedIn,
+        handler: (request) => ResponseEntity.sse(
+          files.added.map(
+            (photo) =>
+                ServerSentEvent.json(photo, event: 'photo', id: photo.id),
+          ),
+        ),
       ),
 
       /// With ETag, 304 and Range; the id goes through StaticFiles, so `..` is a 404
