@@ -562,9 +562,10 @@ cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `
 - [x] **Cookies:** read (`request.cookies`, from 3.1) and write (`ResponseEntity` with
   `setCookie(...)`, with `HttpOnly`, `Secure`, `SameSite`, `Max-Age`; `Cookie` of `dart:io`).
   → Done in 3.1: `request.cookies`/`cookie(name)` and `cookies:` in `ResponseEntity`.
-- [ ] **Static files:** a `StaticRouter`/`Route.static('/assets', directory)` with
+- [x] **Static files:** a `StaticRouter`/`Route.static('/assets', directory)` with
   `ETag`/`Last-Modified`, `304`, `Range` requests and no path traversal (`..`), streaming the
-  `File` of `dart:io`.
+  `File` of `dart:io`. → `Route.static` and `StaticFiles` (`DECISIONS.md` §9). It found a bug: a
+  `?` in the regex of a route cut its path there, and the route matched any url.
 - [x] **HTTPS:** `ServerConfig(securityContext: ...)` with `HttpServer.bindSecure` (the server of
   3.1). → Done in 3.1.
 

@@ -20,8 +20,8 @@ class PathTemplate {
       _cache[path] ??= PathTemplate._compile(path);
 
   factory PathTemplate._compile(String path) {
-    /// Remove query params (if any) and the trailing slash
-    String templatePath = normalizePath(path.split('?').first);
+    /// Remove the trailing slash. A route has no query: a `?` is part of a regex (`{id|\d?}`)
+    String templatePath = normalizePath(path);
 
     /// Replace every path param by a named group with its regex,
     /// the literal parts between them are kept as regex but with their dots escaped

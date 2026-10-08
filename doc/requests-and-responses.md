@@ -290,6 +290,9 @@ The status line has the reason phrase of `StatusCode` (`HTTP/1.1 422 Unprocessab
 
 ### A file
 
+To serve the files of a folder (with `ETag`, 304 and `Range`), use `Route.static` or
+`StaticFiles` ([routing](routing.md#static-files)). A single generated file:
+
 ```dart
 Route.get(
   path: '/report',

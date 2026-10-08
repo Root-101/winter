@@ -98,7 +98,15 @@ void main() {
               path: r'/numbers/{id|[0-9]+}',
               handler: (r) => ResponseEntity.ok(body: r.pathParams['id']),
             ),
-            Route.get(path: r'/codes/{code|[A-Z]+\d?}', handler: ok),
+            Route.get(
+              path: r'/codes/{code|[A-Z]+\d?}',
+              handler: (r) => ResponseEntity.ok(body: r.pathParams['code']),
+            ),
+            Route.get(
+              path: '/tree{rest|(/.*)?}',
+              handler: (r) =>
+                  ResponseEntity.ok(body: '[${r.pathParams['rest']}]'),
+            ),
             Route.get(path: '/files/.*', handler: ok),
           ],
         ),
@@ -106,7 +114,14 @@ void main() {
 
       expect((await client.get('/numbers/12')).body, '12');
       expect((await client.get('/numbers/ab')).statusCode, 404);
-      expect((await client.get('/codes/ABC1')).statusCode, 200);
+      expect((await client.get('/codes/ABC1')).body, 'ABC1');
+      expect((await client.get('/codes/ABC')).body, 'ABC');
+      // A ? in a regex used to cut the template there, and the route matched any path
+      expect((await client.get('/codes/abc')).statusCode, 404);
+      expect((await client.get('/elsewhere')).statusCode, 404);
+      expect((await client.get('/tree')).body, '[]');
+      expect((await client.get('/tree/a/b')).body, '[/a/b]');
+      expect((await client.get('/treehouse')).statusCode, 404);
       expect((await client.get('/files/a/b.txt')).statusCode, 200);
     });
 
