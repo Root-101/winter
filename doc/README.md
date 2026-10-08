@@ -15,9 +15,9 @@ then, this index says which ones exist.
 |------------------------------------------------------|-------|------------------------------------------------------------------------------|
 | Getting started                                      | 🕓    | Installation, first endpoint, a CRUD with JSON and validation, tests         |
 | Architecture                                         | 🕓    | The path of a request, `BuildContext`, global state, request scope, isolates |
-| Routing                                              | 🕓    | Routes, path params, priority, 404/405, `MultiRouter`, your own router       |
-| Filters                                              | 🕓    | `Filter`, the chain, `order`, global and route filters, the default filters  |
-| Requests and responses                               | 🕓    | `RequestEntity`, `ResponseEntity`, body limit, cookies, forms, files         |
+| [Routing](routing.md)                                | ✅    | Routes, typed path and query params, priority, 404/405/OPTIONS, the route table checks, `MultiRouter`, your own router |
+| [Filters](filters.md)                                | ✅    | `Filter`, the chain, `order`, `shouldFilter`, global and route filters, errors as responses |
+| Requests and responses                               | 🕓    | `RequestEntity`, `ResponseEntity`, body limit, cookies, forms, files (after phase 3.1) |
 | [Object mapper](object-mapper.md)                    | ✅    | JSON ↔ objects: `toJson()`, serializers, deserializers, generics, errors, options |
 | [Validation](validation.md)                          | ✅    | `Validatable`, `cvc.field(...)`, the validators, nested objects, the 422     |
 | [Error handling](error-handling.md)                  | ✅    | Problem Details, `ApiException` and its shortcuts, `on<T>()`, the 500        |
@@ -34,7 +34,8 @@ then, this index says which ones exist.
 
 - [`DECISIONS.md`](../DECISIONS.md): **why** the framework behaves the way it does (the guides
   explain **how**). Today: i18n (§1), the object mapper (§2), validation (§3), error handling
-  (§4), dependency injection (§5), configuration (§6), logging (§7) and security (§8).
+  (§4), dependency injection (§5), configuration (§6), logging (§7), security (§8) and the
+  router, filters and entities (§9).
 - [`CHANGELOG.md`](../CHANGELOG.md): what changed in each version, breaking changes included.
 - [`ROADMAP.md`](../ROADMAP.md): what is left for 1.0.
 - [`example/`](../example): standalone apps, from a basic server to authentication and i18n.

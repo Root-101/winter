@@ -45,18 +45,39 @@ Never methodNotAllowedOrNotFound(Set<HttpMethod> allowedMethods) {
   throw MethodNotAllowedException(allowedMethods);
 }
 
+///The answer of a router for a request without a route: an `OPTIONS` to a path that exists is a
+///204 with `Allow` (RFC 9110); anything else is [methodNotAllowedOrNotFound]
+ResponseEntity noRouteResponse(
+  RequestEntity request,
+  Set<HttpMethod> allowedMethods,
+) {
+  if (request.httpMethod == HttpMethod.options && allowedMethods.isNotEmpty) {
+    return ResponseEntity.noContent(
+      headers: {HttpHeader.allow: allowHeader(allowedMethods)},
+    );
+  }
+  return methodNotAllowedOrNotFound(allowedMethods);
+}
+
+///The value of an `Allow` header: `GET, HEAD, OPTIONS`
+String allowHeader(Set<HttpMethod> methods) =>
+    methods.map((method) => method.name.toUpperCase()).join(', ');
+
 class WinterRouter extends AbstractWinterRouter {
   final RouterConfig config;
 
   final String basePath;
 
-  final List<Route> routes;
+  final List<Route> _routes;
+
+  ///The routes of this router, flattened (read-only: add them with [addRoute])
+  List<Route> get routes => UnmodifiableListView(_routes);
 
   WinterRouter._({
-    required this.routes,
+    required List<Route> routes,
     required this.basePath,
     required this.config,
-  });
+  }) : _routes = routes; // ignore: prefer_initializing_formals
 
   factory WinterRouter({
     List<Route>? routes,
@@ -124,19 +145,24 @@ class WinterRouter extends AbstractWinterRouter {
     flattenRoutes(initialPath, null, routes);
 
     List<Route> result = [];
-    Set<String> seenKeys = {};
-
     for (var route in rawResult) {
-      if (seenKeys.contains(route.key)) {
+      if (_isDuplicated(route, result)) {
         config.onDuplicatedRoute(route);
       } else {
-        seenKeys.add(route.key);
         result.add(route);
       }
     }
 
     return result;
   }
+
+  ///The same key, or the same method and shape (`GET /users/{id}` and `GET /users/{name}`):
+  ///the second one could never be reached
+  static bool _isDuplicated(Route route, List<Route> routes) => routes.any(
+    (other) =>
+        other.key == route.key ||
+        (other.method == route.method && other._shape == route._shape),
+  );
 
   ///Routes that match the path of the request (ignoring the method)
   List<Route> _routesMatchingPath(RequestEntity request) {
@@ -175,7 +201,7 @@ class WinterRouter extends AbstractWinterRouter {
   }
 
   ///Methods allowed for the path of the request (empty if no route match the path)
-  ///HEAD is allowed wherever GET is
+  ///HEAD is allowed wherever GET is, and OPTIONS wherever the path exists
   Set<HttpMethod> allowedMethods(RequestEntity request) {
     Set<HttpMethod> methods = _routesMatchingPath(request)
         .map((element) => element.method)
@@ -183,6 +209,9 @@ class WinterRouter extends AbstractWinterRouter {
         .toSet();
     if (methods.contains(HttpMethod.get)) {
       methods.add(HttpMethod.head);
+    }
+    if (methods.isNotEmpty) {
+      methods.add(HttpMethod.options);
     }
     return methods;
   }
@@ -206,7 +235,7 @@ class WinterRouter extends AbstractWinterRouter {
       return finalRoute.handler!(request);
     }
 
-    return methodNotAllowedOrNotFound(allowedMethods(request));
+    return noRouteResponse(request, allowedMethods(request));
   }
 
   ///The route of this router saved in the routing context of the request (if any)
@@ -225,14 +254,11 @@ class WinterRouter extends AbstractWinterRouter {
   ///Add a route (and its children) with the same rules as the constructor:
   ///the [basePath] is applied, invalid urls & duplicated routes go to the [config] callbacks
   void addRoute(Route route) {
-    final Set<String> existingKeys = routes
-        .map((element) => element.key)
-        .toSet();
     for (final newRoute in _flattenRoutes([route], basePath, config)) {
-      if (existingKeys.add(newRoute.key)) {
-        routes.add(newRoute);
-      } else {
+      if (_isDuplicated(newRoute, _routes)) {
         config.onDuplicatedRoute(newRoute);
+      } else {
+        _routes.add(newRoute);
       }
     }
   }
@@ -302,9 +328,7 @@ class Route {
       hasCustomKey: key != null,
       method: method,
       handler: handler,
-      // Not const, so filters can be added later with `FilterConfig.add`
-      // ignore: prefer_const_constructors
-      filterConfig: filterConfig ?? FilterConfig([]),
+      filterConfig: filterConfig ?? const FilterConfig([]),
       routes: routes,
     );
   }
@@ -439,9 +463,19 @@ class Route {
 
   bool match(String rawActualUrl) => _template.match(rawActualUrl);
 
+  ///The path without the names of its params (`/users/{id|[0-9]+}` => `/users/{|[0-9]+}`):
+  ///two routes with the same method and shape match the same urls
+  late final String _shape = path.replaceAllMapped(
+    _paramNamePattern,
+    (match) => '{${match[1] ?? ''}}',
+  );
+
+  static final RegExp _paramNamePattern = RegExp(r'{[^}|]*(\|[^}]*)?}');
+
   @override
   String toString() {
-    return 'Route{path: $path, method: $method, handler: $handler, filterConfig: $filterConfig}';
+    return 'Route{key: $key, method: ${method?.name.toUpperCase() ?? 'PARENT'}, path: $path, '
+        'filters: ${filterConfig.filters}}';
   }
 }
 

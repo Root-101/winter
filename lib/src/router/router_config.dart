@@ -1,14 +1,15 @@
 import 'package:winter/winter.dart';
 
+/// What a router does with its routes when it's built. An invalid or duplicated route fails
+/// (a [StateError]) by default: it's a bug of the app, better found at start than as a 404.
 class RouterConfig {
   RouterConfig({
     OnInvalidUrl? onInvalidUrl,
     OnLoadedRoutes? onLoadedRoutes,
     OnDuplicatedRoute? onDuplicatedRoute,
-  }) : onInvalidUrl = onInvalidUrl ?? DefaultOnInvalidUrl.ignore(),
+  }) : onInvalidUrl = onInvalidUrl ?? DefaultOnInvalidUrl.fail(),
        onLoadedRoutes = onLoadedRoutes ?? DefaultOnLoadedRoutes.ignore(),
-       onDuplicatedRoute =
-           onDuplicatedRoute ?? DefaultOnDuplicatedRoute.ignore();
+       onDuplicatedRoute = onDuplicatedRoute ?? DefaultOnDuplicatedRoute.fail();
 
   final OnInvalidUrl onInvalidUrl;
   final OnLoadedRoutes onLoadedRoutes;
@@ -53,7 +54,9 @@ class DefaultOnDuplicatedRoute {
   static OnDuplicatedRoute fail() {
     return (duplicatedRoute) {
       throw StateError(
-        '${duplicatedRoute.key} is a duplicated route. Failing to start app',
+        '${duplicatedRoute.method?.name.toUpperCase() ?? 'PARENT'} ${duplicatedRoute.path} '
+        '(key: ${duplicatedRoute.key}) is a duplicated route: another one has the same key, or '
+        'the same method and path. Failing to start app',
       );
     };
   }

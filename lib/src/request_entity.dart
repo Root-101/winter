@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io' show HttpConnectionInfo;
 
+import 'package:collection/collection.dart';
+
 import 'package:winter/src/router/path_template.dart';
 import 'package:winter/winter.dart';
 
@@ -19,17 +21,23 @@ class RequestEntity extends Request {
   RequestRoutingContext? get routingContext =>
       context[_routingContextKey] as RequestRoutingContext?;
 
+  ///A [url] that isn't relative (`GET //users` gives `/users`) is ignored with its [handlerPath]:
+  ///shelf rejects it when it's given, and computes the same one without it, so the router
+  ///answers a 404 instead of failing before the pipeline
   RequestEntity(
     super.method,
     super.requestedUri, {
     super.protocolVersion,
     super.headers,
-    super.handlerPath,
-    super.url,
+    String? handlerPath,
+    Uri? url,
     super.body,
     super.encoding,
     Map<String, Object>? context,
-  }) {
+  }) : super(
+         handlerPath: _isRelative(url) ? handlerPath : null,
+         url: _isRelative(url) ? url : null,
+       ) {
     this.context.addAll(context ?? {});
 
     //if this context include the routing, we re-extract the params
@@ -45,6 +53,8 @@ class RequestEntity extends Request {
     ///wrapped in a Map.of to avoid unmodifiable map
     _queryParams = Map.of(requestedUri.queryParameters);
   }
+
+  static bool _isRelative(Uri? url) => url == null || !url.path.startsWith('/');
 
   HttpMethod get httpMethod => HttpMethod(method);
 
@@ -86,6 +96,69 @@ class RequestEntity extends Request {
   };
 
   Map<String, String> get pathParams => _pathParams ?? {};
+
+  /// The path param [name] as a [T]: `String`, `int`, `double`, `num`, `bool`, `DateTime`
+  /// (ISO 8601), or one of [values] (by name for an enum: `values: Status.values`).
+  ///
+  /// A value that isn't a [T] is a [BadRequestException] (400). A [name] that isn't in the path
+  /// of the route is a [StateError] (a bug of the app).
+  T pathParam<T extends Object>(String name, {List<T>? values}) {
+    final String raw =
+        pathParams[name] ??
+        (throw StateError('The route has no path param $name'));
+    return _parseParam<T>('path param', name, raw, values);
+  }
+
+  /// The query param [name] as a [T] (see [pathParam]), or null if it's missing or empty.
+  /// Of a repeated param, the last value.
+  T? queryParam<T extends Object>(String name, {List<T>? values}) {
+    final String? raw = queryParams[name];
+    if (raw == null || raw.isEmpty) return null;
+    return _parseParam<T>('query param', name, raw, values);
+  }
+
+  static T _parseParam<T extends Object>(
+    String kind,
+    String name,
+    String raw,
+    List<T>? values,
+  ) {
+    if (values != null) {
+      return values.firstWhereOrNull((value) => _nameOf(value) == raw) ??
+          values.firstWhereOrNull(
+            (value) => _nameOf(value).toLowerCase() == raw.toLowerCase(),
+          ) ??
+          (throw BadRequestException(
+            detail:
+                'The $kind $name must be one of: ${values.map(_nameOf).join(', ')}',
+          ));
+    }
+    final (String expected, Object? Function(String) parse) = switch (T) {
+      const (String) => ('a string', (String value) => value),
+      const (int) => ('an integer', int.tryParse),
+      const (double) => ('a number', double.tryParse),
+      const (num) => ('a number', num.tryParse),
+      const (bool) => ('true or false', _parseBool),
+      const (DateTime) => ('an ISO 8601 date', DateTime.tryParse),
+      _ => throw ArgumentError.value(
+        T,
+        'T',
+        'Unsupported type of a param, use String, int, double, num, bool, DateTime or values:',
+      ),
+    };
+    final Object? value = parse(raw);
+    if (value is T) return value;
+    throw BadRequestException(detail: 'The $kind $name must be $expected');
+  }
+
+  static String _nameOf(Object value) =>
+      value is Enum ? value.name : value.toString();
+
+  static bool? _parseBool(String value) => switch (value.toLowerCase()) {
+    'true' => true,
+    'false' => false,
+    _ => null,
+  };
 
   void setRoutingContext(RequestRoutingContext requestRoutingContext) {
     if (routingContext != null) {

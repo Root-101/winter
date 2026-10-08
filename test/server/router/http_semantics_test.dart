@@ -79,14 +79,14 @@ void main() {
       final response = await http.head(url('/only-post'));
 
       expect(response.statusCode, 405);
-      expect(response.headers['allow'], 'POST');
+      expect(response.headers['allow'], 'POST, OPTIONS');
     });
 
     test('Allow header includes HEAD when GET is allowed', () async {
       final response = await http.delete(url('/users'));
 
       expect(response.statusCode, 405);
-      expect(response.headers['allow'], 'GET, HEAD');
+      expect(response.headers['allow'], 'GET, HEAD, OPTIONS');
     });
   });
 

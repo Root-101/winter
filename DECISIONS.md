@@ -857,3 +857,80 @@ AuthFilter(
 - *Documented*: the in-memory limit is per isolate and per process (four instances allow four times
   the limit), and by IP it needs `trustedProxies` behind a proxy (or every client shares the IP of
   the proxy).
+
+## 9. Router, filters and entities
+
+**Status:** decided and implemented on 2026-10-07 in the review of phase 2.8 of `ROADMAP.md`.
+The behavior is tested in `test/server/router/router_behavior_test.dart`. It's a light review: the
+entities (`RequestEntity`, `ResponseEntity`) are redesigned without shelf in phase 3.1.
+
+### 9.1 Repeated slashes are a 404
+
+`GET //users/1` was a 500 outside the pipeline: shelf rejected the url when the `RequestEntity` was
+built, so the answer had no `X-Request-Id`, no security headers, and was written to the console
+without the `logger`. Now it goes through the pipeline like `/users//1`, and no route matches it: a
+404 (Problem Details).
+
+- *Why not join the slashes*: behind a proxy, a rule that blocks `/admin` doesn't block `//admin`;
+  if the app joined them, `//admin` would reach `/admin`. Not rewriting the path is the safe choice.
+- *Why not a 400*: a 404 is what `/users//1` already answered; one rule for both.
+
+### 9.2 A broken route table fails at start
+
+`RouterConfig` uses `DefaultOnInvalidUrl.fail()` and `DefaultOnDuplicatedRoute.fail()` by default:
+an invalid or duplicated route is a `StateError` when the router is built. They were dropped with a
+warning, so the app started without them and the bug was found as a 404 in production (a route with
+a regex param, `/n/{id|[0-9]+}`, was dropped that way: see 9.3). `ignore()` is still available.
+
+### 9.3 Validation of the paths and duplicates
+
+- **Only the literal parts of a path are validated**: the regex of a param (`{id|[0-9]+}`) and the
+  regex parts (`.*`) can have any character. Before, `[`, `]` or `+` made the route invalid.
+- **The `key` stays**, generated from the path and the method or given by the app, so a filter can
+  recognize a route (`request.routingContext?.key`) without depending on its path.
+- **A duplicated route is also one with the same method and the same shape**: the names of the
+  params don't count, so `GET /users/{id}` and `GET /users/{name}` are the same route, and so are
+  two `GET /x` with different keys. The second one could never be reached.
+
+### 9.4 `OPTIONS` is answered automatically
+
+An `OPTIONS` to a path without an `OPTIONS` route is a `204` with `Allow` (RFC 9110), and `Allow`
+always lists `OPTIONS` (in a 405 too). A path that doesn't exist is still a 404. A route of the app
+for `OPTIONS` wins, and the CORS preflights are still answered by `CorsFilter`.
+
+### 9.5 `FilterConfig` is immutable
+
+`FilterConfig.add` mutated the list, which failed when it was `const` (and changed every route
+sharing it). `FilterConfig` holds an unmodifiable list, `add` is removed (use `merge`), and a `Route`
+without filters has a `const FilterConfig([])`. Breaking.
+
+### 9.6 Routers expose their routes read-only
+
+`WinterRouter.routes` is an unmodifiable list: `routes.add(...)` skipped the `basePath`, the
+validation and the duplicates. `addRoute` is the way to add routes. `MultiRouter.routes` is renamed
+`MultiRouter.routers` (it holds routers). Breaking.
+
+### 9.7 Typed path and query params
+
+`int.parse(request.pathParams['id']!)` with `/users/abc` was a 500 (`FormatException`). Now:
+
+```dart
+final int id = request.pathParam<int>('id');               // 400 if it's not an integer
+final int page = request.queryParam<int>('page') ?? 1;      // null if missing or empty
+final Status? status = request.queryParam('status', values: Status.values);
+```
+
+- Types: `String`, `int`, `double`, `num`, `bool` (`true`/`false`), `DateTime` (ISO 8601) and
+  enums by name with `values:`. A value of another type is a `BadRequestException` (400) whose
+  detail names the param and the expected type, never the value.
+- A path param that isn't in the route is a `StateError` (a bug of the app); an unsupported `T` is
+  an `ArgumentError`.
+- The raw maps (`pathParams`, `queryParams`, `queryParamsAll`) stay.
+
+### 9.8 Responses
+
+- The shortcuts of `ResponseEntity` stay, error ones included (`notFound`, `badRequest`...), and
+  without a body they send none. Throwing an `ApiException` is the way to answer a Problem Details.
+- New success shortcuts: `ResponseEntity.created(location:, body:)` (201 with `Location`),
+  `accepted()` (202) and `noContent()` (204).
+- `Route.toString()` no longer prints the closure of the handler.

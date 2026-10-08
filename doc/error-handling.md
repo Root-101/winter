@@ -37,7 +37,7 @@ void main() async {
         Route.get(
           path: '/users/{id}',
           handler: (request) => ResponseEntity.ok(
-            body: service.find(int.parse(request.pathParams['id']!)),
+            body: service.find(request.pathParam<int>('id')),
           ),
         ),
       ],

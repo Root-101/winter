@@ -107,7 +107,7 @@ Every request has an id, without adding anything:
 | info    | `Server started on port 8080 (0.2 sec)`, `Shutting down...`, `Server stopped` |
 | info    | `REQUEST`/`RESPONSE` of every request, with `LogsFilter`                 |
 | info    | The routes loaded, only with `RouterConfig(onLoadedRoutes: DefaultOnLoadedRoutes.log())` |
-| warning | A duplicated or invalid route, a serializer registered as `dynamic`, languages without Winter's messages, requests still in progress at the end of the shutdown |
+| warning | A duplicated or invalid route (with `RouterConfig` `ignore()`; by default it fails), a serializer registered as `dynamic`, languages without Winter's messages, requests still in progress at the end of the shutdown |
 | error   | An unexpected error (the 500), with its stack trace; a failing `onDispose` or `onComplete` |
 | debug   | A rate limited request (with the client id), the type of the error of a failed deserialization |
 

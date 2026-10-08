@@ -71,14 +71,14 @@ void main() {
     final response = await http.put(url('/users/42'));
 
     expect(response.statusCode, 405);
-    expect(response.headers['allow'], 'GET, DELETE, HEAD');
+    expect(response.headers['allow'], 'GET, DELETE, HEAD, OPTIONS');
   });
 
   test('405 from another router of the MultiRouter includes Allow', () async {
     final response = await http.get(url('/items'));
 
     expect(response.statusCode, 405);
-    expect(response.headers['allow'], 'POST');
+    expect(response.headers['allow'], 'POST, OPTIONS');
   });
 
   test('Unknown path is still a 404 without Allow', () async {
