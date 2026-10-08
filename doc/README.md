@@ -13,31 +13,29 @@ then, this index says which ones exist.
 
 | Document                                             | State | Content                                                                      |
 |------------------------------------------------------|-------|------------------------------------------------------------------------------|
-| Getting started                                      | 🕓    | Installation, first endpoint, a CRUD with JSON and validation, tests         |
-| Architecture                                         | 🕓    | The path of a request, `WinterContext`, global state, request scope, isolates |
+| [Getting started](getting-started.md)               | ✅    | Installation, first endpoint, a CRUD with JSON and validation, tests         |
+| [Architecture](architecture.md)                     | ✅    | The path of a request, `WinterContext`, global state, request scope, isolates |
 | [Routing](routing.md)                                | ✅    | Routes, typed path and query params, priority, 404/405/OPTIONS, the route table checks, `MultiRouter`, your own router |
 | [Filters](filters.md)                                | ✅    | `Filter`, the chain, `order`, `shouldFilter`, global and route filters, errors as responses |
 | [Requests and responses](requests-and-responses.md) | ✅    | `RequestEntity`, `ResponseEntity`, headers, cookies, the body, `copyWith`, streams |
 | [Object mapper](object-mapper.md)                    | ✅    | JSON ↔ objects: `toJson()`, serializers, deserializers, generics, errors, options |
 | [Validation](validation.md)                          | ✅    | `Validatable`, `cvc.field(...)`, the validators, nested objects, the 422     |
 | [Error handling](error-handling.md)                  | ✅    | Problem Details, `ApiException` and its shortcuts, `on<T>()`, the 500        |
-| i18n                                                 | 🕓    | The language of the request, Winter's messages, translating an app with slang |
+| [i18n](i18n.md)                                     | ✅    | The language of the request, Winter's messages, translating an app with slang |
 | [Security](security.md)                              | ✅    | Your authentication filter, `AuthFilter` (401/403), rules, the principal, CORS, headers, rate limiter |
 | [Dependency injection](dependency-injection.md)      | ✅    | `put`, `putLazy`, `putFactory`, `putScoped`, `onDispose`, tests              |
 | [Configuration](configuration.md)                    | ✅    | `Env` (`find`, `require`, types, `.env` and profiles), `ServerConfig`, `WinterContext` |
 | [Logging](logging.md)                                | ✅    | `ConsoleLogger`, `JsonLogger`, fields, the request id, what Winter logs      |
-| Testing                                              | 🕓    | `WinterTestClient`, tests without ports, `RequestScope.run`, fake clocks     |
-| Deployment                                           | 🕓    | `dart compile exe`, Docker, graceful shutdown, isolates, reverse proxy       |
-| Migration from 0.x to 1.0                            | 🕓    | Every breaking change with a before and after (today in the [CHANGELOG](../CHANGELOG.md)) |
+| [Testing](testing.md)                               | ✅    | `WinterTestClient`, tests without ports, `RequestScope.run`, fake clocks     |
+| [Deployment](deployment.md)                         | ✅    | `dart compile exe`, Docker, graceful shutdown, isolates, reverse proxy       |
 
 ## Other references
 
 - [`DECISIONS.md`](../DECISIONS.md): **why** the framework behaves the way it does (the guides
-  explain **how**). Today: i18n (§1), the object mapper (§2), validation (§3), error handling
-  (§4), dependency injection (§5), configuration (§6), logging (§7), security (§8), the
-  router, filters and entities (§9), the systems together (§10) and the move from shelf to
-  `dart:io` (§11).
-- [`CHANGELOG.md`](../CHANGELOG.md): what changed in each version, breaking changes included.
+  explain **how**): i18n (§1), the object mapper (§2), validation (§3), errors (§4), dependency
+  injection (§5), configuration (§6), logging (§7), security (§8), the router and filters (§9),
+  the HTTP layer (§10) and the public API (§11).
+- [`CHANGELOG.md`](../CHANGELOG.md): what each version contains.
 - [`ROADMAP.md`](../ROADMAP.md): what is left for 1.0.
 - [`example/`](../example): standalone apps, from a basic server to authentication and i18n.
 - [`benchmark/`](../benchmark): routing, server and object mapper benchmarks.

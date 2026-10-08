@@ -127,7 +127,7 @@ number type, so `12.0` is a valid `int` and `1` a valid `double`.
 | An integer         | `Deserializer<T>.integer(fromInt)`   | `Deserializer<Cents>.integer(Cents.new)`                      |
 | A number           | `Deserializer<T>.number(fromNumber)` | `Deserializer<Ratio>.number(Ratio.new)`                       |
 | A boolean          | `Deserializer<T>.boolean(fromBool)`  | `Deserializer<Flag>.boolean(Flag.new)`                        |
-| An enum `name`     | `Deserializer.enumByName(values)`    | `Deserializer<Status>.enumByName(Status.values)`                      |
+| An enum `name`     | `Deserializer<T>.enumByName(values)` | `Deserializer<Status>.enumByName(Status.values)`                      |
 | Anything else      | `Deserializer<T>(fromAnyValue)`      | `Deserializer<Point>((data) => Point.fromList(data as List))` |
 
 The typed constructors check the JSON type before calling your function, so a wrong one is a 400

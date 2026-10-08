@@ -14,7 +14,7 @@ Every error of a Winter app is answered the same way: a **Problem Details** (RFC
 - The errors of Winter itself (no route, not authenticated, too many requests...) are exceptions
   too, so one `ExceptionHandler` formats all of them, and you can change any of them.
 
-The decisions behind it are in [`DECISIONS.md` §4](../DECISIONS.md#4-exceptions-and-error-handling).
+The decisions behind it are in [`DECISIONS.md` §4](../DECISIONS.md#4-errors).
 
 ## Minimal example
 
