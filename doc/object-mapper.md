@@ -205,9 +205,11 @@ The 400 is a Problem Details (see [error handling](error-handling.md)) whose `de
 | `{"first name": true}` | `Map<String, int>` | `$["first name"]: expected an integer, got a boolean` |
 | `{"name": `            | `User`             | `The body is not valid JSON`                          |
 
-The path goes as deep as the mapper walks the data itself (lists, maps, primitives). Inside your
-`fromJson` it can't know which field failed, so the message is `invalid value` at the path of the
-object. The original error is in `DeserializationException.cause` and is logged at `debug`.
+The path goes as deep as the mapper walks the data itself (lists, maps, primitives). Inside a
+`fromJson` that casts (`json['name'] as String`) it can't know which field failed, so the message
+is `invalid value` at the path of the object; read the fields with `json.field<T>()` and the path
+goes down to the field (see [typed fields](#a-hand-written-fromjson-typed-fields)). The original
+error is in `DeserializationException.cause` and is logged at `debug`.
 
 A missing serializer or deserializer is a 500 on purpose: it's a bug of the server, not something
 the client can fix. Its message (only in the logs) says how to register it.
@@ -272,6 +274,61 @@ than `utf8.encode(om.encode(...))` and `om.decode(utf8.decode(...))` (see
 [benchmarks](benchmarks.md#object-mapper)). `encode`/`decode` stay for JSON as text.
 
 ## Common cases
+
+### A hand-written `fromJson`: typed fields
+
+With casts (`json['quantity'] as int`), a wrong field is a 400 that doesn't say which one:
+`$: invalid value`. Read the fields with `json.field<T>()` instead, and the 400 names the field,
+the way the client sent it:
+
+```dart
+class Order {
+  final String customerEmail;
+  final String? note;
+  final Status status;
+  final DateTime? deliverOn;
+  final Address shippingAddress;
+  final List<OrderItem> items;
+  final Map<String, int> discounts;
+
+  // ...constructor...
+
+  factory Order.fromJson(Map<String, dynamic> json) => Order(
+    customerEmail: json.field<String>('customerEmail'),     // required
+    note: json.field<String?>('note'),                      // nullable: may be missing or null
+    status: json.field<Status>('status'),                   // an enum with enumByName
+    deliverOn: json.field<DateTime?>('deliverOn'),          // DateTime, read by the mapper
+    shippingAddress: json.object('shippingAddress', Address.fromJson), // not registered
+    items: json.field<List<OrderItem>>('items'),            // OrderItem is registered
+    discounts: json.field<Map<String, int>?>('discounts') ?? const {},
+  );
+}
+```
+
+What the client gets for a wrong body (with `fieldNaming: FieldNaming.snakeCase`):
+
+| Body                                         | With casts         | With `json.field`                                       |
+|----------------------------------------------|--------------------|---------------------------------------------------------|
+| without `customer_email`                     | `$: invalid value` | `$.customer_email: missing`                             |
+| `"status": "lost"`                           | `$: invalid value` | `$.status: expected one of pending, paid, got another string` |
+| `"items": [{"quantity": "two", ...}]`        | `$: invalid value` | `$.items[0].quantity: expected an integer, got a string` |
+| `"shipping_address": {"zip_code": 28001}`    | `$: invalid value` | `$.shipping_address.zip_code: expected a string, got an integer` |
+
+- `field<T>(name)` reads with the mapper that is deserializing (the global `om` outside one), so
+  every type it reads works: primitives (strict: `"12"` is not an `int`), `DateTime`, `Duration`,
+  enums and classes with a deserializer, `List<T>`, `Map<String, T>`...
+- A missing field is `missing`; a nullable `T` (`field<String?>`) accepts it missing or `null`.
+- `object(name, fromJson)` reads a nested object with a `fromJson` that isn't registered; its own
+  `json.field` calls add their path (`$.shipping_address.zip_code`). A list of objects needs its
+  element registered (`Deserializer<OrderItem>.json(OrderItem.fromJson)`) to read it with
+  `field<List<OrderItem>>`.
+- The names are the Dart ones (`'customerEmail'`): the keys were already renamed by
+  `fieldNaming`. The errors show the JSON ones (`customer_email`).
+- It works in any code that has a `Map<String, dynamic>`, not only in a `fromJson` registered in
+  the mapper.
+
+The models of `json_serializable` and `freezed` (below) don't need it: their generated `fromJson`
+is used as it is.
 
 ### `json_serializable` and `freezed`
 
@@ -351,7 +408,22 @@ email...) are a 422 of the validation, see [validation](validation.md).
 - **Registering in `om` and then replacing it**: `Winter.context.setUp(objectMapper: ObjectMapper(...))`
   starts from the defaults, so what was registered in the previous mapper is gone. Winter logs a
   warning with the types it lost; set up the mapper first, or pass them in `deserializers:`,
-  `serializers:` or `adapters:`.
+  `serializers:` or `adapters:`:
+
+  ```dart
+  om.addDeserializer(Deserializer<User>.json(User.fromJson));
+  Winter.context.setUp(objectMapper: ObjectMapper(fieldNaming: FieldNaming.snakeCase));
+  // WARNING The object mapper was replaced, and the new one has no serializer or
+  //         deserializer of User, registered in the previous one. ...
+
+  // Instead: the mapper first, with what it reads
+  Winter.context.setUp(
+    objectMapper: ObjectMapper(
+      fieldNaming: FieldNaming.snakeCase,
+      deserializers: [Deserializer<User>.json(User.fromJson)],
+    ),
+  );
+  ```
 - **`deserialize` with JSON text**: `om.deserialize<User>('{"id":1}')` receives a String, not an
   object (400). Use `om.decode<User>(...)` for text.
 - **A `toJson` with parameters** (`toJson({bool full = true})` works, `toJson(bool full)` doesn't)

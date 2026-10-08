@@ -654,10 +654,11 @@ first, small and independent; then the new features, from the most used to the l
   own in one call (`om.addConverter(JsonConverter<Uri>.string(toJson: ..., fromJson: Uri.parse))`).
   → Named `JsonAdapter<T>` (`JsonConverter` is a class of `json_annotation`: importing both would
   clash), with `adapters:` and `addAdapter`.
-- [ ] **Typed field access for hand-written `fromJson`** (`json.field<String>('name')`,
+- [x] **Typed field access for hand-written `fromJson`** (`json.field<String>('name')`,
   `json.object('address', Address.fromJson)`): the 400 says which field failed
   (`$.address.zip: ...`) instead of `$: invalid value`, without tracking the keys behind the
-  scenes.
+  scenes. → `JsonObjectFields`: `json.field<T>()` (with the mapper that is
+  deserializing) and `json.object(name, fromJson)`; example 05 uses it.
 - [x] **`TestResponse.as<T>()`**: deserialize a response of `WinterTestClient` with the mapper,
   instead of `json` (`dynamic`) and a manual `fromJson`.
 - [x] **Warn when the mapper is replaced after registering**: `Winter.context.setUp(objectMapper:

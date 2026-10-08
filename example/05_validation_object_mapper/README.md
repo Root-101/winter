@@ -9,13 +9,16 @@ invalid field the way the client sent it.
 ### 1. The object mapper of the app (`OrdersApp.objectMapper()`)
 *   `fieldNaming: FieldNaming.snakeCase`: the models use `customerEmail`, the JSON `customer_email`.
 *   `includeNulls: false`: an order without `deliver_on` doesn't write it.
-*   `Serializer<Money>` writes an amount as text (`"12.50 EUR"`), and `Deserializer<Money>.string`
-    reads it back: `"12 euros"` is a 400.
+*   `JsonAdapter<Money>.string` writes an amount as text (`"12.50 EUR"`) and reads it back, in one
+    registration: `"12 euros"` is a 400.
 *   `Deserializer<Shipping>.enumByName(Shipping.values)` reads an enum by name; the type is always
     written (inside a list Dart would infer `Enum`).
-*   `Deserializer<CreateOrder>.json(CreateOrder.fromJson)`: the parent reads its children
-    (`Address`, `OrderItem`) itself, and asks the mapper for the registered types
-    (`om.deserialize<Money>(...)`, `om.deserialize<Map<String, int>>(...)`).
+*   `Deserializer<CreateOrder>.json(CreateOrder.fromJson)`, with typed fields in the hand-written
+    `fromJson`: `json.field<String>('customerEmail')`, `json.field<List<OrderItem>>('items')`,
+    `json.field<DateTime?>('deliverOn')` (may be missing) and
+    `json.object('shippingAddress', Address.fromJson)` for an object that isn't registered. A
+    wrong field is a 400 that names it as the client sent it:
+    `$.items[0].quantity: expected an integer, got a string`, `$.customer_email: missing`.
 
 ### 2. Nested validation (`CreateOrder.validate()`)
 *   `.valid()` validates the nested `Address`, `.validEach()` every `OrderItem`.
