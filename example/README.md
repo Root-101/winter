@@ -34,11 +34,15 @@ This directory contains independent examples demonstrating the core features and
     - b) **Nested validation**: `valid()` and `validEach()`, a `custom()` rule with its code, and a 422 whose fields follow the JSON (`shipping_address.zip_code`, `items[0].quantity`).
     - c) **Typed params**: `pathParam<int>`, `queryParam<int>`, an enum from the query.
 
-6.  `06_files` (multipart, static files): once they exist (phase 4 of the roadmap).
+6.  **[06_files](./06_files)**: A photo gallery with forms, uploads and a session cookie.
+    - a) **Forms & cookies**: `formData()` of a login form, an `HttpOnly` session cookie, a 303 after each form, and a filter that authenticates by the cookie.
+    - b) **Uploads in memory**: `formData()` of a `multipart/form-data` form, a random file name, and the type checked by the bytes (not the declared one).
+    - c) **Streamed uploads**: `multipart()` copies a video to disk while it arrives.
+    - d) **Static files**: `StaticFiles` behind the login with `ETag` and `Range`, and `Route.static` for the page.
 
 7.  **[07_production](./07_production)**: Ready for a container.
     - a) **Configuration**: `.env` and profiles under the variables of the process, `requireAll`, `ServerConfig.fromEnv`.
-    - b) **Operations**: `JsonLogger`, liveness and readiness checks, a 503 with `Retry-After`.
+    - b) **Operations**: `JsonLogger`, liveness and readiness checks with `Route.health`.
     - c) **Security behind a proxy**: rate limit by client IP with `trustedProxies`, CORS and HSTS from the environment.
     - d) **Graceful shutdown & Docker**: `onShutdown`, a "database" closed by its `onDispose`, and a native `scratch` image.
 

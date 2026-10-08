@@ -14,8 +14,8 @@
     * **Logging** :memo: : `ConsoleLogger` and `JsonLogger`, levels, structured `fields`, and the request id in every log.
     * **i18n** :globe_with_meridians: : The validation messages in the language of the request (`Accept-Language`, English and Spanish), `requestLocale` from any code, and `Vary: Accept-Language` added by itself.
     * **Request scope** :link: : Every request runs in its own `Zone`: `requestId`, `requestPrincipal`, `requestLocale` from any code, and `onComplete`.
-    * **Testing** :test_tube: : `WinterTestClient` runs the whole pipeline in memory, without ports.
-    * **Examples** :books: : From a basic server to authentication with JWT, i18n, nested DTOs and a production setup with Docker (`example/`).
+    * **Testing** :test_tube: : `WinterTestClient` runs the whole pipeline in memory, without ports (`bodyBytes` for a binary response).
+    * **Examples** :books: : From a basic server to authentication with JWT, i18n, nested DTOs, file uploads with a session cookie and a production setup with Docker (`example/`).
 
 * 0.0.7:
     * **DATE** :date: : 2024-10-29.
