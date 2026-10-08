@@ -1,7 +1,19 @@
 name: winter
-description: A backend framework for Dart inspired by Spring - routing, filters, dependency injection, JSON mapping, validation, security and consistent errors on dart:io.
+description: A Spring-inspired backend framework for Dart on dart:io - routing, filters, DI, JSON mapping, validation, security and consistent errors.
 version: 0.1.0
 repository: https://github.com/Root-101/winter
+issue_tracker: https://github.com/Root-101/winter/issues
+documentation: https://github.com/Root-101/winter/tree/main/doc
+topics:
+  - server
+  - http
+  - backend
+  - rest
+  - api
+
+# The self-signed certificate of localhost for the HTTPS tests: not a secret
+false_secrets:
+  - /test/fixtures/localhost_key.pem
 
 environment:
   sdk: ^3.13.0
@@ -11,13 +23,10 @@ dependencies:
   #Utils
   collection: ^1.19.1
 
-  #For media type parsing
+  #Parses Content-Type headers (media types, multipart boundaries)
   http_parser: ^4.1.2
 
-  #For the route keys
-  crypto: ^3.0.7
-
-  #i18n: typed translations generated from the ARB files in lib/src/i18n (`dart run slang`)
+  #i18n: typed translations generated from the YAML files in lib/src/i18n (`dart run slang`)
   slang: ^4.19.0
   #Imported by the code that slang generates
   intl: '>=0.18.1 <2.0.0'

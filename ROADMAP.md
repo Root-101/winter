@@ -856,15 +856,22 @@ The current 4 are fine. Missing:
 
 ### 6.2 Package 🔴
 
-- [ ] `pubspec.yaml`: `homepage`, `documentation`, `issue_tracker`, `topics` (`server`, `http`,
-  `backend`, `rest`, `api`) and a `description` that says clearly in one line what it is.
-- [ ] `.pubignore`: leave out `todo.md`, `benchmark/`, `slang.yaml`, `CLAUDE.md`,
+- [x] `pubspec.yaml`: `homepage`, `documentation`, `issue_tracker`, `topics` (`server`, `http`,
+  `backend`, `rest`, `api`) and a `description` that says clearly in one line what it is. → Without
+  `homepage` (the same as `repository`), and `false_secrets` for the test certificate.
+- [x] `.pubignore`: leave out `todo.md`, `benchmark/`, `slang.yaml`, `CLAUDE.md`,
   `winter_framework.iml` and `brag-output/` (today `dart pub publish --dry-run` includes the whole
-  `test/`, which is fine, but the rest is not needed).
-- [ ] Review the runtime dependencies: `slang` + `intl` (range `>=0.18.1 <2.0.0`), `crypto` (only
+  `test/`, which is fine, but the rest is not needed). → It repeats the entries of
+  `.gitignore` (pub stops reading it), and leaves out `ROADMAP.md`, `.fvmrc`, `.dockerignore`,
+  `doc/api/` and what the examples generate. `dart pub publish --dry-run` passes.
+- [x] Review the runtime dependencies: `slang` + `intl` (range `>=0.18.1 <2.0.0`), `crypto` (only
   for the route keys; a simpler hash would remove the dependency), `collection` and `http_parser`.
   `shelf` is already gone (3.1).
   Check that they work with the minimum versions (`dart pub downgrade && dart test`).
+  → `crypto` removed: a route key is its method and path (`GET /users/{id}`), readable and without
+  a hash. The tests pass with the minimum versions of the runtime dependencies
+  (`dart pub downgrade collection http_parser slang intl`); a full downgrade also lowers the dev
+  dependencies, and that `test` doesn't run on Dart 3.13.
 
 ### 6.3 Final review 🟡
 

@@ -53,3 +53,8 @@ Winter's validation messages live in `lib/src/i18n/*.i18n.yaml`. To add a langua
 - Update the entry of the next version in `CHANGELOG.md` (what the version contains).
 - A design choice goes to `DECISIONS.md` (the decision and why), and the guide of its module in
   `doc/` explains how to use it; check its snippets by running them.
+
+## Publishing
+
+`.pubignore` decides what goes into the package; pub ignores `.gitignore` when it exists, so a new
+entry of `.gitignore` goes there too. Check it with `fvm dart pub publish --dry-run`.

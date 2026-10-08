@@ -226,8 +226,9 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
 - **The resolved `Route` travels in the request** (`request.route`), not as text: the server
   resolves it before the filters (so the route filters run and the path params are ready) and the
   chain ends in its handler; the router only answers when there is no route (404, 405, `OPTIONS`)
-  or it has no routes (`ServeRouter`). **Route keys** are generated from the path or given by the
-  app, so a filter recognizes a route (`request.route?.key`) without depending on its path.
+  or it has no routes (`ServeRouter`). **Route keys** are the method and path (`GET /users/{id}`:
+  readable in the logs, unique like them, no hash) or given by the app, so a filter recognizes a
+  route (`request.route?.key`) without depending on its path.
 - A static route wins over a dynamic one; between the rest, the first declared. A trailing slash is
   ignored; repeated slashes are a 404 (a proxy rule for `/admin` doesn't block `//admin`, so the
   path is never rewritten). An empty child path is not a route: the parent takes the handler.
