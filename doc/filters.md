@@ -21,7 +21,7 @@ class TimingFilter extends Filter {
   Future<ResponseEntity> doFilter(RequestEntity request, FilterChain chain) async {
     final stopwatch = Stopwatch()..start();
     final ResponseEntity response = await chain.doFilter(request);
-    return response.change(headers: {'Server-Timing': 'app;dur=${stopwatch.elapsedMilliseconds}'});
+    return response.copyWith(headers: {'Server-Timing': 'app;dur=${stopwatch.elapsedMilliseconds}'});
   }
 }
 
@@ -42,9 +42,11 @@ void main() async {
 `doFilter(request, chain)` returns the response of the request:
 
 - `chain.doFilter(request)` runs the rest of the chain (the next filters and the handler) and
-  returns its response, which the filter can change (`response.change(headers: ...)`).
+  returns its response, which the filter can change: `response.copyWith(headers: ...)` adds
+  headers (`null` removes one), and `copyWith` also takes a `statusCode`, a `body` and `cookies`.
 - Returning a response without calling the chain **short-circuits** it: the handler never runs.
-- `request.change(headers: ..., context: ...)` gives the next filters a changed request.
+- The request is read-only. `request.copyWith(headers: ..., context: ..., requestedUri: ...)`
+  gives the next filters a changed copy; the copy shares the body, which is read once.
 
 ```dart
 class MaintenanceFilter extends Filter {
@@ -165,12 +167,39 @@ expect(
 );
 ```
 
+### Coming from shelf
+
+Winter doesn't run on shelf since 1.0, so a shelf `Middleware` doesn't plug in. The same code is a
+filter: the part before `innerHandler(request)` goes before `chain.doFilter(request)`, and the
+part after, after it.
+
+```dart
+// shelf
+Middleware addHeader() => (innerHandler) => (request) async {
+  final response = await innerHandler(request);
+  return response.change(headers: {'X-Api': '1'});
+};
+
+// Winter
+class AddHeaderFilter extends Filter {
+  @override
+  Future<ResponseEntity> doFilter(RequestEntity request, FilterChain chain) async {
+    final response = await chain.doFilter(request);
+    return response.copyWith(headers: {'X-Api': '1'});
+  }
+}
+```
+
+`Request.change` and `Response.change` are `copyWith`, `request.url` is `request.requestedUri`
+(Winter is never mounted under a path), and `request.context['shelf.io.connection_info']` is
+`request.connectionInfo` (or `request.clientIp()`).
+
 ## Typical mistakes and limitations
 
 - **Catching the error of the handler in a filter**: it never arrives, it's already a response.
 - **An authentication filter on a route and `AuthFilter` global**: the global one runs first and
   sees nobody. Keep the authentication global and first.
-- **Changing the request and then reading the old one**: `change` returns a new request; pass it to
-  `chain.doFilter`.
+- **Changing the request and then passing the old one**: `copyWith` returns a new request; pass it
+  to `chain.doFilter`.
 - **Reading the body in a filter**: `request.body<T>()` caches it, so the handler can read it too,
   but `read()`/`readAsString()` can't be used after it.

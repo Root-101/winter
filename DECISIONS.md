@@ -982,3 +982,103 @@ handler (`Route.get(path: '/orders', handler: list, routes: [...])`), or the chi
 
 A `fromJson` that deserializes its children (`om.deserialize<List<Item>>(json['items'])`) loses the
 path: an invalid item is `$: invalid value`, not `$.items[0]...` (see §2.5). It stays for 1.0.
+
+## 11. From shelf to `dart:io`
+
+**Status:** decided and implemented on 2026-10-07 in phase 3.1 of `ROADMAP.md`. The behavior is
+tested in `test/server/http_server_behavior_test.dart` (the real server) and
+`test/entities_behavior_test.dart` (the entities), and the guide is `doc/requests-and-responses.md`.
+
+Winter no longer depends on shelf. It serves the requests with `HttpServer` of `dart:io`, and
+`RequestEntity`/`ResponseEntity` are its own types: the public API of Winter doesn't depend on the
+API (nor the breaking changes) of another package, and shelf cost performance.
+
+### 11.1 The request
+
+- **The names users know stay**: `method`, `requestedUri`, `headers`, `context`, `body<T>()`,
+  `read()`, `readAsString()`, `pathParams`, `queryParams`, `clientIp()`.
+- **Headers**: `headers` (one value, case insensitive, several joined with `, `) and `headersAll`
+  (every value). *Why not a `Headers` class*: every `headers['x']` of today keeps working.
+- **New**: `cookies` and `cookie(name)` (the `Cookie` of `dart:io`), `connectionInfo` (the IP no
+  longer comes from a shelf context key), `mimeType`/`encoding` (the body is decoded with the
+  charset of the `Content-Type`).
+- **Read-only**: headers, query and path params can't be changed (a filter cleared
+  `queryParams`); a filter passes a copy to the chain.
+- **The body is read once**, shared by the copies of a request: `body<T>()` caches it for all of
+  them, and `read()`/`readAsString()` fail after it.
+- **Removed**: `handlerPath` and `url` (relative to a mounted handler: Winter is never mounted; the
+  router uses `requestedUri.path`), the context override, and `RequestEntity.change`.
+- `RequestEntity.fromHttpRequest` builds one from the `HttpRequest` of the server, reading its
+  headers without copying them.
+
+### 11.2 The response
+
+- A `body` value is written by its type: a `String` as text, a `Uint8List` as bytes, a
+  `Stream<List<int>>` as a stream, anything else as JSON. *Why `Uint8List` and not `List<int>`*: a
+  `List<int>` of the app is data (`[1, 2]` in JSON).
+- `headersAll` with several values (`Link`), and `cookies:` (one `Set-Cookie` each) in the
+  constructor, the success shortcuts and `copyWith`.
+- A text body's charset is the one of its `encoding` (UTF-8 by default).
+
+### 11.3 One `copyWith`
+
+`copyWith` is the only way to change a request or a response (`change` came from shelf and did
+almost the same; the `copyWith` of the request was async). It's synchronous in both, adds `headers`
+(`null` removes one) and `context`, and a new `body` is resolved again with its own `Content-Type`
+and `Content-Length`. Breaking: `change` is removed, and the `headers` of `ResponseEntity.copyWith`
+are added instead of replacing all of them.
+
+### 11.4 The server
+
+- `HttpServer.bind`, or `bindSecure` with `ServerConfig.securityContext` (HTTPS), with `shared`.
+- New settings of `dart:io` in `ServerConfig`: `autoCompress` (false: usually the proxy compresses)
+  and `idleTimeout` (120 s, the one of `dart:io`; validated).
+- No `Server` nor `X-Powered-By`, and the default headers of `dart:io` are cleared.
+- Every response has a `Date` (RFC 9110; `dart:io` doesn't add it), formatted once per second.
+- `Winter.buildHandler` returns a `RequestHandler` (`RequestEntity → ResponseEntity`), the same
+  pipeline that `WinterTestClient` calls in memory.
+
+### 11.5 Writing a response
+
+`writeResponse` (public, for a server of the app):
+
+- A `Content-Length` for bytes, chunked for a stream, which is sent as it's produced
+  (`bufferOutput: false`, for Server-Sent Events). `dart:io` sends the headers with the first
+  chunk.
+- No body for `HEAD` (it keeps the `Content-Length` of `GET`), `204` and `304`.
+- With `autoCompress` and a client that accepts gzip, the length is left out: `dart:io` only
+  compresses a chunked response.
+- A client that leaves in the middle, or a stream that fails, is logged at debug and the connection
+  is closed: the server goes on.
+- A malformed request is answered (or closed) by `dart:io` before it reaches Winter.
+
+### 11.6 WebSockets (design for phase 4.3)
+
+The pipeline must be able to hand the connection over to `WebSocketTransformer.upgrade` after the
+filters (authentication, CORS) ran, without a breaking change. The design: a response of its own
+kind (`ResponseEntity.upgrade((WebSocket socket) {...})`, a subclass or a marker in its context)
+that the server recognizes before `writeResponse`; it has the `HttpRequest` (`_serve`), so it can
+upgrade it. In memory (`WinterTestClient`) it's a 101 without a socket. Nothing in today's API
+blocks it.
+
+### 11.7 Shelf middlewares
+
+They no longer plug in: the same code is a filter (before and after `chain.doFilter`), shown in
+`doc/filters.md`. `Response.ok(...)` is `ResponseEntity.ok(body: ...)`, `change` is `copyWith`,
+`request.url` is `request.requestedUri`.
+
+### 11.8 Performance
+
+On the same machine (Windows, AOT, 64 connections, `benchmark/http_benchmark.dart`), an empty
+endpoint:
+
+| Server                 | req/s | vs `dart:io` |
+|------------------------|-------|--------------|
+| `dart:io` alone        | ~6200 | ceiling      |
+| shelf alone            | 5561  | −13 %        |
+| Winter on shelf        | 3984  | −37 %        |
+| Winter on `dart:io`    | ~5100 | −17 %        |
+
+The pipeline in memory went from 21 µs to 12.5 µs per request: the headers are views (no copies of
+the headers of `dart:io`, no joined map per access), the request id is built with a table, and a
+body of bytes is written with `add` instead of a stream.
