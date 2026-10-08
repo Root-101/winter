@@ -97,8 +97,9 @@ class Deserializer<T> extends _MapperEntity<T> {
   /// Declare the type explicitly inside a list (`[Deserializer<User>.json(User.fromJson)]`),
   /// otherwise the type of the list wins and it's registered as `dynamic`.
   Deserializer.json(T Function(Map<String, dynamic> json) fromJson)
-    : _deserialize = ((data, mapper) =>
-          fromJson(mapper._jsonKeysToDart(_asJsonObject(data))));
+    : _deserialize = ((data, mapper) => mapper._reading(
+        () => fromJson(mapper._jsonKeysToDart(_asJsonObject(data))),
+      ));
 
   /// Deserializer of a type written as a JSON string:
   ///
@@ -264,6 +265,49 @@ class Deserializer<T> extends _MapperEntity<T> {
       return data.map((key, value) => MapEntry(key.toString(), value));
     }
     throw _expected('an object', data);
+  }
+}
+
+/// Typed access to the fields of a JSON object, for a hand-written `fromJson`: a wrong field is a
+/// 400 that names it (`$.address.zip: expected a string, got an integer`), not `$: invalid value`.
+///
+/// ```dart
+/// factory User.fromJson(Map<String, dynamic> json) => User(
+///   name: json.field<String>('name'),               // missing: `$.name: missing`
+///   nickname: json.field<String?>('nickname'),       // may be missing or null
+///   createdAt: json.field<DateTime>('createdAt'),    // any type the mapper reads
+///   address: json.object('address', Address.fromJson), // a nested object, not registered
+/// );
+/// ```
+///
+/// The values are read by the mapper that is deserializing (the global `om` otherwise), so
+/// `DateTime`, enums with a deserializer and registered classes work. Names are the Dart ones
+/// (the keys were renamed by `fieldNaming`), and the errors show the name the client sent.
+///
+/// {@category Object mapper}
+extension JsonObjectFields on Map<String, dynamic> {
+  /// The field [name] as a [T]. Missing, or a value that isn't a [T], is a
+  /// [DeserializationException] (400) at its path; a nullable [T] can be missing.
+  T field<T>(String name) {
+    final ObjectMapper mapper =
+        ObjectMapper._current ?? Winter.context.objectMapper;
+    return _at(mapper._fieldSegment(name), () {
+      if (!containsKey(name) && null is! T) {
+        throw DeserializationException('missing');
+      }
+      return mapper.deserialize<T>(this[name]);
+    });
+  }
+
+  /// The field [name], a JSON object, read by [fromJson] (for a class that isn't registered in the
+  /// mapper). Missing or not an object is a [DeserializationException] (400) at its path.
+  T object<T>(String name, T Function(Map<String, dynamic> json) fromJson) {
+    final ObjectMapper mapper =
+        ObjectMapper._current ?? Winter.context.objectMapper;
+    return _at(mapper._fieldSegment(name), () {
+      if (!containsKey(name)) throw DeserializationException('missing');
+      return Deserializer<T>.json(fromJson)._call(this[name], mapper);
+    });
   }
 }
 
@@ -630,6 +674,23 @@ class ObjectMapper {
   static bool _isJsonWhitespace(int byte) =>
       byte == 0x20 || byte == 0x09 || byte == 0x0A || byte == 0x0D;
 
+  /// The mapper running a [Deserializer.json] right now, for [JsonObjectFields] (deserializing is
+  /// synchronous, so a static is enough)
+  static ObjectMapper? _current;
+
+  R _reading<R>(R Function() body) {
+    final ObjectMapper? previous = _current;
+    _current = this;
+    try {
+      return body();
+    } finally {
+      _current = previous;
+    }
+  }
+
+  /// The path step of the field [name] (a Dart name): the name the client sent
+  String _fieldSegment(String name) => _keySegment(_dartKeyToJson(name));
+
   /// Recursively serializes [object] to a JSON value
   /// (null, String, num, bool, List & Map with String keys).
   ///
@@ -902,7 +963,6 @@ R _at<R>(String segment, R Function() body) {
 
 final RegExp _identifier = RegExp(r'^[a-zA-Z_][a-zA-Z0-9_]*$');
 
-/// Each name of a field path (`items[0].firstName`: `items` and `firstName`, not the index)
 /// A quoted key of a map (`["eur"]`, kept as it is in group 1) or a name of a field
 final RegExp _nameInPath = RegExp(
   r'(\["(?:[^"\\]|\\.)*"\])|[a-zA-Z_][a-zA-Z0-9_]*',

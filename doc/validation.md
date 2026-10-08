@@ -138,6 +138,15 @@ it would put personal data and long texts back in the response. It's kept in
 `ConstraintViolation.value` (for logs), except for a `sensitive` field, whose value is never
 stored.
 
+A violation is immutable; `copyWith` changes it, for example in an exception handler of your own.
+`value` and `code` can be null, so they're given as a function (`null` alone means "keep it"):
+
+```dart
+violation.copyWith(fieldName: 'user.${violation.fieldName}'); // keeps the rest
+violation.copyWith(value: () => null, code: () => null);       // clears the value and the code
+violation.copyWith(code: () => 'email.taken');                  // sets a code
+```
+
 A partial update (PATCH) is usually a model of its own, whose fields are all optional: since every
 validator except `notNull()` passes on `null`, only the fields that came are validated, and the
 body is still validated by default:

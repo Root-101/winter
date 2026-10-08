@@ -1057,6 +1057,89 @@ void main() {
     );
   });
 
+  group('Typed fields in a hand-written fromJson: json.field<T>()', () {
+    final mapper = ObjectMapper(
+      fieldNaming: FieldNaming.snakeCase,
+      deserializers: [
+        Deserializer<_Status>.enumByName(_Status.values),
+        Deserializer<_Customer>.json(_Customer.fromJson),
+      ],
+    );
+
+    Map<String, Object?> valid() => {
+      'full_name': 'Ann Lee',
+      'status': 'paid',
+      'created_at': '2026-01-02T00:00:00.000Z',
+      'home_address': {'zip_code': '28001'},
+    };
+
+    test('reads every type the mapper reads, and a nested object', () {
+      final _Customer customer = mapper.deserialize<_Customer>(valid());
+
+      expect(customer.fullName, 'Ann Lee');
+      expect(customer.nickname, isNull);
+      expect(customer.status, _Status.paid);
+      expect(customer.createdAt, DateTime.utc(2026, 1, 2));
+      expect(customer.address.zipCode, '28001');
+    });
+
+    test('a wrong field is a 400 that names it, as the client sent it', () {
+      final Map<String, Map<String, Object?>> cases = {
+        r'$.full_name: missing': valid()..remove('full_name'),
+        r'$.full_name: expected a string, got an integer': valid()
+          ..['full_name'] = 12,
+        r'$.status: expected one of pending, paid, got another string': valid()
+          ..['status'] = 'lost',
+        r'$.nickname: expected a string, got a boolean': valid()
+          ..['nickname'] = true,
+        r'$.home_address.zip_code: expected a string, got null': valid()
+          ..['home_address'] = {'zip_code': null},
+        r'$.home_address: missing': valid()..remove('home_address'),
+        r'$.home_address: expected an object, got a string': valid()
+          ..['home_address'] = 'Madrid',
+      };
+      for (final MapEntry(key: message, value: json) in cases.entries) {
+        expect(
+          () => mapper.deserialize<_Customer>(json),
+          throwsA(
+            isA<DeserializationException>().having(
+              (e) => e.message,
+              'message',
+              message,
+            ),
+          ),
+          reason: message,
+        );
+      }
+    });
+
+    test('inside a list, the path has the index', () {
+      expect(
+        () => mapper.deserialize<List<_Customer>>([
+          valid(),
+          valid()..remove('status'),
+        ]),
+        throwsA(
+          isA<DeserializationException>().having(
+            (e) => e.message,
+            'message',
+            r'$[1].status: missing',
+          ),
+        ),
+      );
+    });
+
+    test('outside a mapper it uses the global om', () {
+      final Map<String, dynamic> json = {'n': 3};
+
+      expect(json.field<int>('n'), 3);
+      expect(
+        () => json.field<int>('m'),
+        throwsA(isA<DeserializationException>()),
+      );
+    });
+  });
+
   group('Replacing the mapper warns about what is lost', () {
     late List<String> logs;
     late ObjectMapper previous;
@@ -1258,4 +1341,37 @@ class _ListLogger extends WinterLogger {
     StackTrace? stackTrace,
     Map<String, Object?> fields = const {},
   }) => logs.add('${level.name}: $message');
+}
+
+class _Customer {
+  final String fullName;
+  final String? nickname;
+  final _Status status;
+  final DateTime createdAt;
+  final _HomeAddress address;
+
+  _Customer(
+    this.fullName,
+    this.nickname,
+    this.status,
+    this.createdAt,
+    this.address,
+  );
+
+  factory _Customer.fromJson(Map<String, dynamic> json) => _Customer(
+    json.field<String>('fullName'),
+    json.field<String?>('nickname'),
+    json.field<_Status>('status'),
+    json.field<DateTime>('createdAt'),
+    json.object('homeAddress', _HomeAddress.fromJson),
+  );
+}
+
+class _HomeAddress {
+  final String zipCode;
+
+  _HomeAddress(this.zipCode);
+
+  factory _HomeAddress.fromJson(Map<String, dynamic> json) =>
+      _HomeAddress(json.field<String>('zipCode'));
 }

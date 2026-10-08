@@ -30,10 +30,12 @@ class Address implements Validatable {
 
   const Address(this.street, this.city, this.zipCode);
 
+  /// Typed fields: a wrong one is a 400 that names it (`$.shipping_address.zip_code: expected a
+  /// string, got an integer`), not `$: invalid value`
   factory Address.fromJson(Map<String, dynamic> json) => Address(
-    json['street'] as String,
-    json['city'] as String,
-    json['zipCode'] as String,
+    json.field<String>('street'),
+    json.field<String>('city'),
+    json.field<String>('zipCode'),
   );
 
   Map<String, Object?> toJson() => {
@@ -59,11 +61,11 @@ class OrderItem implements Validatable {
 
   const OrderItem(this.productId, this.quantity, this.unitPrice);
 
-  /// The parent reads its children itself; a registered type (Money) goes through the mapper
+  /// `field<Money>` reads a registered type (its adapter) through the mapper
   factory OrderItem.fromJson(Map<String, dynamic> json) => OrderItem(
-    json['productId'] as String,
-    json['quantity'] as int,
-    om.deserialize<Money>(json['unitPrice']),
+    json.field<String>('productId'),
+    json.field<int>('quantity'),
+    json.field<Money>('unitPrice'),
   );
 
   Map<String, Object?> toJson() => {
@@ -101,18 +103,15 @@ class CreateOrder implements Validatable {
     this.discounts = const {},
   });
 
+  /// `object` reads a nested object that isn't registered, `field<List<OrderItem>>` a list of a
+  /// registered one, and a nullable type may be missing
   factory CreateOrder.fromJson(Map<String, dynamic> json) => CreateOrder(
-    customerEmail: json['customerEmail'] as String,
-    shippingAddress: Address.fromJson(
-      json['shippingAddress'] as Map<String, dynamic>,
-    ),
-    items: [
-      for (final item in json['items'] as List)
-        OrderItem.fromJson(item as Map<String, dynamic>),
-    ],
-    shipping: om.deserialize<Shipping>(json['shipping']),
-    deliverOn: om.deserialize<DateTime?>(json['deliverOn']),
-    discounts: om.deserialize<Map<String, int>>(json['discounts'] ?? {}),
+    customerEmail: json.field<String>('customerEmail'),
+    shippingAddress: json.object('shippingAddress', Address.fromJson),
+    items: json.field<List<OrderItem>>('items'),
+    shipping: json.field<Shipping>('shipping'),
+    deliverOn: json.field<DateTime?>('deliverOn'),
+    discounts: json.field<Map<String, int>?>('discounts') ?? const {},
   );
 
   @override
@@ -181,10 +180,16 @@ class OrdersApp {
   static ObjectMapper objectMapper() => ObjectMapper(
     fieldNaming: FieldNaming.snakeCase,
     includeNulls: false,
-    serializers: [Serializer<Money>((money) => money.toString())],
+    adapters: [
+      // Both directions of a type written as text: `"12.50 EUR"`
+      JsonAdapter<Money>.string(
+        toJson: (money) => money.toString(),
+        fromJson: Money.parse,
+      ),
+    ],
     deserializers: [
       Deserializer<CreateOrder>.json(CreateOrder.fromJson),
-      Deserializer<Money>.string(Money.parse),
+      Deserializer<OrderItem>.json(OrderItem.fromJson),
       Deserializer<Shipping>.enumByName(Shipping.values),
     ],
   );

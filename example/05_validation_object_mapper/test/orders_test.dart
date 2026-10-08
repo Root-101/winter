@@ -112,6 +112,35 @@ void main() {
     expect(badMoney.statusCode, 400);
   });
 
+  test('a wrong field is a 400 that names it, as the client sent it', () async {
+    Future<String> detail(Map<String, Object?> body) async =>
+        ((await client.post('/orders', body: body)).json as Map)['detail']
+            as String;
+
+    expect(
+      await detail(
+        validOrder(
+          address: {'street': 'Main St 1', 'city': 'Madrid', 'zip_code': 28001},
+        ),
+      ),
+      r'$.shipping_address.zip_code: expected a string, got an integer',
+    );
+    expect(
+      await detail(
+        validOrder(
+          items: [
+            {'product_id': 'p-1', 'quantity': 'two', 'unit_price': '1.00 EUR'},
+          ],
+        ),
+      ),
+      r'$.items[0].quantity: expected an integer, got a string',
+    );
+    expect(
+      await detail({...validOrder()}..remove('customer_email')),
+      r'$.customer_email: missing',
+    );
+  });
+
   test('typed path and query params', () async {
     await client.post('/orders', body: validOrder());
     await client.post(
