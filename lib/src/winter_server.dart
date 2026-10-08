@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:winter/winter.dart';
 
 ///Dependency Injection: easy access to the current dependency injection instance
@@ -146,20 +145,19 @@ class Winter {
     final _InFlightRequests inFlightRequests = _InFlightRequests();
     final HttpServer rawServer;
     try {
-      rawServer = await shelf_io.serve(
-        ///No `X-Powered-By`: an API doesn't announce its framework (OWASP), and the real
-        ///server sends the same headers as `WinterTestClient`
-        poweredByHeader: null,
-        _buildHandler(
-          router: nonNullRouter,
-          globalFilterConfig: nonNullGlobalFilterConfig,
-          maxBodySize: nonNullConfig.maxBodySize,
-          inFlightRequests: inFlightRequests,
-        ),
-        shared: nonNullConfig.shared,
-        nonNullConfig.host,
-        nonNullConfig.port,
-      );
+      final SecurityContext? securityContext = nonNullConfig.securityContext;
+      rawServer = securityContext == null
+          ? await HttpServer.bind(
+              nonNullConfig.host,
+              nonNullConfig.port,
+              shared: nonNullConfig.shared,
+            )
+          : await HttpServer.bindSecure(
+              nonNullConfig.host,
+              nonNullConfig.port,
+              securityContext,
+              shared: nonNullConfig.shared,
+            );
     } catch (_) {
       ///The server never started (ex: port in use), don't leave its dependencies behind
       restoreDependencies();
@@ -170,7 +168,31 @@ class Winter {
     ///without body has no type), `X-Frame-Options`, `X-Content-Type-Options` and the obsolete
     ///`X-XSS-Protection`. They are removed: Winter adds its security headers itself
     ///(`_securityHeaders`), so the server and `WinterTestClient` answer the same.
-    rawServer.defaultResponseHeaders.clear();
+    ///No `Server` nor `X-Powered-By`: an API doesn't announce its framework (OWASP).
+    rawServer
+      ..autoCompress = nonNullConfig.autoCompress
+      ..idleTimeout = nonNullConfig.idleTimeout
+      ..serverHeader = null
+      ..defaultResponseHeaders.clear();
+
+    final RequestHandler handler = _buildHandler(
+      router: nonNullRouter,
+      globalFilterConfig: nonNullGlobalFilterConfig,
+      maxBodySize: nonNullConfig.maxBodySize,
+    );
+    rawServer.listen(
+      (request) => _serve(
+        request,
+        handler,
+        inFlightRequests,
+        compress: nonNullConfig.autoCompress,
+      ),
+
+      ///A connection that fails before it's a request (a malformed one, a TLS handshake...).
+      ///Debug: anyone can send them
+      onError: (Object error, StackTrace stackTrace) =>
+          logger.debug('A connection failed before its request', error: error),
+    );
 
     Winter nextRunningServer = Winter._(
       serverContext: _context,
@@ -297,11 +319,12 @@ class Winter {
   }
 
   /// The full request pipeline of a server (CORS, filters, routing, exception handler,
-  /// body size limit...) as a shelf [Handler], without opening any port.
+  /// body size limit...) as a function of a [RequestEntity], without opening any port.
   ///
   /// [start] uses it, and tests can call it directly (see `WinterTestClient`):
-  /// it's the same code that handles the requests of a real server.
-  static Handler buildHandler({
+  /// it's the same code that handles the requests of a real server. It never throws: an error
+  /// is a response.
+  static RequestHandler buildHandler({
     required AbstractWinterRouter router,
     FilterConfig? globalFilterConfig,
     SecurityConfig? securityConfig,
@@ -317,25 +340,54 @@ class Winter {
     );
   }
 
-  static Handler _buildHandler({
+  static RequestHandler _buildHandler({
     required AbstractWinterRouter router,
     required FilterConfig globalFilterConfig,
     required int? maxBodySize,
-    _InFlightRequests? inFlightRequests,
   }) {
-    return (request) async {
-      inFlightRequests?.start();
+    return (request) => _handleRunRequest(
+      router: router,
+      globalFilterConfig: globalFilterConfig,
+      maxBodySize: maxBodySize,
+      request: request,
+    );
+  }
+
+  static bool _acceptsGzip(HttpRequest request) =>
+      (request.headers[HttpHeaders.acceptEncodingHeader] ?? const <String>[])
+          .expand((value) => value.split(','))
+          .any((encoding) => encoding.trim().toLowerCase().startsWith('gzip'));
+
+  /// One request of the real server: run the pipeline and write its response
+  static Future<void> _serve(
+    HttpRequest request,
+    RequestHandler handler,
+    _InFlightRequests inFlightRequests, {
+    required bool compress,
+  }) async {
+    inFlightRequests.start();
+    try {
+      ResponseEntity response;
       try {
-        return await _handleRunRequest(
-          router: router,
-          globalFilterConfig: globalFilterConfig,
-          maxBodySize: maxBodySize,
-          request: request,
+        response = await handler(RequestEntity.fromHttpRequest(request));
+      } catch (error, stackTrace) {
+        ///The pipeline never throws, unless the logger or a callback of the scope fails
+        logger.error(
+          'The request ${request.method} ${request.uri.path} failed outside the pipeline',
+          error: error,
+          stackTrace: stackTrace,
         );
-      } finally {
-        inFlightRequests?.end();
+        response = internalServerErrorResponse();
       }
-    };
+      await writeResponse(
+        response,
+        request.response,
+        method: request.method,
+        compress: compress && _acceptsGzip(request),
+      );
+    } finally {
+      inFlightRequests.end();
+    }
   }
 
   /// The global filters, with the [CorsFilter] first if CORS is enabled in the [SecurityConfig]
@@ -360,29 +412,21 @@ class Winter {
     ]);
   }
 
-  static FutureOr<Response> _handleRunRequest({
-    required Request request,
+  static Future<ResponseEntity> _handleRunRequest({
+    required RequestEntity request,
     required AbstractWinterRouter router,
     required FilterConfig globalFilterConfig,
     required int? maxBodySize,
   }) async {
-    RequestEntity requestEntity = RequestEntity(
-      request.method,
-      request.requestedUri,
-      body: maxBodySize == null
-          ? request.read()
-          : limitBodySize(
+    final RequestEntity requestEntity = maxBodySize == null
+        ? request
+        : request.copyWith(
+            body: limitBodySize(
               request.read(),
               maxBytes: maxBodySize,
               contentLength: request.contentLength,
             ),
-      context: request.context,
-      encoding: request.encoding,
-      handlerPath: request.handlerPath,
-      headers: request.headers,
-      protocolVersion: request.protocolVersion,
-      url: request.url,
-    );
+          );
 
     ///Created now and not lazily, so the request, its changes (`change` copies the context)
     ///and the scope share the same security context and locale.
@@ -393,22 +437,25 @@ class Winter {
       locale: requestEntity.locale,
       requestId: RequestScope.isValidRequestId(sentId) ? sentId : null,
     );
-    final Response pipelineResponse = await RequestScope.run(scope, () async {
-      try {
-        return await _runPipeline(
-          requestEntity: requestEntity,
-          router: router,
-          globalFilterConfig: globalFilterConfig,
-        );
-      } finally {
-        ///The callbacks of `scope.onComplete` (the scoped dependencies are disposed there)
-        await scope.complete();
-      }
-    });
+    final ResponseEntity pipelineResponse = await RequestScope.run(
+      scope,
+      () async {
+        try {
+          return await _runPipeline(
+            requestEntity: requestEntity,
+            router: router,
+            globalFilterConfig: globalFilterConfig,
+          );
+        } finally {
+          ///The callbacks of `scope.onComplete` (the scoped dependencies are disposed there)
+          await scope.complete();
+        }
+      },
+    );
 
     ///The id of the request goes back to the client (and the next proxy), to find its logs,
     ///with the basic security headers (unless the response set them)
-    final Response response = pipelineResponse.change(
+    final ResponseEntity response = pipelineResponse.copyWith(
       headers: {
         HttpHeader.xRequestId: scope.requestId,
         for (final MapEntry(:key, :value) in _securityHeaders.entries)
@@ -425,7 +472,7 @@ class Winter {
   }
 
   /// Routing, filters and handler of [requestEntity], with the exception handler
-  static Future<Response> _runPipeline({
+  static Future<ResponseEntity> _runPipeline({
     required RequestEntity requestEntity,
     required AbstractWinterRouter router,
     required FilterConfig globalFilterConfig,
@@ -484,10 +531,10 @@ class Winter {
 }
 
 /// Add [header] to the `Vary` of [response] (a comma separated list), unless it's already there or `*`
-Response addVary(Response response, String header) {
+ResponseEntity<T> addVary<T>(ResponseEntity<T> response, String header) {
   final String? current = response.headers[HttpHeader.vary];
   if (current == null || current.trim().isEmpty) {
-    return response.change(headers: {HttpHeader.vary: header});
+    return response.copyWith(headers: {HttpHeader.vary: header});
   }
 
   final Iterable<String> values = current
@@ -496,7 +543,7 @@ Response addVary(Response response, String header) {
   if (values.contains('*') || values.contains(header.toLowerCase())) {
     return response;
   }
-  return response.change(headers: {HttpHeader.vary: '$current, $header'});
+  return response.copyWith(headers: {HttpHeader.vary: '$current, $header'});
 }
 
 /// Fail (with a [PayloadTooLargeException], a 413) when the body is bigger than [maxBytes].

@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  group('RequestEntity.change', () {
+  group('RequestEntity.copyWith', () {
     RequestEntity request({Object? body}) => RequestEntity(
       'POST',
       Uri.parse('http://localhost/api/users/42'),
@@ -13,7 +13,7 @@ void main() {
     );
 
     test('returns a RequestEntity with the new headers & context', () async {
-      final changed = request().change(
+      final changed = request().copyWith(
         headers: {'x-new': '1'},
         context: {'custom': 'value'},
       );
@@ -25,17 +25,17 @@ void main() {
       expect(await changed.body<String>(), '{"name":"Adam"}');
     });
 
-    test('reuses the body when it was already read', () async {
+    test('shares the body: it is read once, and cached for both', () async {
       final original = request();
       await original.body<Map<String, dynamic>>();
 
-      final changed = original.change(headers: {'x-new': '1'});
+      final changed = original.copyWith(headers: {'x-new': '1'});
 
       expect(await changed.body<Map<String, dynamic>>(), {'name': 'Adam'});
     });
 
     test('a new body replaces the old one', () async {
-      final changed = request().change(body: 'new body');
+      final changed = request().copyWith(body: 'new body');
 
       expect(await changed.body<String>(), 'new body');
     });
@@ -53,25 +53,18 @@ void main() {
         Authentication(principal: 'adam'),
       );
 
-      final changed = original.change(headers: {'x-new': '1'});
+      final changed = original.copyWith(headers: {'x-new': '1'});
 
       expect(changed.pathParams, {'id': '42'});
       expect(changed.securityContext.authentication?.principal, 'adam');
     });
-
-    test('path moves the handlerPath like shelf does', () {
-      final changed = request().change(path: 'api');
-
-      expect(changed.handlerPath, '/api/');
-      expect(changed.url.path, 'users/42');
-    });
   });
 
-  group('ResponseEntity.change', () {
+  group('ResponseEntity.copyWith', () {
     test('keeps the body & value when only the headers change', () async {
       final response = ResponseEntity.ok(body: {'id': 1});
 
-      final changed = response.change(headers: {'x-new': '1'});
+      final changed = response.copyWith(headers: {'x-new': '1'});
 
       expect(changed, isA<ResponseEntity<Map<String, int>>>());
       expect(changed.body(), {'id': 1});
@@ -86,7 +79,7 @@ void main() {
     test('a new body replaces the old one with the right length', () async {
       final response = ResponseEntity.ok(body: 'short');
 
-      final changed = response.change(body: 'a longer body');
+      final changed = response.copyWith(body: 'a longer body');
 
       expect(await changed.readAsString(), 'a longer body');
       expect(changed.body(), 'a longer body');

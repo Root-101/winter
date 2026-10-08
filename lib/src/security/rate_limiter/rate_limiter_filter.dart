@@ -57,7 +57,7 @@ class RateLimiterFilter extends Filter {
 
     final response = await chain.doFilter(request);
     // Add headers to the successful response
-    return response.change(headers: rateLimitHeaders);
+    return response.copyWith(headers: rateLimitHeaders);
   }
 
   /// Round up, so a client waiting the given seconds is never too early

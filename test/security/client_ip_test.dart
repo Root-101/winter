@@ -24,7 +24,7 @@ RequestEntity _request({String? forwardedFor}) => RequestEntity(
   'GET',
   Uri.parse('http://localhost/'),
   headers: {'X-Forwarded-For': ?forwardedFor},
-  context: {'shelf.io.connection_info': _FakeConnectionInfo('10.0.0.1')},
+  connectionInfo: _FakeConnectionInfo('10.0.0.1'),
 );
 
 void main() {

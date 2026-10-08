@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show SecurityContext;
 
 import 'package:winter/winter.dart';
 
@@ -46,6 +47,28 @@ class ServerConfig {
   ///disposed (`di.disposeAll()`), to release other resources
   final FutureOr<void> Function()? onShutdown;
 
+  ///Compress the responses with gzip when the client accepts it (`Accept-Encoding`). Off by
+  ///default: usually the proxy in front of the app compresses, and it costs CPU.
+  final bool autoCompress;
+
+  ///How long an idle keep-alive connection stays open. Default to 120 seconds (the one of
+  ///`dart:io`); `null` keeps them open.
+  final Duration? idleTimeout;
+
+  ///Serve HTTPS with this certificate and key (`bindSecure`), or plain HTTP without it:
+  ///
+  ///```dart
+  ///ServerConfig(
+  ///  port: 8443,
+  ///  securityContext: SecurityContext()
+  ///    ..useCertificateChain('cert.pem')
+  ///    ..usePrivateKey('key.pem'),
+  ///)
+  ///```
+  ///
+  ///Usually the proxy in front of the app (a load balancer, nginx) terminates TLS instead.
+  final SecurityContext? securityContext;
+
   /// The configuration of the server
   const ServerConfig({
     this.host = '0.0.0.0',
@@ -55,6 +78,9 @@ class ServerConfig {
     this.handleSignals = true,
     this.shutdownTimeout = const Duration(seconds: 10),
     this.onShutdown,
+    this.autoCompress = false,
+    this.idleTimeout = const Duration(seconds: 120),
+    this.securityContext,
   });
 
   /// The configuration with the `PORT` and `HOST` of [env], the variables that Cloud Run, Heroku,
@@ -68,6 +94,9 @@ class ServerConfig {
     bool handleSignals = true,
     Duration shutdownTimeout = const Duration(seconds: 10),
     FutureOr<void> Function()? onShutdown,
+    bool autoCompress = false,
+    Duration? idleTimeout = const Duration(seconds: 120),
+    SecurityContext? securityContext,
   }) => ServerConfig(
     host: env.find<String>('HOST')?.trim() ?? host,
     port: env.find<int>('PORT') ?? port,
@@ -76,6 +105,9 @@ class ServerConfig {
     handleSignals: handleSignals,
     shutdownTimeout: shutdownTimeout,
     onShutdown: onShutdown,
+    autoCompress: autoCompress,
+    idleTimeout: idleTimeout,
+    securityContext: securityContext,
   );
 
   /// An [ArgumentError] if a value is out of its range (a `const` constructor can't check it)
@@ -100,6 +132,14 @@ class ServerConfig {
     }
     if (host.trim().isEmpty) {
       throw ArgumentError.value(host, 'host', 'Must not be empty');
+    }
+    final Duration? idleTimeout = this.idleTimeout;
+    if (idleTimeout != null && idleTimeout.isNegative) {
+      throw ArgumentError.value(
+        idleTimeout,
+        'idleTimeout',
+        'Must be 0 or more (null keeps the connections open)',
+      );
     }
   }
 }

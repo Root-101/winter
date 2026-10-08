@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show HttpConnectionInfo;
 
 import 'package:winter/winter.dart';
 
@@ -16,7 +17,7 @@ import 'package:winter/winter.dart';
 /// expect(response.statusCode, 200);
 /// ```
 class WinterTestClient {
-  final Handler handler;
+  final RequestHandler handler;
 
   WinterTestClient(this.handler);
 
@@ -37,13 +38,15 @@ class WinterTestClient {
 
   /// Send a request with any method. [body] can be a String, bytes or any object
   /// (serialized as JSON with the object mapper, with `Content-Type: application/json`).
+  /// [headers] take a `String` or a `List<String>` per name.
   Future<TestResponse> request(
     String method,
     String path, {
-    Map<String, String>? headers,
+    Map<String, Object>? headers,
     Object? body,
+    HttpConnectionInfo? connectionInfo,
   }) async {
-    final Map<String, String> requestHeaders = {...?headers};
+    final Map<String, Object> requestHeaders = {...?headers};
     Object? requestBody = body;
     if (body != null && body is! String && body is! List<int>) {
       requestBody = om.encode(body);
@@ -53,12 +56,13 @@ class WinterTestClient {
       );
     }
 
-    final Response response = await handler(
-      Request(
-        method.toUpperCase(),
+    final ResponseEntity response = await handler(
+      RequestEntity(
+        method,
         Uri.parse('http://localhost$path'),
         headers: requestHeaders,
         body: requestBody,
+        connectionInfo: connectionInfo,
       ),
     );
 
@@ -70,34 +74,35 @@ class WinterTestClient {
     return TestResponse(
       statusCode: response.statusCode,
       headers: response.headers,
+      headersAll: response.headersAll,
       body: responseBody,
     );
   }
 
-  Future<TestResponse> get(String path, {Map<String, String>? headers}) =>
+  Future<TestResponse> get(String path, {Map<String, Object>? headers}) =>
       request('GET', path, headers: headers);
 
-  Future<TestResponse> head(String path, {Map<String, String>? headers}) =>
+  Future<TestResponse> head(String path, {Map<String, Object>? headers}) =>
       request('HEAD', path, headers: headers);
 
-  Future<TestResponse> delete(String path, {Map<String, String>? headers}) =>
+  Future<TestResponse> delete(String path, {Map<String, Object>? headers}) =>
       request('DELETE', path, headers: headers);
 
   Future<TestResponse> post(
     String path, {
-    Map<String, String>? headers,
+    Map<String, Object>? headers,
     Object? body,
   }) => request('POST', path, headers: headers, body: body);
 
   Future<TestResponse> put(
     String path, {
-    Map<String, String>? headers,
+    Map<String, Object>? headers,
     Object? body,
   }) => request('PUT', path, headers: headers, body: body);
 
   Future<TestResponse> patch(
     String path, {
-    Map<String, String>? headers,
+    Map<String, Object>? headers,
     Object? body,
   }) => request('PATCH', path, headers: headers, body: body);
 }
@@ -106,14 +111,18 @@ class WinterTestClient {
 class TestResponse {
   final int statusCode;
 
-  /// Case insensitive, like the headers of a shelf response
+  /// One value per header, case insensitive (several values joined with `, `)
   final Map<String, String> headers;
+
+  /// Every value of each header, case insensitive (several `Set-Cookie`)
+  final Map<String, List<String>> headersAll;
 
   final String body;
 
   TestResponse({
     required this.statusCode,
     required this.headers,
+    required this.headersAll,
     required this.body,
   });
 

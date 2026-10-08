@@ -76,7 +76,7 @@ void main() {
       expect(response.statusCode, 200);
 
       ///body with empty params
-      expect(response.body, 'path: {}, query: {}');
+      expect(response.body, 'path: {id: 55}, query: {}');
     });
 
     test('Test Route Filter #2 - No filters applied', () async {
@@ -160,9 +160,10 @@ class RemoveQueryParamsFilter extends Filter {
     RequestEntity request,
     FilterChain chain,
   ) async {
-    request.pathParams.clear();
-    request.queryParams.clear();
-    return await chain.doFilter(request);
+    ///The request is read-only: the next filters get a copy without the query
+    return await chain.doFilter(
+      request.copyWith(requestedUri: request.requestedUri.replace(query: '')),
+    );
   }
 }
 
@@ -235,7 +236,7 @@ class ModifyRequestFilter extends Filter {
     RequestEntity request,
     FilterChain chain,
   ) async {
-    final modifiedRequest = await request.copyWith(
+    final modifiedRequest = request.copyWith(
       headers: {...request.headers, 'x-modified': 'True'},
     );
     return await chain.doFilter(modifiedRequest);

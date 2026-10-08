@@ -26,8 +26,8 @@ void main() {
         Route.get(
           path: '/bytes',
           handler: (request) =>
-              ResponseEntity<String>.ok(body: 'old')
-                  .change(body: utf8.encode('new body')),
+              ResponseEntity<Object>.ok(body: 'old')
+                  .copyWith(body: utf8.encode('new body')),
         ),
         Route.get(
           path: '/object',
@@ -50,7 +50,7 @@ void main() {
 
   final Map<String, String> headers = {HttpHeader.origin: origin};
 
-  test('A body set with change is kept', () async {
+  test('A body of bytes set with copyWith is kept', () async {
     final response = await client.get('/bytes', headers: headers);
 
     expect(response.statusCode, 200);

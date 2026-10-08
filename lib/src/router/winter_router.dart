@@ -166,7 +166,7 @@ class WinterRouter extends AbstractWinterRouter {
 
   ///Routes that match the path of the request (ignoring the method)
   List<Route> _routesMatchingPath(RequestEntity request) {
-    String urlPath = '/${request.url.path}';
+    String urlPath = request.requestedUri.path;
     return routes.where((element) => element.match(urlPath)).toList();
   }
 
@@ -182,7 +182,7 @@ class WinterRouter extends AbstractWinterRouter {
   ///(the server sends the headers without the body).
   Route? handlerRoute(RequestEntity request) {
     HttpMethod method = HttpMethod(request.method);
-    String urlPath = '/${request.url.path}';
+    String urlPath = request.requestedUri.path;
 
     return _findRoute(method, urlPath) ??
         (method == HttpMethod.head

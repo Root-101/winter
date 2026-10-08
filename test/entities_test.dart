@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
@@ -18,14 +19,12 @@ void main() {
       // Ensure body is read and cached
       await original.body<String>();
 
-      final copy = await original.copyWith();
+      final copy = original.copyWith();
 
       // Check basic Request fields
       expect(copy.method, equals(original.method));
       expect(copy.requestedUri, equals(original.requestedUri));
       expect(copy.headers, equals(original.headers));
-      expect(copy.url, equals(original.url));
-      expect(copy.handlerPath, equals(original.handlerPath));
       expect(copy.protocolVersion, equals(original.protocolVersion));
       expect(copy.encoding, equals(original.encoding));
 
@@ -61,29 +60,31 @@ void main() {
       original.setRoutingContext(routingCtx);
       expect(original.pathParams, equals({'id': '123'}));
 
-      final copy = await original.copyWith();
+      final copy = original.copyWith();
 
       expect(copy.routingContext, isNotNull);
       expect(copy.routingContext!.key, equals('user_detail'));
       expect(copy.pathParams, equals({'id': '123'}));
     });
 
-    test('should allow overriding fields', () async {
+    test('adds headers and context, null removes a header', () async {
       final original = RequestEntity(
         'GET',
         Uri.parse('http://localhost/'),
-        headers: {'a': 'b'},
+        headers: {'a': 'b', 'remove-me': 'x'},
+        context: {'old': 'ctx'},
       );
 
-      final copy = await original.copyWith(
-        headers: {'c': 'd'},
+      final copy = original.copyWith(
+        headers: {'c': 'd', 'REMOVE-ME': null},
         context: {'new': 'ctx'},
         body: 'new body',
       );
 
       expect(copy.headers, containsPair('c', 'd'));
-      expect(copy.headers, isNot(containsPair('a', 'b')));
-      expect(copy.context, equals({'new': 'ctx'}));
+      expect(copy.headers, containsPair('a', 'b'));
+      expect(copy.headers.containsKey('remove-me'), isFalse);
+      expect(copy.context, equals({'old': 'ctx', 'new': 'ctx'}));
       expect(await copy.body<String>(), equals('new body'));
     });
   });
@@ -122,7 +123,7 @@ void main() {
       final request = jsonRequest();
       await request.body<Map<String, dynamic>>();
 
-      final copy = await request.copyWith(headers: {'x': '1'});
+      final copy = request.copyWith(headers: {'x': '1'});
 
       expect(await copy.body<String>(), '{"name":"Adam","age":30}');
       expect(await copy.body<Map<String, dynamic>>(), {
@@ -172,20 +173,14 @@ void main() {
     });
 
     test(
-      'keeps a body set with change (bytes are never serialized as JSON)',
+      'keeps a body of bytes (a Uint8List is never serialized as JSON)',
       () async {
-        final typed = ResponseEntity<String>.ok(body: 'old')
-            .change(body: [104, 105]);
-        final dynamicBody = ResponseEntity<dynamic>(
+        final bytes = ResponseEntity<Object>(
           200,
           body: 'old',
-        ).change(body: [104, 105]);
+        ).copyWith(body: Uint8List.fromList([104, 105]));
 
-        expect(await typed.copyWith(statusCode: 201).readAsString(), 'hi');
-        expect(
-          await dynamicBody.copyWith(statusCode: 201).readAsString(),
-          'hi',
-        );
+        expect(await bytes.copyWith(statusCode: 201).readAsString(), 'hi');
       },
     );
 
@@ -203,7 +198,7 @@ void main() {
       final copy = ResponseEntity<String>.unauthorized().copyWith(
         statusCode: 403,
       );
-      final changed = ResponseEntity<String>.unauthorized().change(
+      final changed = ResponseEntity<String>.unauthorized().copyWith(
         headers: {'x': '1'},
       );
 
@@ -213,28 +208,34 @@ void main() {
     });
   });
 
-  group('ResponseEntity change', () {
-    test('the Content-Type of a new body is the one of the raw value', () {
-      expect(
-        ResponseEntity<int>(
-          200,
-          body: 1,
-        ).change(body: 'text').headers[HttpHeader.contentType],
-        '${MediaType.applicationJson.mimeType}; charset=utf-8',
-        reason: 'the Content-Type of the response is kept',
+  group('ResponseEntity copyWith a new body', () {
+    test(
+      'the Content-Type and Content-Length are the ones of the new body',
+      () {
+        final json = ResponseEntity<Object>(200, body: {'a': 1});
+        final text = json.copyWith(body: 'text');
+        final bytes = json.copyWith(body: Uint8List.fromList([1, 2]));
+
+        expect(
+          text.headers[HttpHeader.contentType],
+          '${MediaType.textPlain.mimeType}; charset=utf-8',
+        );
+        expect(text.headers[HttpHeader.contentLength], '4');
+        expect(
+          bytes.headers[HttpHeader.contentType],
+          MediaType.applicationOctetStream.mimeType,
+        );
+        expect(bytes.headers[HttpHeader.contentLength], '2');
+      },
+    );
+
+    test('a Content-Type given with the new body wins', () {
+      final copy = ResponseEntity<Object>(200, body: 1).copyWith(
+        body: '<p>hi</p>',
+        headers: {HttpHeader.contentType: 'text/html'},
       );
-      expect(
-        ResponseEntity<int>(200)
-            .change(body: 'text')
-            .headers[HttpHeader.contentType],
-        '${MediaType.textPlain.mimeType}; charset=utf-8',
-      );
-      expect(
-        ResponseEntity<int>(200)
-            .change(body: [1, 2])
-            .headers[HttpHeader.contentType],
-        MediaType.applicationOctetStream.mimeType,
-      );
+
+      expect(copy.headers[HttpHeader.contentType], 'text/html');
     });
   });
 

@@ -468,7 +468,7 @@ void main() {
 
     setUp(() {
       client = _client((request) async {
-        final type = request.url.queryParameters['type'];
+        final type = request.requestedUri.queryParameters['type'];
         final Object? body = type == 'string'
             ? await request.body<String>(objectMapper: mapper)
             : (await request.body<Tool>(objectMapper: mapper)).name;

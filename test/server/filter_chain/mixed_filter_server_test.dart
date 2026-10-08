@@ -107,7 +107,7 @@ void main() {
           headers: authHeaders,
         );
         expect(response.statusCode, 200);
-        expect(response.body, 'path: {}, query: {}');
+        expect(response.body, 'path: {id: 55}, query: {}');
       },
     );
 
@@ -201,9 +201,10 @@ class RemoveQueryParamsFilter extends Filter {
     RequestEntity request,
     FilterChain chain,
   ) async {
-    request.pathParams.clear();
-    request.queryParams.clear();
-    return await chain.doFilter(request);
+    ///The request is read-only: the next filters get a copy without the query
+    return await chain.doFilter(
+      request.copyWith(requestedUri: request.requestedUri.replace(query: '')),
+    );
   }
 }
 
@@ -215,7 +216,7 @@ class AddCustomHeaderFilter extends Filter {
   ) async {
     final newHeaders = Map<String, Object>.from(request.headers);
     newHeaders['X-Custom-Header'] = 'Winter-Value';
-    final newRequest = await request.copyWith(headers: newHeaders);
+    final newRequest = request.copyWith(headers: newHeaders);
     return await chain.doFilter(newRequest);
   }
 }
@@ -243,7 +244,7 @@ class AppendToHeaderFilter extends Filter {
     final newHeaders = Map<String, Object>.from(request.headers);
     final current = newHeaders['x-trace'] ?? '';
     newHeaders['x-trace'] = '$current$value';
-    final newRequest = await request.copyWith(headers: newHeaders);
+    final newRequest = request.copyWith(headers: newHeaders);
     return await chain.doFilter(newRequest);
   }
 }
