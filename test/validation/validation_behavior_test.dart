@@ -1,6 +1,8 @@
 @TestOn('vm')
 library;
 
+import 'dart:convert';
+
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
@@ -570,6 +572,124 @@ void main() {
     });
   });
 
+  group('AsyncValidatable (§3)', () {
+    late Set<String> taken;
+    late List<String> queried;
+    late WinterTestClient client;
+
+    setUp(() {
+      taken = {'ann@example.com'};
+      queried = [];
+      _Registration.isTaken = (email) async {
+        queried.add(email);
+        return taken.contains(email);
+      };
+      final previous = om;
+      Winter.context.setUp(
+        objectMapper: ObjectMapper(
+          fieldNaming: FieldNaming.snakeCase,
+          deserializers: [
+            Deserializer<_Registration>.json(_Registration.fromJson),
+          ],
+        ),
+      );
+      addTearDown(() => Winter.context.setUp(objectMapper: previous));
+      Route post<T>(String path, {bool validate = true}) => Route.post(
+        path: path,
+        handler: (request) async {
+          await request.body<T>(validate: validate);
+          return ResponseEntity.ok();
+        },
+      );
+      client = WinterTestClient.build(
+        router: WinterRouter(
+          routes: [
+            post<_Registration>('/one'),
+            post<List<_Registration>>('/list'),
+            post<Map<String, _Registration>>('/map'),
+            post<_Registration>('/raw', validate: false),
+          ],
+        ),
+      );
+    });
+
+    Future<TestResponse> post(String path, Object body) => client.post(
+      path,
+      body: jsonEncode(body),
+      headers: {HttpHeader.contentType: 'application/json'},
+    );
+
+    Map<String, String> violations(TestResponse response) => {
+      for (final v in (response.json as Map)['violations'] as List)
+        (v as Map)['fieldName'] as String: v['code'] as String,
+    };
+
+    test('a failed async rule is a 422 like the others', () async {
+      final response = await post('/one', {'email_address': 'ann@example.com'});
+
+      expect(response.statusCode, 422);
+      expect(violations(response), {'email_address': 'email.taken'});
+      expect(
+        ((response.json as Map)['violations'] as List).single['message'],
+        'The email is already used',
+      );
+    });
+
+    test('it runs only when the synchronous rules passed', () async {
+      final response = await post('/one', {'email_address': 'not an email'});
+
+      expect(response.statusCode, 422);
+      expect(violations(response), {'email_address': 'email'});
+      expect(queried, isEmpty);
+    });
+
+    test('a valid body reaches the handler', () async {
+      final response = await post('/one', {'email_address': 'new@example.com'});
+
+      expect(response.statusCode, 200);
+      expect(queried, ['new@example.com']);
+    });
+
+    test('lists and maps of them, with their path', () async {
+      final list = await post('/list', [
+        {'email_address': 'new@example.com'},
+        {'email_address': 'ann@example.com'},
+      ]);
+      final map = await post('/map', {
+        'first': {'email_address': 'ann@example.com'},
+      });
+
+      expect(violations(list), {'[1].email_address': 'email.taken'});
+      expect(violations(map), {'["first"].email_address': 'email.taken'});
+    });
+
+    test('validate: false skips them too', () async {
+      final response = await post('/raw', {'email_address': 'ann@example.com'});
+
+      expect(response.statusCode, 200);
+      expect(queried, isEmpty);
+    });
+
+    test('check() reads the message only when the rule fails', () async {
+      int messages = 0;
+      final cvc = ConstraintValidatorContext();
+
+      await cvc.check('a', () => true, message: () => '${messages++}');
+      await cvc.check(
+        'b',
+        () async => false,
+        message: () => 'b is wrong ${messages++}',
+        code: 'b.code',
+        params: {'max': 2},
+      );
+
+      expect(messages, 1);
+      expect(cvc.violations.single.fieldName, 'b');
+      expect(cvc.violations.single.code, 'b.code');
+      expect(cvc.violations.single.params, {'max': 2});
+    });
+  });
+
   group('Validators (§3)', () {
     test('pattern() uses a RegExp as it is, flags included', () {
       cvc.field('a', 'abc').pattern(RegExp(r'^abc$'));
@@ -811,6 +931,34 @@ class _Event implements Validatable {
   ConstraintValidatorContext validate() {
     final cvc = ConstraintValidatorContext();
     cvc.field('at', at).future();
+    return cvc;
+  }
+}
+
+class _Registration implements Validatable, AsyncValidatable {
+  /// The "repository" of the test
+  static Future<bool> Function(String email) isTaken = (_) async => false;
+
+  final String emailAddress;
+
+  _Registration(this.emailAddress);
+
+  factory _Registration.fromJson(Map<String, dynamic> json) =>
+      _Registration(json.field<String>('emailAddress'));
+
+  @override
+  ConstraintValidatorContext validate() =>
+      ConstraintValidatorContext()..field('emailAddress', emailAddress).email();
+
+  @override
+  Future<ConstraintValidatorContext> validateAsync() async {
+    final cvc = ConstraintValidatorContext();
+    await cvc.check(
+      'emailAddress',
+      () async => !await isTaken(emailAddress),
+      message: () => 'The email is already used',
+      code: 'email.taken',
+    );
     return cvc;
   }
 }

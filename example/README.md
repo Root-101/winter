@@ -22,6 +22,7 @@ This directory contains independent examples demonstrating the core features and
     - c) **Typed Data Handling**: Using `ObjectMapper` to deserialize specific Request objects.
     - d) **RBAC & Permissions**: Advanced authorization using complex `AuthorizationRules`.
     - e) **Security Context**: Managing authenticated principals via global filters.
+    - f) **Async validation**: `RegisterRequest` checks that the email is free in `validateAsync()` (a 422 per field).
 
 4.  **[04_i18n](./04_i18n)**: Responses in the language of the request.
     - a) **slang + YAML**: Typed translations generated from `*.i18n.yaml` with `dart run slang`.

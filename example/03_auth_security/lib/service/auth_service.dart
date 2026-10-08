@@ -35,6 +35,7 @@ class AuthService {
   }
 
   User register(String name, String email, String password) {
+    // RegisterRequest already checked it (a 422); this covers two registrations at the same time
     if (userService.getByEmail(email) != null) {
       throw const ConflictException(detail: 'Email already registered');
     }

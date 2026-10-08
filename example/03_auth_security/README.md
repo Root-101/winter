@@ -17,6 +17,7 @@ This example demonstrates a comprehensive implementation of Authentication and A
 
 ### 3. Strongly Typed Requests
 - **Request Objects**: Use of `RegisterRequest` and `LoginRequest` classes instead of raw Maps.
+- **Validation, synchronous and asynchronous**: `RegisterRequest` checks its format in `validate()` (name, email, password of 8 characters) and, only when that passed, whether the email is free in `validateAsync()` (`cvc.check`): a registered email is a 422 `email.taken` on the `email` field, before the handler runs.
 - **ObjectMapper Integration**: Automatic deserialization of JSON bodies into Dart objects via registered `Deserializer`s.
 
 ### 4. Authorization Rules

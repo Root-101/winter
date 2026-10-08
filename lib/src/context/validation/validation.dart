@@ -35,6 +35,40 @@ abstract interface class Validatable {
   ConstraintValidatorContext validate();
 }
 
+/// A model with rules that need `await` (a query: "the email is already used"). `body<T>()` runs
+/// [validateAsync] after `validate()` (when the model is also [Validatable]) has passed, so a
+/// value with a wrong format never reaches the database; a failure is the same 422.
+///
+/// ```dart
+/// class CreateUser implements Validatable, AsyncValidatable {
+///   final String email;
+///   CreateUser(this.email);
+///
+///   @override
+///   ConstraintValidatorContext validate() =>
+///       ConstraintValidatorContext()..field('email', email).email();
+///
+///   @override
+///   Future<ConstraintValidatorContext> validateAsync() async {
+///     final cvc = ConstraintValidatorContext();
+///     await cvc.check(
+///       'email',
+///       () async => !await di.find<UserRepository>().emailExists(email),
+///       message: () => 'The email is already used',
+///       code: 'email.taken',
+///     );
+///     return cvc;
+///   }
+/// }
+/// ```
+///
+/// {@category Validation}
+abstract interface class AsyncValidatable {
+  /// The violations of the asynchronous rules of this object, in a new
+  /// [ConstraintValidatorContext]
+  Future<ConstraintValidatorContext> validateAsync();
+}
+
 /// Collects the [ConstraintViolation]s of a validation.
 ///
 /// {@category Validation}
@@ -87,6 +121,32 @@ class ConstraintValidatorContext {
   /// shown, not even in `toString()`.
   FieldValidator<T> field<T>(String name, T value, {bool sensitive = false}) =>
       FieldValidator._(this, name, value, sensitive: sensitive);
+
+  /// An asynchronous rule of the field [name]: when [isValid] completes with `false`, a violation
+  /// with [message] (a function, so a valid value never reads the language of the request), [code]
+  /// and [params]. For `AsyncValidatable.validateAsync`:
+  ///
+  /// ```dart
+  /// await cvc.check('email', () async => !await users.emailExists(email),
+  ///     message: () => 'The email is already used', code: 'email.taken');
+  /// ```
+  Future<void> check(
+    String name,
+    FutureOr<bool> Function() isValid, {
+    required String Function() message,
+    String? code,
+    Map<String, Object?> params = const {},
+  }) async {
+    if (await isValid()) return;
+    _violations.add(
+      ConstraintViolation(
+        fieldName: name,
+        message: message(),
+        code: code,
+        params: params,
+      ),
+    );
+  }
 
   /// Adds a violation found by hand
   void addViolation(ConstraintViolation violation) {

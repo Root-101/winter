@@ -59,7 +59,35 @@ void main() {
           headers: {'Content-Type': 'application/json'},
         );
 
-        expect(response.statusCode, equals(409)); // Conflict
+        // validateAsync of RegisterRequest: a 422 that names the field
+        expect(response.statusCode, equals(422));
+        final violation =
+            ((jsonDecode(response.body) as Map)['violations'] as List).single
+                as Map;
+        expect(violation['fieldName'], 'email');
+        expect(violation['code'], 'email.taken');
+      });
+
+      test('POST /register checks the format before the lookup', () async {
+        final response = await http.post(
+          Uri.parse('$baseUrl/register'),
+          body: jsonEncode({
+            'name': ' ',
+            'email': 'not an email',
+            'password': 'short',
+          }),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        expect(response.statusCode, equals(422));
+        expect(
+          [
+            for (final v
+                in (jsonDecode(response.body) as Map)['violations'] as List)
+              (v as Map)['code'],
+          ],
+          ['notBlank', 'email', 'size.min'],
+        );
       });
 
       test('POST /login returns JWT and user info', () async {

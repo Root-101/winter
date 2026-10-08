@@ -110,8 +110,10 @@ Guide: [`doc/validation.md`](doc/validation.md).
 - `fieldName` follows the `fieldNaming` of the mapper: it's the name the client sent.
 - `Validatable` is an interface without a default `validate()`: a default valid result would hide a
   forgotten implementation.
-- `validate()` is synchronous. An async rule ("the email exists") is checked in the service; an
-  `AsyncValidatable` can come in 1.x without changing this.
+- `validate()` is synchronous; a rule that needs an `await` ("the email exists") goes in
+  `AsyncValidatable.validateAsync()`, which `body<T>()` runs only after `validate()` passed: a
+  value with a wrong format never reaches a query, and both failures are the same 422. A separate
+  interface, so the synchronous models (and `valid()`/`validEach()`) didn't change.
 
 ## 4. Errors
 
