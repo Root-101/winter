@@ -243,6 +243,61 @@ class Deserializer<T> extends _MapperEntity<T> {
   }
 }
 
+/// The [Serializer] and the [Deserializer] of a type, in one: for a type you don't own (`Uri`,
+/// a class of another package) that is written as a JSON string, number or object.
+///
+/// ```dart
+/// ObjectMapper(adapters: [
+///   JsonAdapter<Uri>.string(toJson: (uri) => uri.toString(), fromJson: Uri.parse),
+///   JsonAdapter<Money>.json(toJson: (money) => money.toMap(), fromJson: Money.fromMap),
+/// ])
+/// ```
+///
+/// Declare its type (`JsonAdapter<Uri>`): inside a list, Dart would infer `dynamic`, and that is
+/// an [ArgumentError].
+///
+/// {@category Object mapper}
+final class JsonAdapter<T> {
+  /// How a [T] is written
+  final Serializer<T> serializer;
+
+  /// How a [T] is read
+  final Deserializer<T> deserializer;
+
+  /// An adapter from a [Serializer] and a [Deserializer] of the same type
+  JsonAdapter(this.serializer, this.deserializer);
+
+  /// A [T] written as any JSON value: [fromJson] receives the decoded value
+  JsonAdapter.value({
+    required Object? Function(T value) toJson,
+    required T Function(dynamic json) fromJson,
+  }) : this(Serializer<T>(toJson), Deserializer<T>(fromJson));
+
+  /// A [T] written as a JSON string (`Uri`, a `BigInt`, an id); another JSON value is a 400
+  JsonAdapter.string({
+    required String Function(T value) toJson,
+    required T Function(String json) fromJson,
+  }) : this(Serializer<T>(toJson), Deserializer<T>.string(fromJson));
+
+  /// A [T] written as a JSON integer; another JSON value is a 400
+  JsonAdapter.integer({
+    required int Function(T value) toJson,
+    required T Function(int json) fromJson,
+  }) : this(Serializer<T>(toJson), Deserializer<T>.integer(fromJson));
+
+  /// A [T] written as a JSON number; another JSON value is a 400
+  JsonAdapter.number({
+    required num Function(T value) toJson,
+    required T Function(num json) fromJson,
+  }) : this(Serializer<T>(toJson), Deserializer<T>.number(fromJson));
+
+  /// A [T] written as a JSON object: its keys follow [ObjectMapper.fieldNaming] both ways
+  JsonAdapter.json({
+    required Map<String, Object?> Function(T value) toJson,
+    required T Function(Map<String, dynamic> json) fromJson,
+  }) : this(Serializer<T>(toJson), Deserializer<T>.json(fromJson));
+}
+
 /// Converts objects to JSON and back.
 ///
 /// - [serialize]/[deserialize] work with JSON values (`Map`, `List`, `String`, `num`, `bool`,
@@ -294,19 +349,28 @@ class ObjectMapper {
   final Map<String, String> _jsonToDartKeys = {};
 
   /// A mapper with the default serializers and deserializers (`DateTime`, `Duration`, primitives),
-  /// plus [serializers] and [deserializers] (which replace a default of the same type).
+  /// plus [serializers], [deserializers] and [adapters] (which replace a default of the same type).
   ObjectMapper({
     List<Serializer>? serializers,
     List<Deserializer>? deserializers,
+    List<JsonAdapter>? adapters,
     this.includeNulls = true,
     this.fieldNaming = FieldNaming.none,
     this.durationFormat = DurationFormat.milliseconds,
     this.prettyPrint = true,
   }) {
-    for (final s in [..._defaultSerializers(), ...?serializers]) {
+    for (final s in [
+      ..._defaultSerializers(),
+      ...?serializers,
+      ...?adapters?.map((adapter) => adapter.serializer),
+    ]) {
       _serializers[s.type] = s;
     }
-    for (final d in [..._defaultDeserializers(), ...?deserializers]) {
+    for (final d in [
+      ..._defaultDeserializers(),
+      ...?deserializers,
+      ...?adapters?.map((adapter) => adapter.deserializer),
+    ]) {
       _deserializers[d.type] = d;
     }
     _rebuildDerivedDeserializers();
@@ -378,6 +442,13 @@ class ObjectMapper {
   void addDeserializer<T>(Deserializer<T> deserializer) {
     _deserializers[deserializer.type] = deserializer;
     _rebuildDerivedDeserializers();
+  }
+
+  /// Adds the [Serializer] and the [Deserializer] of a [JsonAdapter] (they replace those of the
+  /// same type)
+  void addAdapter<T>(JsonAdapter<T> adapter) {
+    addSerializer<T>(adapter.serializer);
+    addDeserializer<T>(adapter.deserializer);
   }
 
   /// Removes the [Deserializer] for type [T] and its derived types.

@@ -842,6 +842,119 @@ void main() {
       },
     );
   });
+  group('JsonAdapter: a serializer and a deserializer in one', () {
+    test('string, integer, number and value adapters read what they write', () {
+      final mapper = ObjectMapper(
+        adapters: [
+          JsonAdapter<Uri>.string(
+            toJson: (uri) => uri.toString(),
+            fromJson: Uri.parse,
+          ),
+          JsonAdapter<_Cents>.integer(
+            toJson: (cents) => cents.value,
+            fromJson: _Cents.new,
+          ),
+          JsonAdapter<_Ratio>.number(
+            toJson: (ratio) => ratio.value,
+            fromJson: _Ratio.new,
+          ),
+          JsonAdapter<_Flag>.value(
+            toJson: (flag) => flag.value ? 'yes' : 'no',
+            fromJson: (json) => _Flag(json == 'yes'),
+          ),
+        ],
+      );
+      final Uri uri = Uri.parse('https://example.com/a?b=1');
+
+      expect(mapper.serialize(uri), 'https://example.com/a?b=1');
+      expect(mapper.deserialize<Uri>('https://example.com/a?b=1'), uri);
+      expect(mapper.serialize(_Cents(1250)), 1250);
+      expect(mapper.deserialize<_Cents>(1250).value, 1250);
+      expect(mapper.deserialize<_Ratio>(0.5).value, 0.5);
+      expect(mapper.serialize(_Flag(true)), 'yes');
+      expect(mapper.deserialize<_Flag>('no').value, isFalse);
+      // Its derived types come with it, like for any deserializer
+      expect(mapper.deserialize<List<Uri>>(['https://a.com']), [
+        Uri.parse('https://a.com'),
+      ]);
+      expect(
+        () => mapper.deserialize<Uri>(12),
+        throwsA(
+          isA<DeserializationException>().having(
+            (e) => e.message,
+            'message',
+            r'$: expected a string, got an integer',
+          ),
+        ),
+      );
+    });
+
+    test('a json adapter follows fieldNaming both ways', () {
+      final mapper = ObjectMapper(fieldNaming: FieldNaming.snakeCase)
+        ..addAdapter(
+          JsonAdapter<_Profile>.json(
+            toJson: (profile) => {'firstName': profile.firstName},
+            fromJson: (json) => _Profile(json['firstName'] as String, null),
+          ),
+        );
+
+      expect(mapper.serialize(_Profile('Ann', null)), {'first_name': 'Ann'});
+      expect(
+        mapper.deserialize<_Profile>({'first_name': 'Ann'}).firstName,
+        'Ann',
+      );
+    });
+
+    test('a type inferred as dynamic is an ArgumentError', () {
+      expect(
+        () => JsonAdapter<dynamic>.string(
+          toJson: (value) => '$value',
+          fromJson: (json) => json,
+        ),
+        throwsArgumentError,
+      );
+    });
+  });
+
+  group('TestResponse.as<T>()', () {
+    test(
+      'reads the body with the mapper, like body<T>() reads a request',
+      () async {
+        final mapper = ObjectMapper(
+          adapters: [
+            JsonAdapter<Uri>.string(
+              toJson: (uri) => uri.toString(),
+              fromJson: Uri.parse,
+            ),
+          ],
+        );
+        final client = WinterTestClient.build(
+          router: WinterRouter(
+            routes: [
+              Route.get(
+                path: '/links',
+                handler: (request) => ResponseEntity.ok(
+                  body: mapper.encode([Uri.parse('https://a.com')]),
+                  headers: {HttpHeader.contentType: 'application/json'},
+                ),
+              ),
+            ],
+          ),
+        );
+
+        final TestResponse response = await client.get('/links');
+
+        expect(response.as<List<Uri>>(objectMapper: mapper), [
+          Uri.parse('https://a.com'),
+        ]);
+        expect(response.as<List<String>>(), ['https://a.com']);
+        expect(
+          () => response.as<List<int>>(),
+          throwsA(isA<DeserializationException>()),
+        );
+      },
+    );
+  });
 }
 
 final Map<String, String> _json = {HttpHeader.contentType: 'application/json'};

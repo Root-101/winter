@@ -155,4 +155,10 @@ class TestResponse {
 
   /// The body decoded as JSON
   dynamic get json => jsonDecode(body);
+
+  /// The body as a [T], read by [objectMapper] (default: the global `om`) like `body<T>()` reads a
+  /// request: `final User user = response.as<User>();`. A body that isn't a [T] is a
+  /// [DeserializationException] that says where (`$.email: expected a string, got null`).
+  T as<T>({ObjectMapper? objectMapper}) =>
+      (objectMapper ?? Winter.context.objectMapper).decode<T>(body);
 }

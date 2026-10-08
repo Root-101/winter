@@ -650,13 +650,15 @@ first, small and independent; then the new features, from the most used to the l
 
 **Object mapper** (proposed after the review 2.1, none of them is breaking):
 
-- [ ] **`JsonConverter<T>`**: register the serializer and the deserializer of a type you don't
+- [x] **`JsonConverter<T>`**: register the serializer and the deserializer of a type you don't
   own in one call (`om.addConverter(JsonConverter<Uri>.string(toJson: ..., fromJson: Uri.parse))`).
+  → Named `JsonAdapter<T>` (`JsonConverter` is a class of `json_annotation`: importing both would
+  clash), with `adapters:` and `addAdapter`.
 - [ ] **Typed field access for hand-written `fromJson`** (`json.field<String>('name')`,
   `json.object('address', Address.fromJson)`): the 400 says which field failed
   (`$.address.zip: ...`) instead of `$: invalid value`, without tracking the keys behind the
   scenes.
-- [ ] **`TestResponse.as<T>()`**: deserialize a response of `WinterTestClient` with the mapper,
+- [x] **`TestResponse.as<T>()`**: deserialize a response of `WinterTestClient` with the mapper,
   instead of `json` (`dynamic`) and a manual `fromJson`.
 - [ ] **Warn when the mapper is replaced after registering**: `Winter.context.setUp(objectMapper:
   ...)` drops what was registered in the previous `om`, and the missing deserializer is only seen
