@@ -916,6 +916,79 @@ void main() {
     });
   });
 
+  group('Map keys that are not String: mapWithKeys<K>()', () {
+    final mapper = ObjectMapper(
+      prettyPrint: false,
+      deserializers: [Deserializer<_Status>.enumByName(_Status.values)],
+    );
+    mapper
+      ..addDeserializer(mapper.deserializerOf<String>().mapWithKeys<int>())
+      ..addDeserializer(mapper.deserializerOf<int>().mapWithKeys<_Status>())
+      ..addDeserializer(mapper.deserializerOf<int>().mapWithKeys<DateTime>())
+      ..addDeserializer(mapper.deserializerOf<int>().mapWithKeys<bool>())
+      ..addDeserializer(mapper.deserializerOf<int>().mapWithKeys<double>())
+      ..addDeserializer(mapper.deserializerOf<int>().mapWithKeys<num>())
+      ..addDeserializer(mapper.deserializerOf<int>().mapWithKeys<String>());
+
+    test('every key reads back what the mapper writes', () {
+      final Map<int, String> byId = {1: 'a', 20: 'b'};
+      final Map<_Status, int> counts = {_Status.pending: 2, _Status.paid: 5};
+      final Map<DateTime, int> byDay = {DateTime.utc(2026, 1, 2): 3};
+
+      expect(mapper.encode(byId), '{"1":"a","20":"b"}');
+      expect(mapper.decode<Map<int, String>>(mapper.encode(byId)), byId);
+      expect(mapper.decode<Map<_Status, int>>(mapper.encode(counts)), counts);
+      expect(mapper.decode<Map<DateTime, int>>(mapper.encode(byDay)), byDay);
+      expect(mapper.deserialize<Map<bool, int>>({'true': 1, 'false': 0}), {
+        true: 1,
+        false: 0,
+      });
+      expect(mapper.deserialize<Map<double, int>>({'1.5': 1}), {1.5: 1});
+      expect(mapper.deserialize<Map<num, int>>({'2': 1}), {2: 1});
+      expect(mapper.deserialize<Map<String, int>>({'a': 1}), {'a': 1});
+    });
+
+    test('a key that is not a K is a 400 at its path', () {
+      final Map<String, Object?> cases = {
+        r'$.abc: expected an integer as the key': {'abc': 'x'},
+        r'$.unknown: expected one of pending, paid, got another string': {
+          'unknown': 1,
+        },
+        r'$.maybe: expected true or false as the key': {'maybe': 1},
+        r'$["1.5"]: expected an integer, got a string': {'1.5': 'no'},
+      };
+      final List<Object? Function(Object?)> decoders = [
+        mapper.deserialize<Map<int, String>>,
+        mapper.deserialize<Map<_Status, int>>,
+        mapper.deserialize<Map<bool, int>>,
+        mapper.deserialize<Map<double, int>>,
+      ];
+      var i = 0;
+      for (final MapEntry(key: message, value: json) in cases.entries) {
+        expect(
+          () => decoders[i++](json),
+          throwsA(
+            isA<DeserializationException>().having(
+              (e) => e.message,
+              'message',
+              message,
+            ),
+          ),
+        );
+      }
+    });
+
+    test('a key type without a deserializer is a MissingDeserializerError', () {
+      final other = ObjectMapper();
+      other.addDeserializer(other.deserializerOf<int>().mapWithKeys<Uri>());
+
+      expect(
+        () => other.deserialize<Map<Uri, int>>({'https://a.com': 1}),
+        throwsA(isA<MissingDeserializerError>()),
+      );
+    });
+  });
+
   group('Replacing the mapper warns about what is lost', () {
     late List<String> logs;
     late ObjectMapper previous;
