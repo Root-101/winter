@@ -227,29 +227,13 @@ class WinterRouter extends BaseRouter {
     return _handlerRoute(request) != null;
   }
 
+  ///In the server it's only called when no route matched (the pipeline calls the handler of the
+  ///route itself): a 404, a 405 or an automatic OPTIONS. Called directly, it routes the request.
   @override
   FutureOr<ResponseEntity> handler(RequestEntity request) {
-    ///The server already resolved the route (see resolveRoute) and saved it in the routing context,
-    ///reuse it instead of matching every route again
-    Route? finalRoute = _routeFromContext(request) ?? _handlerRoute(request);
-    if (finalRoute != null) {
-      return finalRoute.handler!(request);
-    }
-
+    final Route? route = _handlerRoute(request);
+    if (route != null) return route.handler!(request);
     return noRouteResponse(request, allowedMethods(request));
-  }
-
-  ///The route of this router saved in the routing context of the request (if any)
-  Route? _routeFromContext(RequestEntity request) {
-    final RequestRoutingContext? context = request.routingContext;
-    if (context == null) return null;
-
-    return routes.firstWhereOrNull(
-      (route) =>
-          route.key == context.key &&
-          route.path == context.path &&
-          route.method == context.method,
-    );
   }
 
   ///Add a route (and its children) with the same rules as the constructor:

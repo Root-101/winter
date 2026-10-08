@@ -45,8 +45,10 @@ void main() async {
   returns its response, which the filter can change: `response.copyWith(headers: ...)` adds
   headers (`null` removes one), and `copyWith` also takes a `statusCode`, a `body` and `cookies`.
 - Returning a response without calling the chain **short-circuits** it: the handler never runs.
-- The request is read-only. `request.copyWith(headers: ..., context: ..., requestedUri: ...)`
-  gives the next filters a changed copy; the copy shares the body, which is read once.
+- The request is read-only. `request.copyWith(headers: ..., requestedUri: ...)` gives the next
+  filters a changed copy; the copy shares the body, which is read once.
+- A filter passes data to the handler in the `context` of the request, with a typed key and an
+  extension (see [requests and responses](requests-and-responses.md#extending-a-request-the-context)).
 
 ```dart
 class MaintenanceFilter extends Filter {
@@ -114,7 +116,7 @@ Return `false` to skip the filter for a request (the chain goes on without it):
 bool shouldFilter(RequestEntity request) => !request.requestedUri.path.startsWith('/public');
 ```
 
-A filter can also recognize a route by its key: `request.routingContext?.key == 'health'` (see
+A filter can also recognize a route by its key: `request.route?.key == 'health'` (see
 [routing](routing.md#route-keys)).
 
 ### Errors become responses where they are thrown

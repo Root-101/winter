@@ -25,7 +25,7 @@ void main() {
           authenticated: true,
           shouldFilter: (request) {
             // Whitelist: the global AuthFilter is not applied to the public route
-            String? routeKey = request.routingContext?.key;
+            String? routeKey = request.route?.key;
             List<String> whiteList = ['public-route'];
             return !whiteList.contains(routeKey);
           },

@@ -21,8 +21,6 @@ import 'package:winter/winter.dart';
 /// );
 /// ```
 class RequestEntity {
-  static const String _routingContextKey = 'winter.context.route';
-
   /// The method, in upper case (`GET`, `POST`...)
   final String method;
 
@@ -35,15 +33,18 @@ class RequestEntity {
   /// Every value of each header, case insensitive (`headersAll['set-cookie']`). Read-only.
   final Map<String, List<String>> headersAll;
 
-  /// Data of this request for the filters and the handler (the security context, the route...).
-  /// The copies of [copyWith] start with the same entries.
-  final Map<String, Object> context;
+  /// Data attached to this request by the framework and the app (the security context, the
+  /// language...), found by a typed [ContextKey]: the way to extend a request (see [ContextMap]).
+  /// The copies of [copyWith] start with the same values.
+  final ContextMap context;
 
   /// The connection of the client (null in memory), used by [clientIp]
   final HttpConnectionInfo? connectionInfo;
 
   /// The body, shared by the copies of this request: it's read once
   final _RequestBody _body;
+
+  Route? _route;
 
   Map<String, String>? _pathParams;
 
@@ -58,15 +59,12 @@ class RequestEntity {
     Map<String, Object>? headers,
     Object? body,
     Encoding? encoding,
-    Map<String, Object>? context,
     this.protocolVersion = '1.1',
     this.connectionInfo,
   }) : method = method.toUpperCase(),
        headersAll = headersAllOf(headers),
-       context = {...?context},
-       _body = _RequestBody.of(body, encoding ?? utf8) {
-    _restorePathParams();
-  }
+       context = ContextMap(),
+       _body = _RequestBody.of(body, encoding ?? utf8);
 
   RequestEntity._copy({
     required this.method,
@@ -76,8 +74,9 @@ class RequestEntity {
     required this.context,
     required this.connectionInfo,
     required this._body,
+    Route? route,
   }) {
-    _restorePathParams();
+    if (route != null) _attach(route);
   }
 
   /// One value per header, case insensitive (several values are joined with `, `). Read-only.
@@ -139,8 +138,10 @@ class RequestEntity {
     return header == null ? _body.length : int.tryParse(header);
   }
 
-  RequestRoutingContext? get routingContext =>
-      context[_routingContextKey] as RequestRoutingContext?;
+  /// The route that answers this request, or null when no route matches (a 404, a 405, an
+  /// `OPTIONS`) or the router has no routes. A filter can recognize it by its key
+  /// (`request.route?.key == 'health'`).
+  Route? get route => _route;
 
   ///IP address of the client (null if unknown, ex: a request built in a test).
   ///
@@ -241,25 +242,12 @@ class RequestEntity {
     _ => null,
   };
 
-  void setRoutingContext(RequestRoutingContext requestRoutingContext) {
-    if (routingContext != null) {
-      throw StateError(
-        'A routing context already configured for this request. Old: Key: ${routingContext!.key} Method: ${routingContext?.method.name ?? 'PARENT'} Path: ${routingContext!.path}. NEW: Key: ${requestRoutingContext.key} Method: ${requestRoutingContext.method.name} Path: ${requestRoutingContext.path}',
-      );
-    }
-
-    context[_routingContextKey] = requestRoutingContext;
-    _restorePathParams();
-  }
-
-  ///A copy (or a request with a routing context) has the path params of its route
-  void _restorePathParams() {
-    final RequestRoutingContext? routing = routingContext;
-    if (routing != null) {
-      _pathParams = Map.unmodifiable(
-        _extractPathParams(routing.path, requestedUri.path),
-      );
-    }
+  /// The route of this request and its path params
+  void _attach(Route route) {
+    _route = route;
+    _pathParams = Map.unmodifiable(
+      _extractPathParams(route.path, requestedUri.path),
+    );
   }
 
   /// The body as a stream of bytes. It can be read once: after it (or after [readAsString] or
@@ -332,13 +320,12 @@ class RequestEntity {
   ///
   /// - [headers] are added to the current ones (a `String` or a `List<String>`; `null` removes
   ///   one).
-  /// - [context] entries are added to the current ones (the security context and the route are
-  ///   kept).
+  /// - The [context] starts with the values of this one (the security context, the language), and
+  ///   the [route] is the same.
   /// - Without a [body], the copy shares the body of this request (it's read once, and [body] is
   ///   cached for both). A new [body] is a `String`, bytes or a `Stream<List<int>>`.
   RequestEntity copyWith({
     Map<String, Object?>? headers,
-    Map<String, Object>? context,
     Object? body,
     Uri? requestedUri,
   }) => RequestEntity._copy(
@@ -346,9 +333,10 @@ class RequestEntity {
     requestedUri: requestedUri ?? this.requestedUri,
     protocolVersion: protocolVersion,
     headersAll: mergeHeaders(headersAll, headers),
-    context: {...this.context, ...?context},
+    context: ContextMap.from(context),
     connectionInfo: connectionInfo,
     body: body == null ? _body : _RequestBody.of(body, encoding ?? utf8),
+    route: _route,
   );
 
   @override
@@ -358,7 +346,7 @@ class RequestEntity {
 /// The body of a request: a stream that is read once, and the bytes cached when they are read
 /// whole (by `body<T>()`), shared by the copies of the request
 class _RequestBody {
-  final Stream<List<int>> _stream;
+  Stream<List<int>> _stream;
 
   /// The length, when the body was given whole (bytes or a String)
   final int? length;
@@ -437,7 +425,52 @@ RequestEntity requestFromHttpRequest(HttpRequest request) =>
       requestedUri: request.requestedUri,
       protocolVersion: request.protocolVersion,
       headersAll: ioHeaders(request.headers),
-      context: {},
+      context: ContextMap(),
       connectionInfo: request.connectionInfo,
       body: _RequestBody(request),
     );
+
+/// Sets the route that answers [request] (the server does it once it's resolved). Internal: not
+/// exported by `winter.dart`.
+void attachRoute(RequestEntity request, Route route) {
+  if (request._route != null) {
+    throw StateError('The route of $request is already ${request._route}');
+  }
+  request._attach(route);
+}
+
+/// Limits the body of [request] to [maxBytes] (`ServerConfig.maxBodySize`): reading a bigger one is
+/// a [PayloadTooLargeException] (413); a body nobody reads is never rejected. Internal.
+void limitRequestBody(RequestEntity request, int maxBytes) {
+  final _RequestBody body = request._body;
+  body._stream = limitBodySize(
+    body._stream,
+    maxBytes: maxBytes,
+    contentLength: request.contentLength,
+  );
+}
+
+/// Fail (with a [PayloadTooLargeException], a 413) when the body is bigger than [maxBytes].
+///
+/// The check is done while the body is read, so a request is only rejected if its body is used,
+/// and the body is never fully loaded in memory:
+/// - if the `Content-Length` header is bigger than the limit, it fails before reading anything
+/// - otherwise (ex: chunked requests) it fails as soon as the read bytes exceed the limit
+Stream<List<int>> limitBodySize(
+  Stream<List<int>> body, {
+  required int maxBytes,
+  int? contentLength,
+}) async* {
+  if (contentLength != null && contentLength > maxBytes) {
+    throw const PayloadTooLargeException();
+  }
+
+  int readBytes = 0;
+  await for (final chunk in body) {
+    readBytes += chunk.length;
+    if (readBytes > maxBytes) {
+      throw const PayloadTooLargeException();
+    }
+    yield chunk;
+  }
+}

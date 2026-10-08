@@ -150,9 +150,12 @@ WinterLocale get requestLocale =>
 Authentication? get requestAuthentication =>
     requestSecurityContext?.authentication;
 
-extension RequestLocaleX on RequestEntity {
-  static const String _localeKey = 'winter.context.locale';
+/// The language of a request, cached in its context
+final ContextKey<WinterLocale> _localeKey = ContextKey<WinterLocale>(
+  'winter.locale',
+);
 
+extension RequestLocaleX on RequestEntity {
   /// Locale of this request, chosen from its `Accept-Language` with `Winter.context.localeConfig`.
   /// Calculated the first time and cached in the request context.
   ///
@@ -160,13 +163,11 @@ extension RequestLocaleX on RequestEntity {
   WinterLocale get locale {
     RequestScope.current?._localeRead = true;
 
-    final WinterLocale? cached = context[_localeKey] as WinterLocale?;
-    if (cached != null) return cached;
-
-    final WinterLocale resolved = Winter.context.localeConfig.resolve(
-      headers[HttpHeader.acceptLanguage],
+    return context.putIfAbsent(
+      _localeKey,
+      () => Winter.context.localeConfig.resolve(
+        headers[HttpHeader.acceptLanguage],
+      ),
     );
-    context[_localeKey] = resolved;
-    return resolved;
   }
 }

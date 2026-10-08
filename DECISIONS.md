@@ -219,8 +219,11 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
   (`RouterConfig.fail()`), found at start instead of as a 404. A duplicate is the same key, or the
   same method and shape (`/users/{id}` and `/users/{name}`: the second could never be reached).
   Only the literal parts of a path are validated; params and regex can have any character.
-- **Route keys** are generated from the path or given by the app, so a filter recognizes a route
-  (`request.routingContext?.key`) without depending on its path.
+- **The resolved `Route` travels in the request** (`request.route`), not as text: the server
+  resolves it before the filters (so the route filters run and the path params are ready) and the
+  chain ends in its handler; the router only answers when there is no route (404, 405, `OPTIONS`)
+  or it has no routes (`ServeRouter`). **Route keys** are generated from the path or given by the
+  app, so a filter recognizes a route (`request.route?.key`) without depending on its path.
 - A static route wins over a dynamic one; between the rest, the first declared. A trailing slash is
   ignored; repeated slashes are a 404 (a proxy rule for `/admin` doesn't block `//admin`, so the
   path is never rewritten). An empty child path is not a route: the parent takes the handler.
@@ -245,11 +248,17 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
 - **The request is read-only** (headers, query and path params): a filter passes a copy to the
   chain. `headers` (one value, case insensitive) and `headersAll` (every value); the headers of
   `dart:io` are read as a view, not copied. The body is read once and shared by the copies;
-  `body<T>()` caches it.
+  `body<T>()` caches it. The size limit (`maxBodySize`) wraps that body, without a copy.
+- **The context is extensible and typed**: data attached to a request (or a response) is found by
+  a `ContextKey<T>`, an object, not a name, so two packages never overwrite each other and a value
+  has its type without casts. An extension turns it into a property (`request.securityContext`
+  and `request.locale` of Winter, and the same pattern in an app: `request.tenant`). Data of the
+  core (the route) are fields. A copy starts with the same values.
 - **One `copyWith`**, synchronous, in both types: `headers` are added (`null` removes one), and a
   new body is resolved again with its own `Content-Type` and `Content-Length`.
 - **A response body is a value**: a `String` is text, a `Uint8List` bytes (a `List<int>` is data,
-  written as JSON), a `Stream<List<int>>` a stream, anything else JSON. A text body always says its
+  written as JSON), a `Stream<List<int>>` a stream, anything else JSON. Text and bytes can be read
+  any number of times (a filter can look at the body); only a stream is read once. A text body always says its
   charset (shelf only did it for non-ASCII bodies, so a response changed with its language).
 - **Writing a response**: the reason phrase of `StatusCode` (`dart:io` alone sends
   `422 Status 422`), a `Date` (RFC 9110; formatted once per second), a `Content-Length` for bytes

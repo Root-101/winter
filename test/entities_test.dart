@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:test/test.dart';
+import 'package:winter/src/request_entity.dart' show attachRoute;
 import 'package:winter/winter.dart';
 
 void main() {
@@ -12,9 +13,8 @@ void main() {
         'POST',
         uri,
         headers: {'content-type': 'text/plain', 'x-custom': 'value'},
-        context: {'auth': 'token123'},
         body: 'hello world',
-      );
+      )..context.set(_auth, 'token123');
 
       // Ensure body is read and cached
       await original.body<String>();
@@ -28,13 +28,11 @@ void main() {
       expect(copy.protocolVersion, equals(original.protocolVersion));
       expect(copy.encoding, equals(original.encoding));
 
-      // Check RequestEntity specific fields
-      expect(copy.context, equals(original.context));
-      expect(
-        copy.context,
-        isNot(same(original.context)),
-        reason: 'Context should be a new map instance',
-      );
+      // The context starts with the same values, in a map of its own
+      expect(copy.context.get(_auth), 'token123');
+      expect(copy.context, isNot(same(original.context)));
+      copy.context.set(_auth, 'changed');
+      expect(original.context.get(_auth), 'token123');
 
       // Check body
       expect(await copy.body<String>(), equals(await original.body<String>()));
@@ -51,40 +49,38 @@ void main() {
         Uri.parse('http://localhost/users/123'),
       );
 
-      final routingCtx = RequestRoutingContext(
-        path: '/users/{id}',
-        key: 'user_detail',
-        method: HttpMethod.get,
+      attachRoute(
+        original,
+        Route.get(
+          path: '/users/{id}',
+          key: 'user_detail',
+          handler: (r) => ResponseEntity.ok(),
+        ),
       );
-
-      original.setRoutingContext(routingCtx);
       expect(original.pathParams, equals({'id': '123'}));
 
       final copy = original.copyWith();
 
-      expect(copy.routingContext, isNotNull);
-      expect(copy.routingContext!.key, equals('user_detail'));
+      expect(copy.route, isNotNull);
+      expect(copy.route!.key, equals('user_detail'));
       expect(copy.pathParams, equals({'id': '123'}));
     });
 
-    test('adds headers and context, null removes a header', () async {
+    test('adds headers, null removes a header', () async {
       final original = RequestEntity(
         'GET',
         Uri.parse('http://localhost/'),
         headers: {'a': 'b', 'remove-me': 'x'},
-        context: {'old': 'ctx'},
       );
 
       final copy = original.copyWith(
         headers: {'c': 'd', 'REMOVE-ME': null},
-        context: {'new': 'ctx'},
         body: 'new body',
       );
 
       expect(copy.headers, containsPair('c', 'd'));
       expect(copy.headers, containsPair('a', 'b'));
       expect(copy.headers.containsKey('remove-me'), isFalse);
-      expect(copy.context, equals({'old': 'ctx', 'new': 'ctx'}));
       expect(await copy.body<String>(), equals('new body'));
     });
   });
@@ -139,15 +135,14 @@ void main() {
         200,
         body: {'id': 1},
         headers: {'content-type': 'application/json'},
-        context: {'cache': true},
-      );
+      )..context.set(_cache, true);
 
       final copy = original.copyWith();
 
       expect(copy, isA<ResponseEntity<Map>>());
       expect(copy.statusCode, equals(original.statusCode));
       expect(copy.headers, equals(original.headers));
-      expect(copy.context, equals(original.context));
+      expect(copy.context.get(_cache), isTrue);
       expect(copy.encoding, equals(original.encoding));
       expect(copy.body(), equals(original.body()));
 
@@ -163,13 +158,11 @@ void main() {
         statusCode: 201,
         body: 'new',
         headers: {'x-res': 'val'},
-        context: {'modified': true},
       );
 
       expect(copy.statusCode, equals(201));
       expect(copy.body(), equals('new'));
       expect(copy.headers['x-res'], equals('val'));
-      expect(copy.context['modified'], isTrue);
     });
 
     test(
@@ -239,26 +232,28 @@ void main() {
     });
   });
 
-  group('RequestEntity routing context', () {
+  group('RequestEntity route', () {
     test('it can only be set once', () {
       final request = RequestEntity('GET', Uri.parse('http://x/users/1'));
-      final context = RequestRoutingContext(
+      final route = Route.get(
         path: '/users/{id}',
         key: 'user',
-        method: HttpMethod.get,
+        handler: (r) => ResponseEntity.ok(),
       );
-      request.setRoutingContext(context);
+      attachRoute(request, route);
 
-      expect(() => request.setRoutingContext(context), throwsStateError);
+      expect(request.route, same(route));
+      expect(() => attachRoute(request, route), throwsStateError);
     });
 
     test('a template that does not match the url gives no path params', () {
       final request = RequestEntity('GET', Uri.parse('http://x/items/1'));
-      request.setRoutingContext(
-        RequestRoutingContext(
+      attachRoute(
+        request,
+        Route.get(
           path: '/users/{id}',
           key: 'user',
-          method: HttpMethod.get,
+          handler: (r) => ResponseEntity.ok(),
         ),
       );
 
@@ -298,3 +293,6 @@ class _CountingBody {
   int calls = 0;
   Object? toJson() => {'calls': ++calls};
 }
+
+final ContextKey<String> _auth = ContextKey<String>('auth');
+final ContextKey<bool> _cache = ContextKey<bool>('cache');

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:test/test.dart';
+import 'package:winter/src/request_entity.dart' show attachRoute;
 import 'package:winter/winter.dart';
 
 void main() {
@@ -12,18 +13,19 @@ void main() {
       body: body ?? '{"name":"Adam"}',
     );
 
-    test('returns a RequestEntity with the new headers & context', () async {
-      final changed = request().copyWith(
-        headers: {'x-new': '1'},
-        context: {'custom': 'value'},
-      );
+    test(
+      'returns a RequestEntity with the new headers & the context',
+      () async {
+        final original = request()..context.set(_custom, 'value');
+        final changed = original.copyWith(headers: {'x-new': '1'});
 
-      expect(changed, isA<RequestEntity>());
-      expect(changed.headers['x-original'], 'yes');
-      expect(changed.headers['x-new'], '1');
-      expect(changed.context['custom'], 'value');
-      expect(await changed.body<String>(), '{"name":"Adam"}');
-    });
+        expect(changed, isA<RequestEntity>());
+        expect(changed.headers['x-original'], 'yes');
+        expect(changed.headers['x-new'], '1');
+        expect(changed.context.get(_custom), 'value');
+        expect(await changed.body<String>(), '{"name":"Adam"}');
+      },
+    );
 
     test('shares the body: it is read once, and cached for both', () async {
       final original = request();
@@ -42,11 +44,12 @@ void main() {
 
     test('keeps the routing & security context (and the path params)', () {
       final original = request();
-      original.setRoutingContext(
-        RequestRoutingContext(
+      attachRoute(
+        original,
+        Route.post(
           path: '/api/users/{id}',
           key: 'user',
-          method: HttpMethod.post,
+          handler: (r) => ResponseEntity.ok(),
         ),
       );
       original.securityContext.setAuthentication(
@@ -87,3 +90,5 @@ void main() {
     });
   });
 }
+
+final ContextKey<String> _custom = ContextKey<String>('custom');

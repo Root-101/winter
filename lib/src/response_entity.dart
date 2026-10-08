@@ -22,8 +22,9 @@ class ResponseEntity<T> {
   /// The encoding of a text body (UTF-8 by default), and the charset of its `Content-Type`
   final Encoding? encoding;
 
-  /// Data of this response for the filters. The copies of [copyWith] start with the same entries.
-  final Map<String, Object> context;
+  /// Data attached to this response for the outer filters, found by a typed [ContextKey] (see
+  /// [ContextMap]). The copies of [copyWith] start with the same values.
+  final ContextMap context;
 
   final T? _bodyValue;
 
@@ -42,7 +43,6 @@ class ResponseEntity<T> {
     Map<String, /* String | List<String> */ Object>? headers,
     List<Cookie>? cookies,
     Encoding? encoding,
-    Map<String, Object>? context,
   }) {
     final (_ResponseBody resolved, String? contentType) = _resolve(
       statusCode,
@@ -60,7 +60,7 @@ class ResponseEntity<T> {
         resolved,
       ),
       encoding: encoding,
-      context: {...?context},
+      context: ContextMap(),
     );
   }
 
@@ -199,7 +199,8 @@ class ResponseEntity<T> {
   /// Whether the body is a stream (sent as it's produced, without a `Content-Length`)
   bool get isStreamed => _body.length == null;
 
-  /// The bytes that are sent. It can be read once (the server reads it to send the response).
+  /// The bytes that are sent. A body of text or bytes can be read any number of times (a filter can
+  /// look at it); a stream only once (the server reads it to send the response).
   Stream<List<int>> read() => _body.read();
 
   /// The bytes that are sent, as text (see [read])
@@ -219,7 +220,6 @@ class ResponseEntity<T> {
     Map<String, /* String | List<String> */ Object?>? headers,
     List<Cookie>? cookies,
     Encoding? encoding,
-    Map<String, Object>? context,
   }) {
     final int status = statusCode ?? this.statusCode;
     final Encoding? newEncoding = encoding ?? this.encoding;
@@ -245,7 +245,7 @@ class ResponseEntity<T> {
           ? newHeaders
           : _withDefaults(newHeaders, contentType, newBody),
       encoding: newEncoding,
-      context: {...this.context, ...?context},
+      context: ContextMap.from(context),
     );
   }
 
@@ -324,7 +324,7 @@ class ResponseEntity<T> {
   String toString() => 'ResponseEntity{$statusCode}';
 }
 
-/// The bytes of a response (with their length), or a stream; read once
+/// The bytes of a response (with their length), read any number of times, or a stream, read once
 class _ResponseBody {
   final Stream<List<int>>? _stream;
 
@@ -341,15 +341,13 @@ class _ResponseBody {
   int? get length => _bytes?.length;
 
   Stream<List<int>> read() {
-    _markRead();
-    return _stream ?? Stream.value(_bytes!);
-  }
-
-  void _markRead() {
+    final List<int>? bytes = _bytes;
+    if (bytes != null) return Stream.value(bytes);
     if (_read) {
-      throw StateError('The body of the response was already read');
+      throw StateError('The stream body of the response was already read');
     }
     _read = true;
+    return _stream!;
   }
 }
 
@@ -394,7 +392,6 @@ Future<void> writeResponse(
 
     final List<int>? bytes = body._bytes;
     if (!withBody || bytes != null) {
-      body._markRead();
       if (withBody) output.add(bytes!);
       await output.close();
       return;

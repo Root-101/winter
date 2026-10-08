@@ -16,9 +16,7 @@ void main() {
               path: '/test',
               method: HttpMethod.get,
               handler: (request) async {
-                return ResponseEntity.ok(
-                  body: request.routingContext?.key ?? '',
-                );
+                return ResponseEntity.ok(body: request.route?.key ?? '');
               },
             ),
             Route(

@@ -313,7 +313,7 @@ class ParamCheckFilter extends Filter {
 class KeyFilter extends Filter {
   @override
   bool shouldFilter(RequestEntity request) {
-    return request.routingContext?.key == 'special-key';
+    return request.route?.key == 'special-key';
   }
 
   @override
