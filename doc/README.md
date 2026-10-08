@@ -34,8 +34,8 @@ then, this index says which ones exist.
 
 - [`DECISIONS.md`](../DECISIONS.md): **why** the framework behaves the way it does (the guides
   explain **how**). Today: i18n (§1), the object mapper (§2), validation (§3), error handling
-  (§4), dependency injection (§5), configuration (§6), logging (§7), security (§8) and the
-  router, filters and entities (§9).
+  (§4), dependency injection (§5), configuration (§6), logging (§7), security (§8), the
+  router, filters and entities (§9) and the systems together (§10).
 - [`CHANGELOG.md`](../CHANGELOG.md): what changed in each version, breaking changes included.
 - [`ROADMAP.md`](../ROADMAP.md): what is left for 1.0.
 - [`example/`](../example): standalone apps, from a basic server to authentication and i18n.

@@ -326,7 +326,10 @@ void main() {
       expect(problem.toString(), contains('Card declined'));
       final response = problem.toResponse(headers: {'X-Trace': '1'});
       expect(response.statusCode, 402);
-      expect(response.headers['content-type'], 'application/problem+json');
+      expect(
+        response.headers['content-type'],
+        'application/problem+json; charset=utf-8',
+      );
       expect(response.headers['x-trace'], '1');
     });
 

@@ -67,6 +67,12 @@ void main() async {
 The `title` is never translated: it's the standard reason phrase. What the user reads is the
 `detail`, which your app writes in the language of the request (`t.users.notFound(id: id)`).
 
+The names of the members of Winter are fixed, whatever the `fieldNaming` of the object mapper:
+`requestId` (in a 500), `violations` and their `fieldName`, `message`, `code` and `params`. A
+client reads the errors of every Winter app the same way. The **value** of `fieldName` does follow
+`fieldNaming` (`first_name`): it's the name of the field the client sent. Your `extensions` keep
+the names you give them.
+
 ### The errors and their status
 
 | Thrown                                         | Status | `detail`                                   |
@@ -235,7 +241,7 @@ it is. Prefer an `ApiException`: clients can read every Problem Details the same
 final response = await client.get('/users/7');
 
 expect(response.statusCode, 404);
-expect(response.headers['content-type'], 'application/problem+json');
+expect(response.headers['content-type'], 'application/problem+json; charset=utf-8');
 expect((response.json as Map)['detail'], 'User 7 not found');
 ```
 

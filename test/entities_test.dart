@@ -220,14 +220,14 @@ void main() {
           200,
           body: 1,
         ).change(body: 'text').headers[HttpHeader.contentType],
-        MediaType.applicationJson.mimeType,
+        '${MediaType.applicationJson.mimeType}; charset=utf-8',
         reason: 'the Content-Type of the response is kept',
       );
       expect(
         ResponseEntity<int>(200)
             .change(body: 'text')
             .headers[HttpHeader.contentType],
-        MediaType.textPlain.mimeType,
+        '${MediaType.textPlain.mimeType}; charset=utf-8',
       );
       expect(
         ResponseEntity<int>(200)

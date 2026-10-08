@@ -67,7 +67,7 @@ void main() {
     expect(Winter.isRunning, isFalse);
     expect(response.statusCode, 200);
     expect(response.json, {'name': 'item 1'});
-    expect(response.headers['content-type'], 'application/json');
+    expect(response.headers['content-type'], 'application/json; charset=utf-8');
   });
 
   test('sends objects as JSON', () async {

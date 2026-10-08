@@ -406,8 +406,21 @@ outside the pipeline, a param with a regex was dropped).
 
 
 ### 2.9 Review all of the above
-- [ ] check all the systems in this phase to ensure they work well together.
-- [ ] Review the tests of all these systems to test most use cases, including those that involve multiple systems, such as an object mapper that validates and that validation depends on an environment
+
+**Done** (`DECISIONS.md` §10): two integration tests run every system at once (in memory and on a
+real server configured from `.env` files). They fitted, except for four details: the charset of a
+text body depended on its language, the names of the errors followed `fieldNaming`, the real server
+sent `X-Powered-By`, and an empty child path.
+
+- [x] check all the systems in this phase to ensure they work well together. → A whole app in
+  `test/integration/app_integration_test.dart`; the real server against `WinterTestClient` in
+  `test/integration/server_integration_test.dart`.
+- [x] Review the tests of all these systems to test most use cases, including those that involve multiple systems, such as an object mapper that validates and that validation depends on an environment. → Validation that reads `env`, snake_case + i18n in a 422, a scoped service that reads the user, the rate limit per user, concurrent requests, the shutdown with a request in progress.
+- [x] ✔️ **The `Content-Type` of a text body changed with its content** (`; charset=utf-8` only with
+  non-ASCII characters). → Always `; charset=utf-8` (§10.1).
+- [x] **The members of a Problem Details followed `fieldNaming`** (`request_id`, `field_name`).
+  → Fixed names (§10.2).
+- [x] **`X-Powered-By: Winter-Server`** on the real server only. → Removed (§10.3).
 
 ---
 

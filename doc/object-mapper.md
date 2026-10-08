@@ -242,7 +242,12 @@ final response = ResponseEntity(200, body: user, objectMapper: anotherMapper);
 
 `includeNulls` and `fieldNaming` only apply to **objects**: the maps returned by a `toJson()` or a
 serializer, and the map given to `Deserializer.json`. A `Map` you serialize or ask for directly
-(`body<Map<String, int>>()`) holds data, so its keys are never renamed and its nulls are kept.
+(`body<Map<String, int>>()`) holds data, so its keys are never renamed and its nulls are kept. The
+errors of Winter (`ProblemDetails`, `ConstraintViolation`) keep their names too (see
+[error handling](error-handling.md#problem-details)).
+
+A response with a text body says its charset: `application/json; charset=utf-8` (and
+`application/problem+json; charset=utf-8`, `text/plain; charset=utf-8`).
 
 The responses are indented by default (`prettyPrint`), which makes them easy to read in a browser
 or with curl. Turn it off when the size of the responses matters, and in tests compare the decoded

@@ -934,3 +934,51 @@ final Status? status = request.queryParam('status', values: Status.values);
 - New success shortcuts: `ResponseEntity.created(location:, body:)` (201 with `Location`),
   `accepted()` (202) and `noContent()` (204).
 - `Route.toString()` no longer prints the closure of the handler.
+
+## 10. The systems together
+
+**Status:** decided and implemented on 2026-10-07 in the review of phase 2.9 of `ROADMAP.md`.
+`test/integration/app_integration_test.dart` runs a whole app with every system at once
+(configuration from the environment, a scoped service, authentication and rules, CORS, security
+headers, the rate limiter per user, snake_case, validation that depends on the configuration, two
+languages, logs and concurrent requests), and `test/integration/server_integration_test.dart` the
+real server configured from `.env` files, compared with `WinterTestClient`, and its shutdown.
+
+Almost everything fitted: the user, the language and the scope of a request never mixed, every
+error kept the CORS and security headers, and every log had the request id. These are the
+exceptions.
+
+### 10.1 A text body always says its charset
+
+The same 422 was `application/problem+json` in English and
+`application/problem+json; charset=utf-8` in Spanish: shelf adds the charset only to a body with
+non-ASCII characters. Now every text body of Winter says it: `application/json; charset=utf-8`,
+`application/problem+json; charset=utf-8` and `text/plain; charset=utf-8` (without it, a client may
+read `text/plain` as ISO-8859-1). An `encoding` given to the response is its charset; a binary body
+has none. Breaking for a test that compares the `Content-Type` exactly.
+
+### 10.2 The names of the errors are fixed
+
+With `fieldNaming: snakeCase`, the members of a Problem Details were renamed: `requestId` became
+`request_id`, `fieldName` became `field_name` (and with `kebabCase` `request-id`, which RFC 9457
+advises against: member names should be letters, digits and `_`). The error format of Winter is
+now the same in every app: `ProblemDetails` and `ConstraintViolation` are written with their own
+names. The **value** of `fieldName` still follows `fieldNaming`, since it names a field of the
+client's JSON; the `extensions` of the app keep the names it gives. A `Serializer` of the app for
+those types still wins.
+
+### 10.3 No `X-Powered-By`
+
+The real server sent `X-Powered-By: Winter-Server` and `WinterTestClient` didn't. It's removed: an
+API doesn't announce its framework (OWASP), and both send the same headers now (tested). The header
+came from `shelf_io`, which is replaced in phase 3.1.
+
+### 10.4 A handler at the path of a parent route
+
+A child can't have an empty path (`''`). To answer the path of a parent, the parent itself has the
+handler (`Route.get(path: '/orders', handler: list, routes: [...])`), or the child uses `'/'`.
+
+### 10.5 Known limitation: the path of an error inside `fromJson`
+
+A `fromJson` that deserializes its children (`om.deserialize<List<Item>>(json['items'])`) loses the
+path: an invalid item is `$: invalid value`, not `$.items[0]...` (see §2.5). It stays for 1.0.

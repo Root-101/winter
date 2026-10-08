@@ -23,7 +23,10 @@ void main() {
         final response = await client.get(path);
 
         expect(response.statusCode, 404, reason: path);
-        expect(response.headers['content-type'], 'application/problem+json');
+        expect(
+          response.headers['content-type'],
+          'application/problem+json; charset=utf-8',
+        );
         expect(response.headers['x-request-id'], isNotNull);
         expect(response.headers['x-content-type-options'], 'nosniff');
       }
@@ -335,7 +338,10 @@ void main() {
         final response = await client.get('/users/abc');
 
         expect(response.statusCode, 400);
-        expect(response.headers['content-type'], 'application/problem+json');
+        expect(
+          response.headers['content-type'],
+          'application/problem+json; charset=utf-8',
+        );
         final body = jsonDecode(response.body) as Map<String, Object?>;
         expect(body['detail'], 'The path param id must be an integer');
       },
@@ -457,7 +463,7 @@ void main() {
           ResponseEntity<void>.forbidden(),
           ResponseEntity<void>.notFound(),
           ResponseEntity<void>.methodNotAllowed(),
-          ResponseEntity<void>.tooManyRequests(retryAfter: 3),
+          ResponseEntity<void>.tooManyRequests(),
           ResponseEntity<void>.internalServerError(),
         ].map((response) => response.statusCode),
         [400, 401, 403, 404, 405, 429, 500],
