@@ -1,5 +1,5 @@
 name: winter
-description: This project is designed to create server side apps the simplest way possible, and reduce the learning curve in backend development.
+description: A backend framework for Dart inspired by Spring - routing, filters, dependency injection, JSON mapping, validation, security and consistent errors on dart:io.
 version: 0.1.0
 repository: https://github.com/Root-101/winter
 

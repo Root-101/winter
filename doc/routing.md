@@ -10,7 +10,7 @@ method, a path (with params and regex) and its filters:
 - The route table is checked when the router is built: an invalid or duplicated route fails at
   start, not as a 404 in production.
 
-The decisions behind it are in [`DECISIONS.md` §9](../DECISIONS.md#9-router-filters-and-entities).
+The decisions behind it are in [`DECISIONS.md` §9](../DECISIONS.md#9-router-and-filters).
 
 ## Minimal example
 

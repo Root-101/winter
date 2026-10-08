@@ -259,7 +259,7 @@ give the context a fixed `clock` (see [Configuration](#configuration)).
 
 `validate()` is synchronous. Check it in the service and throw a `ConflictException`, or a
 `ValidationException` with your own `ConstraintViolation` to answer 422 like the rest. Asynchronous
-validations are planned for 1.x (`DECISIONS.md` §3.8).
+validations are planned for 1.x (`DECISIONS.md` §3).
 
 ## Typical mistakes and limitations
 

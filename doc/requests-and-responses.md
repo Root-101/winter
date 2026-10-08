@@ -9,7 +9,7 @@ top of `dart:io`:
   with its `Content-Type` and `Content-Length`.
 - A filter changes either one with `copyWith`.
 
-The decisions behind it are in [`DECISIONS.md` §11](../DECISIONS.md#11-from-shelf-to-dartio).
+The decisions behind it are in [`DECISIONS.md` §10](../DECISIONS.md#10-the-http-layer).
 
 ## Minimal example
 

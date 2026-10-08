@@ -1,56 +1,8 @@
-# Winter Framework ❄️
+# Winter ❄️
 
-**Winter** is a lightweight, modular, and developer-friendly backend framework for Dart enthusiasts.
-
-It aims to simplify the creation of RESTful APIs and
-microservices while maintaining a low learning curve.
-
----
-
-## Table of Contents
-
-1. [About the Project](#1)
-2. [Getting Started](#2)
-3. [Core Pillars](#3)
-    - [Modular Routing](#3.1)
-    - [Dependency Injection](#3.2)
-    - [Filter Chain (Middleware)](#3.3)
-    - [Validation & Error Handling](#3.4)
-4. [Security & Utilities](#4)
-5. [Future Roadmap](#5)
-6. [Contributing](#6)
-
----
-
-## <a name="1"></a> About the Project
-
-Winter is currently an **experimental** hobby project. It is designed for developers who want to
-build backend services using Dart with a familiar architectural pattern (DI, Filters, Controllers).
-
-- **Lightweight**: Minimum overhead for maximum performance.
-- **Developer Experience**: Simple API and clear abstractions.
-- **Scalable Design**: Inspired by enterprise-grade frameworks.
-
-> ⚠️ **Disclaimer:** This project is not yet production-ready. Use it at your own discretion.
-
----
-
-## <a name="2"></a> Getting Started
-
-### Requirements
-
-Dart SDK `>= 3.12`. To work on this repository, the SDK version is pinned with [FVM](https://fvm.app) (`.fvmrc`): run the commands with `fvm dart` (e.g. `fvm dart test`).
-
-### Installation
-
-Add `winter` to your `pubspec.yaml`:
-
-```yaml
-dependencies:
-  winter: ^latest_version
-```
-
-### Basic Usage
+A backend framework for Dart, inspired by Spring: routing, filters, dependency injection, JSON
+mapping, validation, security and consistent errors, on top of `dart:io` and without code
+generation.
 
 ```dart
 import 'package:winter/winter.dart';
@@ -59,9 +11,10 @@ void main() async {
   await Winter.start(
     router: WinterRouter(
       routes: [
+        Route.get(path: '/hello', handler: (request) => ResponseEntity.ok(body: 'Hello Winter!')),
         Route.get(
-          path: '/hello',
-          handler: (request) => ResponseEntity.ok(body: 'Hello Winter!'),
+          path: '/users/{id}',
+          handler: (request) => ResponseEntity.ok(body: {'id': request.pathParam<int>('id')}),
         ),
       ],
     ),
@@ -69,67 +22,85 @@ void main() async {
 }
 ```
 
-Check out our [examples](./example) directory for more advanced use cases.
+## Installation
 
----
+Requires the Dart SDK 3.13 or newer.
 
-## <a name="3"></a> Core Pillars
-
-### <a name="3.1"></a> 1. Modular Routing
-
-Winter provides flexible routing options, from the simple `ServeRouter` to the more advanced
-`WinterRouter` with support for regex paths and specific HTTP methods.
-
-### <a name="3.2"></a> 2. Dependency Injection
-
-A core feature that allows for better decoupling and testability by managing the lifecycle and
-injection of your services and components.
-
-### <a name="3.3"></a> 3. Filter Chain
-
-Intercept and process requests or responses globally or locally. Ideal for logging, authentication,
-and data transformation.
-
-### <a name="3.4"></a> 4. Validation & Error Handling
-
-Built-in mechanisms to validate incoming data and a centralized exception handling system to ensure
-consistent API responses.
-
----
-
-## <a name="4"></a> Security & Utilities
-
-- **Rate Limiter**: Protect your API from brute-force and DDoS attacks.
-- **Object Mapping**: Seamlessly convert JSON to Dart objects and vice versa.
-- **HTTP Utils**: Constants and helpers for common HTTP headers and status codes (`HttpHeader`, `StatusCode`, `HttpMethod`, `MediaType`).
-- **Body Size Limit**: `ServerConfig(maxBodySize: ...)` (10 MB by default) rejects huge requests with a 413.
-- **Graceful Shutdown**: on Ctrl+C / SIGTERM the server waits for the requests in progress
-  (`ServerConfig(shutdownTimeout: ..., onShutdown: ...)`).
-- **Logging**: every log goes through `logger` (a `WinterLogger`), replace it to filter by level or send the logs anywhere:
-
-```dart
-Winter.context.setUp(logger: const ConsoleLogger(minLevel: LogLevel.warning));
+```bash
+dart pub add winter
 ```
 
-### Testing
+Then follow [getting started](doc/getting-started.md): from zero to a JSON API with validation and
+tests.
 
-Test the whole pipeline (filters, routing, exception handler...) in memory, without opening a port:
+## Features
+
+| Feature                                | What you get                                                        | Guide |
+|----------------------------------------|---------------------------------------------------------------------|-------|
+| Routing                                | Nested routes, typed path and query params, regex, 404/405, `HEAD` and `OPTIONS` | [routing](doc/routing.md) |
+| Filters                                | Global and route filters, ordered, that see every error             | [filters](doc/filters.md) |
+| Requests and responses                 | Headers, cookies, a body read as an object, streams (Server-Sent Events) | [requests and responses](doc/requests-and-responses.md) |
+| JSON                                   | `toJson()` without interfaces, your own serializers, generics, `snake_case`, clear errors | [object mapper](doc/object-mapper.md) |
+| Validation                             | Typed validators, nested objects, a 422 with a code per field       | [validation](doc/validation.md) |
+| Errors                                 | Every error is a Problem Details (RFC 9457); a 500 never leaks details | [error handling](doc/error-handling.md) |
+| Security                               | Authentication filters, roles and permissions, CORS, security headers, a rate limiter | [security](doc/security.md) |
+| Dependency injection                   | Singletons, lazy, factories, one instance per request, disposal on shutdown | [dependency injection](doc/dependency-injection.md) |
+| Configuration                          | Typed environment variables, `.env` files and profiles              | [configuration](doc/configuration.md) |
+| Logging                                | Console and JSON loggers, a request id in every log                 | [logging](doc/logging.md) |
+| i18n                                   | Messages in the language of the request                             | [i18n](doc/i18n.md) |
+| Testing                                | The whole pipeline in memory, without ports                         | [testing](doc/testing.md) |
+| Deployment                             | Native executables, Docker, graceful shutdown, health checks        | [deployment](doc/deployment.md) |
+
+How it fits together: [architecture](doc/architecture.md). Every guide: [`doc/`](doc/README.md).
+
+## A taste
 
 ```dart
-final client = WinterTestClient.build(router: myRouter);
+class CreateUser implements Validatable {
+  final String email;
 
-final response = await client.get('/hello');
-expect(response.statusCode, 200);
-expect(response.body, 'Hello Winter!');
+  CreateUser(this.email);
+
+  @override
+  ConstraintValidatorContext validate() {
+    final cvc = ConstraintValidatorContext();
+    cvc.field('email', email).email();
+    return cvc;
+  }
+}
+
+Route.post(
+  path: '/users',
+  filterConfig: hasRole('admin').toFilterConfig(),            // 401 / 403
+  handler: (request) async {
+    final CreateUser user = await request.body<CreateUser>(); // JSON → object, validated (422)
+    final created = di.find<UserService>().create(user);       // throws NotFoundException...
+    return ResponseEntity.created(location: '/users/${created.id}', body: created);
+  },
+)
 ```
 
----
+```dart
+test('an invalid email is a 422', () async {
+  final client = WinterTestClient.build(router: router);
 
-## <a name="5"></a> Future Roadmap
+  final response = await client.post('/users', body: {'email': 'nope'});
 
-- [ ] Full Security module (JWT, OAuth2).
-- [ ] Cron & Scheduled Tasks.
-- [ ] Multipart/File Upload support.
-- [ ] WebSockets integration.
-- [ ] Automated Package Scanning for configuration.
-- [ ] Annotation-Based Configuration (declarative server setup inspired by Spring).
+  expect(response.statusCode, 422);
+});
+```
+
+## Examples
+
+[`example/`](example) has standalone apps: a basic server, routing with services, authentication
+with JWT, i18n, nested DTOs with validation, and a production setup with Docker.
+
+## More
+
+- [`DECISIONS.md`](DECISIONS.md): why Winter works the way it does.
+- [`CHANGELOG.md`](CHANGELOG.md) and [`ROADMAP.md`](ROADMAP.md).
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): how to work on Winter.
+
+## License
+
+[Apache 2.0](LICENSE).

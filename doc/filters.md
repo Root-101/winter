@@ -167,33 +167,6 @@ expect(
 );
 ```
 
-### Coming from shelf
-
-Winter doesn't run on shelf since 1.0, so a shelf `Middleware` doesn't plug in. The same code is a
-filter: the part before `innerHandler(request)` goes before `chain.doFilter(request)`, and the
-part after, after it.
-
-```dart
-// shelf
-Middleware addHeader() => (innerHandler) => (request) async {
-  final response = await innerHandler(request);
-  return response.change(headers: {'X-Api': '1'});
-};
-
-// Winter
-class AddHeaderFilter extends Filter {
-  @override
-  Future<ResponseEntity> doFilter(RequestEntity request, FilterChain chain) async {
-    final response = await chain.doFilter(request);
-    return response.copyWith(headers: {'X-Api': '1'});
-  }
-}
-```
-
-`Request.change` and `Response.change` are `copyWith`, `request.url` is `request.requestedUri`
-(Winter is never mounted under a path), and `request.context['shelf.io.connection_info']` is
-`request.connectionInfo` (or `request.clientIp()`).
-
 ## Typical mistakes and limitations
 
 - **Catching the error of the handler in a filter**: it never arrives, it's already a response.

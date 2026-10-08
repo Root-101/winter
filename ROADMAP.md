@@ -22,8 +22,8 @@ way we want to maintain it**. Exit criteria:
 2. It covers the typical use cases of an API: CRUD with JSON, validation, consistent errors,
    authentication and authorization, CORS, forms and file uploads, static files, configuration per
    environment, logs, tests and deployment.
-3. Every module has its own document in `doc/`, the whole public API has dartdoc, and there is a
-   migration guide from 0.x.
+3. Every module has its own document in `doc/`, and the whole public API has dartdoc. 1.0 is a
+   first version: there is no migration guide from 0.x.
 4. There is CI (analyze, format, tests, coverage, examples) and a good pana score (pub points).
 5. At least one release candidate (`1.0.0-rc.1`) was published and used in a real project.
 
@@ -47,7 +47,7 @@ way we want to maintain it**. Exit criteria:
 | Configuration (`Env`, `ServerConfig`)                                                   | ✅ Reviewed (2.5), `doc/configuration.md`        |
 | Logging                                                                                 | ✅ Reviewed (2.6), `doc/logging.md`              |
 | Security                                                                                | ✅ Reviewed (2.7), `doc/security.md`             |
-| Documentation                                                                           | ❌ The biggest gap                               |
+| Documentation                                                                           | ✅ A guide per module, `doc/README.md`           |
 | CI / publishing                                                                         | ❌ No CI                                         |
 
 ---
@@ -92,13 +92,13 @@ Steps for every system:
 1. Read the code and its tests, and write down how it is used in the examples.
 2. Write a test for each problem listed below before touching anything.
 3. Decide (and record in `DECISIONS.md`): keep, change or remove.
-4. Implement, update the CHANGELOG and the migration guide.
+4. Implement and update the CHANGELOG.
 5. Write its document in `doc/` (phase 5), now that it won't change.
 
 ### 2.1 Object mapper (dedicated review) ✅
 
 **Done** (2026-10-06, commits `716b572` and `0add5e1`, then `Deserializer.enumByName`, the typed
-constructors `string`/`integer`/`number`/`boolean` and `body<T>(objectMapper:)`, §2.10): every
+constructors `string`/`integer`/`number`/`boolean` and `body<T>(objectMapper:)`, §2): every
 decision is in `DECISIONS.md` §2,
 the behavior in `test/object_mapper/object_mapper_behavior_test.dart` (100% line coverage of the
 mapper), the guide in `doc/object-mapper.md` and the numbers in
@@ -122,32 +122,32 @@ type.
     - `List<List<T>>`, `Set<T>` and nullable types (`body<User?>()`) are not supported, or fail with
       a 500 (`StateError`) instead of a 400.
     - → Found by `Type`; `T?`, `List<T>`, `Set<T>`, `Map<String, T>` derived from `T`, deeper types
-      with `deserializerOf<T>().list()` (§2.1). Checked with an obfuscated AOT build.
+      with `deserializerOf<T>().list()` (§2). Checked with an obfuscated AOT build.
 - [x] ✔️ **A class with `toJson()` that doesn't implement `Serializable` gives a 500**
   (`Bad state: Generated need to implement the Serializable interface`). That's exactly what
   `json_serializable` and `freezed` generate, so the most common way of writing models in Dart
   doesn't work without adding `implements Serializable` to each one. → `toJson()` is called
-  dynamically and `Serializable` was removed (§2.2).
+  dynamically and `Serializable` was removed (§2).
 - [x] **Serializers are found by the exact `runtimeType`:** a serializer for `Animal` doesn't apply
   to `Dog`. The default `Serializer<num>` and `Serializer<Object>` are never used (no value has
-  those runtime types). → A serializer applies to subtypes; the dead defaults were removed (§2.3).
+  those runtime types). → A serializer applies to subtypes; the dead defaults were removed (§2).
 - [x] ✔️ **A local `DateTime` is serialized without an offset** (`2026-01-01T00:00:00.000`): the
   client can't know its time zone. Decide: always UTC (`toUtc()`), or keep the offset. → Always UTC
-  (§2.6).
+  (§2).
 - [x] **The errors expose Dart internals to the client** (400): a failing `fromJson` sends
   `type 'Null' is not a subtype of type 'String' in type cast`, and a wrong number sends the parser
   message (`Invalid radix-10 number (at character 1)`). They don't say which field failed either.
-  → `path: reason` (`$.items[1]: expected a string, got an integer`), never a Dart type (§2.5).
+  → `path: reason` (`$.items[1]: expected a string, got an integer`), never a Dart type (§2).
 - [x] **Leniency is inconsistent:** `int`/`double`/`bool` are parsed from `v.toString()`, so `"12"`
   (a string) is accepted as `12` and `"true"` as `true`, but `12.0` is not accepted as an `int`.
-  → Strict types, `12.0` is an `int` (§2.4).
+  → Strict types, `12.0` is an `int` (§2).
 - [x] `body<String>()` returns the raw body without decoding the JSON (`_isPrimitive`): a JSON body
   `"hello"` comes back with its quotes. Document it, or decode it when the `Content-Type` is JSON.
   → Decoded when the `Content-Type` is JSON; `deserialize` (values) and `decode` (text) are
-  separate methods (§2.0, §2.7).
+  separate methods (§2, §2).
 - [x] `body<T>()` ignores the `Content-Type` of the request: a form or XML body tries to parse as
   JSON. Decide whether a non-JSON body is a **415**. → 415 (`UnsupportedMediaTypeException`),
-  except `text/plain` and no `Content-Type`, which `package:http` and `fetch()` send (§2.7).
+  except `text/plain` and no `Content-Type`, which `package:http` and `fetch()` send (§2).
 - [x] `ListTypeExtension` adds `isList`/`isMap` to **every** `Type` of the user (public extension).
   → Removed.
 
@@ -170,17 +170,17 @@ type.
   predictable) and document it. → Fall back, cached per type (needed by `freezed`).
 - [x] **Options:** omit `null` fields, naming strategy (`snake_case`), `Duration` as milliseconds
   vs ISO-8601. Possibly none of them (the model's `toJson` decides), but say so in the docs.
-  → `includeNulls`, `fieldNaming`, `durationFormat` and `prettyPrint` (on by default) (§2.8).
+  → `includeNulls`, `fieldNaming`, `durationFormat` and `prettyPrint` (on by default) (§2).
 - [x] **Performance:** benchmark `serialize` + `jsonEncode` of a big list (it's done in two passes
   and fully in memory) and compare it with a direct `jsonEncode` of the `toJson()`. → It was
-  ×3.5–4.2 in AOT; `encode` is now a single pass, ×1.1–1.2 (§2.9).
+  ×3.5–4.2 in AOT; `encode` is now a single pass, ×1.1–1.2 (§2).
 
 ### 2.2 Validation ✅
 
 **Done** (2026-10-06): every decision is in `DECISIONS.md` §3, the behavior in
 `test/validation/validation_behavior_test.dart` (100% line coverage of the validation), and the
 guide in `doc/validation.md`. A second review from zero fixed the chaining of types, `url()`,
-`fieldName` with `fieldNaming` and the `params` that could give a 500 (§3.9). Left for other
+`fieldName` with `fieldNaming` and the `params` that could give a 500 (§3). Left for other
 phases: the format of `fieldName` vs the `$` path of the 400 (2.3), async validations and the
 improvements below in 4.3, and example `05` (5.4).
 
@@ -193,39 +193,39 @@ validators as extensions, `throwOnFailure()` → 422, messages in the language o
 - [x] ✔️ **`pattern()` with a `RegExp` never matches.** It does `RegExp(pattern.toString())`, and
   `RegExp.toString()` returns `RegExp: pattern=^abc$ flags=i`, so the regex it builds is that text.
   It only works with a `String`. It also builds a new `RegExp` on every validation; use the `RegExp`
-  received as is (flags included) and compile a `String` once. → Fixed (§3.7).
+  received as is (flags included) and compile a `String` once. → Fixed (§3).
 - [x] `ConstrainViolation` → **`ConstraintViolation`** (misspelled public API: it appears in the
-  JSON of the 422s and in `ValidationException.violations`). → Renamed (§3.6).
+  JSON of the 422s and in `ValidationException.violations`). → Renamed (§3).
 - [x] `ConstrainViolation.==` compares `value.toString()` and says "needed for tests": decide
   whether it's real value equality or remove it. → Real equality; `1` and `'1'` were equal with
-  different hash codes (§3.6).
+  different hash codes (§3).
 - [x] `Validatable` is an abstract class with a `validate()` that returns an empty context: it
   should be an interface (`abstract interface class`), and returning a valid context by default
-  hides a forgotten implementation. → Interface (§3.6).
+  hides a forgotten implementation. → Interface (§3).
 - [x] Validators receive `dynamic`: a typo like `.min(3)` on a `String` is only seen at runtime
-  (`The value must be a number`). → Typed by the value (§3.1).
+  (`The value must be a number`). → Typed by the value (§3).
 - [x] ✔️ **A forgotten `.validate(value)` validated nothing**, silently
-  (`cvc.buildValidator('name').notNull();`). → The rules run as they are chained (§3.1).
+  (`cvc.buildValidator('name').notNull();`). → The rules run as they are chained (§3).
 - [x] ✔️ **A 422 became a 500** when the `value` of a violation was an object without `toJson()`.
-  → The 422 never has the value (§3.5).
+  → The 422 never has the value (§3).
 - [x] `notBlank()` of a value that isn't a String said "cannot be blank", and `size()` didn't accept
-  a `Map`. → Typed validators; `size()`/`notEmpty()` accept a `Map` (§3.7).
+  a `Map`. → Typed validators; `size()`/`notEmpty()` accept a `Map` (§3).
 
 **Questions to decide:**
 
 - [x] **A machine-readable code in each violation** (`"code": "size.min", "params": {"value": 3}`)
-  besides the message, so a client (a Flutter app) can show its own text. → Yes (§3.4).
+  besides the message, so a client (a Flutter app) can show its own text. → Yes (§3).
 - [x] **`validBody<T>()`**: deserializes and validates in one step (every POST/PUT repeats it by
-  hand). It depends on 2.1. → `body<T>()` validates by default, `validate: false` to skip it (§3.2).
+  hand). It depends on 2.1. → `body<T>()` validates by default, `validate: false` to skip it (§3).
 - [x] **Typed validators** (`buildValidator<String>('name')`) so the compiler rejects `.min()` on a
-  String, or keep `dynamic` for simplicity. → `cvc.field(name, value)`, typed by the value (§3.1).
+  String, or keep `dynamic` for simplicity. → `cvc.field(name, value)`, typed by the value (§3).
 - [x] **Nested validation** without calling `merge(prefix:)` by hand (`.valid()` on a `Validatable`
-  field). → `valid()` and `validEach()` (§3.3).
+  field). → `valid()` and `validEach()` (§3).
 - [x] **More validators:** `url`, `uuid`, `positive`/`negative`, `past`/`future` (dates), `notEmpty`
-  (collections), `oneOf` (literal values), `size` on `Map`. → All of them (§3.7).
+  (collections), `oneOf` (literal values), `size` on `Map`. → All of them (§3).
 - [x] **Async validations** (`FutureOr`, "the email already exists"): decide now whether the API
   allows them later without a breaking change, even if they arrive in 1.x 🟢. → A separate
-  `AsyncValidatable` interface in 1.x, without breaking changes (§3.8, and 4.3).
+  `AsyncValidatable` interface in 1.x, without breaking changes (§3, and 4.3).
 
 ### 2.3 Exceptions and error handling ✅
 
@@ -241,13 +241,13 @@ exceptions and the handler), and the guide in `doc/error-handling.md`. Left for 
 
 - [x] **Errors come in different formats:** an `ApiException` answers `text/plain` with the reason
   phrase, a 404/405 of the router has no body, a validation returns a JSON array and a
-  `DeserializationException` a string. → Problem Details for every error (§4.1).
+  `DeserializationException` a string. → Problem Details for every error (§4).
 - [x] `_runPipeline` checks `eh is SimpleExceptionHandler` to find `logUnhandledError`: a custom
   `ExceptionHandler` can't log the `Error`s its own way. Move it to the `ExceptionHandler`
-  interface. → The handler receives `Error`s too (§4.3).
+  interface. → The handler receives `Error`s too (§4).
 - [x] ✔️ **An `Error` gave a 500 without the CORS headers**, and no filter saw it (`LogsFilter`
   didn't log it): it went through the chain up to the pipeline. → The chain turns it into a
-  response where it's thrown (§4.3).
+  response where it's thrown (§4).
 - [x] The `ExcHandler` typedef in `handler.dart` is unused and its parameter is named `stackTrac`.
   → Removed.
 - [x] `ResponseException.responseEntity` is not `final`; the exceptions can't be `const`. → `final`,
@@ -265,41 +265,41 @@ exceptions and the handler), and the guide in `doc/error-handling.md`. Left for 
   ```
   Validation would extend it with `"violations": [...]`. Configurable by replacing the
   `ExceptionHandler`, but consistent by default (router, `ApiException`, deserialization, 413, 429,
-  500). → Yes, and the errors of Winter are exceptions, so the handler formats all of them (§4.5).
+  500). → Yes, and the errors of Winter are exceptions, so the handler formats all of them (§4).
 - [x] **`ExceptionHandler` by type:** today you have to extend `SimpleExceptionHandler` and chain
   `if (e is X)`. A registry `handler.on<MyException>((req, e) => ...)` (Spring's
-  `@ControllerAdvice`, without annotations). → `on<T>()`, and inheritance still works (§4.4).
+  `@ControllerAdvice`, without annotations). → `on<T>()`, and inheritance still works (§4).
 - [x] **More exceptions:** `MethodNotAllowedException` (405), `NotAcceptableException` (406),
   `UnsupportedMediaTypeException` (415, already added in 2.1), `TooManyRequestsException` (429),
   `ServiceUnavailableException` (503). Or a single `ApiException(StatusCode.x)` and fewer classes.
   → `ApiException(status)` for any status, shortcuts for the common ones with 405, 429 and 503;
-  `PaymentRequiredException` removed (§4.2).
+  `PaymentRequiredException` removed (§4).
 
 ### 2.4 Dependency injection ✅
 
 **Done** (2026-10-07): every decision is in `DECISIONS.md` §5, the behavior in
 `test/dependency_injection/di_behavior_test.dart` (100% line coverage of the DI and the request
 scope), and the guide in `doc/dependency-injection.md`. A second review fixed two silent bugs of
-`putScoped` (§5.6): a lazy singleton that kept the disposed instance of the first request, and a
+`putScoped` (§5): a lazy singleton that kept the disposed instance of the first request, and a
 `find` after the request ended.
 
 **Before the review:** `put`/`find`/`tryFind`/`delete` by `(Type, tag)`, singletons only.
 
 - [x] `find` checks `!= null`, so a `null` value can't be registered and `tryFind` can't tell "not
-  registered" from "registered as null". Add `isRegistered<T>()`. → Done (§5.4).
+  registered" from "registered as null". Add `isRegistered<T>()`. → Done (§5).
 - [x] ✔️ **A dependency registered from a nullable variable wasn't found**: `di.put(maybeService)`
   registered it as `<Service?>`, and `find<Service>()` failed. → `T` and `T?` are the same key
-  (§5.1).
+  (§5).
 - [x] `notFound` is a public method of `DependencyInjection` (it should be private), and the map is
   named `_singl`. → Fixed.
 - [x] **Lazy singletons** (`putLazy`, created on the first `find`) and **factories** (a new
-  instance per `find`). → Both, and `putScoped` (one per request) (§5.2).
+  instance per `find`). → Both, and `putScoped` (one per request) (§5).
 - [x] **`dispose`/`onClose`** called on the graceful shutdown (to close database connections), in
-  reverse order of registration. → `onDispose`, run by `Winter.shutdown()` (§5.3).
+  reverse order of registration. → `onDispose`, run by `Winter.shutdown()` (§5).
 - [x] A clear error on circular dependencies between lazy ones. →
   `Circular dependency: A -> B -> A`.
 - [x] Decide the scope: stay a minimal service locator (and document it as such), or grow towards a
-  container. A service locator is enough for 1.0. → A service locator, by exact type (§5.1).
+  container. A service locator is enough for 1.0. → A service locator, by exact type (§5).
 
 ### 2.5 Configuration (`Env` and `ServerConfig`) ✅
 
@@ -310,23 +310,23 @@ guide in `doc/configuration.md`. Left for phase 3.1 and 4: `securityContext` (HT
 
 - [x] **Load a `.env` file** (`Env.load('.env')`) and **profiles** (`WINTER_PROFILE=prod`), with a
   documented precedence (process variables > `.env` > defaults). → `Env.load()`: process >
-  `.env.<profile>` > `.env`, missing files ignored (§6.3).
+  `.env.<profile>` > `.env`, missing files ignored (§6).
 - [x] The "unsupported type" message of `Env.find` doesn't mention `List<bool>`, even though it is
-  supported. → It lists every type (§6.2).
+  supported. → It lists every type (§6).
 - [x] `Env.put` returns the value read again with `find` (it fails for an unsupported type even if
   it was stored); `caseSensitive: false` scans every variable. → `put` returns the value given.
 - [x] ✔️ **The error of a wrong type showed the value** (`found with value 'hunter2'`): a secret
-  could end in the logs. → Errors never show a value (§6.1).
+  could end in the logs. → Errors never show a value (§6).
 - [x] ✔️ `find(required: true)` returned a `T?`, `find<int?>` was unsupported, a `String` secret was
   trimmed and `List<bool>` didn't accept `TRUE`. → `require<T>`, nullable types, no trim of
-  `String`, any case (§6.1, §6.2).
+  `String`, any case (§6, §6).
 - [x] `ServerConfig` uses `late final` fields assigned in the constructor body: move them to
   initializers so it can be `const`, and move `shared` there too (today it's a separate parameter of
   `Winter.start`). Add `securityContext` (HTTPS) and `requestTimeout` (phase 4). → `const`, `host`,
-  `shared`, validated by `Winter.start`, and `ServerConfig.fromEnv` (§6.5).
+  `shared`, validated by `Winter.start`, and `ServerConfig.fromEnv` (§6).
 - [x] Typed configuration of the app: a pattern (or helper) to read a config class from `Env` once
   at start-up and fail fast if a required variable is missing. → The `AppConfig.fromEnv` pattern
-  and `requireAll` (§6.4).
+  and `requireAll` (§6).
 
 ### 2.6 Logging ✅
 
@@ -335,17 +335,17 @@ guide in `doc/configuration.md`. Left for phase 3.1 and 4: `securityContext` (HT
 the guide in `doc/logging.md`.
 
 - [x] A **JSON logger** (`JsonLogger`) for production (Cloud Logging, Datadog…). → One JSON per
-  line, with `fields` (§7.3).
+  line, with `fields` (§7).
 - [x] **Request ID** in the logs: a filter that reads or generates `X-Request-Id`, saves it in the
   `RequestScope` (`requestId`), adds it to the response, and the loggers include it. → Always on,
-  no filter to add, and in the body of a 500 (§7.4).
+  no filter to add, and in the body of a 500 (§7).
 - [x] `debug`/`info` don't accept `error`/`stackTrace` (only `warning`/`error` do). → Every level
-  takes them, and `fields` (§7.2).
+  takes them, and `fields` (§7).
 - [x] Lazy messages (`logger.debug(() => '...')`) so a disabled level doesn't build the string.
-  → `isEnabled(level)`, used by the debug logs of the framework (§7.2).
-- [x] `ConsoleLogger` uses the local time; decide UTC. → UTC (§7.3).
+  → `isEnabled(level)`, used by the debug logs of the framework (§7).
+- [x] `ConsoleLogger` uses the local time; decide UTC. → UTC (§7).
 - [x] ✔️ **The debug log of a failed deserialization included the value sent** (a card number in
-  the test), in several lines. → The type of the error only (§7.1).
+  the test), in several lines. → The type of the error only (§7).
 
 ### 2.7 Security
 
@@ -356,30 +356,30 @@ any code; rules that see the request; security headers; an asynchronous rate lim
 
 - [x] **Expose `X-Request-Id` to browsers**: CORS must list it in `Access-Control-Expose-Headers`,
   or
-  a web client can't read the id of a response (found in the review 2.6). → Always exposed (§8.1).
+  a web client can't read the id of a response (found in the review 2.6). → Always exposed (§8).
 - [x] **CORS with `'*'` and `allowCredentials: true` echoes any origin**: that gives every website
   credentialed access to the API, which is what the browser rule is meant to prevent. Require
   explicit origins with credentials (fail on start), or at least log a warning. → A warning, and
-  `Vary: Origin` on every response that depends on the origin (§8.1).
+  `Vary: Origin` on every response that depends on the origin (§8).
 - [x] **A 401 without `WWW-Authenticate`:** RFC 9110 requires it. Let `AuthFilter` set it (for
-  example `Bearer`). → `Bearer`, configurable with `challenge` (§8.2).
+  example `Bearer`). → `Bearer`, configurable with `challenge` (§8).
 - [x] **Typed principal:** `RequestSecurityContext<T>` is generic, but `request.securityContext`
   returns `RequestSecurityContext<dynamic>` and `Authentication.anonymous()` is an
   `Authentication<dynamic>` with the principal `'Anonymous'`. Add typed access
   (`request.principal<User>()`) so handlers don't need a cast. → `requestPrincipal<T>()` from any
-  code (the request scope) and `request.principal<T>()`, a 401 for nobody (§8.3).
+  code (the request scope) and `request.principal<T>()`, a 401 for nobody (§8).
 - [x] Roles vs permissions vs authorities: three concepts, where `authorities` is the union of the
-  other two. Decide whether all three are needed. → Roles and permissions only (§8.2). Rules also
-  receive the request, and `describe()` prints them (§8.4).
+  other two. Decide whether all three are needed. → Roles and permissions only (§8). Rules also
+  receive the request, and `describe()` prints them (§8).
 - [x] `RateLimiter(0, window)` answers every request with a 500: with no logs, `getWaitDuration`
   reads `logs.first` of an empty list (`StateError`). Reject `maxRequests < 1` when it's created
-  (found in the review 2.3). → An `ArgumentError`, also for a window that isn't positive (§8.6).
+  (found in the review 2.3). → An `ArgumentError`, also for a window that isn't positive (§8).
 - [x] Rate limiter: document that it's in memory, per isolate and per process; leave an abstract
   `RateLimiterStore` so a Redis store can be added in 1.x without a breaking change. → An
-  asynchronous `RateLimiterStore` (§8.6).
+  asynchronous `RateLimiterStore` (§8).
 - [x] A `SecurityHeadersFilter`: `Strict-Transport-Security`, `X-Content-Type-Options`,
   `Referrer-Policy`, a basic `Content-Security-Policy`. → `nosniff` and `DENY` always,
-  `SecurityHeaders` opt-in in `SecurityConfig`, HSTS only with `hsts: true` (§8.5).
+  `SecurityHeaders` opt-in in `SecurityConfig`, HSTS only with `hsts: true` (§8).
 
 ### 2.8 Router, filters and entities (light review)
 
@@ -392,22 +392,22 @@ table fails at start, duplicates by method and shape, typed path and query param
 outside the pipeline, a param with a regex was dropped).
 
 - [x] `WinterRouter.routes` is a public, mutable `List`: expose it read-only and leave `addRoute` as
-  the only way to add routes. → Read-only; `MultiRouter.routes` => `routers` (§9.6).
+  the only way to add routes. → Read-only; `MultiRouter.routes` => `routers` (§9).
 - [x] `FilterConfig.add` mutates a list that may be `const` (it throws then). → Immutable, `add`
-  removed (§9.5).
+  removed (§9).
 - [x] i18n was reviewed recently (`DECISIONS.md` §1): only check that it fits with the decisions of
   2.2 (violation codes) and 2.3 (error format). → It fits: the codes of the violations are the keys
   of the YAML, and the `title` of a Problem Details is not translated.
 - [x] ✔️ **`GET //users` was a 500 outside the pipeline** (shelf rejected its url): no request id,
-  no security headers, logged without the `logger`. → A 404 like `/users//1` (§9.1).
+  no security headers, logged without the `logger`. → A 404 like `/users//1` (§9).
 - [x] ✔️ **A param with a regex (`{id|[0-9]+}`) was dropped as an invalid URL**, with a warning.
-  → Only the literal parts are validated, and a broken route table fails at start (§9.2, §9.3).
+  → Only the literal parts are validated, and a broken route table fails at start (§9, §9).
 - [x] Duplicated routes with another key or param name (`/users/{id}` and `/users/{name}`) were not
-  detected. → The same method and shape is a duplicate; the keys stay (§9.3).
+  detected. → The same method and shape is a duplicate; the keys stay (§9).
 - [x] `int.parse(request.pathParams['id']!)` is a 500 for `/users/abc`. → `pathParam<T>` and
-  `queryParam<T>`, a 400 (§9.7).
-- [x] `OPTIONS` without CORS was a 405. → A 204 with `Allow` (§9.4).
-- [x] `ResponseEntity.created(location:)`, `accepted()`, `noContent()` (§9.8).
+  `queryParam<T>`, a 400 (§9).
+- [x] `OPTIONS` without CORS was a 405. → A 204 with `Allow` (§9).
+- [x] `ResponseEntity.created(location:)`, `accepted()`, `noContent()` (§9).
 
 ### 2.9 Review all of the above
 
@@ -425,17 +425,17 @@ sent `X-Powered-By`, and an empty child path.
   reads the user, the rate limit per user, concurrent requests, the shutdown with a request in
   progress.
 - [x] ✔️ **The `Content-Type` of a text body changed with its content** (`; charset=utf-8` only with
-  non-ASCII characters). → Always `; charset=utf-8` (§10.1).
+  non-ASCII characters). → Always `; charset=utf-8` (§10).
 - [x] **The members of a Problem Details followed `fieldNaming`** (`request_id`, `field_name`).
-  → Fixed names (§10.2).
-- [x] **`X-Powered-By: Winter-Server`** on the real server only. → Removed (§10.3).
+  → Fixed names (§4).
+- [x] **`X-Powered-By: Winter-Server`** on the real server only. → Removed (§8).
 
 ---
 
 ## Phase 3: remove shelf and freeze the public API 🔴
 
 With the decisions of phase 2 applied, the last pass before the API becomes stable. Every change
-goes to the CHANGELOG and to the migration guide.
+goes to the CHANGELOG.
 
 ### 3.1 Move from shelf to `dart:io`
 
@@ -461,7 +461,7 @@ is already independent):
 | `context['shelf.io.connection_info']`                                 | The IP of the client (`clientIp`)                                                           |
 | `export 'package:shelf/shelf.dart'`                                   | All of shelf re-exported (tests use `Response.ok` with `addVary`, `shelf_change_test.dart`) |
 
-**Done** (`DECISIONS.md` §11, guide in `doc/requests-and-responses.md`): Winter serves with
+**Done** (`DECISIONS.md` §10, guide in `doc/requests-and-responses.md`): Winter serves with
 `HttpServer` of `dart:io`, `RequestEntity`/`ResponseEntity` are its own types (`headersAll`,
 cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `securityContext`
 (HTTPS), and shelf is out of `pubspec.yaml`. An empty endpoint went from 3984 to ~5100 req/s
@@ -507,7 +507,8 @@ cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `
 - [x] **Remove the dependency:** `shelf` out of `pubspec.yaml`, no `export` of shelf, `addVary` and
   the helpers on Winter's types, rewrite `test/shelf_change_test.dart` and `client_ip_test.dart`.
 - [x] **Shelf middlewares:** they stop working. Filters are the replacement; document how to turn a
-  shelf middleware into a filter in the migration guide.
+  shelf middleware into a filter in the migration guide. → Dropped: 1.0 is a first version, without
+  a migration guide.
 - [x] **Compare with the baseline:** Winter must be at least as fast as with shelf (goal: close to
   the `dart:io` ceiling), and publish the numbers.
 - [x] Update `CLAUDE.md`, `DECISIONS.md` and the CHANGELOG.
@@ -515,23 +516,25 @@ cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `
 ### 3.2 Freeze the public API
 
 - [x] Delete the deprecated `onAlreadyStarted` parameter of `Winter.close` and the `@Deprecated`
-  values of `StatusCode`. → And `StatusCode` is a single enum (`DECISIONS.md` §12.3).
+  values of `StatusCode`. → And `StatusCode` is a single enum (`DECISIONS.md` §11).
 - [x] **Exported surface:** `winter.dart` exports everything. Decide what is really public API and
   what is an internal detail (once in 1.0, changing it is breaking):
     - Loose helpers: `addVary`, `limitBodySize`, `isValidUri`, `normalizePath`,
       `methodNotAllowedOrNotFound`, `internalServerErrorResponse`,
       `warnLocalesWithoutWinterMessages` and `console_style` (`stylize` on `String`).
     - → All internal (`export ... hide`), with `writeResponse` and `RequestEntity.fromHttpRequest`
-      (§12.1).
+      (§11).
 - [x] Read the whole public API once more (`dart doc` output) looking for inconsistent names and
   parameters. → `WinterContext`, `BaseRouter`, `LoggingFilter`, `clear()`, `clientId`/`onLimited`;
-  no `dart doc` warnings (§12.2, §12.4).
+  no `dart doc` warnings (§11, §11).
 - [x] Add examples for more use cases, check the coverage of test, check that there is no
   overlapping tests, check for missing flow without tests. → Examples `05` and `07`; 29 test files
   moved from a real server to `WinterTestClient` (the ones left test the server itself); the
   overlapping CORS, exception handler, logging and rate limiter tests merged; the uncovered
   branches tested in `test/edge_cases_test.dart`.
-- [ ] Check all the docs, add the missing ones and improve the existing ones
+- [x] Check all the docs, add the missing ones and improve the existing ones → Every guide of
+  `doc/` is written (getting started, architecture, i18n, testing and deployment were missing), the
+  README and `CONTRIBUTING.md` rewritten, and `DECISIONS.md` condensed to the current decisions.
 
 ---
 
@@ -580,7 +583,7 @@ They don't block 1.0 and shouldn't delay it (they can be added in 1.x without br
 - [ ] Scheduled tasks (cron), it was in `todo.md`.
 - [ ] OpenAPI generation from the routes.
 - [ ] Async validations: an `AsyncValidatable` interface with a `Future` `validate()`, also run by
-  `body<T>()` (`DECISIONS.md` §3.8).
+  `body<T>()` (`DECISIONS.md` §3).
 - [ ] A Redis `RateLimiterStore`.
 - [ ] More languages for Winter's messages (fr, pt, de…).
 - [ ] Configuration with annotations / package scanning (with codegen).
@@ -668,7 +671,6 @@ doc/
   logging.md
   testing.md
   deployment.md
-  migration-0.x-to-1.0.md
 DECISIONS.md                 ← stays: the "why" (the docs explain the "how")
 CONTRIBUTING.md
 CHANGELOG.md
@@ -686,9 +688,9 @@ configuration → common cases → typical mistakes and limitations**. Every cod
 The documents of the systems of phase 2 are written **when their review is done**, so they aren't
 written twice. The rest can be written now.
 
-- [ ] **`getting-started.md`:** requirements (SDK), installation, first endpoint, a CRUD with JSON
+- [x] **`getting-started.md`** (its code run as a test): requirements (SDK), installation, first endpoint, a CRUD with JSON
   and validation, how to run it and test it. From zero to a working API in 10 minutes.
-- [ ] **`architecture.md`:**
+- [x] **`architecture.md`:**
     - The path of a request: `Request` → `RequestEntity` → `RequestScope` (Zone) → `resolveRoute` →
       `FilterChain` (CORS, global and route filters, sorted by `order`) → handler →
       `ExceptionHandler` → `Vary`.
@@ -734,7 +736,7 @@ written twice. The rest can be written now.
   hierarchy, which status each one gives,
   why a 500 never exposes details, how to customize the `ExceptionHandler`, the error format and
   the difference between `Exception` and `Error`.
-- [ ] **`i18n.md`**, with this outline:
+- [x] **`i18n.md`** (its snippets checked by running them), with this outline:
     1. **What it solves:** answering in the language of the client, both Winter's validation
        messages
        and the texts of the app.
@@ -782,24 +784,23 @@ written twice. The rest can be written now.
   `ConsoleLogger(minLevel:)`, writing
   your own logger, what the framework logs and at which level, and why `LogsFilter` never logs
   bodies nor query strings.
-- [ ] **`testing.md`:** `WinterTestClient` (all its methods, `TestResponse.json`), parallel tests
+- [x] **`testing.md`** (its snippets checked by running them): `WinterTestClient` (all its methods, `TestResponse.json`), parallel tests
   without ports, `RequestScope.run` for services, injecting fake clocks (as in `RateLimiter`), and
   when a test with a real server is worth it (`Winter.close(force: true)` in `tearDownAll`).
-- [ ] **`deployment.md`:** compiling with `dart compile exe`, an example multi-stage Dockerfile,
+- [x] **`deployment.md`** (its snippets checked by running them): compiling with `dart compile exe`, an example multi-stage Dockerfile,
   graceful shutdown in Docker/Kubernetes (SIGTERM, `shutdownTimeout` vs
   `terminationGracePeriodSeconds`), health checks, several isolates with `shared: true`, and running
   behind a reverse proxy (`trustedProxies`, HTTPS terminated at the proxy).
-- [ ] **`migration-0.x-to-1.0.md`:** every breaking change of phases 1 to 3 with a before and after,
-  including the move away from shelf (the shelf types that are gone, and how to turn a shelf
-  middleware into a filter).
-- [ ] **Rewritten `README.md`:**
+- [x] ~~**`migration-0.x-to-1.0.md`**~~ → Dropped: 1.0 is a first version (no migration guide, no
+  list of breaking changes).
+- [x] **Rewritten `README.md`:** (without badges until there is CI and a published version)
     - Badges (pub, CI, coverage, license), the value proposition in 3 lines, installation with the
       real version (today it says `^latest_version`) and hello world.
     - A feature table with a link to each doc, a link to the examples, and removing the "not
       production-ready" warning in 1.0.
     - Fix the SDK: the README says `>= 3.12`, `pubspec.yaml` `^3.13.0` and `CLAUDE.md` `^3.12.0`.
     - Tone down the "protect from DDoS" of the rate limiter, it promises more than it does.
-- [ ] **`CONTRIBUTING.md`:** FVM, commands, style (lints), how to add a language, commit convention
+- [x] **`CONTRIBUTING.md`:** FVM, commands, style (lints), how to add a language, commit convention
   (`[module] ...`), and how to update the CHANGELOG and `DECISIONS.md`.
 
 ### 5.3 Dartdoc (API reference on pub.dev)
@@ -817,7 +818,7 @@ The current 4 are fine. Missing:
 
 - [x] `05_validation_object_mapper`: nested DTOs, lists, `Map<String, T>`, custom serializers and a
   422 response (after 2.1 and 2.2). → Done in 3.2 (it found that `enumByName` inside a list was a
-  `Deserializer<Enum>`, `DECISIONS.md` §12.5).
+  `Deserializer<Enum>`, `DECISIONS.md` §2).
 - [ ] `06_files`: multipart, static files and cookies (once they exist).
 - [x] `07_production`: `.env`, JSON logger, request id, health check, Dockerfile and graceful
   shutdown with `onShutdown` closing a "database". → Done in 3.2.
@@ -862,7 +863,7 @@ The current 4 are fine. Missing:
 
 ### 6.4 Release
 
-1. [ ] `0.2.0` (or `1.0.0-dev.x`) with phases 1 to 3: all the breaking changes together.
+1. [ ] `1.0.0-dev.x` with phases 1 to 3, a first preview.
 2. [ ] `1.0.0-rc.1` with phase 4 🔴 and the documentation. Use it in a real project for a few weeks.
 3. [ ] Fix what comes up and publish `1.0.0`: git tag `v1.0.0`, CHANGELOG with the date, and an
    announcement (Reddit r/dartlang, Dart Discord, X).
