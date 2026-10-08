@@ -11,8 +11,8 @@ README: once adopted, delete `todo.md` and link this file from the README.
 
 > **Decision (2026-10-08): no release for now.** Phases 1 to 6.3 are done, but instead of
 > publishing a release candidate, everything still pending is finished first, starting with
-> **4.3** (in the order given there). The release (6.4) comes after that; the CI (6.1) stays
-> postponed.
+> **4.3** (in the order given there), and then `example/` is reorganized by topic (5.4). The
+> release (6.4) comes after that; the CI (6.1) stays postponed.
 
 ---
 
@@ -885,6 +885,26 @@ The current 4 are fine. Missing:
   found that `TestResponse` could not read a binary body (now `bodyBytes`).
 - [x] `07_production`: `.env`, JSON logger, request id, health check, Dockerfile and graceful
   shutdown with `onShutdown` closing a "database". → Done in 3.2.
+- [x] `08_request_bodies`: one endpoint for each kind of body (the tabs of Postman), with its
+  `curl`.
+- [ ] **Reorganize `example/` by topic** (decided 2026-10-08): many small examples, each about one
+  case, instead of a few that mix many features. Done after the features of 4.3, so the cases
+  cover all of them.
+  - **One package per topic, one file per case**: `example/<topic>/` with its `pubspec.yaml`, a
+    README with a table (case → file → what it shows → `curl`), `bin/<case>.dart` (a server of
+    its own, 20-60 lines, `dart run bin/<case>.dart`, port 8080) and `test/<case>_test.dart`
+    (in memory). Not a package per case: tens of `pubspec.yaml`, slower to check, `../../../`
+    paths and repeated boilerplate.
+  - **Topics** (to be refined): `validation/` (basic, nested, lists and maps, async rules, custom
+    validator, translated messages), `bodies/` (none, JSON, text/XML, urlencoded, form-data,
+    binary, GraphQL, streamed upload), `object_mapper/` (toJson, adapters, enums, map keys, typed
+    fields, PATCH, unknown fields), `routing/` (basic, params, nested routes, static files,
+    health), `security/` (auth filter, rules, CORS, rate limit), `di/`, `sse/`, `testing/`.
+  - **A few complete apps** that combine systems on purpose, in `example/apps/`: today's
+    `03_auth_security` (JWT), `06_files` (gallery) and `07_production`. The cases of 01, 02, 04,
+    05 and 08 move to the topics.
+  - `example/README.md` stays the index (it's what pub.dev shows), and the guides of `doc/` link
+    to the file of each case.
 
 ---
 
