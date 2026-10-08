@@ -1,0 +1,15 @@
+name: orders_example
+description: Nested DTOs, custom serializers, snake_case JSON and nested validation with Winter.
+publish_to: 'none'
+version: 1.0.0
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  winter:
+    path: ../../
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.24.0
