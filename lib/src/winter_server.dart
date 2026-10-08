@@ -484,11 +484,12 @@ class Winter {
       scope,
       () async {
         try {
-          return await _runPipeline(
+          final ResponseEntity response = await _runPipeline(
             requestEntity: requestEntity,
             router: router,
             globalFilterConfig: globalFilterConfig,
           );
+          return _checkHeaders(requestEntity, response);
         } finally {
           ///The callbacks of `scope.onComplete` (the scoped dependencies are disposed there)
           await scope.complete();
@@ -513,6 +514,34 @@ class Winter {
     }
     return response;
   }
+
+  /// A header that `dart:io` would refuse (a line break or another control character, a
+  /// character that isn't ASCII, a name that isn't a token) makes the response unsendable: the
+  /// client would get it broken, and a line break taken from the request is a header injection.
+  /// It's a bug of the app, so the answer is a 500 and the error is logged (the value never is).
+  static ResponseEntity _checkHeaders(
+    RequestEntity request,
+    ResponseEntity response,
+  ) {
+    for (final MapEntry(key: name, value: values)
+        in response.headersAll.entries) {
+      final bool validName = _headerName.hasMatch(name);
+      if (validName && values.every(_headerValue.hasMatch)) continue;
+      logger.error(
+        'The response of ${request.method} ${request.requestedUri.path} has '
+        '${validName ? 'an invalid value in the header $name' : 'a header with an invalid name'} '
+        '(a line break, a control character or a character that is not ASCII): '
+        'answered with a 500',
+      );
+      return internalServerErrorResponse();
+    }
+    return response;
+  }
+
+  static final RegExp _headerName = RegExp(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$");
+
+  /// A tab and the visible ASCII characters (and DEL, which `dart:io` accepts)
+  static final RegExp _headerValue = RegExp(r'^[\t\x20-\x7F]*$');
 
   /// Routing, filters and handler of [requestEntity], with the exception handler
   static Future<ResponseEntity> _runPipeline({

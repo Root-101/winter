@@ -291,7 +291,7 @@ class RequestEntity {
     if (mimeType != null && !json && mimeType != MediaType.textPlain.mimeType) {
       throw UnsupportedMediaTypeException(
         detail:
-            'Unsupported Content-Type $mimeType, '
+            'Unsupported Content-Type ${_shown(mimeType)}, '
             'expected ${MediaType.applicationJson.mimeType}',
       );
     }
@@ -350,7 +350,7 @@ class RequestEntity {
     throw UnsupportedMediaTypeException(
       detail: mimeType == null
           ? 'Missing Content-Type, expected $expected'
-          : 'Unsupported Content-Type $mimeType, expected $expected',
+          : 'Unsupported Content-Type ${_shown(mimeType)}, expected $expected',
     );
   }
 
@@ -374,7 +374,7 @@ class RequestEntity {
       throw UnsupportedMediaTypeException(
         detail: mimeType == null
             ? 'Missing Content-Type, expected $expected'
-            : 'Unsupported Content-Type $mimeType, expected $expected',
+            : 'Unsupported Content-Type ${_shown(mimeType)}, expected $expected',
       );
     }
     final String boundary = multipartBoundary(headers[HttpHeader.contentType]!);
@@ -383,6 +383,13 @@ class RequestEntity {
 
   static const String _invalidForm =
       'The body is not a valid application/x-www-form-urlencoded form';
+
+  /// A `Content-Type` sent by the client, as an error shows it: cut to 100 characters
+  static String _shown(String? mimeType) => mimeType == null
+      ? ''
+      : mimeType.length <= 100
+      ? mimeType
+      : '${mimeType.substring(0, 100)}...';
 
   static bool _isJson(String? mimeType) =>
       mimeType == MediaType.applicationJson.mimeType ||

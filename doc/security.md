@@ -375,6 +375,10 @@ RateLimiterFilter.fromRateLimiter(
 - Secrets (the key of the JWTs) from the environment: `env.require<String>('JWT_SECRET')`.
 - Never log tokens, passwords nor bodies (`LoggingFilter` doesn't), and `sensitive: true` on the
   validation of secret fields, so their value never ends in a violation.
+- A reverse proxy in front of the app (nginx, a load balancer) for what `dart:io` doesn't limit:
+  slow clients that send their headers byte by byte, the size of the headers (`dart:io` accepts
+  tens of KB), and the number of connections per client.
+- `ServerConfig.requestTimeout` so a slow upload or a stuck handler can't hold a request forever.
 
 ## Typical mistakes and limitations
 
@@ -388,3 +392,7 @@ RateLimiterFilter.fromRateLimiter(
 - **One rate limit for several instances.** The default store is per process; use a shared store.
 - There are no sessions, CSRF protection nor OAuth flows: they belong to your app or a package.
 - Only roles and permissions: an "authority" is `hasRole(x) | hasPermission(x)`.
+- **A response header with a line break or a character that isn't ASCII** (a `Location` or a
+  `Content-Disposition` built from the request) is a 500: `dart:io` can't send it, and a line break
+  would be a header injection. Validate the value, and encode a file name that isn't ASCII
+  (`filename*=UTF-8''${Uri.encodeComponent(name)}`).

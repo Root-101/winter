@@ -214,6 +214,13 @@ Guide: [`doc/security.md`](doc/security.md).
   so per isolate and per process; a shared store like Redis implements the same interface).
   `maxRequests < 1` or a non positive window is an `ArgumentError`. The client is its IP; behind a
   proxy `trustedProxies` reads `X-Forwarded-For`, never trusted without it.
+- **Response headers are checked before they're sent**: a value with a line break, another control
+  character or a character that isn't ASCII, or a name that isn't a token, is a 500 with the error
+  logged (never the value). `dart:io` refuses those headers, so the response would leave broken and
+  silent; and a line break taken from the request (a `Location` built from a query) is a header
+  injection. The check is in the pipeline, so `WinterTestClient` answers the same.
+- **What the client sent is never echoed whole**: an error names a param or a field, not its value,
+  and the `Content-Type` of a 415 is cut to 100 characters.
 
 ## 9. Router and filters
 
