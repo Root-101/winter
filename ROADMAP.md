@@ -675,8 +675,10 @@ first, small and independent; then the new features, from the most used to the l
   reading the body.
 - [ ] **Absent vs `null`** for partial updates (PATCH): today a missing field and a `null` one are
   the same; `body<Map<String, dynamic>>()` is the workaround.
-- [ ] **Reject unknown fields** (optional, against mass assignment): needs to know which keys the
-  `fromJson` read (see the typed field access above).
+- [x] **Reject unknown fields** (optional, against mass assignment): needs to know which keys the
+  `fromJson` read (see the typed field access above). → `ObjectMapper(rejectUnknownFields: true)`, and
+  per type in `Deserializer.json`: the map given to the `fromJson` records the keys read, so it
+  works with any `fromJson` (also the generated ones). Example 05 turns it on.
 - [x] **Map keys that are not `String`** (`Map<int, T>`, `Map<Status, T>`): convert the key from
   its text. → `deserializer.mapWithKeys<K>()`: `int`, `double`, `num` and `bool`
   parsed, any other key through its own deserializer. Writing them already worked.

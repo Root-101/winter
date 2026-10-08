@@ -180,6 +180,8 @@ class OrdersApp {
   static ObjectMapper objectMapper() => ObjectMapper(
     fieldNaming: FieldNaming.snakeCase,
     includeNulls: false,
+    // A key the fromJson never reads ("is_paid": true, a typo) is a 400
+    rejectUnknownFields: true,
     adapters: [
       // Both directions of a type written as text: `"12.50 EUR"`
       JsonAdapter<Money>.string(
