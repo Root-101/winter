@@ -154,6 +154,7 @@ fails, the connection is closed and it's logged at debug: the server goes on.
 
 ### How a response is written
 
+The status line has the reason phrase of `StatusCode` (`HTTP/1.1 422 Unprocessable Entity`).
 `HEAD`, `204` and `304` responses never have a body (a `HEAD` keeps the `Content-Length` of its
 `GET`). Every response has a `Date`, and no `Server` nor `X-Powered-By` header. With
 `ServerConfig(autoCompress: true)` a response is gzipped for a client that accepts it.

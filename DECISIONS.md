@@ -1042,6 +1042,11 @@ are added instead of replacing all of them.
 
 `writeResponse` (public, for a server of the app):
 
+- The status line has the reason phrase of `StatusCode` (`422 Unprocessable Entity`). `dart:io`
+  alone only knows some codes and sent `422 Status 422` (the problem of shelf issue #449). A code
+  that `StatusCode` doesn't know keeps the one of `dart:io`. Clients should ignore it (RFC 9110),
+  and the `title` of a Problem Details has the same text, but Postman, curl and proxy logs show it.
+
 - A `Content-Length` for bytes, chunked for a stream, which is sent as it's produced
   (`bufferOutput: false`, for Server-Sent Events). `dart:io` sends the headers with the first
   chunk.
