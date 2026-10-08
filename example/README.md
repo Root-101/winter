@@ -48,6 +48,11 @@ This directory contains independent examples demonstrating the core features and
     - c) **Security behind a proxy**: rate limit by client IP with `trustedProxies`, CORS and HSTS from the environment.
     - d) **Graceful shutdown & Docker**: `onShutdown`, a "database" closed by its `onDispose`, and a native `scratch` image.
 
+8.  **[08_request_bodies](./08_request_bodies)**: Every kind of request body, one endpoint each.
+    - a) **The tabs of Postman**: none, raw (JSON, Text, XML, HTML, JavaScript), x-www-form-urlencoded, form-data, binary and GraphQL.
+    - b) **The method for each one**: `body<T>()`, `body<String>()`, `formData()`, `bytes()`, with the errors of a wrong body (400, 415, 422, 413).
+    - c) **A `curl` per kind** in its README.
+
 ## How to run an example
 
 Each example is a standalone Dart project. To run one:

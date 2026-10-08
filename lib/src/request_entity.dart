@@ -258,14 +258,35 @@ class RequestEntity {
     );
   }
 
-  /// The body as a stream of bytes. It can be read once: after it (or after [readAsString] or
-  /// [body]) only [body] works, from its cache.
+  /// The body as a stream of bytes, as it arrives (a big upload to a file). It can be read once:
+  /// after it (or after [readAsString]) neither [body], [bytes] nor [formData] work. Use [bytes]
+  /// to have it whole and cached.
   Stream<List<int>> read() => _body.read();
 
+  /// The whole body as bytes: a binary body (a file, an image, a format of its own), whatever its
+  /// `Content-Type`. Read once and cached like [body] (they share the cache, so it can be called
+  /// many times, with [body] too), up to `ServerConfig.maxBodySize` (a 413 over it).
+  ///
+  /// ```dart
+  /// final Uint8List image = await request.bytes();
+  /// ```
+  Future<Uint8List> bytes() async => await _body.bytes() as Uint8List;
+
   /// The body as text, decoded with [encoding] (default: the charset of the `Content-Type`, or
-  /// UTF-8). Like [read], it can be called once.
-  Future<String> readAsString([Encoding? encoding]) =>
-      (encoding ?? this.encoding ?? utf8).decodeStream(read());
+  /// UTF-8). Like [read], it can be called once; `body<String>()` is the cached form. Bytes that
+  /// are not text in that encoding are a 400 ([BadRequestException]).
+  Future<String> readAsString([Encoding? encoding]) async {
+    final Encoding textEncoding = encoding ?? this.encoding ?? utf8;
+    try {
+      return await textEncoding.decodeStream(read());
+    } on FormatException {
+      throw _notText(textEncoding);
+    }
+  }
+
+  static BadRequestException _notText(Encoding encoding) => BadRequestException(
+    detail: 'The body is not valid ${encoding.name} text',
+  );
 
   /// Get the body of the request, decoded as JSON with [objectMapper] (default: the global `om`,
   /// see [ObjectMapper.decode]).
@@ -274,7 +295,10 @@ class RequestEntity {
   ///   any other is a 415 ([UnsupportedMediaTypeException]). `text/plain` is accepted because
   ///   `package:http` and `fetch()` send it for a String body when no header is given.
   /// - `body<String>()` decodes a JSON string (`"hello"` → `hello`) when the `Content-Type` is
-  ///   JSON, and returns the text as it is otherwise.
+  ///   JSON, and returns the text as it is otherwise (any `Content-Type`: XML, HTML, CSV...); bytes
+  ///   that are not text in the charset of the request are a 400.
+  /// - `body<Uint8List>()` returns the bytes as they came, whatever the `Content-Type` (see
+  ///   [bytes]).
   /// - With [validate] (the default), a [Validatable] body, or a list of them, is validated: a
   ///   failure throws a [ValidationException] (422). Use `validate: false` to read it without
   ///   validating (ex: a partial update).
@@ -286,8 +310,15 @@ class RequestEntity {
     final ObjectMapper mapper = objectMapper ?? Winter.context.objectMapper;
     final Encoding encoding = this.encoding ?? utf8;
     final bool json = _isJson(mimeType);
+    if (T == Uint8List || T == _typeOf<Uint8List?>()) return await bytes() as T;
     if (T == String || T == _typeOf<String?>()) {
-      if (!json) return await _body.text(encoding) as T;
+      if (!json) {
+        try {
+          return await _body.text(encoding) as T;
+        } on FormatException {
+          throw _notText(encoding);
+        }
+      }
     } else if (mimeType != null &&
         !json &&
         mimeType != MediaType.textPlain.mimeType) {
