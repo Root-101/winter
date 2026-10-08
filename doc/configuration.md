@@ -136,13 +136,21 @@ adds yours on top of them (handy in tests).
 | `autoCompress`    | `false`        | gzip the responses for a client that accepts it (a stream is never compressed) |
 | `idleTimeout`     | 120 seconds    | How long an idle keep-alive connection stays open; `null` keeps them |
 | `securityContext` | —              | Serve HTTPS with this certificate and key                         |
+| `requestTimeout`  | —              | A response that takes longer is a 503; `null` (default) for no limit |
 
 - It's `const`: `const ServerConfig(port: 9000)`.
 - `ServerConfig.fromEnv(env)` reads `PORT` and `HOST`, the variables that Cloud Run, Heroku,
   Render and Kubernetes set, and takes the other options (and the defaults of `port`/`host`) as
   parameters.
 - `Winter.start` validates it before opening the port: a port out of `0-65535`, a negative
-  `maxBodySize`, `shutdownTimeout` or `idleTimeout`, or an empty host, is an `ArgumentError`.
+  `maxBodySize`, `shutdownTimeout` or `idleTimeout`, a `requestTimeout` that isn't positive, or an
+  empty host, is an `ArgumentError`.
+- `requestTimeout` times the filters and the handler, reading the body included, but not sending
+  the response (a stream of Server-Sent Events goes on). After it, the client gets a 503 Problem
+  Details (with the CORS headers) and a warning is logged; the request no longer holds a graceful
+  shutdown. Dart can't stop the handler: it goes on in the background, its result is ignored and
+  a late error is logged. Leave room for the slowest upload of the app.
+  `WinterTestClient.build(requestTimeout: ...)` takes it too.
 - HTTPS: usually the proxy in front of the app terminates TLS. To serve it from the app:
 
   ```dart

@@ -142,6 +142,7 @@ class Winter {
     FilterConfig nonNullGlobalFilterConfig = _globalFilters(
       nonNullSecurityConfig,
       globalFilterConfig,
+      nonNullConfig.requestTimeout,
     );
 
     final _InFlightRequests inFlightRequests = _InFlightRequests();
@@ -323,18 +324,20 @@ class Winter {
   ///
   /// [start] uses it, and tests can call it directly (see `WinterTestClient`):
   /// it's the same code that handles the requests of a real server. It never throws: an error
-  /// is a response.
+  /// is a response. [maxBodySize] and [requestTimeout] are those of [ServerConfig].
   static RequestHandler buildHandler({
     required BaseRouter router,
     FilterConfig? globalFilterConfig,
     SecurityConfig? securityConfig,
     int? maxBodySize = defaultMaxBodySize,
+    Duration? requestTimeout,
   }) {
     return _buildHandler(
       router: router,
       globalFilterConfig: _globalFilters(
         securityConfig ?? SecurityConfig(),
         globalFilterConfig,
+        requestTimeout,
       ),
       maxBodySize: maxBodySize,
     );
@@ -401,6 +404,7 @@ class Winter {
   static FilterConfig _globalFilters(
     SecurityConfig securityConfig,
     FilterConfig? globalFilterConfig,
+    Duration? requestTimeout,
   ) {
     final corsConfig = securityConfig.cors();
     final securityHeaders = securityConfig.securityHeaders;
@@ -408,6 +412,7 @@ class Winter {
       if (corsConfig != null) CorsFilter(config: corsConfig),
       if (securityHeaders != null)
         SecurityHeadersFilter(config: securityHeaders),
+      if (requestTimeout != null) _RequestTimeoutFilter(requestTimeout),
       ...?globalFilterConfig?.filters,
     ]);
   }
@@ -523,6 +528,31 @@ ResponseEntity<T> addVary<T>(ResponseEntity<T> response, String header) {
     return response;
   }
   return response.copyWith(headers: {HttpHeader.vary: '$current, $header'});
+}
+
+/// [ServerConfig.requestTimeout]: a response that takes longer is a 503. Right after CORS (-100)
+/// and the security headers (-99), so the 503 has their headers, and every other filter (logs,
+/// auth, rate limiter) is timed.
+class _RequestTimeoutFilter extends Filter {
+  final Duration timeout;
+
+  _RequestTimeoutFilter(this.timeout) : super(order: -98);
+
+  @override
+  Future<ResponseEntity> doFilter(RequestEntity request, FilterChain chain) =>
+      // A late result (or error) of the chain is ignored by `timeout`, never uncaught
+      Future<ResponseEntity>.sync(() => chain.doFilter(request)).timeout(
+        timeout,
+        onTimeout: () {
+          logger.warning(
+            'The request ${request.method} ${request.requestedUri.path} took more than '
+            '$timeout, answered with a 503',
+          );
+          throw ServiceUnavailableException(
+            detail: 'The request took too long',
+          );
+        },
+      );
 }
 
 /// Counter of the requests being handled, to know when a server can be closed gracefully

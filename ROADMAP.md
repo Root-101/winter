@@ -571,8 +571,9 @@ cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `
 
 ### 4.2 Operations 🟡
 
-- [ ] **Timeout per request** (`ServerConfig.requestTimeout`): a stuck handler returns a 503 and
-  doesn't hold the graceful shutdown until its timeout.
+- [x] **Timeout per request** (`ServerConfig.requestTimeout`): a stuck handler returns a 503 and
+  doesn't hold the graceful shutdown until its timeout. → Off by default, a filter at order -98
+  (`DECISIONS.md` §10); also in `buildHandler` and `WinterTestClient.build`.
 - [x] Optional **gzip compression** (`HttpServer.autoCompress`, exposed by the server of 3.1).
   → Done in 3.1: `ServerConfig.autoCompress`.
 - [ ] **Health check:** `Route.health('/health')` or a documented example (needed for Docker and

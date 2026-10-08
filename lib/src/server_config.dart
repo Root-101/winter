@@ -16,7 +16,8 @@ const int defaultMaxBodySize = 10 * 1024 * 1024;
 /// ```
 ///
 /// `Winter.start` validates it before opening the port (an [ArgumentError] for a port out of
-/// 0-65535, or a negative [maxBodySize] or [shutdownTimeout]).
+/// 0-65535, a negative [maxBodySize] or [shutdownTimeout], or a [requestTimeout] that isn't
+/// positive).
 class ServerConfig {
   ///Address on which the server listens: `'0.0.0.0'` (default, every IPv4 interface),
   ///`'localhost'`, `'127.0.0.1'`, `'::'`...
@@ -69,6 +70,13 @@ class ServerConfig {
   ///Usually the proxy in front of the app (a load balancer, nginx) terminates TLS instead.
   final SecurityContext? securityContext;
 
+  ///Max time to build the response of a request (the filters and the handler, reading its body
+  ///included). After it the client gets a 503 and the request no longer holds a graceful
+  ///shutdown; the handler can't be stopped, so it goes on in the background and its result is
+  ///ignored. Sending the response is not timed (a stream, like Server-Sent Events, can go on).
+  ///Default `null`: no limit. Leave room for the slow uploads of the app.
+  final Duration? requestTimeout;
+
   /// The configuration of the server
   const ServerConfig({
     this.host = '0.0.0.0',
@@ -81,6 +89,7 @@ class ServerConfig {
     this.autoCompress = false,
     this.idleTimeout = const Duration(seconds: 120),
     this.securityContext,
+    this.requestTimeout,
   });
 
   /// The configuration with the `PORT` and `HOST` of [env], the variables that Cloud Run, Heroku,
@@ -97,6 +106,7 @@ class ServerConfig {
     bool autoCompress = false,
     Duration? idleTimeout = const Duration(seconds: 120),
     SecurityContext? securityContext,
+    Duration? requestTimeout,
   }) => ServerConfig(
     host: env.find<String>('HOST')?.trim() ?? host,
     port: env.find<int>('PORT') ?? port,
@@ -108,6 +118,7 @@ class ServerConfig {
     autoCompress: autoCompress,
     idleTimeout: idleTimeout,
     securityContext: securityContext,
+    requestTimeout: requestTimeout,
   );
 
   /// An [ArgumentError] if a value is out of its range (a `const` constructor can't check it)
@@ -139,6 +150,14 @@ class ServerConfig {
         idleTimeout,
         'idleTimeout',
         'Must be 0 or more (null keeps the connections open)',
+      );
+    }
+    final Duration? requestTimeout = this.requestTimeout;
+    if (requestTimeout != null && requestTimeout <= Duration.zero) {
+      throw ArgumentError.value(
+        requestTimeout,
+        'requestTimeout',
+        'Must be more than 0 (null for no limit)',
       );
     }
   }

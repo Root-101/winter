@@ -279,6 +279,12 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
 - **The server**: `bind` or `bindSecure` (HTTPS with `securityContext`), `shared` isolates,
   `autoCompress` (off: usually the proxy compresses) and `idleTimeout`. The default headers of
   `dart:io` are cleared so the real server and `WinterTestClient` answer the same.
+- **Request timeout** (`ServerConfig.requestTimeout`, off by default: a limit that fits every app
+  doesn't exist, and a slow upload would fail): a filter right after CORS and the security headers
+  (order -98), so the 503 is a Problem Details with their headers and every other filter is timed.
+  A `Future` can't be cancelled: the handler is abandoned, its late result ignored and a late error
+  logged; the response is sent, so the request stops holding the graceful shutdown. Only building
+  the response is timed, not sending it (streams).
 - **`Winter.buildHandler`** returns the pipeline as a `RequestHandler`; `WinterTestClient` calls it
   in memory, so tests run the real pipeline.
 - **Forms and uploads**: `formData()` reads a whole form (`application/x-www-form-urlencoded` or

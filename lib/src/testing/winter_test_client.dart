@@ -27,12 +27,14 @@ class WinterTestClient {
     FilterConfig? globalFilterConfig,
     SecurityConfig? securityConfig,
     int? maxBodySize = defaultMaxBodySize,
+    Duration? requestTimeout,
   }) => WinterTestClient(
     Winter.buildHandler(
       router: router,
       globalFilterConfig: globalFilterConfig,
       securityConfig: securityConfig,
       maxBodySize: maxBodySize,
+      requestTimeout: requestTimeout,
     ),
   );
 
