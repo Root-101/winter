@@ -70,6 +70,20 @@ void main() {
     'decode: om.decode<List<Order>>': () =>
         withDeserializer.decode<List<Order>>(json),
   });
+
+  // What a response and a request do: bytes in UTF-8
+  final List<int> bytes = utf8.encode(json);
+  _compare(iterations, {
+    'bytes: utf8.encode(om.encode(orders))': () =>
+        utf8.encode(withToJson.encode(orders)),
+    'bytes: om.encodeBytes(orders)': () => withToJson.encodeBytes(orders),
+  });
+  _compare(iterations, {
+    'bytes: om.decode(utf8.decode(bytes))': () =>
+        withDeserializer.decode<List<Order>>(utf8.decode(bytes)),
+    'bytes: om.decodeBytes(bytes)': () =>
+        withDeserializer.decodeBytes<List<Order>>(bytes),
+  });
 }
 
 /// Measures every case [iterations] times and prints the time of one run, and its ratio to the

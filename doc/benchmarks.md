@@ -63,6 +63,17 @@ an enum and a list of lines; 291 KB of JSON), against the same work written by h
 | decode: `jsonDecode` + `fromJson` by hand         | 3.38 ms |                 |
 | decode: `om.decode<List<Order>>`                  | 3.50 ms |           x1.03 |
 
+A response and a request are bytes. Winter writes and reads them in UTF-8 directly (the same
+1000 orders, two runs):
+
+| Case                                     | Against the String in between |
+|------------------------------------------|------------------------------:|
+| `om.encodeBytes(orders)`, what a response does | x0.54 - x0.84            |
+| `om.decodeBytes(bytes)`, what `body<T>()` does | x0.75 - x0.80            |
+
+Indenting (`prettyPrint`, on by default) costs: writing these orders indented took about 5 times
+as long as compact, in a separate measure. Turn it off in production for big responses.
+
 The mapper converts what `toJson()` returns (dates, enums, nested objects) in the same pass as
 `jsonEncode`, and caches the rule of each type, so it costs about a tenth more than writing the
 JSON by hand.

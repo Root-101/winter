@@ -989,6 +989,74 @@ void main() {
     });
   });
 
+  group('encodeBytes and decodeBytes: straight to and from UTF-8', () {
+    final Object value = {
+      'name': 'Begoña 😀',
+      'at': DateTime.utc(2026, 1, 2),
+      'status': _Status.paid,
+      'items': [1, 2.5, null, true],
+    };
+
+    test('encodeBytes writes the bytes of encode, compact or indented', () {
+      for (final mapper in [ObjectMapper(), ObjectMapper(prettyPrint: false)]) {
+        expect(mapper.encodeBytes(value), utf8.encode(mapper.encode(value)));
+      }
+      expect(
+        () => ObjectMapper().encodeBytes(Object()),
+        throwsA(isA<MissingSerializerError>()),
+      );
+      expect(
+        () => ObjectMapper().encodeBytes(_BrokenToJson()),
+        throwsA(isA<SerializationException>()),
+      );
+    });
+
+    test('decodeBytes reads what decode reads, with the same errors', () {
+      final mapper = ObjectMapper(
+        deserializers: [Deserializer<_Status>.enumByName(_Status.values)],
+      );
+      final List<int> bytes = utf8.encode('{"name": "Begoña 😀", "n": [1, 2]}');
+
+      expect(
+        mapper.decodeBytes<Map<String, dynamic>>(bytes),
+        mapper.decode<Map<String, dynamic>>(utf8.decode(bytes)),
+      );
+      expect(mapper.decodeBytes<_Status>(utf8.encode('"paid"')), _Status.paid);
+      expect(mapper.decodeBytes<int?>(utf8.encode(' \n\t ')), isNull);
+      for (final List<int> invalid in [
+        utf8.encode(' '),
+        utf8.encode('{"a": '),
+        [0x7B, 0xFF, 0x7D],
+      ]) {
+        expect(
+          () => mapper.decodeBytes<Map<String, dynamic>>(invalid),
+          throwsA(isA<DeserializationFormatException>()),
+          reason: '$invalid',
+        );
+      }
+      expect(
+        () => mapper.decodeBytes<_Status>(utf8.encode('"lost"')),
+        throwsA(isA<DeserializationException>()),
+      );
+    });
+
+    test(
+      'body<T>() of a JSON in another charset still reads its text',
+      () async {
+        final request = RequestEntity(
+          'POST',
+          Uri.parse('http://localhost/'),
+          headers: {
+            HttpHeader.contentType: 'application/json; charset=iso-8859-1',
+          },
+          body: latin1.encode('{"name": "Begoña"}'),
+        );
+
+        expect(await request.body<Map<String, dynamic>>(), {'name': 'Begoña'});
+      },
+    );
+  });
+
   group('Replacing the mapper warns about what is lost', () {
     late List<String> logs;
     late ObjectMapper previous;

@@ -284,19 +284,23 @@ class RequestEntity {
   /// the stream is already consumed.
   Future<T> body<T>({ObjectMapper? objectMapper, bool validate = true}) async {
     final ObjectMapper mapper = objectMapper ?? Winter.context.objectMapper;
-    final String raw = await _body.text(encoding ?? utf8);
+    final Encoding encoding = this.encoding ?? utf8;
     final bool json = _isJson(mimeType);
     if (T == String || T == _typeOf<String?>()) {
-      return json ? mapper.decode<T>(raw) : raw as T;
-    }
-    if (mimeType != null && !json && mimeType != MediaType.textPlain.mimeType) {
+      if (!json) return await _body.text(encoding) as T;
+    } else if (mimeType != null &&
+        !json &&
+        mimeType != MediaType.textPlain.mimeType) {
       throw UnsupportedMediaTypeException(
         detail:
             'Unsupported Content-Type ${_shown(mimeType)}, '
             'expected ${MediaType.applicationJson.mimeType}',
       );
     }
-    final T body = mapper.decode<T>(raw);
+    // UTF-8 (almost always): decoded from the bytes, without building the String first
+    final T body = identical(encoding, utf8)
+        ? mapper.decodeBytes<T>(await _body.bytes())
+        : mapper.decode<T>(await _body.text(encoding));
     if (validate) _validate(body);
     return body;
   }

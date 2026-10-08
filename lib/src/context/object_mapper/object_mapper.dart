@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:winter/winter.dart';
 
@@ -557,6 +558,21 @@ class ObjectMapper {
     }
   }
 
+  /// [encode] straight to UTF-8 bytes, without the intermediate String: what a response sends
+  /// (about a third faster than `utf8.encode(encode(object))`, see `doc/benchmarks.md`)
+  Uint8List encodeBytes(Object? object) {
+    try {
+      return _utf8Encoder.convert(object) as Uint8List;
+    } on JsonUnsupportedObjectError catch (e) {
+      throw _serializationError(e.cause ?? e);
+    }
+  }
+
+  late final JsonUtf8Encoder _utf8Encoder = JsonUtf8Encoder(
+    prettyPrint ? '  ' : null,
+    _encodable,
+  );
+
   late final JsonEncoder _encoder = JsonEncoder(_encodable);
   late final JsonEncoder _prettyEncoder = JsonEncoder.withIndent(
     '  ',
@@ -586,6 +602,33 @@ class ObjectMapper {
     }
     return deserialize<S>(json);
   }
+
+  /// [decode] UTF-8 [bytes] without building the String first (what `body<T>()` does with a JSON
+  /// body in UTF-8). Bytes that are not UTF-8, or not JSON, are a [DeserializationFormatException]
+  /// (400); empty ones are `null` when [S] is nullable.
+  S decodeBytes<S>(List<int> bytes) {
+    if (bytes.every(_isJsonWhitespace)) {
+      if (null is S) return null as S;
+      throw DeserializationFormatException('The body is empty');
+    }
+    final Object? json;
+    try {
+      json = _utf8JsonDecoder.convert(bytes);
+    } on FormatException catch (e) {
+      throw DeserializationFormatException(
+        'The body is not valid JSON',
+        cause: e,
+      );
+    }
+    return deserialize<S>(json);
+  }
+
+  static final Converter<List<int>, Object?> _utf8JsonDecoder = utf8.decoder
+      .fuse(json.decoder);
+
+  /// Space, tab, line feed and carriage return
+  static bool _isJsonWhitespace(int byte) =>
+      byte == 0x20 || byte == 0x09 || byte == 0x0A || byte == 0x0D;
 
   /// Recursively serializes [object] to a JSON value
   /// (null, String, num, bool, List & Map with String keys).
