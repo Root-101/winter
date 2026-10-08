@@ -21,7 +21,7 @@ void main() {
     );
   });
 
-  group('Generic types are found by type, not by name (§2.1)', () {
+  group('Generic types are found by type, not by name (§2)', () {
     Matcher missingDeserializer() => throwsA(
       isA<MissingDeserializerError>().having(
         (e) => e.message,
@@ -142,7 +142,7 @@ void main() {
     });
   });
 
-  group('toJson() without Serializable (§2.2)', () {
+  group('toJson() without Serializable (§2)', () {
     // That's what json_serializable and freezed generate
     test('is serialized with its toJson()', () {
       expect(mapper.serialize(Worker(name: 'W')), {'name': 'W'});
@@ -205,7 +205,7 @@ void main() {
     });
   });
 
-  group('A serializer applies to subtypes (§2.3)', () {
+  group('A serializer applies to subtypes (§2)', () {
     setUp(() {
       mapper.addSerializer(Serializer<_Animal>((animal) => {'kind': 'animal'}));
     });
@@ -234,7 +234,7 @@ void main() {
     });
   });
 
-  group('DateTime (§2.6)', () {
+  group('DateTime (§2)', () {
     test('a local DateTime is serialized in UTC', () {
       final local = DateTime(2026, 1, 1, 10, 30);
 
@@ -262,7 +262,7 @@ void main() {
     });
   });
 
-  group('Deserialization errors (§2.5)', () {
+  group('Deserialization errors (§2)', () {
     final internals = [
       'subtype',
       'type cast',
@@ -373,7 +373,7 @@ void main() {
     });
   });
 
-  group('Strict types (§2.4)', () {
+  group('Strict types (§2)', () {
     test('a JSON string is not a number', () {
       expect(
         () => mapper.decode<Map<String, int>>('{"a":"12"}'),
@@ -463,7 +463,7 @@ void main() {
     });
   });
 
-  group('body<T>() and the Content-Type of the request (§2.7)', () {
+  group('body<T>() and the Content-Type of the request (§2)', () {
     late WinterTestClient client;
 
     setUp(() {
@@ -723,7 +723,7 @@ void main() {
     });
   });
 
-  group('Options (§2.8)', () {
+  group('Options (§2)', () {
     test('includeNulls: false drops the null fields of the objects', () {
       final mapper = ObjectMapper(includeNulls: false);
 

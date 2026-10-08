@@ -160,70 +160,63 @@ void main() {
     expect(Winter.isRunning, isFalse);
   });
 
-  test(
-    'Problem Details keep their names with any fieldNaming (§10.2)',
-    () async {
-      Winter.context.setUp(
-        objectMapper: ObjectMapper(
-          fieldNaming: FieldNaming.kebabCase,
-          deserializers: [
-            Deserializer<_Signup>.json(
-              (json) => _Signup(json['firstName'] as String),
+  test('Problem Details keep their names with any fieldNaming (§4)', () async {
+    Winter.context.setUp(
+      objectMapper: ObjectMapper(
+        fieldNaming: FieldNaming.kebabCase,
+        deserializers: [
+          Deserializer<_Signup>.json(
+            (json) => _Signup(json['firstName'] as String),
+          ),
+        ],
+      ),
+    );
+    addTearDown(() => Winter.context.setUp(objectMapper: ObjectMapper()));
+    final client = WinterTestClient.build(
+      router: WinterRouter(
+        routes: [
+          Route.post(
+            path: '/signup',
+            handler: (request) async =>
+                ResponseEntity.ok(body: await request.body<_Signup>()),
+          ),
+          Route.get(path: '/boom', handler: (request) => throw StateError('x')),
+          Route.get(
+            path: '/conflict',
+            handler: (request) => throw const ApiException(
+              StatusCode.conflict,
+              extensions: {'retryAt': 1},
             ),
-          ],
-        ),
-      );
-      addTearDown(() => Winter.context.setUp(objectMapper: ObjectMapper()));
-      final client = WinterTestClient.build(
-        router: WinterRouter(
-          routes: [
-            Route.post(
-              path: '/signup',
-              handler: (request) async =>
-                  ResponseEntity.ok(body: await request.body<_Signup>()),
-            ),
-            Route.get(
-              path: '/boom',
-              handler: (request) => throw StateError('x'),
-            ),
-            Route.get(
-              path: '/conflict',
-              handler: (request) => throw const ApiException(
-                StatusCode.conflict,
-                extensions: {'retryAt': 1},
-              ),
-            ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
 
-      final invalid = await client.post(
-        '/signup',
-        headers: {'content-type': 'application/json'},
-        body: {'first-name': ''},
-      );
-      final error = await client.get('/boom');
-      final conflict = await client.get('/conflict');
+    final invalid = await client.post(
+      '/signup',
+      headers: {'content-type': 'application/json'},
+      body: {'first-name': ''},
+    );
+    final error = await client.get('/boom');
+    final conflict = await client.get('/conflict');
 
-      final violation =
-          ((jsonDecode(invalid.body) as Map)['violations'] as List).single
-              as Map;
-      expect(violation.keys, containsAll(['fieldName', 'message', 'code']));
-      expect(
-        violation['fieldName'],
-        'first-name',
-        reason: 'the name the client sent',
-      );
-      expect(jsonDecode(error.body) as Map, contains('requestId'));
-      expect(
-        jsonDecode(conflict.body) as Map,
-        contains('retryAt'),
-        reason: 'the extensions of the app, as it gives them',
-      );
-    },
-  );
+    final violation =
+        ((jsonDecode(invalid.body) as Map)['violations'] as List).single as Map;
+    expect(violation.keys, containsAll(['fieldName', 'message', 'code']));
+    expect(
+      violation['fieldName'],
+      'first-name',
+      reason: 'the name the client sent',
+    );
+    expect(jsonDecode(error.body) as Map, contains('requestId'));
+    expect(
+      jsonDecode(conflict.body) as Map,
+      contains('retryAt'),
+      reason: 'the extensions of the app, as it gives them',
+    );
+  });
 
-  group('Content-Type (§10.1)', () {
+  group('Content-Type (§10)', () {
     final client = WinterTestClient.build(router: router());
 
     setUp(() {

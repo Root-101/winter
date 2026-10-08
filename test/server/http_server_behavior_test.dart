@@ -8,7 +8,7 @@ import 'dart:io';
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
-/// The server on `dart:io`, without shelf (DECISIONS.md §11)
+/// The server on `dart:io`, without shelf (DECISIONS.md §10)
 void main() {
   const int port = 9110;
   final Uri base = Uri.parse('http://localhost:$port');

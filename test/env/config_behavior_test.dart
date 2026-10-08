@@ -8,7 +8,7 @@ import 'package:winter/winter.dart';
 
 /// The behavior decided in the review of the configuration (DECISIONS.md §6)
 void main() {
-  group('find and require (§6.1)', () {
+  group('find and require (§6)', () {
     final env = Env(env: {'PORT': '9000', 'EMPTY': '  ', 'NAME': 'winter'});
 
     test('find returns null for a missing or empty variable', () {
@@ -101,7 +101,7 @@ void main() {
     });
   });
 
-  group('Types (§6.2)', () {
+  group('Types (§6)', () {
     final env = Env(
       env: {
         'SECRET': '  pa ss  ',
@@ -214,7 +214,7 @@ void main() {
     });
   });
 
-  group('.env files and profiles (§6.3)', () {
+  group('.env files and profiles (§6)', () {
     late Directory directory;
 
     setUp(() {
@@ -325,7 +325,7 @@ void main() {
     });
   });
 
-  group('ServerConfig (§6.5)', () {
+  group('ServerConfig (§6)', () {
     test('is const, with the defaults', () {
       const config = ServerConfig();
 

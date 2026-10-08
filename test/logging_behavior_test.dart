@@ -17,7 +17,7 @@ void main() {
     addTearDown(() => Winter.context.setUp(logger: const ConsoleLogger()));
   });
 
-  group('The logs never contain the data of a request (§7.1)', () {
+  group('The logs never contain the data of a request (§7)', () {
     final mapper = ObjectMapper(
       deserializers: [
         Deserializer<Duration>(
@@ -49,7 +49,7 @@ void main() {
     });
   });
 
-  group('WinterLogger (§7.2)', () {
+  group('WinterLogger (§7)', () {
     test('every level takes an error, a stack trace and fields', () {
       final error = StateError('x');
       final stackTrace = StackTrace.current;
@@ -90,7 +90,7 @@ void main() {
     });
   });
 
-  group('ConsoleLogger (§7.3)', () {
+  group('ConsoleLogger (§7)', () {
     test('a line with the time in UTC, the level and the fields', () {
       final out = _capture(
         () => const ConsoleLogger().info(
@@ -145,7 +145,7 @@ void main() {
     });
   });
 
-  group('JsonLogger (§7.3)', () {
+  group('JsonLogger (§7)', () {
     Map<String, Object?> line(String output) =>
         jsonDecode(output.trim()) as Map<String, Object?>;
 
@@ -215,7 +215,7 @@ void main() {
     });
   });
 
-  group('The request id (§7.4)', () {
+  group('The request id (§7)', () {
     String? seenInHandler;
     late WinterTestClient client;
 

@@ -12,7 +12,7 @@ void main() {
 
   setUp(() => di = DependencyInjection());
 
-  group('A dependency registered from a nullable variable (§5.1)', () {
+  group('A dependency registered from a nullable variable (§5)', () {
     test('is found by its non nullable type', () {
       final maybe = _maybeService();
       di.put(maybe); // registered as <_Service?>
@@ -36,7 +36,7 @@ void main() {
     });
   });
 
-  group('Exact types (§5.1)', () {
+  group('Exact types (§5)', () {
     test('an implementation is not found by its interface', () {
       di.put(_SqlRepository());
 
@@ -59,7 +59,7 @@ void main() {
     });
   });
 
-  group('putLazy (§5.2)', () {
+  group('putLazy (§5)', () {
     test('creates the instance on the first find, once', () {
       var created = 0;
       di.putLazy<_Service>(() {
@@ -112,7 +112,7 @@ void main() {
     });
   });
 
-  group('putFactory (§5.2)', () {
+  group('putFactory (§5)', () {
     test('creates a new instance on every find', () {
       di.putFactory<_Service>(_Service.new);
 
@@ -121,7 +121,7 @@ void main() {
     });
   });
 
-  group('putScoped (§5.2, §5.3)', () {
+  group('putScoped (§5, §5)', () {
     test('one instance per request, disposed when it ends', () async {
       final disposed = <_UnitOfWork>[];
       Winter.context.setUp(dependencyInjection: di);
@@ -198,7 +198,7 @@ void main() {
     );
   });
 
-  group('onDispose and disposeAll (§5.3)', () {
+  group('onDispose and disposeAll (§5)', () {
     test('in reverse order of registration, only what was created', () async {
       final events = <String>[];
       di
@@ -274,7 +274,7 @@ void main() {
     });
   });
 
-  group('null values and isRegistered (§5.4)', () {
+  group('null values and isRegistered (§5)', () {
     test('a null value can be registered and found', () {
       di.put<String?>(null, tag: 'optional');
 
@@ -291,7 +291,7 @@ void main() {
     });
   });
 
-  group('Scoped dependencies and the lifetime of the request (§5.6)', () {
+  group('Scoped dependencies and the lifetime of the request (§5)', () {
     test('a lazy singleton that depends on a scoped one is a StateError', () {
       di
         ..putScoped<_UnitOfWork>(_UnitOfWork.new)
@@ -383,7 +383,7 @@ void main() {
     });
   });
 
-  group('Use cases (§5.2, §5.3)', () {
+  group('Use cases (§5, §5)', () {
     test('tags with every kind of registration', () {
       di
         ..putLazy<_Service>(_Service.new, tag: 'lazy')
