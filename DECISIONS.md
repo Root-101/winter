@@ -776,3 +776,84 @@ Every request has an id, always (no filter to add):
 
 It keeps two lines per request, `REQUEST: GET /users/1` and `RESPONSE: GET /users/1 => 200
 (12 ms)`, both in info; both carry the request id now, so they can be matched.
+
+## 8. Security
+
+**Status:** decided and implemented on 2026-10-07 in the review of phase 2.7 of `ROADMAP.md`.
+The behavior is tested in `test/security/security_behavior_test.dart`, and the guide is
+`doc/security.md`.
+
+### 8.1 CORS
+
+- **`'*'` with `allowCredentials: true` logs a warning** when the server is built, and keeps
+  echoing the origin. With credentials, a browser rejects `'*'`, so the origin of the request is
+  echoed: every website can then read the API with the cookies of the user. The warning says to
+  list the origins.
+- **`Vary: Origin` whenever the response depends on the origin**: with a list of origins, for the
+  allowed ones but also for the others and for requests without `Origin` (it was only added to an
+  allowed one, so a cache could give a response prepared for one origin to another).
+- **`X-Request-Id` is always exposed** (`Access-Control-Expose-Headers`), with the
+  `exposedHeaders` of the config: a web client can read the id of a response to report it.
+
+### 8.2 `AuthFilter`
+
+- **A 401 has a `WWW-Authenticate` challenge**, as RFC 9110 requires: `Bearer` by default,
+  `AuthFilter(challenge: 'Basic realm="api"')` for another scheme.
+- **Roles and permissions, no authorities**: `authorities` was only the union of the two, and
+  `hasAuthority('x')` is `hasRole('x') | hasPermission('x')`. Breaking: `authorities`,
+  `hasAuthority` and `AuthorityRule` are removed.
+
+### 8.3 A typed principal
+
+`requestPrincipal<User>()` reads the principal of the request in progress from the
+`RequestScope` (from any code, like `requestLocale`), and `request.principal<User>()` does the same
+with the request at hand; both are the same object.
+
+- They return the `User`, or throw an `UnauthorizedException` (401) when nobody is authenticated:
+  a handler behind an `AuthFilter` needs no cast and no `!`.
+- `requestPrincipalOrNull<User>()` / `request.principalOrNull<User>()` for a public route.
+- A principal of another type is a `StateError` (a bug of the app, not of the client).
+
+### 8.4 Rules that see the request
+
+`AuthorizationRule.evaluate(Authentication authentication, RequestEntity request)`, and a rule in
+one line with `rule((auth, request) => ...)`:
+
+```dart
+AuthFilter(
+  rules: hasRole('admin') |
+      rule((auth, request) => request.pathParams['id'] == auth.name),
+)
+```
+
+- *Why*: "only the owner sees `/users/{id}`" needed the request, so it was checked in every
+  handler.
+- `toString` of a rule is public and overridable (`describe()`): a rule of the app broke the
+  `toString` of every rule combined with it, and of its `AuthFilter`, because `_toExpression` was
+  private. Breaking for a custom rule: `evaluate` takes the request.
+
+### 8.5 Security headers
+
+- `dart:io` added three headers to every response of the real server, but not to the ones of
+  `WinterTestClient`. They are replaced by Winter's own, the same in both:
+  `X-Content-Type-Options: nosniff` and `X-Frame-Options: DENY` stay on by default (an API is
+  never meant to be framed), and `X-XSS-Protection` is dropped (obsolete, and it opened XSS in old
+  browsers).
+- `SecurityConfig(securityHeaders: const SecurityHeaders())` adds the rest, like the CORS filter:
+  `Referrer-Policy: no-referrer`, a `Content-Security-Policy` for an API
+  (`default-src 'none'; frame-ancestors 'none'`), and `Strict-Transport-Security` only with
+  `hsts: true` (it must only be sent when the API is served over HTTPS).
+
+### 8.6 Rate limiter
+
+- `RateLimiter(maxRequests, window)` rejects a `maxRequests` below 1 or a `window` that is not
+  positive with an `ArgumentError`: with `0`, every request was a 500 (`logs.first` of an empty
+  list).
+- The algorithm stores its logs through a `RateLimiterStore` interface; the in-memory one comes
+  with Winter, and a shared one (Redis) can be added in 1.x without a breaking change. For that the
+  store is **asynchronous** (a Redis call is), and so are the methods of `RateLimiter`
+  (`Future<RateLimitResult> check(id)`, one call that records the request and gives the remaining,
+  reset and wait). Breaking: the synchronous `allowRequest`/`getRemaining`/... are replaced.
+- *Documented*: the in-memory limit is per isolate and per process (four instances allow four times
+  the limit), and by IP it needs `trustedProxies` behind a proxy (or every client shares the IP of
+  the proxy).

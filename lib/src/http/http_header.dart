@@ -257,4 +257,19 @@ class HttpHeader {
   /// The id of a request (not standard, but widely used): Winter reads it from the request, or
   /// generates one, and sends it back in the response (see `requestId`).
   static final String xRequestId = 'X-Request-Id';
+
+  /// Stops a browser from guessing the type of a response (`nosniff`)
+  static final String xContentTypeOptions = 'X-Content-Type-Options';
+
+  /// Whether a browser may show the response in a frame (`DENY`)
+  static final String xFrameOptions = 'X-Frame-Options';
+
+  /// How much of the URL a browser sends as the `Referer` of the next request
+  static final String referrerPolicy = 'Referrer-Policy';
+
+  /// What a browser may load for the response
+  static final String contentSecurityPolicy = 'Content-Security-Policy';
+
+  /// HSTS: the browser only uses HTTPS for the domain
+  static final String strictTransportSecurity = 'Strict-Transport-Security';
 }

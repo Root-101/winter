@@ -6,7 +6,19 @@ import 'package:winter/winter.dart';
 class CorsFilter extends Filter {
   final CorsConfig config;
 
-  CorsFilter({this.config = const CorsConfig(), super.order = -100});
+  CorsFilter({this.config = const CorsConfig(), super.order = -100}) {
+    if (config.allowCredentials && config.allowedOrigins.contains('*')) {
+      logger.warning(
+        "CORS allows '*' with credentials: the origin of every request is echoed, so any "
+        'website can read the API with the cookies of its user. List the allowed origins.',
+      );
+    }
+  }
+
+  /// With '*' and no credentials the answer is the same for every origin; otherwise it
+  /// depends on the `Origin` of the request (even when it's missing or not allowed)
+  bool get _dependsOnOrigin =>
+      !config.allowedOrigins.contains('*') || config.allowCredentials;
 
   @override
   FutureOr<ResponseEntity> doFilter(
@@ -46,6 +58,10 @@ class CorsFilter extends Filter {
 
     final origin = request.headers[HttpHeader.origin];
 
+    ///'Vary: Origin' for every response that depends on it, so a cache never gives a response
+    ///prepared for one origin to another (a disallowed one, or a request without Origin)
+    if (_dependsOnOrigin) headers[HttpHeader.vary] = HttpHeader.origin;
+
     if (origin == null) return headers;
 
     if (config.allowedOrigins.contains('*') && !config.allowCredentials) {
@@ -55,17 +71,17 @@ class CorsFilter extends Filter {
       ///Browsers reject '*' with credentials, so the origin is echoed instead
       ///(and 'Vary: Origin' tells caches that the response depends on it)
       headers[HttpHeader.accessControlAllowOrigin] = origin;
-      headers[HttpHeader.vary] = HttpHeader.origin;
     }
 
     if (config.allowCredentials) {
       headers[HttpHeader.accessControlAllowCredentials] = 'true';
     }
 
-    if (config.exposedHeaders.isNotEmpty) {
-      headers[HttpHeader.accessControlExposeHeaders] = config.exposedHeaders
-          .join(', ');
-    }
+    ///The id of the request is always readable, so a web client can report it
+    headers[HttpHeader.accessControlExposeHeaders] = {
+      HttpHeader.xRequestId,
+      ...config.exposedHeaders,
+    }.join(', ');
 
     if (request.method.toLowerCase() == HttpMethod.options.name.toLowerCase()) {
       headers[HttpHeader.accessControlAllowMethods] = config.allowedMethods

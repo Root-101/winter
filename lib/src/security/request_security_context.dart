@@ -43,8 +43,6 @@ class Authentication<T> {
 
   String get name => principal.toString();
 
-  Set<String> get authorities => Set.unmodifiable([...roles, ...permissions]);
-
   Authentication<T> copyWith({
     T? principal,
     bool? authenticated,

@@ -1,9 +1,17 @@
 import 'dart:collection';
 
-/// A rate limiter that implements the Sliding Window Log algorithm.
+/// A rate limiter that implements the Sliding Window Log algorithm: no more than
+/// [maxRequests] requests of the same id within any rolling [window].
 ///
-/// It tracks the exact timestamp of each request and ensures that
-/// no more than [maxRequests] occur within any rolling [window].
+/// ```dart
+/// final limiter = RateLimiter(100, const Duration(minutes: 1));
+/// final result = await limiter.check(clientIp);
+/// if (!result.allowed) throw TooManyRequestsException(retryAfter: result.retryAfter.inSeconds);
+/// ```
+///
+/// The requests are kept in a [RateLimiterStore]. The default one is in memory, so the limit is
+/// **per isolate and per process**: four instances of the server allow four times the limit. A
+/// shared store (Redis) can implement the same interface.
 class RateLimiter {
   /// Maximum number of requests allowed within the given [window].
   final int maxRequests;
@@ -11,120 +19,177 @@ class RateLimiter {
   /// The duration of the sliding window.
   final Duration window;
 
-  /// Internal storage for request timestamps per unique identifier.
-  /// Uses [Queue] for O(1) removal of expired timestamps from the front.
-  final Map<String, Queue<DateTime>> _requestsLog = {};
-
-  /// Last time the inactive ids were purged automatically.
-  late DateTime _lastPurge = _clock();
+  /// Where the requests are kept
+  final RateLimiterStore store;
 
   /// Source of the current time, `DateTime.now` by default.
   /// Tests can pass a fake clock to control the time without waiting.
   final DateTime Function() _clock;
 
-  RateLimiter(this.maxRequests, this.window, {DateTime Function()? clock})
-    : _clock = clock ?? DateTime.now;
-
-  /// Checks if a request from [requestId] is allowed.
-  ///
-  /// If the request is allowed, it is automatically recorded.
-  /// Returns `true` if the request is within limits, `false` otherwise.
-  bool allowRequest(String requestId) {
-    final now = _clock();
-    _autoPurge(now);
-    final logs = _getAndCleanLogs(requestId, now);
-
-    if (logs.length < maxRequests) {
-      logs.addLast(now);
-      return true;
+  /// A limiter of [maxRequests] (1 or more) per [window] (positive): an [ArgumentError] otherwise.
+  /// Without [store], an [InMemoryRateLimiterStore].
+  RateLimiter(
+    this.maxRequests,
+    this.window, {
+    RateLimiterStore? store,
+    DateTime Function()? clock,
+  }) : store = store ?? InMemoryRateLimiterStore(),
+       _clock = clock ?? DateTime.now {
+    if (maxRequests < 1) {
+      throw ArgumentError.value(
+        maxRequests,
+        'maxRequests',
+        'Must be 1 or more',
+      );
     }
-
-    return false;
-  }
-
-  /// Calculates how long a client should wait before their next request
-  /// might be allowed.
-  ///
-  /// Returns [Duration.zero] if a request would be allowed immediately.
-  Duration getWaitDuration(String requestId) {
-    final now = _clock();
-    final logs = _getAndCleanLogs(requestId, now);
-
-    if (logs.length < maxRequests) {
-      return Duration.zero;
+    if (window <= Duration.zero) {
+      throw ArgumentError.value(window, 'window', 'Must be positive');
     }
-
-    // The next slot opens up when the oldest request falls out of the window.
-    final oldestRequest = logs.first;
-    final nextAvailableAt = oldestRequest.add(window);
-    final wait = nextAvailableAt.difference(now);
-
-    return wait.isNegative ? Duration.zero : wait;
   }
 
-  /// Calculates how long until the oldest request of [requestId] leaves the window,
-  /// this is, when the remaining requests will increase again.
-  ///
-  /// Returns [Duration.zero] if there are no requests in the current window.
-  Duration getResetDuration(String requestId) {
-    final now = _clock();
-    final logs = _getAndCleanLogs(requestId, now);
+  /// Records a request of [id] if it's allowed, and returns the state after it
+  Future<RateLimitResult> check(String id) =>
+      store.hit(id, limit: maxRequests, window: window, now: _clock());
 
-    if (logs.isEmpty) {
-      return Duration.zero;
-    }
+  /// The state of [id] without recording a request: whether one would be allowed now
+  Future<RateLimitResult> peek(String id) => store.hit(
+    id,
+    limit: maxRequests,
+    window: window,
+    now: _clock(),
+    record: false,
+  );
 
-    final wait = logs.first.add(window).difference(now);
-    return wait.isNegative ? Duration.zero : wait;
-  }
+  /// Forgets the requests of [id]
+  Future<void> reset(String id) => store.reset(id);
 
-  /// Returns the number of requests remaining for the given [requestId]
-  /// within the current window.
-  int getRemaining(String requestId) {
-    final now = _clock();
-    final logs = _getAndCleanLogs(requestId, now);
-    final remaining = maxRequests - logs.length;
-    return remaining > 0 ? remaining : 0;
-  }
+  /// Forgets every request
+  Future<void> clear() => store.clear();
+}
+
+/// The state of an id after a request (see [RateLimiter.check])
+class RateLimitResult {
+  /// Whether the request is allowed (and was recorded)
+  final bool allowed;
+
+  /// The max number of requests in the window
+  final int limit;
+
+  /// The requests left in the current window
+  final int remaining;
+
+  /// Until the oldest request leaves the window (one more is available then); zero without
+  /// requests in the window
+  final Duration resetAfter;
+
+  /// Until a request is allowed again; zero when it's allowed now
+  final Duration retryAfter;
+
+  const RateLimitResult({
+    required this.allowed,
+    required this.limit,
+    required this.remaining,
+    required this.resetAfter,
+    required this.retryAfter,
+  });
+}
+
+/// Where a [RateLimiter] keeps the requests of every id. It's asynchronous so a shared store
+/// (Redis, a database) can implement it; [hit] must be atomic for an id.
+abstract interface class RateLimiterStore {
+  /// The requests of [id] in the [window] that ends at [now]: if they are fewer than [limit],
+  /// the request is allowed, and recorded when [record]
+  Future<RateLimitResult> hit(
+    String id, {
+    required int limit,
+    required Duration window,
+    required DateTime now,
+    bool record = true,
+  });
+
+  /// Forgets the requests of [id]
+  Future<void> reset(String id);
+
+  /// Forgets every request
+  Future<void> clear();
+}
+
+/// The default [RateLimiterStore]: the timestamps of the requests of every id, in memory.
+///
+/// Once per window it forgets the ids without requests in it, so the memory doesn't grow with
+/// every new id (ex: every new IP). It holds up to `limit` timestamps per active id.
+class InMemoryRateLimiterStore implements RateLimiterStore {
+  /// [Queue] for O(1) removal of expired timestamps from the front.
+  final Map<String, Queue<DateTime>> _requestsLog = {};
+
+  /// Last time the inactive ids were purged automatically.
+  DateTime? _lastPurge;
 
   /// Number of ids currently tracked (useful to monitor the memory usage).
   int get trackedIds => _requestsLog.length;
 
-  /// Manually clears the logs for a specific [requestId].
-  void reset(String requestId) {
-    _requestsLog.remove(requestId);
+  @override
+  Future<RateLimitResult> hit(
+    String id, {
+    required int limit,
+    required Duration window,
+    required DateTime now,
+    bool record = true,
+  }) async {
+    _autoPurge(now, window);
+    final logs = _cleanLogs(id, now, window);
+
+    final bool allowed = logs.length < limit;
+    if (allowed && record) logs.addLast(now);
+
+    Duration until(DateTime moment) {
+      final wait = moment.difference(now);
+      return wait.isNegative ? Duration.zero : wait;
+    }
+
+    final int remaining = limit - logs.length;
+    return RateLimitResult(
+      allowed: allowed,
+      limit: limit,
+      remaining: remaining > 0 ? remaining : 0,
+      resetAfter: logs.isEmpty ? Duration.zero : until(logs.first.add(window)),
+      retryAfter: allowed ? Duration.zero : until(logs.first.add(window)),
+    );
   }
 
-  /// Removes all cached data.
-  void clear() {
+  @override
+  Future<void> reset(String id) async {
+    _requestsLog.remove(id);
+  }
+
+  @override
+  Future<void> clear() async {
     _requestsLog.clear();
   }
 
-  /// Cleans up memory by removing entries for IDs that haven't
-  /// made a request in a long time.
-  ///
-  /// If [threshold] is not provided, it defaults to twice the [window].
-  void purgeInactive({Duration? threshold}) {
-    final now = _clock();
-    final limit = threshold ?? (window * 2);
-
+  /// Forgets the ids whose last request is older than [threshold] at [now]
+  void purgeInactive({required DateTime now, required Duration threshold}) {
     _requestsLog.removeWhere((id, logs) {
       if (logs.isEmpty) return true;
-      return now.difference(logs.last) > limit;
+      return now.difference(logs.last) > threshold;
     });
   }
 
-  /// Once per [window], remove the ids without requests in the current window,
-  /// so the memory doesn't grow forever with every new id (ex: every new IP).
+  /// Once per [window], remove the ids without requests in the current window.
   /// Those ids don't have any useful info, all their requests are already expired.
-  void _autoPurge(DateTime now) {
-    if (now.difference(_lastPurge) < window) return;
+  void _autoPurge(DateTime now, Duration window) {
+    final DateTime? last = _lastPurge;
+    if (last == null) {
+      _lastPurge = now;
+      return;
+    }
+    if (now.difference(last) < window) return;
     _lastPurge = now;
-    purgeInactive(threshold: window);
+    purgeInactive(now: now, threshold: window);
   }
 
-  Queue<DateTime> _getAndCleanLogs(String requestId, DateTime now) {
-    final logs = _requestsLog.putIfAbsent(requestId, () => Queue<DateTime>());
+  Queue<DateTime> _cleanLogs(String id, DateTime now, Duration window) {
+    final logs = _requestsLog.putIfAbsent(id, () => Queue<DateTime>());
 
     final expirationTime = now.subtract(window);
     while (logs.isNotEmpty && logs.first.isBefore(expirationTime)) {

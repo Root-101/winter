@@ -22,7 +22,7 @@ then, this index says which ones exist.
 | [Validation](validation.md)                          | ✅    | `Validatable`, `cvc.field(...)`, the validators, nested objects, the 422     |
 | [Error handling](error-handling.md)                  | ✅    | Problem Details, `ApiException` and its shortcuts, `on<T>()`, the 500        |
 | i18n                                                 | 🕓    | The language of the request, Winter's messages, translating an app with slang |
-| Security                                             | 🕓    | Authentication, `AuthFilter`, rules, CORS, rate limiter (2.7)                |
+| [Security](security.md)                              | ✅    | Your authentication filter, `AuthFilter` (401/403), rules, the principal, CORS, headers, rate limiter |
 | [Dependency injection](dependency-injection.md)      | ✅    | `put`, `putLazy`, `putFactory`, `putScoped`, `onDispose`, tests              |
 | [Configuration](configuration.md)                    | ✅    | `Env` (`find`, `require`, types, `.env` and profiles), `ServerConfig`, `BuildContext` |
 | [Logging](logging.md)                                | ✅    | `ConsoleLogger`, `JsonLogger`, fields, the request id, what Winter logs      |
@@ -34,7 +34,7 @@ then, this index says which ones exist.
 
 - [`DECISIONS.md`](../DECISIONS.md): **why** the framework behaves the way it does (the guides
   explain **how**). Today: i18n (§1), the object mapper (§2), validation (§3), error handling
-  (§4), dependency injection (§5), configuration (§6) and logging (§7).
+  (§4), dependency injection (§5), configuration (§6), logging (§7) and security (§8).
 - [`CHANGELOG.md`](../CHANGELOG.md): what changed in each version, breaking changes included.
 - [`ROADMAP.md`](../ROADMAP.md): what is left for 1.0.
 - [`example/`](../example): standalone apps, from a basic server to authentication and i18n.

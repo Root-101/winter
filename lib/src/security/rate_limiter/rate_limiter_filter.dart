@@ -36,35 +36,28 @@ class RateLimiterFilter extends Filter {
     FilterChain chain,
   ) async {
     final requestId = await onRequest.call(request);
-
-    final allowed = rateLimiter.allowRequest(requestId);
-    final remaining = rateLimiter.getRemaining(requestId);
-    final limit = rateLimiter.maxRequests;
-    final resetSeconds = _ceilSeconds(rateLimiter.getResetDuration(requestId));
+    final RateLimitResult result = await rateLimiter.check(requestId);
 
     // Standard Rate Limit headers
     // Reset: seconds until the oldest request leaves the window (a new slot is available)
     final rateLimitHeaders = {
-      'X-RateLimit-Limit': '$limit',
-      'X-RateLimit-Remaining': '$remaining',
-      'X-RateLimit-Reset': '$resetSeconds',
+      'X-RateLimit-Limit': '${result.limit}',
+      'X-RateLimit-Remaining': '${result.remaining}',
+      'X-RateLimit-Reset': '${_ceilSeconds(result.resetAfter)}',
     };
 
-    if (allowed) {
-      final response = await chain.doFilter(request);
-
-      // Add headers to the successful response
-      return response.change(headers: rateLimitHeaders);
-    } else {
+    if (!result.allowed) {
       log?.call(request, requestId);
-
-      final wait = _ceilSeconds(rateLimiter.getWaitDuration(requestId));
-
+      final wait = _ceilSeconds(result.retryAfter);
       throw TooManyRequestsException(
         retryAfter: wait > 0 ? wait : 1,
         headers: rateLimitHeaders,
       );
     }
+
+    final response = await chain.doFilter(request);
+    // Add headers to the successful response
+    return response.change(headers: rateLimitHeaders);
   }
 
   /// Round up, so a client waiting the given seconds is never too early

@@ -33,7 +33,7 @@ class UserController {
   }
 
   Future<ResponseEntity> getMe(RequestEntity request) async {
-    final userId = request.securityContext.authentication!.principal as int;
+    final userId = request.principal<int>(); // the authenticated user, or a 401
     return ResponseEntity.ok(body: userService.getById(userId));
   }
 
