@@ -133,13 +133,28 @@ adds yours on top of them (handy in tests).
 | `handleSignals`   | `true`         | SIGINT/SIGTERM shut the server down gracefully                    |
 | `shutdownTimeout` | 10 seconds     | How long the graceful shutdown waits for the requests in progress |
 | `onShutdown`      | —              | Called on a graceful shutdown, before the dependencies are disposed |
+| `autoCompress`    | `false`        | gzip the responses for a client that accepts it (a stream is never compressed) |
+| `idleTimeout`     | 120 seconds    | How long an idle keep-alive connection stays open; `null` keeps them |
+| `securityContext` | —              | Serve HTTPS with this certificate and key                         |
 
 - It's `const`: `const ServerConfig(port: 9000)`.
 - `ServerConfig.fromEnv(env)` reads `PORT` and `HOST`, the variables that Cloud Run, Heroku,
   Render and Kubernetes set, and takes the other options (and the defaults of `port`/`host`) as
   parameters.
 - `Winter.start` validates it before opening the port: a port out of `0-65535`, a negative
-  `maxBodySize` or `shutdownTimeout`, or an empty host, is an `ArgumentError`.
+  `maxBodySize`, `shutdownTimeout` or `idleTimeout`, or an empty host, is an `ArgumentError`.
+- HTTPS: usually the proxy in front of the app terminates TLS. To serve it from the app:
+
+  ```dart
+  await Winter.start(
+    config: ServerConfig(
+      port: 8443,
+      securityContext: SecurityContext()
+        ..useCertificateChain('cert.pem')
+        ..usePrivateKey('key.pem'),
+    ),
+  );
+  ```
 
 ### Where `Winter.start` finds its configuration
 

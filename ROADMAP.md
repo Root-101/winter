@@ -31,24 +31,24 @@ way we want to maintain it**. Exit criteria:
 
 ## 1. Current state
 
-| Module                                                                                  | State                                      |
-|-----------------------------------------------------------------------------------------|--------------------------------------------|
-| Pipeline (`buildHandler`, filters, exception handler inside the chain)                  | ✅ Solid                                    |
-| Router (nested, regex, static routes first, 404/405 + `Allow`, HEAD→GET, `MultiRouter`) | ✅ Reviewed (2.8), `doc/routing.md`         |
-| Lifecycle (graceful shutdown, signals, body limit with 413)                             | ✅                                          |
-| Request scope (`Zone`): `requestAuthentication`, `requestLocale`                        | ✅                                          |
-| i18n (slang + YAML, `Accept-Language`, automatic `Vary`)                                | ✅ Documented in `DECISIONS.md`             |
-| Testing (in-memory `WinterTestClient`)                                                  | ✅                                          |
-| HTTP engine (`shelf` + `shelf_io`)                                                      | ⚠️ To be replaced by `dart:io` → phase 3.1 |
-| Object mapper                                                                           | ✅ Reviewed (2.1), `doc/object-mapper.md`   |
-| Validation                                                                              | ✅ Reviewed (2.2), `doc/validation.md`      |
-| Exceptions and error handling                                                           | ✅ Reviewed (2.3), `doc/error-handling.md`  |
+| Module                                                                                  | State                                           |
+|-----------------------------------------------------------------------------------------|-------------------------------------------------|
+| Pipeline (`buildHandler`, filters, exception handler inside the chain)                  | ✅ Solid                                         |
+| Router (nested, regex, static routes first, 404/405 + `Allow`, HEAD→GET, `MultiRouter`) | ✅ Reviewed (2.8), `doc/routing.md`              |
+| Lifecycle (graceful shutdown, signals, body limit with 413)                             | ✅                                               |
+| Request scope (`Zone`): `requestAuthentication`, `requestLocale`                        | ✅                                               |
+| i18n (slang + YAML, `Accept-Language`, automatic `Vary`)                                | ✅ Documented in `DECISIONS.md`                  |
+| Testing (in-memory `WinterTestClient`)                                                  | ✅                                               |
+| HTTP engine (`dart:io`, own request/response)                                           | ✅ Replaced shelf (3.1), `doc/requests-and-responses.md` |
+| Object mapper                                                                           | ✅ Reviewed (2.1), `doc/object-mapper.md`        |
+| Validation                                                                              | ✅ Reviewed (2.2), `doc/validation.md`           |
+| Exceptions and error handling                                                           | ✅ Reviewed (2.3), `doc/error-handling.md`       |
 | Dependency injection                                                                    | ✅ Reviewed (2.4), `doc/dependency-injection.md` |
-| Configuration (`Env`, `ServerConfig`)                                                   | ✅ Reviewed (2.5), `doc/configuration.md`   |
-| Logging                                                                                 | ✅ Reviewed (2.6), `doc/logging.md`         |
-| Security                                                                                | ✅ Reviewed (2.7), `doc/security.md`        |
-| Documentation                                                                           | ❌ The biggest gap                          |
-| CI / publishing                                                                         | ❌ No CI                                    |
+| Configuration (`Env`, `ServerConfig`)                                                   | ✅ Reviewed (2.5), `doc/configuration.md`        |
+| Logging                                                                                 | ✅ Reviewed (2.6), `doc/logging.md`              |
+| Security                                                                                | ✅ Reviewed (2.7), `doc/security.md`             |
+| Documentation                                                                           | ❌ The biggest gap                               |
+| CI / publishing                                                                         | ❌ No CI                                         |
 
 ---
 
@@ -105,7 +105,8 @@ mapper), the guide in `doc/object-mapper.md` and the numbers in
 the format of the error body (2.3), `validBody<T>()` (2.2), the migration guide and
 `requests-and-responses.md` (5.2), example `05` (5.4) and the obfuscation check in CI (6.1).
 
-**Before the review:** a registry of `Serializer<T>`/`Deserializer<T>` by exact `Type`, the `Serializable`
+**Before the review:** a registry of `Serializer<T>`/`Deserializer<T>` by exact `Type`, the
+`Serializable`
 interface, recursive serialization, and `List<T>` / `Map<String, T>` found by the **name** of the
 type.
 
@@ -182,7 +183,8 @@ guide in `doc/validation.md`. A second review from zero fixed the chaining of ty
 phases: the format of `fieldName` vs the `$` path of the 400 (2.3), async validations and the
 improvements below in 4.3, and example `05` (5.4).
 
-**Before the review:** `Validatable`, `ConstraintValidatorContext`, a fluent `ConstraintValidator` with
+**Before the review:** `Validatable`, `ConstraintValidatorContext`, a fluent `ConstraintValidator`
+with
 validators as extensions, `throwOnFailure()` → 422, messages in the language of the request.
 
 **Problems found:**
@@ -293,7 +295,8 @@ scope), and the guide in `doc/dependency-injection.md`. A second review fixed tw
   instance per `find`). → Both, and `putScoped` (one per request) (§5.2).
 - [x] **`dispose`/`onClose`** called on the graceful shutdown (to close database connections), in
   reverse order of registration. → `onDispose`, run by `Winter.shutdown()` (§5.3).
-- [x] A clear error on circular dependencies between lazy ones. → `Circular dependency: A -> B -> A`.
+- [x] A clear error on circular dependencies between lazy ones. →
+  `Circular dependency: A -> B -> A`.
 - [x] Decide the scope: stay a minimal service locator (and document it as such), or grow towards a
   container. A service locator is enough for 1.0. → A service locator, by exact type (§5.1).
 
@@ -350,7 +353,8 @@ varies by origin and exposes `X-Request-Id`; the 401 has `WWW-Authenticate`; a t
 any code; rules that see the request; security headers; an asynchronous rate limiter with a
 `RateLimiterStore`.
 
-- [x] **Expose `X-Request-Id` to browsers**: CORS must list it in `Access-Control-Expose-Headers`, or
+- [x] **Expose `X-Request-Id` to browsers**: CORS must list it in `Access-Control-Expose-Headers`,
+  or
   a web client can't read the id of a response (found in the review 2.6). → Always exposed (§8.1).
 - [x] **CORS with `'*'` and `allowCredentials: true` echoes any origin**: that gives every website
   credentialed access to the API, which is what the browser rule is meant to prevent. Require
@@ -404,7 +408,6 @@ outside the pipeline, a param with a regex was dropped).
 - [x] `OPTIONS` without CORS was a 405. → A 204 with `Allow` (§9.4).
 - [x] `ResponseEntity.created(location:)`, `accepted()`, `noContent()` (§9.8).
 
-
 ### 2.9 Review all of the above
 
 **Done** (`DECISIONS.md` §10): two integration tests run every system at once (in memory and on a
@@ -415,7 +418,11 @@ sent `X-Powered-By`, and an empty child path.
 - [x] check all the systems in this phase to ensure they work well together. → A whole app in
   `test/integration/app_integration_test.dart`; the real server against `WinterTestClient` in
   `test/integration/server_integration_test.dart`.
-- [x] Review the tests of all these systems to test most use cases, including those that involve multiple systems, such as an object mapper that validates and that validation depends on an environment. → Validation that reads `env`, snake_case + i18n in a 422, a scoped service that reads the user, the rate limit per user, concurrent requests, the shutdown with a request in progress.
+- [x] Review the tests of all these systems to test most use cases, including those that involve
+  multiple systems, such as an object mapper that validates and that validation depends on an
+  environment. → Validation that reads `env`, snake_case + i18n in a 422, a scoped service that
+  reads the user, the rate limit per user, concurrent requests, the shutdown with a request in
+  progress.
 - [x] ✔️ **The `Content-Type` of a text body changed with its content** (`; charset=utf-8` only with
   non-ASCII characters). → Always `; charset=utf-8` (§10.1).
 - [x] **The members of a Problem Details followed `fieldNaming`** (`request_id`, `field_name`).
@@ -453,16 +460,22 @@ is already independent):
 | `context['shelf.io.connection_info']`                                 | The IP of the client (`clientIp`)                                                           |
 | `export 'package:shelf/shelf.dart'`                                   | All of shelf re-exported (tests use `Response.ok` with `addVary`, `shelf_change_test.dart`) |
 
+**Done** (`DECISIONS.md` §11, guide in `doc/requests-and-responses.md`): Winter serves with
+`HttpServer` of `dart:io`, `RequestEntity`/`ResponseEntity` are its own types (`headersAll`,
+cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `securityContext`
+(HTTPS), and shelf is out of `pubspec.yaml`. An empty endpoint went from 3984 to ~5100 req/s
+(−17 % from the `dart:io` ceiling, it was −37 %).
+
 **Tasks:**
 
-- [ ] **Baseline:** save the numbers of `benchmark/` (handler, sequential and concurrent server)
+- [x] **Baseline:** save the numbers of `benchmark/` (handler, sequential and concurrent server)
   before starting, to compare at the end. Add a `dart:io` "hello world" to the benchmark as the
   ceiling.
-- [ ] **Server:** `HttpServer.bind` / `bindSecure` (HTTPS) with `shared`, a loop that runs the
+- [x] **Server:** `HttpServer.bind` / `bindSecure` (HTTPS) with `shared`, a loop that runs the
   pipeline for every `HttpRequest`, and the settings shelf hid: `autoCompress`, `idleTimeout`,
   `defaultResponseHeaders` (today Content-Type is removed by hand), `X-Powered-By`. The graceful
   shutdown and `_InFlightRequests` are already Winter's.
-- [ ] **Own request model:** `RequestEntity` no longer extends anything. One implementation reads
+- [x] **Own request model:** `RequestEntity` no longer extends anything. One implementation reads
   an `HttpRequest` and another one is built in memory (tests). It keeps the names the users know
   (`method`, `headers`, `requestedUri`, `body<T>()`, `pathParams`, `queryParams`, `context`…)
   and adds what shelf didn't have:
@@ -474,29 +487,29 @@ is already independent):
     - Decide `copyWith` (async) vs `change` (sync): today they do almost the same, keep one.
     - Drop what only shelf needed: `handlerPath`, `url` relative to the handler, the unmodifiable
       `context` that Winter had to override.
-- [ ] **Own response model:** `ResponseEntity<T>` with status, multi-value headers (several
+- [x] **Own response model:** `ResponseEntity<T>` with status, multi-value headers (several
   `Set-Cookie`), a body as a value, String, bytes or Stream, the encoding, and automatic
   `Content-Type`/`Content-Length` (the logic of phase 1 is already Winter's).
-- [ ] **Writing the response** to `HttpResponse`: status, headers, `Content-Length` or chunked, no
+- [x] **Writing the response** to `HttpResponse`: status, headers, `Content-Length` or chunked, no
   body for HEAD/204/304, streaming with `bufferOutput: false` (for Server-Sent Events), and a client
   that disconnects in the middle must not crash the server (log at debug).
-- [ ] **Errors of the HTTP layer** that shelf_io handled: a malformed request (`HttpException` of
+- [x] **Errors of the HTTP layer** that shelf_io handled: a malformed request (`HttpException` of
   `dart:io`) → 400; a handler that fails after the headers were sent → log and close the
   connection; a response that can't be written → log.
-- [ ] **Testing in memory:** `Winter.buildHandler` returns a Winter handler
+- [x] **Testing in memory:** `Winter.buildHandler` returns a Winter handler
   (`Future<ResponseEntity> Function(RequestEntity)`) and `WinterTestClient` builds in-memory
   requests. The same pipeline as the real server, without ports, as today.
-- [ ] **Leave room for WebSockets (1.x):** the pipeline must be able to hand an `HttpRequest` over
+- [x] **Leave room for WebSockets (1.x):** the pipeline must be able to hand an `HttpRequest` over
   to `WebSocketTransformer.upgrade` of `dart:io` after the filters (auth, CORS) run, without a
   breaking change. Design it now (ex: a response type that takes the connection), implement it in
   4.3.
-- [ ] **Remove the dependency:** `shelf` out of `pubspec.yaml`, no `export` of shelf, `addVary` and
+- [x] **Remove the dependency:** `shelf` out of `pubspec.yaml`, no `export` of shelf, `addVary` and
   the helpers on Winter's types, rewrite `test/shelf_change_test.dart` and `client_ip_test.dart`.
-- [ ] **Shelf middlewares:** they stop working. Filters are the replacement; document how to turn a
+- [x] **Shelf middlewares:** they stop working. Filters are the replacement; document how to turn a
   shelf middleware into a filter in the migration guide.
-- [ ] **Compare with the baseline:** Winter must be at least as fast as with shelf (goal: close to
+- [x] **Compare with the baseline:** Winter must be at least as fast as with shelf (goal: close to
   the `dart:io` ceiling), and publish the numbers.
-- [ ] Update `CLAUDE.md`, `DECISIONS.md` and the CHANGELOG.
+- [x] Update `CLAUDE.md`, `DECISIONS.md` and the CHANGELOG.
 
 ### 3.2 Freeze the public API
 
@@ -509,6 +522,9 @@ is already independent):
       `warnLocalesWithoutWinterMessages` and `console_style` (`stylize` on `String`).
 - [ ] Read the whole public API once more (`dart doc` output) looking for inconsistent names and
   parameters.
+- [ ] Add examples for more use cases, check the coverage of test, check that there is no
+  overlapping tests, check for missing flow without tests.
+- [ ] Check all the docs, add the missing ones and improve the existing ones
 
 ---
 
@@ -526,13 +542,14 @@ is already independent):
 - [ ] **Multipart / file uploads:** `request.multipart()` with fields and files as streams,
   respecting `maxBodySize` (possible base: `MimeMultipartTransformer` of `package:mime`, from
   the Dart team, or an own parser). It was in `todo.md`.
-- [ ] **Cookies:** read (`request.cookies`, from 3.1) and write (`ResponseEntity` with
+- [x] **Cookies:** read (`request.cookies`, from 3.1) and write (`ResponseEntity` with
   `setCookie(...)`, with `HttpOnly`, `Secure`, `SameSite`, `Max-Age`; `Cookie` of `dart:io`).
+  → Done in 3.1: `request.cookies`/`cookie(name)` and `cookies:` in `ResponseEntity`.
 - [ ] **Static files:** a `StaticRouter`/`Route.static('/assets', directory)` with
   `ETag`/`Last-Modified`, `304`, `Range` requests and no path traversal (`..`), streaming the
   `File` of `dart:io`.
-- [ ] **HTTPS:** `ServerConfig(securityContext: ...)` with `HttpServer.bindSecure` (the server of
-  3.1).
+- [x] **HTTPS:** `ServerConfig(securityContext: ...)` with `HttpServer.bindSecure` (the server of
+  3.1). → Done in 3.1.
 
 ### 4.2 Operations 🟡
 
@@ -673,16 +690,18 @@ written twice. The rest can be written now.
       of one server per isolate.
     - How to scale with several isolates (`shared: true`, see
       `benchmark/server_shared_benchmark.dart`).
-- [x] **`routing.md`** (after 2.8), its snippets checked by running them: `Route.get/post/...`, nested routes and `Route.parent`, path params (`{id}`,
+- [x] **`routing.md`** (after 2.8), its snippets checked by running them: `Route.get/post/...`,
+  nested routes and `Route.parent`, path params (`{id}`,
   `{id|regex}`, decoding), regex routes, priority (static routes first, then declaration order),
   trailing slash, HEAD→GET, 404 vs 405 + `Allow`, `basePath`, `addRoute`, route keys and duplicates,
   the `RouterConfig` hooks (`ignore`/`fail`/`log`), `MultiRouter`, `ServeRouter`, and how to write
   your own router (override `resolveRoute`, or the route filters are skipped).
-- [x] **`filters.md`** (after 2.8), its snippets checked by running them: `Filter`, `doFilter`/`chain.doFilter`, short-circuiting the chain, `order`,
+- [x] **`filters.md`** (after 2.8), its snippets checked by running them: `Filter`, `doFilter`/
+  `chain.doFilter`, short-circuiting the chain, `order`,
   `shouldFilter`, global vs route filters (inherited in nested routes), why a filter never receives
   an exception (it becomes a response where it's thrown), `LogsFilter`, `CorsFilter`,
   `RateLimiterFilter`.
-- [ ] **`requests-and-responses.md`:** `RequestEntity` (`body<T>()` and its cache, `pathParams`,
+- [x] **`requests-and-responses.md`** (after 3.1), its snippets checked by running them: `RequestEntity` (`body<T>()` and its cache, `pathParams`,
   `queryParams`, `clientIp`, `change`) and `ResponseEntity` (constructors, automatic `Content-Type`
   and `Content-Length`, streams), body limit (413), cookies, forms, multipart and static files
   (once they exist).
@@ -704,7 +723,8 @@ written twice. The rest can be written now.
     - Custom and translated messages (link to `i18n.md`).
     - Writing your own validators as an extension of `FieldValidator` with `addRule`.
     - **Pitfall:** build the validators inside `validate()`, never in a `static final`.
-- [x] **`error-handling.md`** (after 2.3), its snippets checked by running them: the exception hierarchy, which status each one gives,
+- [x] **`error-handling.md`** (after 2.3), its snippets checked by running them: the exception
+  hierarchy, which status each one gives,
   why a 500 never exposes details, how to customize the `ExceptionHandler`, the error format and
   the difference between `Exception` and `Error`.
 - [ ] **`i18n.md`**, with this outline:
@@ -735,20 +755,24 @@ written twice. The rest can be written now.
     9. **Limitations and decisions:** what is not translated on purpose (HTTP reason phrases,
        technical deserialization errors), the mix of languages when the app supports a language that
        Winter doesn't have, and a link to `DECISIONS.md` §1 for why slang and YAML.
-- [x] **`security.md`** (after 2.7), its snippets checked by running them: how to authenticate with your own filter (Bearer/JWT, as in
+- [x] **`security.md`** (after 2.7), its snippets checked by running them: how to authenticate with
+  your own filter (Bearer/JWT, as in
   `example/03_auth_security`), `Authentication` and `RequestSecurityContext`,
   `requestAuthentication` from services, `AuthFilter` (401 vs 403), rules (`hasRole`,
   `hasPermission`, `rule`, `&`, `|`), route vs global filters with `shouldFilter`, CORS
   (`SecurityConfig.cors()`, credentials, preflight), rate limiter (sliding window, `X-RateLimit-*`
   headers, per IP, `trustedProxies`, its limits with several isolates), and a production checklist
   (HTTPS, security headers, body limit, never log secrets, `sensitive: true`).
-- [x] **`dependency-injection.md`** (after 2.4), its snippets checked by running them: the API, tags, the global `di` instance, what
+- [x] **`dependency-injection.md`** (after 2.4), its snippets checked by running them: the API,
+  tags, the global `di` instance, what
   `Winter.start` registers and how it's restored, common patterns (repository → service →
   controller), and how to replace dependencies in tests.
-- [x] **`configuration.md`** (after 2.5), its snippets checked by running them: every option of `ServerConfig`, `Env` (supported types,
+- [x] **`configuration.md`** (after 2.5), its snippets checked by running them: every option of
+  `ServerConfig`, `Env` (supported types,
   `required`, lists, `.env`), `BuildContext` and `setUp`, and the order in which `Winter.start`
   resolves the configuration (argument → DI → default).
-- [x] **`logging.md`** (after 2.6), its snippets checked by running them: `WinterLogger`, levels, `ConsoleLogger(minLevel:)`, writing
+- [x] **`logging.md`** (after 2.6), its snippets checked by running them: `WinterLogger`, levels,
+  `ConsoleLogger(minLevel:)`, writing
   your own logger, what the framework logs and at which level, and why `LogsFilter` never logs
   bodies nor query strings.
 - [ ] **`testing.md`:** `WinterTestClient` (all its methods, `TestResponse.json`), parallel tests

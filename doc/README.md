@@ -17,7 +17,7 @@ then, this index says which ones exist.
 | Architecture                                         | 🕓    | The path of a request, `BuildContext`, global state, request scope, isolates |
 | [Routing](routing.md)                                | ✅    | Routes, typed path and query params, priority, 404/405/OPTIONS, the route table checks, `MultiRouter`, your own router |
 | [Filters](filters.md)                                | ✅    | `Filter`, the chain, `order`, `shouldFilter`, global and route filters, errors as responses |
-| Requests and responses                               | 🕓    | `RequestEntity`, `ResponseEntity`, body limit, cookies, forms, files (after phase 3.1) |
+| [Requests and responses](requests-and-responses.md) | ✅    | `RequestEntity`, `ResponseEntity`, headers, cookies, the body, `copyWith`, streams |
 | [Object mapper](object-mapper.md)                    | ✅    | JSON ↔ objects: `toJson()`, serializers, deserializers, generics, errors, options |
 | [Validation](validation.md)                          | ✅    | `Validatable`, `cvc.field(...)`, the validators, nested objects, the 422     |
 | [Error handling](error-handling.md)                  | ✅    | Problem Details, `ApiException` and its shortcuts, `on<T>()`, the 500        |
@@ -35,7 +35,8 @@ then, this index says which ones exist.
 - [`DECISIONS.md`](../DECISIONS.md): **why** the framework behaves the way it does (the guides
   explain **how**). Today: i18n (§1), the object mapper (§2), validation (§3), error handling
   (§4), dependency injection (§5), configuration (§6), logging (§7), security (§8), the
-  router, filters and entities (§9) and the systems together (§10).
+  router, filters and entities (§9), the systems together (§10) and the move from shelf to
+  `dart:io` (§11).
 - [`CHANGELOG.md`](../CHANGELOG.md): what changed in each version, breaking changes included.
 - [`ROADMAP.md`](../ROADMAP.md): what is left for 1.0.
 - [`example/`](../example): standalone apps, from a basic server to authentication and i18n.
