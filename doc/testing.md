@@ -81,6 +81,9 @@ setUp(() {
 tearDown(() => Winter.context.setUp(objectMapper: ObjectMapper()));
 ```
 
+`WinterTestClient` doesn't start a server, so it doesn't create the asynchronous dependencies
+(`putLazyAsync`): `await di.ready()` in `setUp` when the app has any.
+
 A new `DependencyInjection` per test gives every test its own fakes; `di.child()` does the same
 on top of the registrations of the app, which it never changes (see
 [dependency injection](dependency-injection.md#replacing-a-dependency-in-a-test)).

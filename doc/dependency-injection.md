@@ -64,6 +64,7 @@ void main() async {
 |----------------------------|----------------------------------------------------|-------------------------------|
 | `put(instance)`            | The one given                                      | Yes                           |
 | `putLazy<T>(() => ...)`    | Created by the first `find`, then the same         | Yes, if it was created        |
+| `putLazyAsync<T>(() async => ...)` | Created by `ready()` (or the first `findAsync`), then the same | Yes, if it was created |
 | `putFactory<T>(() => ...)` | A new one on every `find`                          | No (whoever finds it owns it) |
 | `putScoped<T>(() => ...)`  | One per request, created by the first `find` in it | Yes, when the request ends    |
 
@@ -71,8 +72,7 @@ void main() async {
   `di.put<HttpClient>(paymentsClient, tag: 'payments')`.
 - Registering a type (and tag) again replaces it. The old instance is not disposed: it may still be
   in use.
-- The functions are synchronous. Initialize what is async before registering it:
-  `di.put(await Database.connect(url), onDispose: (db) => db.close())`.
+- The functions are synchronous, except the one of `putLazyAsync` (below).
 
 ### Finding
 
@@ -118,6 +118,33 @@ di
 
 A cycle (`A` needs `B`, which needs `A`) is a `StateError` with the chain:
 `Circular dependency: OrderService -> PaymentClient -> OrderService`.
+
+### Asynchronous initialization: `putLazyAsync`
+
+A dependency that needs an `await` to exist (a connection opened, a file read) is registered with
+`putLazyAsync`, in any order like a `putLazy`:
+
+```dart
+di.putLazyAsync<Database>(
+  () => Database.connect(env.require<String>('DATABASE_URL')),
+  onDispose: (db) => db.close(),
+);
+di.putLazy<UserRepository>(() => SqlUserRepository(di.find<Database>()));
+
+await Winter.start(); // creates the async ones (di.ready()) before opening the port
+```
+
+- `Winter.start` awaits `di.ready()`, which creates every async dependency one after the other, in
+  order of registration. If one fails, the server doesn't start: every failure is logged and named
+  in one `StateError`.
+- From then on `di.find<Database>()` is synchronous, so the rest of the code doesn't change. A
+  `find` before `ready()` is a `StateError` that says so.
+- `await di.findAsync<T>()` finds it waiting for it (creating it the first time; concurrent calls
+  share the creation). An async function uses it to depend on another async one registered before
+  it.
+- Without a server (a test, a script), call `await di.ready()` yourself.
+- A cycle between async dependencies (`A` awaits `B`, which awaits `A`) is a `StateError`, never a
+  wait forever.
 
 ### What is registered: `registrations`
 
@@ -303,8 +330,9 @@ di.put(AppConfig.fromEnv(env)); // read once at start-up, fail fast if something
   `find<Repo>()` fail. Write `put<Repo>(SqlRepo())`.
 - **Finding a dependency in a `static final` or at the top level**: it runs before the
   registrations. Find it when it's used, or in a `putLazy` function.
-- **An async initialization in `putLazy`**: the function is synchronous; await it first and `put`
-  the result.
+- **An async initialization in `putLazy`**: its function is synchronous; use `putLazyAsync`.
+- **A test that uses an async dependency without `ready()`**: `WinterTestClient` doesn't call it
+  (only `Winter.start` does); `await di.ready()` in `setUp`.
 - **A scoped dependency outside a request** (a `Timer`, a background job, or after the response):
   it's a `StateError`; run that code inside `RequestScope.run` or use a lazy or factory dependency.
 - **A lazy singleton that depends on a scoped one**: it's a `StateError`. Register the service with

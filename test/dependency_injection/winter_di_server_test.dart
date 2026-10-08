@@ -98,4 +98,49 @@ void main() {
       await blocker.close();
     }
   });
+
+  test('start creates the asynchronous dependencies before the port', () async {
+    di.putLazyAsync<String>(() async {
+      expect(Winter.isRunning, isFalse);
+      return 'connected';
+    });
+    addTearDown(() => di.delete<String>());
+
+    await Winter.start(config: ServerConfig(port: port));
+
+    expect(di.find<String>(), 'connected');
+  });
+
+  test('a failing asynchronous dependency stops the start', () async {
+    di.putLazyAsync<String>(() async => throw StateError('no database'));
+    addTearDown(() => di.delete<String>());
+    Winter.context.setUp(logger: const _SilentLogger());
+    addTearDown(() => Winter.context.setUp(logger: const ConsoleLogger()));
+
+    await expectLater(
+      Winter.start(config: ServerConfig(port: port)),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('no database'),
+        ),
+      ),
+    );
+    expect(Winter.isRunning, isFalse);
+    expect(di.tryFind<ServerConfig>(), isNull);
+  });
+}
+
+class _SilentLogger extends WinterLogger {
+  const _SilentLogger();
+
+  @override
+  void log(
+    LogLevel level,
+    String message, {
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, Object?> fields = const {},
+  }) {}
 }
