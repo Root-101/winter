@@ -16,3 +16,5 @@ CLAUDE.md
 
 # FVM Version Cache
 .fvm/
+# dart doc output
+doc/api/

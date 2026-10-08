@@ -1,9 +1,6 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:math';
 
 import 'package:collection/collection.dart';
-import 'package:crypto/crypto.dart';
 import 'package:winter/src/router/health.dart' show healthHandler;
 import 'package:winter/src/router/path_template.dart';
 import 'package:winter/src/utils/valid_url.dart';
@@ -525,11 +522,7 @@ class Route {
   }
 }
 
-String _generateRouteKey(String path, HttpMethod? method, {int length = 12}) {
-  String rawKey = '$path${method == null ? '' : '-${method.name}'}';
-
-  var bytes = utf8.encode(rawKey);
-  String hash = sha256.convert(bytes).toString();
-
-  return hash.substring(0, min(length, hash.length));
-}
+/// The key of a route without one: its method and path (`GET /users/{id}`, `PARENT /users`), unique
+/// like them and readable in the logs
+String _generateRouteKey(String path, HttpMethod? method) =>
+    '${method?.name.toUpperCase() ?? 'PARENT'} $path';

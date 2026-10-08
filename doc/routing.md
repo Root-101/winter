@@ -159,8 +159,9 @@ Each hook is a function, so it can do anything with the `Route` it receives.
 
 ### Route keys
 
-Every route has a `key`: generated from its path and method, or given with `key:`. A filter uses it
-to recognize a route without depending on its path:
+Every route has a `key`: its method and full path (`GET /users/{id}`, `PARENT /users`), or the one
+given with `key:`. A filter uses a key of its own to recognize a route without depending on its
+path:
 
 ```dart
 class MetricsFilter extends Filter {
