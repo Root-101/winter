@@ -274,11 +274,60 @@ test('the email must be valid', () {
 Compare the `code` instead of the `message`: it doesn't change with the language. For a date,
 give the context a fixed `clock` (see [Configuration](#configuration)).
 
-### Checks that need a database ("the email already exists")
+### Checks that need a database ("the email already exists"): `AsyncValidatable`
 
-`validate()` is synchronous. Check it in the service and throw a `ConflictException`, or a
-`ValidationException` with your own `ConstraintViolation` to answer 422 like the rest. Asynchronous
-validations are planned for 1.x (`DECISIONS.md` §3).
+A rule that needs an `await` goes in `validateAsync()` of `AsyncValidatable`, next to the
+synchronous `validate()`. `cvc.check(field, isValid, message:, code:)` adds a violation when
+`isValid` completes with `false`:
+
+```dart
+class RegisterRequest implements Validatable, AsyncValidatable {
+  final String name;
+  final String email;
+  final String password;
+
+  // ...constructor and fromJson...
+
+  @override
+  ConstraintValidatorContext validate() => ConstraintValidatorContext()
+    ..field('name', name).notBlank()
+    ..field('email', email).email()
+    ..field('password', password, sensitive: true).size(min: 8);
+
+  @override
+  Future<ConstraintValidatorContext> validateAsync() async {
+    final cvc = ConstraintValidatorContext();
+    await cvc.check(
+      'email',
+      () async => !await di.find<UserRepository>().emailExists(email),
+      message: () => 'The email is already registered', // or a translated text: t.emailTaken
+      code: 'email.taken',
+    );
+    return cvc;
+  }
+}
+```
+
+`body<RegisterRequest>()` runs both, in order:
+
+| Body                                               | Response                                         |
+|----------------------------------------------------|--------------------------------------------------|
+| `{"name": "", "email": "x", "password": "123"}`    | 422 `notBlank`, `email`, `size.min`: no lookup   |
+| `{"name": "Ann", "email": "taken@example.com", ...}` | 422 `email` / `email.taken`                   |
+| `{"name": "Ann", "email": "new@example.com", ...}` | reaches the handler                              |
+
+- `validateAsync()` runs **only when `validate()` passed**: a value with a wrong format never
+  reaches a query, and the client fixes the format first.
+- A list or a map of them is validated the same way (`[1].email`, `["first"].email`);
+  `validate: false` skips both.
+- `message` is a function, as in the synchronous rules: a valid value never reads the language of
+  the request.
+- A nested `AsyncValidatable` inside another object is not reached by `body<T>()`: await its
+  `validateAsync()` in the one of its parent and `cvc.merge(..., prefix: 'address')`.
+- Keep the check in the service too when two requests can race (two registrations of the same
+  email at the same time): the validation gives the 422, the service the last word.
+
+`example/03_auth_security` validates its `RegisterRequest` this way.
 
 ## Typical mistakes and limitations
 

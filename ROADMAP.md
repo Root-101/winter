@@ -616,8 +616,9 @@ first, small and independent; then the new features, from the most used to the l
   `example/06_files` sends the new photos.
 - [ ] Scheduled tasks (cron), it was in `todo.md`.
 - [ ] OpenAPI generation from the routes.
-- [ ] Async validations: an `AsyncValidatable` interface with a `Future` `validate()`, also run by
-  `body<T>()` (`DECISIONS.md` §3).
+- [x] Async validations: an `AsyncValidatable` interface with a `Future` `validate()`, also run by
+  `body<T>()` (`DECISIONS.md` §3). → `validateAsync()` and `cvc.check(...)`, run after
+  `validate()` passed; example 03 checks the email of a registration.
 - [ ] A Redis `RateLimiterStore`.
 - [ ] More languages for Winter's messages (fr, pt, de…).
 - [ ] Configuration with annotations / package scanning (with codegen).

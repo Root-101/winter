@@ -301,8 +301,37 @@ class RequestEntity {
     final T body = identical(encoding, utf8)
         ? mapper.decodeBytes<T>(await _body.bytes())
         : mapper.decode<T>(await _body.text(encoding));
-    if (validate) _validate(body);
+    if (validate) {
+      _validate(body);
+      // Only after the synchronous rules passed: a wrong value never reaches a query
+      await _validateAsync(body);
+    }
     return body;
+  }
+
+  /// Like [_validate], for the asynchronous rules of [AsyncValidatable]
+  static Future<void> _validateAsync(Object? body) async {
+    if (body is AsyncValidatable) {
+      (await body.validateAsync()).throwOnFailure();
+    } else if (body is Iterable<Object?>) {
+      final cvc = ConstraintValidatorContext();
+      var index = 0;
+      for (final element in body) {
+        if (element is AsyncValidatable) {
+          cvc.merge(await element.validateAsync(), prefix: '[$index]');
+        }
+        index++;
+      }
+      cvc.throwOnFailure();
+    } else if (body is Map<Object?, Object?>) {
+      final cvc = ConstraintValidatorContext();
+      for (final MapEntry(:key, :value) in body.entries) {
+        if (value is AsyncValidatable) {
+          cvc.merge(await value.validateAsync(), prefix: mapKeyPath('$key'));
+        }
+      }
+      cvc.throwOnFailure();
+    }
   }
 
   /// Validates a [Validatable] body, every one in a list (prefixed with its index: `[0].email`), or
