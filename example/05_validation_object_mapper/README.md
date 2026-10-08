@@ -9,6 +9,8 @@ invalid field the way the client sent it.
 ### 1. The object mapper of the app (`OrdersApp.objectMapper()`)
 *   `fieldNaming: FieldNaming.snakeCase`: the models use `customerEmail`, the JSON `customer_email`.
 *   `includeNulls: false`: an order without `deliver_on` doesn't write it.
+*   `rejectUnknownFields: true`: a key that the `fromJson` never reads (`"is_paid": true`, a typo
+    like `"emial"`) is a 400 `$.is_paid: unknown field`, against mass assignment.
 *   `JsonAdapter<Money>.string` writes an amount as text (`"12.50 EUR"`) and reads it back, in one
     registration: `"12 euros"` is a 400.
 *   `Deserializer<Shipping>.enumByName(Shipping.values)` reads an enum by name; the type is always

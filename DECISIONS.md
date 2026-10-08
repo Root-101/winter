@@ -57,6 +57,10 @@ Guide: [`doc/object-mapper.md`](doc/object-mapper.md).
 - **A serializer applies to subtypes** (`freezed` and sealed classes generate private subclasses):
   exact type → the first serializer of a supertype → `toJson()` → enum `name`, decided once per
   `runtimeType` and cached. Deserializers stay exact: the target type is the one asked for.
+- **Unknown fields are ignored by default, rejected on request** (`rejectUnknownFields`): a known
+  field is one the `fromJson` *reads*, tracked by the map it receives, so it works with any
+  `fromJson` (casts, `json.field`, generated code) without declaring the fields twice. Off by
+  default: a client that sends more than the model knows (a newer version) keeps working.
 - **Strict primitives**: JSON has one number type, so `12.0` is an `int`; a string is never a
   number nor a bool (`"12"` is a 400).
 - **Errors say where, never what Dart said**: `$.items[1]: expected a string, got an integer`.

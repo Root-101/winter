@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -96,10 +97,27 @@ class Deserializer<T> extends _MapperEntity<T> {
   ///
   /// Declare the type explicitly inside a list (`[Deserializer<User>.json(User.fromJson)]`),
   /// otherwise the type of the list wins and it's registered as `dynamic`.
-  Deserializer.json(T Function(Map<String, dynamic> json) fromJson)
-    : _deserialize = ((data, mapper) => mapper._reading(
-        () => fromJson(mapper._jsonKeysToDart(_asJsonObject(data))),
-      ));
+  ///
+  /// [rejectUnknownFields] overrides [ObjectMapper.rejectUnknownFields] for this type: a key the
+  /// [fromJson] never read is a 400 (`$.isAdmin: unknown field`).
+  Deserializer.json(
+    T Function(Map<String, dynamic> json) fromJson, {
+    bool? rejectUnknownFields,
+  }) : _deserialize = ((data, mapper) => mapper._reading(() {
+         final Map<String, dynamic> json = _asJsonObject(data);
+         if (!(rejectUnknownFields ?? mapper.rejectUnknownFields)) {
+           return fromJson(mapper._jsonKeysToDart(json));
+         }
+         final _ReadKeys tracked = _ReadKeys(mapper._jsonKeysToDart(json));
+         final T result = fromJson(tracked);
+         for (final String key in tracked.keysNotRead()) {
+           throw DeserializationException(
+             'unknown field',
+             path: '\$${mapper._fieldSegment(key)}',
+           );
+         }
+         return result;
+       }));
 
   /// Deserializer of a type written as a JSON string:
   ///
@@ -311,6 +329,50 @@ extension JsonObjectFields on Map<String, dynamic> {
   }
 }
 
+/// A JSON object that remembers which keys were read, for [ObjectMapper.rejectUnknownFields]. A
+/// look at all of them (`keys`, `entries`, `forEach`...) reads all of them.
+class _ReadKeys extends MapBase<String, dynamic> {
+  final Map<String, dynamic> _json;
+  final Set<String> _read = {};
+  bool _readAll = false;
+
+  _ReadKeys(this._json);
+
+  /// The keys never read, in their order
+  Iterable<String> keysNotRead() =>
+      _readAll ? const [] : _json.keys.where((key) => !_read.contains(key));
+
+  @override
+  dynamic operator [](Object? key) {
+    if (key is String) _read.add(key);
+    return _json[key];
+  }
+
+  @override
+  bool containsKey(Object? key) {
+    if (key is String) _read.add(key);
+    return _json.containsKey(key);
+  }
+
+  @override
+  Iterable<String> get keys {
+    _readAll = true;
+    return _json.keys;
+  }
+
+  @override
+  int get length => _json.length;
+
+  @override
+  void operator []=(String key, dynamic value) => _json[key] = value;
+
+  @override
+  dynamic remove(Object? key) => _json.remove(key);
+
+  @override
+  void clear() => _json.clear();
+}
+
 /// The types that the app registered in [previous] (a serializer or a deserializer) and [next] has
 /// none of: what replacing [previous] with [next] loses. Internal: `WinterContext.setUp` warns
 /// with them.
@@ -413,6 +475,13 @@ class ObjectMapper {
   /// read. `false` writes compact JSON, for smaller responses.
   final bool prettyPrint;
 
+  /// `true` makes a JSON object with a key that its `fromJson` never read a 400
+  /// (`$.isAdmin: unknown field`), against mass assignment and typos (`"emial"`). Off by default;
+  /// a [Deserializer.json] can override it for its type. It works with any `fromJson`
+  /// (`json['x']`, `json.field<T>()`, the code of `json_serializable`), and a nested object is
+  /// checked when it's read through the mapper (a registered type, `json.object`).
+  final bool rejectUnknownFields;
+
   final Map<Type, Serializer> _serializers = {};
 
   /// How each runtimeType is converted (serializer, `toJson()`, enum...), found once per type
@@ -436,6 +505,7 @@ class ObjectMapper {
     this.fieldNaming = FieldNaming.none,
     this.durationFormat = DurationFormat.milliseconds,
     this.prettyPrint = true,
+    this.rejectUnknownFields = false,
   }) {
     for (final s in _defaultSerializers()) {
       _serializers[s.type] = s;

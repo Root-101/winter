@@ -234,12 +234,12 @@ Replace the global mapper at start-up (before `Winter.start`), or pass one to a 
 ```dart
 Winter.context.setUp(
   objectMapper: ObjectMapper(
-    serializers: [Serializer<Money>((money) => money.toString())],
-    deserializers: [
-      Deserializer<User>.json(User.fromJson),
-      Deserializer<Money>.string(Money.parse),
+    adapters: [
+      JsonAdapter<Money>.string(toJson: (money) => '$money', fromJson: Money.parse),
     ],
+    deserializers: [Deserializer<User>.json(User.fromJson)],
     fieldNaming: FieldNaming.snakeCase,
+    rejectUnknownFields: true,
   ),
 );
 
@@ -253,6 +253,7 @@ final response = ResponseEntity(200, body: user, objectMapper: anotherMapper);
 | `fieldNaming`    | `none`         | `snakeCase` (`user_id`) or `kebabCase` (`user-id`)                          |
 | `durationFormat` | `milliseconds` | `iso8601`: `PT1H30M`, `-PT0.5S`, `P1DT2H` (hours are not grouped into days) |
 | `prettyPrint`    | `true`         | `false` writes compact JSON, for smaller responses                          |
+| `rejectUnknownFields` | `false`   | `true`: a key the `fromJson` never read is a 400 (below)                    |
 
 `includeNulls` and `fieldNaming` only apply to **objects**: the maps returned by a `toJson()` or a
 serializer, and the map given to `Deserializer.json`. A `Map` you serialize or ask for directly
@@ -329,6 +330,45 @@ What the client gets for a wrong body (with `fieldNaming: FieldNaming.snakeCase`
 
 The models of `json_serializable` and `freezed` (below) don't need it: their generated `fromJson`
 is used as it is.
+
+### Rejecting unknown fields
+
+By default a key the model doesn't know is ignored: `{"name": "Ann", "is_admin": true}` creates a
+user and drops `is_admin`. With `rejectUnknownFields: true` it's a 400, against mass assignment
+(a client trying fields it shouldn't send) and typos that would be lost silently (`"emial"`):
+
+```dart
+Winter.context.setUp(
+  objectMapper: ObjectMapper(
+    fieldNaming: FieldNaming.snakeCase,
+    rejectUnknownFields: true,
+    deserializers: [
+      Deserializer<CreateUser>.json(CreateUser.fromJson),
+      // This type keeps accepting anything (a webhook of another service)
+      Deserializer<StripeEvent>.json(StripeEvent.fromJson, rejectUnknownFields: false),
+    ],
+  ),
+);
+```
+
+```http
+POST /users
+{"name": "Ann", "email": "ann@example.com", "is_admin": true}
+
+HTTP/1.1 400 Bad Request
+{"type": "about:blank", "title": "Bad Request", "status": 400, "detail": "$.is_admin: unknown field"}
+```
+
+- A field is known when the `fromJson` **reads** it, whatever the way: `json['name']`,
+  `json.field<String>('name')`, `json.containsKey('name')`, or the code that `json_serializable`
+  and `freezed` generate. Nothing to declare: the fields of the model are the ones it reads.
+- A `fromJson` that looks at every key (`json.entries`, `json.forEach`, `json.keys`) reads all of
+  them.
+- A nested object is checked when it's read through the mapper (`json.object(...)`, a registered
+  type, `json.field<List<OrderItem>>(...)`), with its path: `$.items[1].discount: unknown field`.
+  One cast by hand (`Address.fromJson(json['address'] as Map<String, dynamic>)`) is not checked.
+- `Deserializer.json(..., rejectUnknownFields:)` overrides the option of the mapper for one type.
+- The error names the first unknown key, as the client sent it (`is_admin`, with `fieldNaming`).
 
 ### `json_serializable` and `freezed`
 

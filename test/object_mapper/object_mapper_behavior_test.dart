@@ -1140,6 +1140,160 @@ void main() {
     });
   });
 
+  group('rejectUnknownFields', () {
+    ObjectMapper strict({bool forCustomer = true}) => ObjectMapper(
+      fieldNaming: FieldNaming.snakeCase,
+      rejectUnknownFields: true,
+      deserializers: [
+        Deserializer<_Status>.enumByName(_Status.values),
+        Deserializer<_Customer>.json(
+          _Customer.fromJson,
+          rejectUnknownFields: forCustomer,
+        ),
+        // A fromJson like the one of json_serializable: json['x']
+        Deserializer<_Profile>.json(_Profile.fromJson),
+      ],
+    );
+
+    Map<String, Object?> customer() => {
+      'full_name': 'Ann Lee',
+      'status': 'paid',
+      'created_at': '2026-01-02T00:00:00.000Z',
+      'home_address': {'zip_code': '28001'},
+    };
+
+    DeserializationException failure(void Function() body) {
+      try {
+        body();
+      } on DeserializationException catch (e) {
+        return e;
+      }
+      fail('expected a DeserializationException');
+    }
+
+    test('a key the fromJson never read is a 400 with its JSON name', () {
+      expect(
+        failure(
+          () => strict().deserialize<_Customer>({
+            ...customer(),
+            'is_admin': true,
+          }),
+        ).message,
+        r'$.is_admin: unknown field',
+      );
+      expect(
+        failure(
+          () => strict().deserialize<_Profile>({
+            'first_name': 'Ann',
+            'user_id': '7',
+            'role': 'admin',
+          }),
+        ).message,
+        r'$.role: unknown field',
+      );
+    });
+
+    test(
+      'nested objects read through the mapper are checked, with their path',
+      () {
+        expect(
+          failure(
+            () => strict().deserialize<_Customer>({
+              ...customer(),
+              'home_address': {'zip_code': '28001', 'city': 'Madrid'},
+            }),
+          ).message,
+          r'$.home_address.city: unknown field',
+        );
+        expect(
+          failure(
+            () => strict().deserialize<List<_Profile>>([
+              {'first_name': 'Ann'},
+              {'first_name': 'Bob', 'admin': true},
+            ]),
+          ).message,
+          r'$[1].admin: unknown field',
+        );
+      },
+    );
+
+    test(
+      'every key read, missing optional ones and checks with containsKey pass',
+      () {
+        expect(strict().deserialize<_Customer>(customer()).fullName, 'Ann Lee');
+        expect(
+          strict().deserialize<_Profile>({'first_name': 'Ann'}).firstName,
+          'Ann',
+        );
+      },
+    );
+
+    test('off by default, and a deserializer can turn it off for its type', () {
+      final Map<String, Object?> withExtra = {...customer(), 'is_admin': true};
+
+      expect(
+        ObjectMapper(
+          fieldNaming: FieldNaming.snakeCase,
+          deserializers: [
+            Deserializer<_Status>.enumByName(_Status.values),
+            Deserializer<_Customer>.json(_Customer.fromJson),
+          ],
+        ).deserialize<_Customer>(withExtra).fullName,
+        'Ann Lee',
+      );
+      expect(
+        strict(forCustomer: false).deserialize<_Customer>(withExtra).fullName,
+        'Ann Lee',
+      );
+    });
+
+    test('a fromJson that looks at every key reads them all', () {
+      final mapper = ObjectMapper(
+        rejectUnknownFields: true,
+        deserializers: [
+          Deserializer<Map<String, String>>.json(
+            (json) => {
+              for (final MapEntry(:key, :value) in json.entries) key: '$value',
+            },
+          ),
+        ],
+      );
+
+      expect(mapper.deserialize<Map<String, String>>({'a': 1, 'b': 2}), {
+        'a': '1',
+        'b': '2',
+      });
+    });
+
+    test('through body<T>(): a 400 Problem Details', () async {
+      final previous = om;
+      Winter.context.setUp(objectMapper: strict());
+      addTearDown(() => Winter.context.setUp(objectMapper: previous));
+      final client = WinterTestClient.build(
+        router: WinterRouter(
+          routes: [
+            Route.post(
+              path: '/',
+              handler: (request) async {
+                await request.body<_Profile>();
+                return ResponseEntity.ok();
+              },
+            ),
+          ],
+        ),
+      );
+
+      final response = await client.post(
+        '/',
+        body: '{"first_name": "Ann", "is_admin": true}',
+        headers: {HttpHeader.contentType: 'application/json'},
+      );
+
+      expect(response.statusCode, 400);
+      expect((response.json as Map)['detail'], r'$.is_admin: unknown field');
+    });
+  });
+
   group('Replacing the mapper warns about what is lost', () {
     late List<String> logs;
     late ObjectMapper previous;

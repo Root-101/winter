@@ -141,6 +141,19 @@ void main() {
     );
   });
 
+  test(
+    'a field that the order has not is a 400 (rejectUnknownFields)',
+    () async {
+      final response = await client.post(
+        '/orders',
+        body: {...validOrder(), 'is_paid': true},
+      );
+
+      expect(response.statusCode, 400);
+      expect((response.json as Map)['detail'], r'$.is_paid: unknown field');
+    },
+  );
+
   test('typed path and query params', () async {
     await client.post('/orders', body: validOrder());
     await client.post(
