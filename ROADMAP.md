@@ -579,9 +579,10 @@ cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `
 - [x] **Health check:** `Route.health('/health')` or a documented example (needed for Docker and
   Kubernetes). → `Route.health(path:, checks:, timeout:)` (`DECISIONS.md` §9), used by
   `example/07_production`.
-- [ ] **`di.createAll()`**: create every lazy dependency at start-up (opt-in), so a broken
+- [x] **`di.createAll()`**: create every lazy dependency at start-up (opt-in), so a broken
   registration (a missing dependency, a cycle, a constructor that throws) fails when the server
   starts instead of in the first request that needs it. Proposed in the second review of 2.4.
+  → Opt-in, every failure named in one `StateError` (`DECISIONS.md` §5).
 
 ### 4.3 After 1.0 🟢
 

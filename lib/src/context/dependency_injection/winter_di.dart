@@ -113,6 +113,40 @@ class DependencyInjection {
     return registration.hasValue ? registration.value as S : null;
   }
 
+  /// Creates now every lazy singleton ([putLazy]) not created yet, in order of registration: call
+  /// it after registering everything and before `Winter.start`, so a broken registration (a
+  /// missing dependency, a cycle, a constructor that throws) stops the start-up instead of failing
+  /// the first request that needs it. Optional: without it they are created by their first find.
+  ///
+  /// Factories and scoped dependencies are not created (they belong to a find or a request).
+  /// Every lazy one is tried: each failure is logged with its stack trace, and then a [StateError]
+  /// names all of them. One that fails stays registered and not created.
+  void createAll() {
+    final List<String> failures = [];
+    for (final MapEntry<_Key, _Registration> entry
+        in _registrations.entries.toList()) {
+      final _Registration registration = entry.value;
+      if (registration.kind != _Kind.lazy || registration.hasValue) continue;
+      try {
+        _resolve(entry.key, registration);
+      } catch (error, stackTrace) {
+        logger.error(
+          'The dependency <${registration.name}> could not be created',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        failures.add('<${registration.name}>: $error');
+      }
+    }
+    if (failures.isNotEmpty) {
+      throw StateError(
+        '${failures.length == 1 ? 'A dependency' : '${failures.length} dependencies'} '
+        'could not be created:\n'
+        '${failures.map((failure) => '- $failure').join('\n')}',
+      );
+    }
+  }
+
   /// Calls the `onDispose` of every created dependency, in reverse order of registration, and
   /// removes all of them. An `onDispose` that fails is logged and the others still run.
   /// `Winter.shutdown()` calls it.
@@ -145,6 +179,8 @@ class DependencyInjection {
       case _Kind.factory:
         return _create(key, registration);
       case _Kind.scoped:
+        // First: it's the real mistake also outside a request (createAll)
+        _failOnCaptive(registration.name);
         final RequestScope scope =
             RequestScope.current ??
             (throw StateError(
@@ -157,7 +193,6 @@ class DependencyInjection {
             '(its instance is disposed): find it while the request is in progress',
           );
         }
-        _failOnCaptive(registration.name);
         final instances = _scopedInstances[scope] ??= {};
         if (instances.containsKey(key)) return instances[key];
         final Object? instance = _create(key, registration);
