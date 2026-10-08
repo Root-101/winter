@@ -202,6 +202,29 @@ class Deserializer<T> extends _MapperEntity<T> {
         };
       });
 
+  /// Deserializer of a JSON object whose values are [T] and whose keys are a [K], read from their
+  /// text: `int`, `double`, `num` and `bool` are parsed, and any other [K] goes through its own
+  /// deserializer with the key as a string (an enum with [Deserializer.enumByName], `DateTime`, a
+  /// [Deserializer.string]). It's what the mapper writes for those keys, so they round-trip:
+  ///
+  /// ```dart
+  /// om.addDeserializer(om.deserializerOf<Price>().mapWithKeys<int>());  // Map<int, Price>
+  /// om.addDeserializer(om.deserializerOf<int>().mapWithKeys<Status>()); // Map<Status, int>
+  /// ```
+  ///
+  /// A key that isn't a [K] is a 400 at its path (`$["abc"]: expected an integer as the key`).
+  Deserializer<Map<K, T>> mapWithKeys<K>() =>
+      Deserializer<Map<K, T>>._withMapper((data, mapper) {
+        final Map<String, dynamic> json = _asJsonObject(data);
+        return {
+          for (final MapEntry(:key, :value) in json.entries)
+            _at(_keySegment(key), () => mapper._mapKey<K>(key)): _at(
+              _keySegment(key),
+              () => _call(value, mapper),
+            ),
+        };
+      });
+
   /// Deserializer of [T] that accepts `null`
   Deserializer<T?> nullable() => Deserializer<T?>._withMapper(
     (data, mapper) => data == null ? null : _call(data, mapper),
@@ -481,6 +504,26 @@ class ObjectMapper {
     _appDeserializers.remove(T);
     _rebuildDerivedDeserializers();
   }
+
+  /// A key of a JSON object as a [K] (see [Deserializer.mapWithKeys])
+  K _mapKey<K>(String key) {
+    final Object? value = switch (K) {
+      const (String) => key,
+      const (int) => int.tryParse(key) ?? (throw _keyIsNot('an integer')),
+      const (double) => double.tryParse(key) ?? (throw _keyIsNot('a number')),
+      const (num) => num.tryParse(key) ?? (throw _keyIsNot('a number')),
+      const (bool) => switch (key) {
+        'true' => true,
+        'false' => false,
+        _ => throw _keyIsNot('true or false'),
+      },
+      _ => deserializerOf<K>()._call(key, this),
+    };
+    return value as K;
+  }
+
+  static DeserializationException _keyIsNot(String what) =>
+      DeserializationException('expected $what as the key');
 
   /// The [Deserializer] registered (or derived) for [T], to build deeper types from it:
   ///

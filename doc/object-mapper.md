@@ -171,6 +171,18 @@ om.addDeserializer(om.deserializerOf<int>().list()); // Map<String, List<int>>..
 An explicit registration wins over a derived one, and removing a deserializer
 (`om.removeDeserializer<User>()`) removes its derived types.
 
+A map with keys that are not strings is registered with `mapWithKeys<K>()`. JSON keys are always
+text: `int`, `double`, `num` and `bool` are parsed from it, and any other key type goes through its
+own deserializer with the key as a string (an enum with `enumByName`, `DateTime`, a
+`Deserializer.string`). It reads back what the mapper writes:
+
+```dart
+om.addDeserializer(om.deserializerOf<Price>().mapWithKeys<int>());  // {"7": {...}} → Map<int, Price>
+om.addDeserializer(om.deserializerOf<int>().mapWithKeys<Status>()); // {"paid": 3} → Map<Status, int>
+```
+
+A key that isn't a `K` is a 400 at its path (`$.abc: expected an integer as the key`).
+
 ### Errors
 
 | Problem                                              | Exception                        | Response |
@@ -344,7 +356,8 @@ email...) are a 422 of the validation, see [validation](validation.md).
   object given to `Deserializer.json` is renamed, including the keys of a `Map` field inside it.
 - **Map keys** must be serializable to a `String`, `num`, `bool` or `null` (an enum becomes its
   name). A `List` as a key is a `SerializationException`.
-- **Only `Map<String, T>`** can be deserialized: JSON keys are always strings.
+- **A `Map<int, T>` (or another key type) is not derived**: register it with `mapWithKeys<K>()`;
+  `Map<String, T>` is the only map that comes with every deserializer.
 - **A serializer for `String`, `num`, `bool`, `List` or `Map`** is never used: they are written as
   they are.
 - **Cost**: in the benchmark (`benchmark/object_mapper_benchmark.dart`, AOT) `om.encode` is

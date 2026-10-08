@@ -673,8 +673,9 @@ first, small and independent; then the new features, from the most used to the l
   the same; `body<Map<String, dynamic>>()` is the workaround.
 - [ ] **Reject unknown fields** (optional, against mass assignment): needs to know which keys the
   `fromJson` read (see the typed field access above).
-- [ ] **Map keys that are not `String`** (`Map<int, T>`, `Map<Status, T>`): convert the key from
-  its text.
+- [x] **Map keys that are not `String`** (`Map<int, T>`, `Map<Status, T>`): convert the key from
+  its text. → `deserializer.mapWithKeys<K>()`: `int`, `double`, `num` and `bool`
+  parsed, any other key through its own deserializer. Writing them already worked.
 - Not possible, on purpose: reading a class without registering it, or serializing records
   (`(id: 1, name: 'a')`); both need reflection, which AOT doesn't have, or codegen, which the
   project avoids.
