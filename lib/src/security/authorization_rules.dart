@@ -1,26 +1,41 @@
 import 'package:winter/winter.dart';
 
-RuleBuilder hasRole(String role) {
-  return RuleBuilder(RoleRule(role));
-}
+/// The authenticated user has the [role]
+RuleBuilder hasRole(String role) => RuleBuilder(RoleRule(role));
 
-RuleBuilder hasPermission(String permission) {
-  return RuleBuilder(PermissionRule(permission));
-}
+/// The authenticated user has the [permission]
+RuleBuilder hasPermission(String permission) =>
+    RuleBuilder(PermissionRule(permission));
 
-RuleBuilder hasAuthority(String authority) {
-  return RuleBuilder(AuthorityRule(authority));
-}
+/// A rule of the app, that can use the request (ex: only the owner of a resource):
+///
+/// ```dart
+/// AuthFilter(
+///   rules: hasRole('admin') |
+///       rule((auth, request) => request.pathParams['id'] == auth.name, describe: 'isOwner'),
+/// )
+/// ```
+///
+/// [describe] is how it's shown in logs and `toString`.
+RuleBuilder rule(
+  bool Function(Authentication authentication, RequestEntity request) check, {
+  String describe = 'rule',
+}) => RuleBuilder(_FunctionRule(check, describe));
 
+/// Whether a request can go on, from its [Authentication]. Combine them with `&` and `|`
+/// (see [RuleBuilder]), and write your own by extending this class.
 abstract class AuthorizationRule {
   const AuthorizationRule();
 
-  bool evaluate(Authentication authentication);
+  /// Whether [authentication] may make [request]
+  bool evaluate(Authentication authentication, RequestEntity request);
 
-  String _toExpression();
+  /// A readable form of the rule, for logs and `toString` (`hasRole(admin)`).
+  /// By default the name of its class.
+  String describe() => '$runtimeType';
 
   @override
-  String toString() => _toExpression();
+  String toString() => describe();
 }
 
 class RoleRule extends AuthorizationRule {
@@ -29,12 +44,11 @@ class RoleRule extends AuthorizationRule {
   const RoleRule(this.role);
 
   @override
-  bool evaluate(Authentication authentication) {
-    return authentication.roles.contains(role);
-  }
+  bool evaluate(Authentication authentication, RequestEntity request) =>
+      authentication.roles.contains(role);
 
   @override
-  String _toExpression() => 'hasRole($role)';
+  String describe() => 'hasRole($role)';
 }
 
 class PermissionRule extends AuthorizationRule {
@@ -43,26 +57,11 @@ class PermissionRule extends AuthorizationRule {
   const PermissionRule(this.permission);
 
   @override
-  bool evaluate(Authentication authentication) {
-    return authentication.permissions.contains(permission);
-  }
+  bool evaluate(Authentication authentication, RequestEntity request) =>
+      authentication.permissions.contains(permission);
 
   @override
-  String _toExpression() => 'hasPermission($permission)';
-}
-
-class AuthorityRule extends AuthorizationRule {
-  final String authority;
-
-  const AuthorityRule(this.authority);
-
-  @override
-  bool evaluate(Authentication authentication) {
-    return authentication.authorities.contains(authority);
-  }
-
-  @override
-  String _toExpression() => 'hasAuthority($authority)';
+  String describe() => 'hasPermission($permission)';
 }
 
 class AndRule extends AuthorizationRule {
@@ -72,13 +71,12 @@ class AndRule extends AuthorizationRule {
   const AndRule(this.left, this.right);
 
   @override
-  bool evaluate(Authentication authentication) {
-    return left.evaluate(authentication) && right.evaluate(authentication);
-  }
+  bool evaluate(Authentication authentication, RequestEntity request) =>
+      left.evaluate(authentication, request) &&
+      right.evaluate(authentication, request);
 
   @override
-  String _toExpression() =>
-      '(${left._toExpression()} && ${right._toExpression()})';
+  String describe() => '(${left.describe()} && ${right.describe()})';
 }
 
 class OrRule extends AuthorizationRule {
@@ -88,29 +86,45 @@ class OrRule extends AuthorizationRule {
   const OrRule(this.left, this.right);
 
   @override
-  bool evaluate(Authentication authentication) {
-    return left.evaluate(authentication) || right.evaluate(authentication);
-  }
+  bool evaluate(Authentication authentication, RequestEntity request) =>
+      left.evaluate(authentication, request) ||
+      right.evaluate(authentication, request);
 
   @override
-  String _toExpression() =>
-      '(${left._toExpression()} || ${right._toExpression()})';
+  String describe() => '(${left.describe()} || ${right.describe()})';
 }
 
+class _FunctionRule extends AuthorizationRule {
+  final bool Function(Authentication authentication, RequestEntity request)
+  _check;
+  final String _description;
+
+  const _FunctionRule(this._check, this._description);
+
+  @override
+  bool evaluate(Authentication authentication, RequestEntity request) =>
+      _check(authentication, request);
+
+  @override
+  String describe() => _description;
+}
+
+/// A rule that combines with others: `hasRole('admin') | hasPermission('users.read')`
 class RuleBuilder extends AuthorizationRule {
   final AuthorizationRule _rule;
 
   RuleBuilder(this._rule);
 
   @override
-  bool evaluate(authentication) => _rule.evaluate(authentication);
+  bool evaluate(Authentication authentication, RequestEntity request) =>
+      _rule.evaluate(authentication, request);
 
   @override
-  String _toExpression() => _rule._toExpression();
+  String describe() => _rule.describe();
 
   @override
   String toString() {
-    final res = _toExpression();
+    final res = describe();
     if (res.startsWith('(') && res.endsWith(')')) {
       return res.substring(1, res.length - 1);
     }

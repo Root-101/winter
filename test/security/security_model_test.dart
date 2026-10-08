@@ -9,9 +9,10 @@ void main() {
       permissions: {'user.list'},
     );
 
-    test('name & authorities', () {
+    test('name, roles and permissions', () {
       expect(authentication.name, '42');
-      expect(authentication.authorities, {'admin', 'user.list'});
+      expect(authentication.roles, {'admin'});
+      expect(authentication.permissions, {'user.list'});
     });
 
     test('roles & permissions are unmodifiable', () {
@@ -36,7 +37,8 @@ void main() {
       final anonymous = Authentication.anonymous();
 
       expect(anonymous.authenticated, isFalse);
-      expect(anonymous.authorities, isEmpty);
+      expect(anonymous.roles, isEmpty);
+      expect(anonymous.permissions, isEmpty);
     });
   });
 
@@ -60,18 +62,35 @@ void main() {
       permissions: {'user.list'},
     );
 
-    test('hasAuthority matches roles and permissions', () {
-      expect(hasAuthority('admin').evaluate(authentication), isTrue);
-      expect(hasAuthority('user.list').evaluate(authentication), isTrue);
-      expect(hasAuthority('other').evaluate(authentication), isFalse);
+    test('a role or a permission (what hasAuthority was)', () {
+      expect(
+        (hasRole('admin') | hasPermission('admin')).evaluate(
+          authentication,
+          _request,
+        ),
+        isTrue,
+      );
+      expect(
+        (hasRole('user.list') | hasPermission('user.list')).evaluate(
+          authentication,
+          _request,
+        ),
+        isTrue,
+      );
+      expect(
+        (hasRole('other') | hasPermission('other')).evaluate(
+          authentication,
+          _request,
+        ),
+        isFalse,
+      );
     });
 
     test('toString shows the expression', () {
       expect(const RoleRule('admin').toString(), 'hasRole(admin)');
       expect(
-        (hasRole('admin') & (hasPermission('a') | hasAuthority('b')))
-            .toString(),
-        'hasRole(admin) && (hasPermission(a) || hasAuthority(b))',
+        (hasRole('admin') & (hasPermission('a') | hasRole('b'))).toString(),
+        'hasRole(admin) && (hasPermission(a) || hasRole(b))',
       );
     });
 
@@ -87,3 +106,9 @@ void main() {
     });
   });
 }
+
+/// The rules of these tests don't look at the request
+final RequestEntity _request = RequestEntity(
+  'GET',
+  Uri.parse('http://localhost/'),
+);

@@ -96,7 +96,7 @@ void main() {
             key: 'with-authority-key',
             method: HttpMethod.get,
             filterConfig: FilterConfig([
-              AuthFilter(rules: hasAuthority('admin')),
+              AuthFilter(rules: (hasRole('admin') | hasPermission('admin'))),
             ]),
             handler: (request) async => ResponseEntity.ok(),
           ),

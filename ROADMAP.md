@@ -46,7 +46,7 @@ way we want to maintain it**. Exit criteria:
 | Dependency injection                                                                    | ✅ Reviewed (2.4), `doc/dependency-injection.md` |
 | Configuration (`Env`, `ServerConfig`)                                                   | ✅ Reviewed (2.5), `doc/configuration.md`   |
 | Logging                                                                                 | ✅ Reviewed (2.6), `doc/logging.md`         |
-| Security                                                                                | ⚠️ Works, to be reviewed → phase 2.7       |
+| Security                                                                                | ✅ Reviewed (2.7)                           |
 | Documentation                                                                           | ❌ The biggest gap                          |
 | CI / publishing                                                                         | ❌ No CI                                    |
 
@@ -345,26 +345,36 @@ the guide in `doc/logging.md`.
 
 ### 2.7 Security
 
-- [ ] **Expose `X-Request-Id` to browsers**: CORS must list it in `Access-Control-Expose-Headers`, or
-  a web client can't read the id of a response (found in the review 2.6).
-- [ ] **CORS with `'*'` and `allowCredentials: true` echoes any origin**: that gives every website
+**Done** (`DECISIONS.md` §8, guide in `doc/security.md`): CORS warns about `'*'` with credentials,
+varies by origin and exposes `X-Request-Id`; the 401 has `WWW-Authenticate`; a typed principal from
+any code; rules that see the request; security headers; an asynchronous rate limiter with a
+`RateLimiterStore`.
+
+- [x] **Expose `X-Request-Id` to browsers**: CORS must list it in `Access-Control-Expose-Headers`, or
+  a web client can't read the id of a response (found in the review 2.6). → Always exposed (§8.1).
+- [x] **CORS with `'*'` and `allowCredentials: true` echoes any origin**: that gives every website
   credentialed access to the API, which is what the browser rule is meant to prevent. Require
-  explicit origins with credentials (fail on start), or at least log a warning.
-- [ ] **A 401 without `WWW-Authenticate`:** RFC 9110 requires it. Let `AuthFilter` set it (for
-  example `Bearer`).
-- [ ] **Typed principal:** `RequestSecurityContext<T>` is generic, but `request.securityContext`
+  explicit origins with credentials (fail on start), or at least log a warning. → A warning, and
+  `Vary: Origin` on every response that depends on the origin (§8.1).
+- [x] **A 401 without `WWW-Authenticate`:** RFC 9110 requires it. Let `AuthFilter` set it (for
+  example `Bearer`). → `Bearer`, configurable with `challenge` (§8.2).
+- [x] **Typed principal:** `RequestSecurityContext<T>` is generic, but `request.securityContext`
   returns `RequestSecurityContext<dynamic>` and `Authentication.anonymous()` is an
   `Authentication<dynamic>` with the principal `'Anonymous'`. Add typed access
-  (`request.principal<User>()`) so handlers don't need a cast.
-- [ ] Roles vs permissions vs authorities: three concepts, where `authorities` is the union of the
-  other two. Decide whether all three are needed.
-- [ ] `RateLimiter(0, window)` answers every request with a 500: with no logs, `getWaitDuration`
+  (`request.principal<User>()`) so handlers don't need a cast. → `requestPrincipal<T>()` from any
+  code (the request scope) and `request.principal<T>()`, a 401 for nobody (§8.3).
+- [x] Roles vs permissions vs authorities: three concepts, where `authorities` is the union of the
+  other two. Decide whether all three are needed. → Roles and permissions only (§8.2). Rules also
+  receive the request, and `describe()` prints them (§8.4).
+- [x] `RateLimiter(0, window)` answers every request with a 500: with no logs, `getWaitDuration`
   reads `logs.first` of an empty list (`StateError`). Reject `maxRequests < 1` when it's created
-  (found in the review 2.3).
-- [ ] Rate limiter: document that it's in memory, per isolate and per process; leave an abstract
-  `RateLimiterStore` so a Redis store can be added in 1.x without a breaking change.
-- [ ] A `SecurityHeadersFilter`: `Strict-Transport-Security`, `X-Content-Type-Options`,
-  `Referrer-Policy`, a basic `Content-Security-Policy`.
+  (found in the review 2.3). → An `ArgumentError`, also for a window that isn't positive (§8.6).
+- [x] Rate limiter: document that it's in memory, per isolate and per process; leave an abstract
+  `RateLimiterStore` so a Redis store can be added in 1.x without a breaking change. → An
+  asynchronous `RateLimiterStore` (§8.6).
+- [x] A `SecurityHeadersFilter`: `Strict-Transport-Security`, `X-Content-Type-Options`,
+  `Referrer-Policy`, a basic `Content-Security-Policy`. → `nosniff` and `DENY` always,
+  `SecurityHeaders` opt-in in `SecurityConfig`, HSTS only with `hsts: true` (§8.5).
 
 ### 2.8 Router, filters and entities (light review)
 
@@ -695,10 +705,10 @@ written twice. The rest can be written now.
     9. **Limitations and decisions:** what is not translated on purpose (HTTP reason phrases,
        technical deserialization errors), the mix of languages when the app supports a language that
        Winter doesn't have, and a link to `DECISIONS.md` §1 for why slang and YAML.
-- [ ] **`security.md`** (after 2.7): how to authenticate with your own filter (Bearer/JWT, as in
+- [x] **`security.md`** (after 2.7), its snippets checked by running them: how to authenticate with your own filter (Bearer/JWT, as in
   `example/03_auth_security`), `Authentication` and `RequestSecurityContext`,
   `requestAuthentication` from services, `AuthFilter` (401 vs 403), rules (`hasRole`,
-  `hasPermission`, `hasAuthority`, `&`, `|`), route vs global filters with `shouldFilter`, CORS
+  `hasPermission`, `rule`, `&`, `|`), route vs global filters with `shouldFilter`, CORS
   (`SecurityConfig.cors()`, credentials, preflight), rate limiter (sliding window, `X-RateLimit-*`
   headers, per IP, `trustedProxies`, its limits with several isolates), and a production checklist
   (HTTPS, security headers, body limit, never log secrets, `sensitive: true`).

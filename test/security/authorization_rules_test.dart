@@ -14,57 +14,57 @@ void main() {
     });
 
     test('authority >> User', () async {
-      final rule = hasAuthority('User');
-      bool response = rule.evaluate(authentication);
+      final rule = (hasRole('User') | hasPermission('User'));
+      bool response = rule.evaluate(authentication, _request);
 
       expect(response, true);
     });
 
     test('authority >> user.create', () async {
-      final rule = hasAuthority('user.create');
-      bool response = rule.evaluate(authentication);
+      final rule = (hasRole('user.create') | hasPermission('user.create'));
+      bool response = rule.evaluate(authentication, _request);
 
       expect(response, true);
     });
 
     test('role >> User', () async {
       final rule = hasRole('User');
-      bool response = rule.evaluate(authentication);
+      bool response = rule.evaluate(authentication, _request);
 
       expect(response, true);
     });
 
     test('role >> Admin', () async {
       final rule = hasRole('Admin');
-      bool response = rule.evaluate(authentication);
+      bool response = rule.evaluate(authentication, _request);
 
       expect(response, false);
     });
 
     test('permission >> user.create', () async {
       final rule = hasPermission('user.create');
-      bool response = rule.evaluate(authentication);
+      bool response = rule.evaluate(authentication, _request);
 
       expect(response, true);
     });
 
     test('permission >> user.delete', () async {
       final rule = hasPermission('user.delete');
-      bool response = rule.evaluate(authentication);
+      bool response = rule.evaluate(authentication, _request);
 
       expect(response, false);
     });
 
     test('permission >> User', () async {
       final rule = hasPermission('User');
-      bool response = rule.evaluate(authentication);
+      bool response = rule.evaluate(authentication, _request);
 
       expect(response, false);
     });
 
     test('role >> user.create', () async {
       final rule = hasRole('user.create');
-      bool response = rule.evaluate(authentication);
+      bool response = rule.evaluate(authentication, _request);
 
       expect(response, false);
     });
@@ -76,7 +76,7 @@ void main() {
             hasPermission('user.create') &
             hasPermission('user.edit') &
             hasRole('User');
-        bool response = rule.evaluate(authentication);
+        bool response = rule.evaluate(authentication, _request);
 
         expect(response, true);
       },
@@ -88,7 +88,7 @@ void main() {
         final rule =
             hasPermission('user.create') &
             (hasRole('User') & hasRole('SuperUser'));
-        bool response = rule.evaluate(authentication);
+        bool response = rule.evaluate(authentication, _request);
 
         expect(response, true);
       },
@@ -99,7 +99,7 @@ void main() {
       () async {
         final rule =
             hasRole('User') & (hasPermission('user.edit') | hasPermission(''));
-        bool response = rule.evaluate(authentication);
+        bool response = rule.evaluate(authentication, _request);
 
         expect(response, true);
       },
@@ -110,7 +110,7 @@ void main() {
       () async {
         final rule =
             hasPermission('user.create') & (hasRole('User') | hasRole('Admin'));
-        bool response = rule.evaluate(authentication);
+        bool response = rule.evaluate(authentication, _request);
 
         expect(response, true);
       },
@@ -122,7 +122,7 @@ void main() {
         final rule =
             (hasRole('Admin') | hasRole('SuperUser')) &
             hasPermission('user.edit');
-        bool response = rule.evaluate(authentication);
+        bool response = rule.evaluate(authentication, _request);
 
         expect(response, true);
       },
@@ -132,7 +132,7 @@ void main() {
       final rule =
           (hasRole('User') & hasPermission('user.create')) |
           (hasRole('Admin') & hasPermission('user.delete'));
-      bool response = rule.evaluate(authentication);
+      bool response = rule.evaluate(authentication, _request);
 
       expect(response, true);
     });
@@ -140,14 +140,14 @@ void main() {
     test('Complex mismatch: (role >> Admin || role >> Guest) && permission >> user.create', () async {
       final rule =
           (hasRole('Admin') | hasRole('Guest')) & hasPermission('user.create');
-      bool response = rule.evaluate(authentication);
+      bool response = rule.evaluate(authentication, _request);
 
       expect(response, false);
     });
 
     test('Triple OR with success: role >> Admin || role >> User || role >> SuperUser', () async {
       final rule = hasRole('Admin') | hasRole('User') | hasRole('SuperUser');
-      bool response = rule.evaluate(authentication);
+      bool response = rule.evaluate(authentication, _request);
 
       expect(response, true);
     });
@@ -157,7 +157,7 @@ void main() {
           (hasRole('User') &
               (hasPermission('user.create') | hasPermission('user.delete'))) &
           hasRole('SuperUser');
-      bool response = rule.evaluate(authentication);
+      bool response = rule.evaluate(authentication, _request);
 
       expect(response, true);
     });
@@ -166,7 +166,7 @@ void main() {
       final rule =
           (hasRole('User') & hasPermission('user.create')) |
           (hasRole('Admin') & hasRole('SuperUser'));
-      bool response = rule.evaluate(authentication);
+      bool response = rule.evaluate(authentication, _request);
 
       expect(response, true);
     });
@@ -174,30 +174,60 @@ void main() {
     test('Anonymous user should fail rules', () async {
       final anonymous = Authentication.anonymous();
 
-      expect(hasRole('User').evaluate(anonymous), false);
-      expect(hasPermission('user.create').evaluate(anonymous), false);
-      expect(hasAuthority('User').evaluate(anonymous), false);
+      expect(hasRole('User').evaluate(anonymous, _request), false);
+      expect(hasPermission('user.create').evaluate(anonymous, _request), false);
+      expect(
+        (hasRole('User') | hasPermission('User')).evaluate(anonymous, _request),
+        false,
+      );
     });
 
     test('Authentication with no roles or permissions', () async {
       final emptyAuth = Authentication(principal: 'Empty');
 
-      expect(hasRole('User').evaluate(emptyAuth), false);
-      expect(hasPermission('user.create').evaluate(emptyAuth), false);
-      expect(hasAuthority('User').evaluate(emptyAuth), false);
+      expect(hasRole('User').evaluate(emptyAuth, _request), false);
+      expect(hasPermission('user.create').evaluate(emptyAuth, _request), false);
+      expect(
+        (hasRole('User') | hasPermission('User')).evaluate(emptyAuth, _request),
+        false,
+      );
     });
 
     test('Authority matches both roles and permissions', () async {
-      expect(hasAuthority('User').evaluate(authentication), true);
-      expect(hasAuthority('user.create').evaluate(authentication), true);
-      expect(hasAuthority('Admin').evaluate(authentication), false);
-      expect(hasAuthority('user.delete').evaluate(authentication), false);
+      expect(
+        (hasRole('User') | hasPermission('User')).evaluate(
+          authentication,
+          _request,
+        ),
+        true,
+      );
+      expect(
+        (hasRole('user.create') | hasPermission('user.create')).evaluate(
+          authentication,
+          _request,
+        ),
+        true,
+      );
+      expect(
+        (hasRole('Admin') | hasPermission('Admin')).evaluate(
+          authentication,
+          _request,
+        ),
+        false,
+      );
+      expect(
+        (hasRole('user.delete') | hasPermission('user.delete')).evaluate(
+          authentication,
+          _request,
+        ),
+        false,
+      );
     });
 
     test('Complex mixed chaining: role >> User && (role >> Admin || permission >> user.edit)', () async {
       final rule =
           hasRole('User') & (hasRole('Admin') | hasPermission('user.edit'));
-      expect(rule.evaluate(authentication), true);
+      expect(rule.evaluate(authentication, _request), true);
     });
 
     test('Deeply nested logic: ((A || B) && (C || D))', () async {
@@ -206,68 +236,80 @@ void main() {
           (hasRole('Admin') | hasRole('User')) &
           (hasPermission('user.delete') | hasPermission('user.edit'));
 
-      expect(rule.evaluate(authentication), true);
+      expect(rule.evaluate(authentication, _request), true);
     });
 
     test('Triple AND failure: role >> User && permission >> user.create && role >> Admin', () async {
       final rule =
           hasRole('User') & hasPermission('user.create') & hasRole('Admin');
 
-      expect(rule.evaluate(authentication), false);
+      expect(rule.evaluate(authentication, _request), false);
     });
 
     test('Authority matching mixed set (roles and permissions)', () async {
-      final rule = hasAuthority('user.create') & hasAuthority('SuperUser');
-      expect(rule.evaluate(authentication), true);
+      final rule =
+          (hasRole('user.create') | hasPermission('user.create')) &
+          (hasRole('SuperUser') | hasPermission('SuperUser'));
+      expect(rule.evaluate(authentication, _request), true);
     });
 
     test('Rule logic with nested ORs and ANDs', () async {
       // (Admin OR (User AND user.edit))
       final rule =
           hasRole('Admin') | (hasRole('User') & hasPermission('user.edit'));
-      expect(rule.evaluate(authentication), true);
+      expect(rule.evaluate(authentication, _request), true);
 
       // (Admin OR (User AND user.delete))
       final rule2 =
           hasRole('Admin') | (hasRole('User') & hasPermission('user.delete'));
-      expect(rule2.evaluate(authentication), false);
+      expect(rule2.evaluate(authentication, _request), false);
     });
 
     test('Case sensitivity', () async {
-      expect(hasRole('user').evaluate(authentication), false);
-      expect(hasPermission('USER.CREATE').evaluate(authentication), false);
-      expect(hasAuthority('USER').evaluate(authentication), false);
+      expect(hasRole('user').evaluate(authentication, _request), false);
+      expect(
+        hasPermission('USER.CREATE').evaluate(authentication, _request),
+        false,
+      );
+      expect(
+        (hasRole('USER') | hasPermission('USER')).evaluate(
+          authentication,
+          _request,
+        ),
+        false,
+      );
     });
 
     test('Mixing andd(), orr(), and() and or() in long chains', () async {
-      // ((hasRole('User') AND hasPermission('user.edit')) OR hasRole('Admin')) AND hasAuthority('SuperUser')
+      // ((hasRole('User') AND hasPermission('user.edit')) OR hasRole('Admin')) AND (hasRole('SuperUser') | hasPermission('SuperUser'))
       final rule =
           hasRole('User') & hasPermission('user.edit') |
-          hasRole('Admin') & hasAuthority('SuperUser');
+          hasRole('Admin') &
+              (hasRole('SuperUser') | hasPermission('SuperUser'));
 
-      expect(rule.evaluate(authentication), true);
+      expect(rule.evaluate(authentication, _request), true);
 
       // Change SuperUser to Guest (which authentication doesn't have)
-      final ruleFail = rule & hasAuthority('Guest');
-      expect(ruleFail.evaluate(authentication), false);
+      final ruleFail = rule & (hasRole('Guest') | hasPermission('Guest'));
+      expect(ruleFail.evaluate(authentication, _request), false);
     });
 
     test('Chaining multiple orr() with authorities', () async {
       final rule =
-          hasAuthority('Admin') |
-          hasAuthority('Guest') |
-          hasAuthority('user.list');
+          (hasRole('Admin') | hasPermission('Admin')) |
+          (hasRole('Guest') | hasPermission('Guest')) |
+          (hasRole('user.list') | hasPermission('user.list'));
 
-      expect(rule.evaluate(authentication), true);
+      expect(rule.evaluate(authentication, _request), true);
     });
 
     test('Chaining multiple andd() with authorities', () async {
       final rule =
-          hasAuthority('User') &
-          hasAuthority('user.create') &
-          hasAuthority('user.edit');
+          (hasRole('User') | hasPermission('User')) &
+          (hasRole('user.create') | hasPermission('user.create')) &
+          (hasRole('user.edit') | hasPermission('user.edit'));
 
-      expect(rule.evaluate(authentication), true);
+      expect(rule.evaluate(authentication, _request), true);
     });
 
     test('Complex nested structure with mixed builders', () async {
@@ -277,12 +319,12 @@ void main() {
               (hasPermission('user.create') | hasPermission('user.delete')) |
           (hasRole('Admin') & hasPermission('user.edit'));
 
-      expect(rule.evaluate(authentication), true);
+      expect(rule.evaluate(authentication, _request), true);
     });
 
     test('Redundant rules evaluation', () async {
       final rule = hasRole('User') & hasRole('User') | hasRole('User');
-      expect(rule.evaluate(authentication), true);
+      expect(rule.evaluate(authentication, _request), true);
     });
 
     test('Deep nesting with multiple or() blocks', () async {
@@ -290,7 +332,7 @@ void main() {
           hasRole('Guest') |
           (hasRole('Member') |
               (hasRole('User') & hasPermission('user.create')));
-      expect(rule.evaluate(authentication), true);
+      expect(rule.evaluate(authentication, _request), true);
     });
 
     test('Sequential evaluation (left-to-right precedence check)', () async {
@@ -299,13 +341,13 @@ void main() {
       // hasRole('Admin') || (hasRole('User') && hasPermission('user.create')) => false || (true && true) => true
       final rule1 =
           hasRole('Admin') | hasRole('User') & hasPermission('user.create');
-      expect(rule1.evaluate(authentication), true);
+      expect(rule1.evaluate(authentication, _request), true);
 
       // hasRole('Admin') || (hasRole('User') && hasPermission('user.delete'))
       // (false || (true && false)) => false
       final rule2 =
           hasRole('Admin') | hasRole('User') & hasPermission('user.delete');
-      expect(rule2.evaluate(authentication), false);
+      expect(rule2.evaluate(authentication, _request), false);
     });
 
     test(
@@ -320,9 +362,9 @@ void main() {
         );
         final normal = Authentication(principal: 'joe', roles: {'User'});
 
-        expect(rule.evaluate(admin), true);
-        expect(rule.evaluate(superUser), true);
-        expect(rule.evaluate(normal), false);
+        expect(rule.evaluate(admin, _request), true);
+        expect(rule.evaluate(superUser, _request), true);
+        expect(rule.evaluate(normal, _request), false);
       },
     );
 
@@ -346,3 +388,9 @@ void main() {
     });
   });
 }
+
+/// The rules of these tests don't look at the request
+final RequestEntity _request = RequestEntity(
+  'GET',
+  Uri.parse('http://localhost/'),
+);

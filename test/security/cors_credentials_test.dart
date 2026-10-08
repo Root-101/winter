@@ -54,7 +54,8 @@ void main() {
 
       expect(
         response.headers[HttpHeader.accessControlExposeHeaders],
-        'X-Total, X-Page',
+        // X-Request-Id is always exposed
+        'X-Request-Id, X-Total, X-Page',
       );
     });
 

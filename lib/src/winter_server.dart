@@ -164,10 +164,11 @@ class Winter {
       rethrow;
     }
 
-    ///dart:io adds `Content-Type: text/plain` to every response without one
-    ///(ex: a 204, or a 401/404 without body): a response without body has no type.
-    ///The other default headers (X-Frame-Options, X-Content-Type-Options...) are kept.
-    rawServer.defaultResponseHeaders.removeAll(HttpHeaders.contentTypeHeader);
+    ///dart:io adds its own headers to every response: `Content-Type: text/plain` (a response
+    ///without body has no type), `X-Frame-Options`, `X-Content-Type-Options` and the obsolete
+    ///`X-XSS-Protection`. They are removed: Winter adds its security headers itself
+    ///(`_securityHeaders`), so the server and `WinterTestClient` answer the same.
+    rawServer.defaultResponseHeaders.clear();
 
     Winter nextRunningServer = Winter._(
       serverContext: _context,
@@ -336,13 +337,23 @@ class Winter {
   }
 
   /// The global filters, with the [CorsFilter] first if CORS is enabled in the [SecurityConfig]
+  /// On every response (`SecurityHeaders` adds more): the browser never guesses the type of a
+  /// response, and an API is never shown in a frame
+  static final Map<String, String> _securityHeaders = {
+    HttpHeader.xContentTypeOptions: 'nosniff',
+    HttpHeader.xFrameOptions: 'DENY',
+  };
+
   static FilterConfig _globalFilters(
     SecurityConfig securityConfig,
     FilterConfig? globalFilterConfig,
   ) {
     final corsConfig = securityConfig.cors();
+    final securityHeaders = securityConfig.securityHeaders;
     return FilterConfig([
       if (corsConfig != null) CorsFilter(config: corsConfig),
+      if (securityHeaders != null)
+        SecurityHeadersFilter(config: securityHeaders),
       ...?globalFilterConfig?.filters,
     ]);
   }
@@ -393,9 +404,14 @@ class Winter {
       }
     });
 
-    ///The id of the request goes back to the client (and the next proxy), to find its logs
+    ///The id of the request goes back to the client (and the next proxy), to find its logs,
+    ///with the basic security headers (unless the response set them)
     final Response response = pipelineResponse.change(
-      headers: {HttpHeader.xRequestId: scope.requestId},
+      headers: {
+        HttpHeader.xRequestId: scope.requestId,
+        for (final MapEntry(:key, :value) in _securityHeaders.entries)
+          if (!pipelineResponse.headers.containsKey(key)) key: value,
+      },
     );
 
     ///Some code used the language of the request, so the response depends on it

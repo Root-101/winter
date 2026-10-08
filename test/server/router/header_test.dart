@@ -158,11 +158,16 @@ void main() {
       expect(response.body, isEmpty);
     });
 
-    test('Security headers of dart:io are kept', () async {
-      http.Response response = await http.get(url('/no-content'));
+    test(
+      'The security headers of Winter replace the ones of dart:io',
+      () async {
+        http.Response response = await http.get(url('/no-content'));
 
-      expect(response.headers['x-content-type-options'], 'nosniff');
-      expect(response.headers['x-frame-options'], 'SAMEORIGIN');
-    });
+        expect(response.headers['x-content-type-options'], 'nosniff');
+        expect(response.headers['x-frame-options'], 'DENY');
+        // Obsolete, and it opened XSS in old browsers
+        expect(response.headers, isNot(contains('x-xss-protection')));
+      },
+    );
   });
 }
