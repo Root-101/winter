@@ -48,15 +48,22 @@ class RequestScope {
 
   /// A random UUID (version 4)
   static String newRequestId() {
-    final bytes = List<int>.generate(16, (_) => _random.nextInt(256));
-    bytes[6] = (bytes[6] & 0x0f) | 0x40;
-    bytes[8] = (bytes[8] & 0x3f) | 0x80;
-    final hex = [
-      for (final byte in bytes) byte.toRadixString(16).padLeft(2, '0'),
-    ].join();
-    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-'
-        '${hex.substring(16, 20)}-${hex.substring(20)}';
+    final StringBuffer id = StringBuffer();
+    for (var i = 0; i < 16; i++) {
+      var byte = _random.nextInt(256);
+      if (i == 6) byte = (byte & 0x0f) | 0x40;
+      if (i == 8) byte = (byte & 0x3f) | 0x80;
+      if (i == 4 || i == 6 || i == 8 || i == 10) id.write('-');
+      id.write(_hex[byte]);
+    }
+    return id.toString();
   }
+
+  /// `00` to `ff`, so an id is built without formatting every byte
+  static final List<String> _hex = [
+    for (var byte = 0; byte < 256; byte++)
+      byte.toRadixString(16).padLeft(2, '0'),
+  ];
 
   /// The same as `request.locale`: chosen from the `Accept-Language` of the request.
   /// Reading it marks the response as dependent on the language ([localeRead]).
