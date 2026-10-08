@@ -892,8 +892,20 @@ Postponed to a later version: until then, the same checks are run by hand before
 
 ### 6.3 Final review 🟡
 
-- [ ] A full security review (path traversal in static files, multipart limits, headers, errors
-  never leaking internal data).
+- [x] A full security review (path traversal in static files, multipart limits, headers, errors
+  never leaking internal data). → Probed against the real server:
+  - Fixed: a response header with a line break, a control character or a character that isn't
+    ASCII left a broken response (a 303 without `Location`, a 200 without body) logged only at
+    debug; a line break from the request was a header injection attempt. Now a 500, logged.
+  - Fixed: a 415 echoed the whole `Content-Type` of the client (5 KB in the probe); cut to 100.
+  - Checked, fine: invalid JSON gives no excerpt of the body; `X-Request-Id` only takes
+    `[A-Za-z0-9._:-]{1,128}`; static files refuse `..` (also encoded, also `\`), hidden files,
+    Windows device names (`CON`, `NUL`) and links out of the folder; multipart has a limit per
+    part header and malformed bodies are a 400; cookies that don't parse are skipped; a JSON body
+    100.000 levels deep is decoded; `dart:io` refuses headers of about 1 MB.
+  - Documented, not fixed (a proxy's job, `doc/security.md`): slow clients (no timeout to read the
+    headers), the size of the headers, and connections per client. A response that is a JSON
+    nested thousands of levels (echoed from the client) overflows the stack of the encoder: a 500.
 - [ ] Publish the benchmarks (routing, server and object mapper) and compare them with `dart:io`
   (the ceiling) and with the last version on shelf, in the README or in `doc/`.
 - [ ] Keep the coverage of the new modules at the current level (~99%).

@@ -165,6 +165,9 @@ The type of the body decides how it's written:
 - `Content-Length` is added for everything but a stream.
 - `encoding:` changes the encoding of a text body and its charset.
 - `body()` gives back the value (`user`), not the bytes.
+- A header value is ASCII without line breaks (what `dart:io` can send): anything else is a **500**
+  with the error logged, never a broken response nor a header injection. A file name with accents
+  goes encoded: `'attachment; filename*=UTF-8\'\'${Uri.encodeComponent(name)}'`.
 - Several values of a header are a list: `headers: {'Link': ['<a>; rel=next', '<b>; rel=last']}`,
   and every cookie of `cookies:` is a `Set-Cookie` of its own.
 
