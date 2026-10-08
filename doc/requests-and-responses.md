@@ -75,19 +75,40 @@ Every map is read-only: a filter that needs to change the request passes a copy 
 
 ### The body of a request
 
+Every kind of body a client sends (the tabs of the **Body** of Postman) has its method:
+
+| Body (Postman)           | `Content-Type`                       | Read with                                    |
+|--------------------------|--------------------------------------|----------------------------------------------|
+| none                     | —                                    | `body<T?>()` is `null`; `body<String>()` is `''` |
+| raw > JSON, GraphQL      | `application/json`, `*/*+json`       | `body<T>()`: an object, validated            |
+| raw > Text, XML, HTML, JavaScript, CSV | `text/plain`, `application/xml`, `text/html`... | `body<String>()`: the text as it came |
+| x-www-form-urlencoded    | `application/x-www-form-urlencoded`  | `formData()` ([a form](#a-form))             |
+| form-data                | `multipart/form-data`                | `formData()`, or `multipart()` for big files |
+| binary                   | any (`image/png`, `application/pdf`, `application/octet-stream`) | `bytes()` (or `body<Uint8List>()`) |
+
 ```dart
 final CreateUser user = await request.body<CreateUser>();      // JSON → object, validated
 final Map<String, dynamic> raw = await request.body<Map<String, dynamic>>();
-final String text = await request.body<String>();
+final Note? note = await request.body<Note?>();                // null without a body
+final String xml = await request.body<String>();               // any text, as it came
+final FormData form = await request.formData();                // urlencoded or form-data
+final Uint8List image = await request.bytes();                 // binary, any Content-Type
 ```
 
 - `body<T>()` decodes the JSON with the object mapper and validates a `Validatable` (see
-  [object mapper](object-mapper.md) and [validation](validation.md)). It caches the body: call it
-  as many times as you want, with any `T`.
-- The text is decoded with the charset of the `Content-Type` (UTF-8 without one).
-- `read()` (the bytes) and `readAsString()` read the stream itself: once, and not after `body<T>()`.
+  [object mapper](object-mapper.md) and [validation](validation.md)). Its `Content-Type` must be
+  JSON, `text/plain` or none (a 415 otherwise), except for `body<String>()` and
+  `body<Uint8List>()`, which read any body.
+- `body<T>()`, `bytes()` and `formData()` read the body once and cache it: call them as many times
+  as you want, even several of them.
+- The text is decoded with the charset of the `Content-Type` (UTF-8 without one); bytes that are not
+  text in it are a **400** (`The body is not valid utf-8 text`), never a 500.
+- `read()` (the bytes as they arrive) and `readAsString()` read the stream itself: once, and not
+  after the cached methods. `read()` is for a big body that goes to a file without being in memory.
 - A body over `ServerConfig.maxBodySize` (10 MB) is a **413** when it's read; a body nobody reads
   is never rejected.
+
+`example/08_request_bodies` has an endpoint for each kind, with the `curl` of each one.
 
 ### A form
 

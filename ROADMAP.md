@@ -573,6 +573,10 @@ cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `
   `ETag`/`Last-Modified`, `304`, `Range` requests and no path traversal (`..`), streaming the
   `File` of `dart:io`. → `Route.static` and `StaticFiles` (`DECISIONS.md` §9). It found a bug: a
   `?` in the regex of a route cut its path there, and the route matched any url.
+- [x] **Every kind of body** (the tabs of Postman: none, raw, x-www-form-urlencoded, form-data,
+  binary, GraphQL), checked one by one. → Added `request.bytes()` and `body<Uint8List>()` for a
+  binary body (before only `read()`, a stream read once), and a body that isn't text read as
+  text is a 400 (it was a 500). `example/08_request_bodies` has an endpoint for each kind.
 - [x] **HTTPS:** `ServerConfig(securityContext: ...)` with `HttpServer.bindSecure` (the server of
   3.1). → Done in 3.1.
 
