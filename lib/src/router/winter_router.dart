@@ -438,6 +438,41 @@ class Route {
     );
   }
 
+  ///GET (and HEAD) of the files of [directory] under [path]: `/assets/css/site.css` is
+  ///`directory/css/site.css`, and `/assets` (or a folder) its [index]. See [StaticFiles] for the
+  ///rules (no path traversal, ETag, 304, Range requests).
+  ///
+  ///It matches every path under [path], so a route declared after it with a param at the same
+  ///place (`/assets/{id}`) is never reached: declare those first. [directory] must exist.
+  factory Route.static({
+    required String path,
+    required String directory,
+    String? index = 'index.html',
+    String? cacheControl,
+    Map<String, String> mimeTypes = const {},
+    String? key,
+    FilterConfig? filterConfig,
+  }) {
+    final StaticFiles files = StaticFiles(
+      directory,
+      index: index,
+      cacheControl: cacheControl,
+      mimeTypes: mimeTypes,
+    );
+    final String prefix = normalizePath(path);
+    return Route.get(
+      path: prefix == '/'
+          ? '/{$_staticFileParam|.*}'
+          : '$prefix{$_staticFileParam|(/.*)?}',
+      handler: (request) =>
+          files.serve(request, request.pathParams[_staticFileParam] ?? ''),
+      key: key,
+      filterConfig: filterConfig,
+    );
+  }
+
+  static const String _staticFileParam = 'staticFile';
+
   ///A static route has no path params nor regex, it only match an exact path
   late final bool isStatic = !_dynamicPathPattern.hasMatch(path);
 

@@ -232,6 +232,16 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
 - **Typed params**: `pathParam<T>`/`queryParam<T>` (`String`, numbers, `bool`, `DateTime`, one of
   `values`); an invalid value is a 400 that names the param, never the value. A name that isn't in
   the route, or an unsupported type, is a bug of the app (500).
+- **Static files** (`Route.static`, `StaticFiles`): a `GET` route with a regex param, so `HEAD`,
+  filters and route keys work as in any route. Only files inside the folder, checked twice: no
+  `..`, hidden, `\` or `:` segment (`.env`, `.git/`, a Windows separator, drive or stream), and the
+  canonical path (links resolved) inside the canonical folder. `ETag` from size and modification
+  time (strong, so `If-Range` can use it), 304, one `Range` (several are rare and need
+  `multipart/byteranges`: the whole file is sent instead), the file streamed with its
+  `Content-Length`. A folder redirects to its `/` before serving its index, with a relative
+  `Location` that works behind a proxy prefix. MIME types are a short table of the web formats,
+  extended by `mimeTypes:`, without a dependency.
+- **A route path has no query**: a `?` in it belongs to a regex (`{id|\d?}`, `(/.*)?`).
 - **Immutable configuration**: `FilterConfig` (combined with `merge`) and the routes of a router
   (added with `addRoute`, validated like the constructor).
 - **Filters run sorted by `order`**, stable (global first, then the route's, parents before

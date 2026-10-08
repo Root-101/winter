@@ -112,8 +112,11 @@ Outside a param, `.*`, `.+`, `.?` and `.{n}` act as regex, and the rest of the c
 regex (`(a|b)`, `[a-z]`) too. A lone `.` is a literal dot: `/feed.json` doesn't match `/feedXjson`.
 
 ```dart
-Route.get(path: '/static/.*', handler: serveFile)
+Route.get(path: '/files/.*', handler: listFiles)
+Route.get(path: '/tree{rest|(/.*)?}', handler: tree)   // /tree and /tree/a/b (rest: /a/b)
 ```
+
+To serve the files of a folder, use `Route.static` (below).
 
 ### Which route answers
 
@@ -209,6 +212,33 @@ final router = MultiRouter([
 ]);
 ```
 
+### Static files
+
+```dart
+WinterRouter(
+  routes: [
+    ...apiRoutes,
+    Route.static(path: '/assets', directory: 'public'),   // /assets/css/site.css
+    Route.static(path: '/', directory: 'web/build', cacheControl: 'public, max-age=3600'),
+  ],
+)
+```
+
+- `GET` and `HEAD` of every file under the folder; `/assets` (or a subfolder) serves its
+  `index.html` (`index:`, `null` for none) after a 308 that adds the `/`, so its relative links work.
+- **Only that folder**: `..`, hidden files and folders (`.env`, `.git/`), `\`, `:` and links that
+  lead out of it are a 404.
+- `ETag` and `Last-Modified` on every file, and a **304** for `If-None-Match`/`If-Modified-Since`.
+- **`Range`** (video players, resumed downloads): one range is a **206**, a range out of the file a
+  **416**, and `If-Range` sends the whole file when it changed. Several ranges send the whole file.
+- The `Content-Type` comes from the extension (`mimeTypes:` adds or overrides some), and the file
+  is streamed, never read whole into memory. `cacheControl:` is sent with every file.
+- `StaticFiles(directory).serve(request, 'path/in/folder')` does the same from your own handler
+  (a download behind `AuthFilter`, a file chosen by id).
+
+It matches every path under its prefix: declare it **after** the routes that share that prefix
+(`/assets/api`), and a `Route.static` at `/` last of all.
+
 ### Testing the routes
 
 ```dart
@@ -228,3 +258,5 @@ test('an unknown user is a 404', () async {
 - **A custom router without `resolveRoute`**: its route filters never run.
 - The regex of a param can't contain `{` or `}` (`{code|[A-Z]{3}}`): use `[A-Z][A-Z][A-Z]` or `+`.
 - Routes are matched one by one: fine for hundreds of routes, not for tens of thousands.
+- **`Route.static(path: '/')` before other routes**: it catches every `GET`, and the routes after
+  it with a param are never reached. Declare it last.
