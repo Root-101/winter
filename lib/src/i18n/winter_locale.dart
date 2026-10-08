@@ -44,7 +44,7 @@ class WinterLocale {
   int get hashCode => Object.hash(languageCode, countryCode);
 }
 
-/// Languages the app answers in. Configured in the [BuildContext] (`Winter.context.setUp(localeConfig: ...)`).
+/// Languages the app answers in. Configured in the [WinterContext] (`Winter.context.setUp(localeConfig: ...)`).
 class LocaleConfig {
   /// Languages the app can answer in, by preference when the client accepts several with the same `q`.
   /// Default to English only: an app opts in to other languages, so its responses don't change by surprise.

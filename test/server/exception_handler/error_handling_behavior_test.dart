@@ -34,7 +34,7 @@ void main() {
       expect(response.headers['access-control-allow-origin'], '*');
     });
 
-    test('the filters see the 500 (LogsFilter logs it)', () async {
+    test('the filters see the 500 (LoggingFilter logs it)', () async {
       await client.get('/error');
 
       expect(seenByFilter, [500]);
@@ -105,7 +105,7 @@ void main() {
                 RateLimiterFilter(
                   maxRequests: 1,
                   window: const Duration(minutes: 1),
-                  onRequest: (_) => 'id',
+                  clientId: (_) => 'id',
                 ),
               ]),
             ),
@@ -343,6 +343,23 @@ void main() {
       expect(response.statusCode, 402);
       expect(response.body, 'Pay first');
     });
+
+    test(
+      'a status that is not in StatusCode goes in a ResponseException',
+      () async {
+        client = clientThrowing(
+          ResponseException(
+            ResponseEntity(700, body: 'Custom', headers: {'x-custom': '1'}),
+          ),
+        );
+
+        final response = await client.get('/');
+
+        expect(response.statusCode, 700);
+        expect(response.body, 'Custom');
+        expect(response.headers['x-custom'], '1');
+      },
+    );
   });
 
   group('on<T>() (§4.4)', () {

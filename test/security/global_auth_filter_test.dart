@@ -1,13 +1,11 @@
 @TestOn('vm')
 library;
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9081;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   Map<String, String> adminHeaders = {
     'SECRET': 'SecretAdmin',
@@ -20,8 +18,7 @@ void main() {
   };
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
+    client = WinterTestClient.build(
       globalFilterConfig: FilterConfig([
         CustomSecurityAccessFilter(),
         AuthFilter(
@@ -64,30 +61,26 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   group('Global AuthFilter with Whitelist and Roles', () {
     test('Private route with valid headers returns 200', () async {
-      final response = await http.get(url('/private'), headers: adminHeaders);
+      final response = await client.get('/private', headers: adminHeaders);
       expect(response.statusCode, 200);
     });
 
     test('Public route returns 200 without headers', () async {
-      final response = await http.get(url('/public'));
+      final response = await client.get('/public');
       expect(response.statusCode, 200);
     });
 
     group('Role Based Access (/admin)', () {
       test('Access /admin with ADMIN role returns 200', () async {
-        final response = await http.get(url('/admin'), headers: adminHeaders);
+        final response = await client.get('/admin', headers: adminHeaders);
         expect(response.statusCode, 200);
         expect(response.body, 'Admin Content');
       });
 
       test('Access /admin with USER role returns 403 (Forbidden)', () async {
-        final response = await http.get(url('/admin'), headers: userHeaders);
+        final response = await client.get('/admin', headers: userHeaders);
         // The user is authenticated but does not have the ADMIN role
         expect(response.statusCode, 403);
       });
@@ -95,15 +88,15 @@ void main() {
       test(
         'Access /admin without headers returns 401 (Unauthorized)',
         () async {
-          final response = await http.get(url('/admin'));
+          final response = await client.get('/admin');
           // The global AuthFilter fails before reaching the role filter
           expect(response.statusCode, 401);
         },
       );
 
       test('Access /admin with invalid headers returns 401', () async {
-        final response = await http.get(
-          url('/admin'),
+        final response = await client.get(
+          '/admin',
           headers: {'SECRET': 'wrong', 'ACCESS': 'wrong'},
         );
         expect(response.statusCode, 401);
@@ -130,7 +123,7 @@ class CustomSecurityAccessFilter extends Filter {
         Authentication(principal: 'REGULAR_USER', roles: {'USER'}),
       );
     } else {
-      request.securityContext.clearContext();
+      request.securityContext.clear();
     }
 
     return await chain.doFilter(request);

@@ -193,7 +193,7 @@ with the route filters of that router. Its 405 and its `OPTIONS` merge the metho
 
 ### Your own router
 
-Extend `AbstractWinterRouter` and implement `canHandle` and `handler`. A router that holds routes, or
+Extend `BaseRouter` and implement `canHandle` and `handler`. A router that holds routes, or
 wraps other routers, must also override `resolveRoute`: the server uses the `Route` it returns for
 the route filters (`AuthFilter` included) and the path params. Without it, those filters are
 silently skipped.

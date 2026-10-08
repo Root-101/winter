@@ -1,17 +1,14 @@
 @TestOn('vm')
 library;
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9067;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
+    client = WinterTestClient.build(
       globalFilterConfig: FilterConfig([InterceptNotAuthRequestsFilter()]),
       router: WinterRouter(
         routes: [
@@ -67,16 +64,12 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   group('Global Filter Tests', () {
     test(
       'Should return 401 when Authorization header is missing (Route 1)',
       () async {
         String urlToTest = '/mixed-filter/55';
-        http.Response response = await http.get(url(urlToTest));
+        TestResponse response = await client.get(urlToTest);
         expect(response.statusCode, 401);
         expect(
           response.body,
@@ -89,7 +82,7 @@ void main() {
       'Should return 401 when Authorization header is missing (Route 2)',
       () async {
         String urlToTest = '/mixed-filter/2/55';
-        http.Response response = await http.get(url(urlToTest));
+        TestResponse response = await client.get(urlToTest);
         expect(response.statusCode, 401);
       },
     );
@@ -102,8 +95,8 @@ void main() {
       'Should remove params when RemoveQueryParamsFilter is present',
       () async {
         String urlToTest = '/mixed-filter/55?some=123';
-        http.Response response = await http.get(
-          url(urlToTest),
+        TestResponse response = await client.get(
+          urlToTest,
           headers: authHeaders,
         );
         expect(response.statusCode, 200);
@@ -113,10 +106,7 @@ void main() {
 
     test('Should keep params when no route filter is present', () async {
       String urlToTest = '/mixed-filter/2/55?some=123&another=963';
-      http.Response response = await http.get(
-        url(urlToTest),
-        headers: authHeaders,
-      );
+      TestResponse response = await client.get(urlToTest, headers: authHeaders);
       expect(response.statusCode, 200);
       expect(response.body, 'path: {id: 55}, query: {some: 123, another: 963}');
     });
@@ -126,8 +116,8 @@ void main() {
     final authHeaders = {HttpHeader.authorization: 'Bearer 123456'};
 
     test('Should add custom header to request via filter', () async {
-      http.Response response = await http.get(
-        url('/custom-header'),
+      TestResponse response = await client.get(
+        '/custom-header',
         headers: authHeaders,
       );
       expect(response.statusCode, 200);
@@ -135,8 +125,8 @@ void main() {
     });
 
     test('Should short-circuit request and return custom response', () async {
-      http.Response response = await http.get(
-        url('/short-circuit'),
+      TestResponse response = await client.get(
+        '/short-circuit',
         headers: authHeaders,
       );
       expect(response.statusCode, 403);
@@ -146,8 +136,8 @@ void main() {
     test(
       'Should execute multiple filters in the order they are defined',
       () async {
-        http.Response response = await http.get(
-          url('/multi-filter'),
+        TestResponse response = await client.get(
+          '/multi-filter',
           headers: authHeaders,
         );
         expect(response.statusCode, 200);
@@ -156,8 +146,8 @@ void main() {
     );
 
     test('Should modify response after chain execution', () async {
-      http.Response response = await http.get(
-        url('/post-filter'),
+      TestResponse response = await client.get(
+        '/post-filter',
         headers: authHeaders,
       );
       expect(response.statusCode, 200);
@@ -168,8 +158,8 @@ void main() {
       'Should correctly handle path params with special characters',
       () async {
         String urlToTest = '/mixed-filter/2/hello%20world';
-        http.Response response = await http.get(
-          url(urlToTest),
+        TestResponse response = await client.get(
+          urlToTest,
           headers: authHeaders,
         );
         expect(response.statusCode, 200);

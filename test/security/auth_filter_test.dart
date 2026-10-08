@@ -1,19 +1,16 @@
 @TestOn('vm')
 library;
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9080;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   Map<String, String> headers = {'SECRET': 'Secret', 'ACCESS': 'Access'};
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
+    client = WinterTestClient.build(
       globalFilterConfig: FilterConfig([SecurityAccessFilter()]),
       router: WinterRouter(
         routes: [
@@ -130,14 +127,10 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   test('Test with auth success', () async {
     String urlToTest = '/with-auth';
 
-    http.Response response = await http.get(url(urlToTest), headers: headers);
+    TestResponse response = await client.get(urlToTest, headers: headers);
 
     expect(response.statusCode, 200);
   });
@@ -145,7 +138,7 @@ void main() {
   test('Test with auth fail', () async {
     String urlToTest = '/with-auth';
 
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 401);
   });
@@ -153,7 +146,7 @@ void main() {
   test('Test without auth success', () async {
     String urlToTest = '/without-auth';
 
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
   });
@@ -161,7 +154,7 @@ void main() {
   test('Test with authorities fail (Forbidden)', () async {
     String urlToTest = '/with-authorities';
 
-    http.Response response = await http.get(url(urlToTest), headers: headers);
+    TestResponse response = await client.get(urlToTest, headers: headers);
 
     expect(response.statusCode, 403);
   });
@@ -169,7 +162,7 @@ void main() {
   test('Test with authorities fail (Unauthorized)', () async {
     String urlToTest = '/with-authorities';
 
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 401);
   });
@@ -177,7 +170,7 @@ void main() {
   test('Test with admin success', () async {
     String urlToTest = '/with-admin';
 
-    http.Response response = await http.get(url(urlToTest), headers: headers);
+    TestResponse response = await client.get(urlToTest, headers: headers);
 
     expect(response.statusCode, 200);
   });
@@ -185,7 +178,7 @@ void main() {
   test('Test with permission success', () async {
     String urlToTest = '/with-permission';
 
-    http.Response response = await http.get(url(urlToTest), headers: headers);
+    TestResponse response = await client.get(urlToTest, headers: headers);
 
     expect(response.statusCode, 200);
   });
@@ -193,7 +186,7 @@ void main() {
   test('Test combined rules success', () async {
     String urlToTest = '/with-combined-rules';
 
-    http.Response response = await http.get(url(urlToTest), headers: headers);
+    TestResponse response = await client.get(urlToTest, headers: headers);
 
     expect(response.statusCode, 200);
   });
@@ -201,7 +194,7 @@ void main() {
   test('Test OR rules success', () async {
     String urlToTest = '/with-or-rules';
 
-    http.Response response = await http.get(url(urlToTest), headers: headers);
+    TestResponse response = await client.get(urlToTest, headers: headers);
 
     expect(response.statusCode, 200);
   });
@@ -209,7 +202,7 @@ void main() {
   test('Test combined rules fail (Forbidden)', () async {
     String urlToTest = '/with-failed-combined';
 
-    http.Response response = await http.get(url(urlToTest), headers: headers);
+    TestResponse response = await client.get(urlToTest, headers: headers);
 
     expect(response.statusCode, 403);
   });
@@ -217,7 +210,7 @@ void main() {
   test('Test case sensitive role fail (Forbidden)', () async {
     String urlToTest = '/with-case-sensitive-role';
 
-    http.Response response = await http.get(url(urlToTest), headers: headers);
+    TestResponse response = await client.get(urlToTest, headers: headers);
 
     expect(response.statusCode, 403);
   });
@@ -225,8 +218,8 @@ void main() {
   test('Test with wrong security headers (Unauthorized)', () async {
     String urlToTest = '/with-auth';
 
-    http.Response response = await http.get(
-      url(urlToTest),
+    TestResponse response = await client.get(
+      urlToTest,
       headers: {'SECRET': 'Wrong', 'ACCESS': 'Wrong'},
     );
 
@@ -236,7 +229,7 @@ void main() {
   test('Test with authority success', () async {
     String urlToTest = '/with-authority';
 
-    http.Response response = await http.get(url(urlToTest), headers: headers);
+    TestResponse response = await client.get(urlToTest, headers: headers);
 
     expect(response.statusCode, 200);
   });
@@ -244,7 +237,7 @@ void main() {
   test('Test with multiple filters success', () async {
     String urlToTest = '/with-multiple-filters';
 
-    http.Response response = await http.get(url(urlToTest), headers: headers);
+    TestResponse response = await client.get(urlToTest, headers: headers);
 
     expect(response.statusCode, 200);
   });
@@ -252,7 +245,7 @@ void main() {
   test('Test principal is set correctly', () async {
     String urlToTest = '/check-principal';
 
-    http.Response response = await http.get(url(urlToTest), headers: headers);
+    TestResponse response = await client.get(urlToTest, headers: headers);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Admin');
@@ -261,7 +254,7 @@ void main() {
   test('Test principal is null when no headers', () async {
     String urlToTest = '/check-principal';
 
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, '');
@@ -270,7 +263,7 @@ void main() {
   test('Test authenticated false allows anonymous', () async {
     String urlToTest = '/authenticated-false';
 
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
   });
@@ -307,7 +300,7 @@ class SecurityAccessFilter extends Filter {
         ),
       );
     } else {
-      request.securityContext.clearContext();
+      request.securityContext.clear();
     }
 
     return await chain.doFilter(request);

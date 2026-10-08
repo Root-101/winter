@@ -3,17 +3,14 @@ library;
 
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9020;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
+    client = WinterTestClient.build(
       globalFilterConfig: FilterConfig([
         FullChangeFilterFilter(),
         KeyFilter(),
@@ -116,15 +113,11 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   test('Test Full Change Filter', () async {
     String urlToTest = '/full-change-filter';
 
     String body = 'Hello world!!!';
-    http.Response response = await http.post(url(urlToTest), body: body);
+    TestResponse response = await client.post(urlToTest, body: body);
 
     expect(response.statusCode, 200);
     expect(response.body, body);
@@ -136,7 +129,7 @@ void main() {
     String urlToTest = '/body-change';
 
     String body = 'Hello';
-    http.Response response = await http.post(url(urlToTest), body: body);
+    TestResponse response = await client.post(urlToTest, body: body);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Hello modified');
@@ -146,7 +139,7 @@ void main() {
   test('Test Early Response Filter', () async {
     String urlToTest = '/early-response';
 
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Early response');
@@ -156,7 +149,7 @@ void main() {
   test('Test Response Body Change Filter', () async {
     String urlToTest = '/response-body-change';
 
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Original modified');
@@ -167,7 +160,7 @@ void main() {
     String urlToTest = '/multiple-filters';
 
     String body = 'Start';
-    http.Response response = await http.post(url(urlToTest), body: body);
+    TestResponse response = await client.post(urlToTest, body: body);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Handler received: Start modified modified');
@@ -177,7 +170,7 @@ void main() {
   test('Test Exception in Filter', () async {
     String urlToTest = '/exception';
 
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 500);
     expect(
@@ -190,37 +183,37 @@ void main() {
   test('Test Params in Filter', () async {
     String urlToTest = '/params/123?query=abc';
 
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Success');
 
     urlToTest = '/params/456?query=abc';
-    response = await http.get(url(urlToTest));
+    response = await client.get(urlToTest);
     expect(response.statusCode, 400);
     expect(response.body, 'Invalid params');
   });
 
   test('Test shouldFilter with Key', () async {
     // Active
-    http.Response response = await http.get(url('/key-filter-active'));
+    TestResponse response = await client.get('/key-filter-active');
     expect(response.statusCode, 200);
     expect(response.headers['key-filter-executed'], 'true');
 
     // Inactive
-    response = await http.get(url('/key-filter-inactive'));
+    response = await client.get('/key-filter-inactive');
     expect(response.statusCode, 200);
     expect(response.headers['key-filter-executed'], isNull);
   });
 
   test('Test shouldFilter with Path', () async {
     // Active
-    http.Response response = await http.get(url('/path-filter-active'));
+    TestResponse response = await client.get('/path-filter-active');
     expect(response.statusCode, 200);
     expect(response.headers['path-filter-executed'], 'true');
 
     // Inactive
-    response = await http.get(url('/path-filter-inactive'));
+    response = await client.get('/path-filter-inactive');
     expect(response.statusCode, 200);
     expect(response.headers['path-filter-executed'], isNull);
   });

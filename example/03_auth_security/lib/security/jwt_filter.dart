@@ -26,7 +26,7 @@ class JwtFilter extends Filter {
         );
       }
     } else {
-      request.securityContext.clearContext();
+      request.securityContext.clear();
     }
 
     return chain.doFilter(request);

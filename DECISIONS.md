@@ -490,7 +490,7 @@ chain turns any `Exception` **or `Error`** into a response where it's thrown.
 
 - *Why*: an `Error` (a `StateError`, a `TypeError`...) went through every filter up to the
   pipeline, which answered its own 500: **without the CORS headers** (a browser showed a CORS error
-  instead of the 500), without the filters seeing it (`LogsFilter` didn't log it), and without the
+  instead of the 500), without the filters seeing it (`LoggingFilter` didn't log it), and without the
   `ExceptionHandler` (a custom one couldn't log or format it; the pipeline checked
   `eh is SimpleExceptionHandler` to find `logUnhandledError`).
 - Breaking for a custom `ExceptionHandler`: the parameter is `Object` instead of `Exception`.
@@ -730,7 +730,7 @@ di.put(AppConfig.fromEnv(env));
 The debug log of a failed deserialization was `Invalid value for <T>: $e`, and the message of the
 original error can include the value sent (`FormatException: ... card-4111111111111111`), in
 several lines. It's now `Invalid value for <T> (FormatException)`: the type of the error, never its
-message (the error is still in `DeserializationException.cause`). The same rule as `LogsFilter`,
+message (the error is still in `DeserializationException.cause`). The same rule as `LoggingFilter`,
 which never logs bodies nor query strings.
 
 ### 7.2 `WinterLogger`
@@ -772,7 +772,7 @@ Every request has an id, always (no filter to add):
 - *Why always*: a request id costs almost nothing, and it's what turns a support ticket ("it
   failed at 10:31") into the logs of that request.
 
-### 7.5 `LogsFilter`
+### 7.5 `LoggingFilter`
 
 It keeps two lines per request, `REQUEST: GET /users/1` and `RESPONSE: GET /users/1 => 200
 (12 ms)`, both in info; both carry the request id now, so they can be matched.
@@ -1087,3 +1087,69 @@ endpoint:
 The pipeline in memory went from 21 µs to 12.5 µs per request: the headers are views (no copies of
 the headers of `dart:io`, no joined map per access), the request id is built with a table, and a
 body of bytes is written with `add` instead of a stream.
+
+## 12. The public API of 1.0
+
+**Status:** decided and implemented on 2026-10-07 in phase 3.2 of `ROADMAP.md`. Once 1.0 is out,
+changing any of this is a breaking change.
+
+### 12.1 What is exported
+
+`winter.dart` exports the modules, minus the internal helpers, with `export ... hide` (they stay
+in `lib/src`, where the framework and its tests import them by path):
+
+| Internal now                                                     | Why                                          |
+|------------------------------------------------------------------|----------------------------------------------|
+| `addVary`, `limitBodySize`                                       | Details of the pipeline                      |
+| `isValidUri`, `normalizePath`, `methodNotAllowedOrNotFound`, `noRouteResponse`, `allowHeader` | Details of the router (a custom router throws `NotFoundException`) |
+| `writeResponse`, `requestFromHttpRequest` (was `RequestEntity.fromHttpRequest`) | Only the server writes and reads `dart:io` |
+| `winterMessages`, `localesWithoutWinterMessages`, `warnLocalesWithoutWinterMessages` | The translations of Winter itself |
+| `console_style` (`stylize`, `ConsoleColor`), the constants `bearer`/`basic` | Not part of a web framework; `bearer`/`basic` were global names |
+
+Public on purpose: `internalServerErrorResponse` and `defaultLogUnhandledError` (for an
+`ExceptionHandler` of the app), the `defaultLog*` functions and `defaultClientId` (the defaults of
+the filters, to wrap them), and `di`, `om`, `eh`, `env`, `logger` (short on purpose, and
+documented; `Winter.context.objectMapper` is the long form).
+
+### 12.2 Renamed
+
+| Before                                  | After                                  | Why                                     |
+|-----------------------------------------|----------------------------------------|-----------------------------------------|
+| `BuildContext`                          | `WinterContext`                        | The `BuildContext` of Flutter: a full-stack Dart project imports both |
+| `AbstractWinterRouter`                  | `BaseRouter`                           | A Java name; `Router` is a widget of Flutter |
+| `LogsFilter`                            | `LoggingFilter`                        | The only filter named in plural         |
+| `RequestSecurityContext.clearContext()` | `clear()`                              | It repeated the name of the class       |
+| `RateLimiterFilter(onRequest:, log:)`   | `RateLimiterFilter(clientId:, onLimited:)` | `onRequest` was the id of the client, not a callback |
+| `clientIpRequestId`                     | `defaultClientId`                      | The default of `clientId`               |
+| `WinterRouter.handlerRoute`             | private (`resolveRoute` is the public one) | Two public methods did the same      |
+
+### 12.3 Status codes
+
+The model ported from Spring (`StatusCode`, the mixin `HttpStatusCode`, `DefaultHttpStatusCode`,
+methods `is2xxSuccessful()`, javadoc) is now one enum: `StatusCode` with `value`, `series`,
+`reasonPhrase`, Dart getters (`isSuccessful`, `isClientError`, `isError`...), `resolve(int)`
+(null for a code it doesn't know, from a map) and `valueOf(int)` (an `ArgumentError`). The
+deprecated values (`movedTemporarily`, `useProxy`, `requestEntityTooLarge`, `requestURITooLong` and
+three WebDAV drafts) are removed: one constant per code.
+
+### 12.4 Small fixes
+
+- `HttpHeader` names are `const` (they were `static final`, so they couldn't be used in a `const`
+  map nor a `switch`).
+- `Winter.close` returns `Future<void>`, without the deprecated `onAlreadyStarted`.
+- No `dart doc` warnings in the library (the doc of `RequestHandler` still talked about shelf).
+
+### 12.5 The type of a serializer is always written
+
+Writing example `05`, `Deserializer.enumByName(Status.values)` inside
+`ObjectMapper(deserializers: [...])` was registered as `Deserializer<Enum>`: inside a
+`List<Deserializer>` Dart infers a generic type from the list, not from the arguments, so the enum
+was a 500 on the first request (§2.10 said the static method inferred it from the values; it only
+does outside a list). And a `Deserializer.json(User.fromJson)` in the same list was registered as
+`dynamic` with only a warning.
+
+- `enumByName` is a constructor: `Deserializer<Status>.enumByName(Status.values)`, like `.json`,
+  `.string` or `.integer`. One rule: the type is always written. Its values must be the values of
+  an enum. Breaking.
+- A `Serializer` or `Deserializer` created as `dynamic` or `Enum` is an `ArgumentError` with the
+  way to write it, instead of a warning: it shows when the app starts, not as a 500.

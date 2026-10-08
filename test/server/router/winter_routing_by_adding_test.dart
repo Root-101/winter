@@ -1,13 +1,11 @@
 @TestOn('vm')
 library;
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9046;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   setUpAll(() async {
     WinterRouter router = WinterRouter(
@@ -38,19 +36,12 @@ void main() {
         },
       ),
     );
-    await Winter.start(
-      config: ServerConfig(port: port),
-      router: router,
-    );
+    client = WinterTestClient.build(router: router);
   });
-
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
 
   test('Test /test', () async {
     String urlToTest = '/test';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Response from /test');
@@ -58,7 +49,7 @@ void main() {
 
   test('Test /custom', () async {
     String urlToTest = '/custom';
-    http.Response response = await http.post(url(urlToTest));
+    TestResponse response = await client.post(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Response from /custom');
@@ -66,7 +57,7 @@ void main() {
 
   test('Test other sources #1', () async {
     String urlToTest = '/abc';
-    http.Response response = await http.post(url(urlToTest));
+    TestResponse response = await client.post(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Response from any other source');
@@ -74,7 +65,7 @@ void main() {
 
   test('Test other sources #2', () async {
     String urlToTest = '/123';
-    http.Response response = await http.post(url(urlToTest));
+    TestResponse response = await client.post(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Response from any other source');
@@ -82,7 +73,7 @@ void main() {
 
   test('Test other sources #3', () async {
     String urlToTest = '/some-other';
-    http.Response response = await http.post(url(urlToTest));
+    TestResponse response = await client.post(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Response from any other source');
@@ -90,7 +81,7 @@ void main() {
 
   test('Test other sources #4', () async {
     String urlToTest = '/f-r-i-e-n-d-s';
-    http.Response response = await http.post(url(urlToTest));
+    TestResponse response = await client.post(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Response from any other source');

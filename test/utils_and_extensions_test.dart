@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:test/test.dart';
+import 'package:winter/src/utils/console_style.dart';
 import 'package:winter/winter.dart';
 
 class _NoopFilter extends Filter {

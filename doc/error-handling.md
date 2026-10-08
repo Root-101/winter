@@ -133,7 +133,7 @@ outer filter gets a response, not the error:
 
 - `CorsFilter` adds its headers to the error too (a browser sees the 404 or the 500, not a CORS
   error).
-- `LogsFilter` logs the error response with its status.
+- `LoggingFilter` logs the error response with its status.
 - A `catch` around `chain.doFilter(request)` in your filter never fires: the chain already turned
   the error into a response. Read `response.statusCode` instead.
 

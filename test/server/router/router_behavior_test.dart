@@ -4,6 +4,7 @@ library;
 import 'dart:convert';
 
 import 'package:test/test.dart';
+import 'package:winter/src/utils/valid_url.dart';
 import 'package:winter/winter.dart';
 
 /// The behavior decided in the review of the router, the filters and the entities

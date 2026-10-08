@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:winter/src/i18n/winter_messages.dart';
+import 'package:winter/src/request_entity.dart' show requestFromHttpRequest;
+import 'package:winter/src/response_entity.dart' show writeResponse;
 import 'package:winter/winter.dart';
 
 ///Dependency Injection: easy access to the current dependency injection instance
@@ -18,10 +21,10 @@ Env get env => Winter.context.env;
 WinterLogger get logger => Winter.context.logger;
 
 class Winter {
-  static BuildContext _context = BuildContext();
+  static WinterContext _context = WinterContext();
 
   /// Access to the global context, available even before starting the server.
-  static BuildContext get context => _context;
+  static WinterContext get context => _context;
 
   static Winter? _server;
 
@@ -35,9 +38,9 @@ class Winter {
 
   static bool get isRunning => _server != null;
 
-  final BuildContext serverContext;
+  final WinterContext serverContext;
   final ServerConfig config;
-  final AbstractWinterRouter router;
+  final BaseRouter router;
   final FilterConfig globalFilterConfig;
   final SecurityConfig securityConfig;
 
@@ -86,9 +89,9 @@ class Winter {
   }
 
   static Future<Winter> start({
-    BuildContext? context,
+    WinterContext? context,
     ServerConfig? config,
-    AbstractWinterRouter? router,
+    BaseRouter? router,
     FilterConfig? globalFilterConfig,
     SecurityConfig? securityConfig,
   }) async {
@@ -120,14 +123,12 @@ class Winter {
 
     ///Found with the same type it's registered with (any router, ex: a MultiRouter),
     ///or as a WinterRouter (`di.put(WinterRouter(...))` infers that type)
-    AbstractWinterRouter nonNullRouter =
+    BaseRouter nonNullRouter =
         router ??
-        injection.tryFind<AbstractWinterRouter>() ??
+        injection.tryFind<BaseRouter>() ??
         injection.tryFind<WinterRouter>() ??
         WinterRouter();
-    restores.add(
-      _putRestorable<AbstractWinterRouter>(injection, nonNullRouter),
-    );
+    restores.add(_putRestorable<BaseRouter>(injection, nonNullRouter));
 
     SecurityConfig nonNullSecurityConfig =
         securityConfig ??
@@ -224,11 +225,10 @@ class Winter {
   ///
   ///If [force] is false, the server stops accepting connections and waits for the
   ///requests in progress. With a [timeout], the remaining connections are closed after it.
-  static Future close({
+  static Future<void> close({
     bool force = false,
     Duration? timeout,
     void Function()? onNotRunning,
-    @Deprecated('Use onNotRunning instead') void Function()? onAlreadyStarted,
   }) async {
     if (isRunning) {
       final Winter current = server;
@@ -265,9 +265,8 @@ class Winter {
         _server = null;
       }
     } else {
-      final notRunningCallback = onNotRunning ?? onAlreadyStarted;
-      if (notRunningCallback != null) {
-        notRunningCallback();
+      if (onNotRunning != null) {
+        onNotRunning();
       } else {
         logger.info('Server not running');
       }
@@ -325,7 +324,7 @@ class Winter {
   /// it's the same code that handles the requests of a real server. It never throws: an error
   /// is a response.
   static RequestHandler buildHandler({
-    required AbstractWinterRouter router,
+    required BaseRouter router,
     FilterConfig? globalFilterConfig,
     SecurityConfig? securityConfig,
     int? maxBodySize = defaultMaxBodySize,
@@ -341,7 +340,7 @@ class Winter {
   }
 
   static RequestHandler _buildHandler({
-    required AbstractWinterRouter router,
+    required BaseRouter router,
     required FilterConfig globalFilterConfig,
     required int? maxBodySize,
   }) {
@@ -369,7 +368,7 @@ class Winter {
     try {
       ResponseEntity response;
       try {
-        response = await handler(RequestEntity.fromHttpRequest(request));
+        response = await handler(requestFromHttpRequest(request));
       } catch (error, stackTrace) {
         ///The pipeline never throws, unless the logger or a callback of the scope fails
         logger.error(
@@ -414,7 +413,7 @@ class Winter {
 
   static Future<ResponseEntity> _handleRunRequest({
     required RequestEntity request,
-    required AbstractWinterRouter router,
+    required BaseRouter router,
     required FilterConfig globalFilterConfig,
     required int? maxBodySize,
   }) async {
@@ -474,7 +473,7 @@ class Winter {
   /// Routing, filters and handler of [requestEntity], with the exception handler
   static Future<ResponseEntity> _runPipeline({
     required RequestEntity requestEntity,
-    required AbstractWinterRouter router,
+    required BaseRouter router,
     required FilterConfig globalFilterConfig,
   }) async {
     try {

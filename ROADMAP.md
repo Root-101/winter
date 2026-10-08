@@ -72,8 +72,9 @@ are in its section of phase 2, so each system is reviewed as a whole.
 - [x] **`Winter.start` looks for the router in DI as `WinterRouter`, but registers it as
   `AbstractWinterRouter`.** A `MultiRouter` registered with `di.put<AbstractWinterRouter>` is
   ignored. Look it up as `AbstractWinterRouter`.
-- [ ] Tests: many still start a real server on a fixed port, which makes them slow and fragile in
-  parallel. Move them to `WinterTestClient` little by little (🟡, not blocking).
+- [x] Tests: many still start a real server on a fixed port, which makes them slow and fragile in
+  parallel. Move them to `WinterTestClient` little by little (🟡, not blocking). → Done in 3.2: the
+  ones on a real server test the server itself (lifecycle, shutdown, `dart:io`, start failures).
 
 ---
 
@@ -513,17 +514,23 @@ cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `
 
 ### 3.2 Freeze the public API
 
-- [ ] Delete the deprecated `onAlreadyStarted` parameter of `Winter.close` and the `@Deprecated`
-  values of `StatusCode`.
-- [ ] **Exported surface:** `winter.dart` exports everything. Decide what is really public API and
+- [x] Delete the deprecated `onAlreadyStarted` parameter of `Winter.close` and the `@Deprecated`
+  values of `StatusCode`. → And `StatusCode` is a single enum (`DECISIONS.md` §12.3).
+- [x] **Exported surface:** `winter.dart` exports everything. Decide what is really public API and
   what is an internal detail (once in 1.0, changing it is breaking):
     - Loose helpers: `addVary`, `limitBodySize`, `isValidUri`, `normalizePath`,
       `methodNotAllowedOrNotFound`, `internalServerErrorResponse`,
       `warnLocalesWithoutWinterMessages` and `console_style` (`stylize` on `String`).
-- [ ] Read the whole public API once more (`dart doc` output) looking for inconsistent names and
-  parameters.
-- [ ] Add examples for more use cases, check the coverage of test, check that there is no
-  overlapping tests, check for missing flow without tests.
+    - → All internal (`export ... hide`), with `writeResponse` and `RequestEntity.fromHttpRequest`
+      (§12.1).
+- [x] Read the whole public API once more (`dart doc` output) looking for inconsistent names and
+  parameters. → `WinterContext`, `BaseRouter`, `LoggingFilter`, `clear()`, `clientId`/`onLimited`;
+  no `dart doc` warnings (§12.2, §12.4).
+- [x] Add examples for more use cases, check the coverage of test, check that there is no
+  overlapping tests, check for missing flow without tests. → Examples `05` and `07`; 29 test files
+  moved from a real server to `WinterTestClient` (the ones left test the server itself); the
+  overlapping CORS, exception handler, logging and rate limiter tests merged; the uncovered
+  branches tested in `test/edge_cases_test.dart`.
 - [ ] Check all the docs, add the missing ones and improve the existing ones
 
 ---
@@ -808,11 +815,12 @@ written twice. The rest can be written now.
 
 The current 4 are fine. Missing:
 
-- [ ] `05_validation_object_mapper`: nested DTOs, lists, `Map<String, T>`, custom serializers and a
-  422 response (after 2.1 and 2.2).
+- [x] `05_validation_object_mapper`: nested DTOs, lists, `Map<String, T>`, custom serializers and a
+  422 response (after 2.1 and 2.2). → Done in 3.2 (it found that `enumByName` inside a list was a
+  `Deserializer<Enum>`, `DECISIONS.md` §12.5).
 - [ ] `06_files`: multipart, static files and cookies (once they exist).
-- [ ] `07_production`: `.env`, JSON logger, request id, health check, Dockerfile and graceful
-  shutdown with `onShutdown` closing a "database".
+- [x] `07_production`: `.env`, JSON logger, request id, health check, Dockerfile and graceful
+  shutdown with `onShutdown` closing a "database". → Done in 3.2.
 
 ---
 

@@ -10,8 +10,7 @@ import 'package:winter/winter.dart';
 
 /// An HTTP request: what a handler and every filter receive.
 ///
-/// The server builds it from the `HttpRequest` of `dart:io` ([RequestEntity.fromHttpRequest]),
-/// and a test builds it in memory:
+/// The server builds it from the `HttpRequest` of `dart:io`, and a test builds it in memory:
 ///
 /// ```dart
 /// final request = RequestEntity(
@@ -80,19 +79,6 @@ class RequestEntity {
   }) {
     _restorePathParams();
   }
-
-  /// The request of `dart:io` that the server received. The server limits the size of its body
-  /// (`ServerConfig.maxBodySize`) in the pipeline, like for a request built in memory.
-  factory RequestEntity.fromHttpRequest(HttpRequest request) =>
-      RequestEntity._copy(
-        method: request.method.toUpperCase(),
-        requestedUri: request.requestedUri,
-        protocolVersion: request.protocolVersion,
-        headersAll: ioHeaders(request.headers),
-        context: {},
-        connectionInfo: request.connectionInfo,
-        body: _RequestBody(request),
-      );
 
   /// One value per header, case insensitive (several values are joined with `, `). Read-only.
   late final Map<String, String> headers = joinHeaders(headersAll);
@@ -441,3 +427,17 @@ String _decodePathParam(String value) {
     return value;
   }
 }
+
+/// The request of `dart:io` that the server received, its headers read without copying them.
+/// The server limits the size of its body (`ServerConfig.maxBodySize`) in the pipeline, like for a
+/// request built in memory. Internal: not exported by `winter.dart`.
+RequestEntity requestFromHttpRequest(HttpRequest request) =>
+    RequestEntity._copy(
+      method: request.method.toUpperCase(),
+      requestedUri: request.requestedUri,
+      protocolVersion: request.protocolVersion,
+      headersAll: ioHeaders(request.headers),
+      context: {},
+      connectionInfo: request.connectionInfo,
+      body: _RequestBody(request),
+    );

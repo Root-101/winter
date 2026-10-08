@@ -14,7 +14,7 @@ then, this index says which ones exist.
 | Document                                             | State | Content                                                                      |
 |------------------------------------------------------|-------|------------------------------------------------------------------------------|
 | Getting started                                      | 🕓    | Installation, first endpoint, a CRUD with JSON and validation, tests         |
-| Architecture                                         | 🕓    | The path of a request, `BuildContext`, global state, request scope, isolates |
+| Architecture                                         | 🕓    | The path of a request, `WinterContext`, global state, request scope, isolates |
 | [Routing](routing.md)                                | ✅    | Routes, typed path and query params, priority, 404/405/OPTIONS, the route table checks, `MultiRouter`, your own router |
 | [Filters](filters.md)                                | ✅    | `Filter`, the chain, `order`, `shouldFilter`, global and route filters, errors as responses |
 | [Requests and responses](requests-and-responses.md) | ✅    | `RequestEntity`, `ResponseEntity`, headers, cookies, the body, `copyWith`, streams |
@@ -24,7 +24,7 @@ then, this index says which ones exist.
 | i18n                                                 | 🕓    | The language of the request, Winter's messages, translating an app with slang |
 | [Security](security.md)                              | ✅    | Your authentication filter, `AuthFilter` (401/403), rules, the principal, CORS, headers, rate limiter |
 | [Dependency injection](dependency-injection.md)      | ✅    | `put`, `putLazy`, `putFactory`, `putScoped`, `onDispose`, tests              |
-| [Configuration](configuration.md)                    | ✅    | `Env` (`find`, `require`, types, `.env` and profiles), `ServerConfig`, `BuildContext` |
+| [Configuration](configuration.md)                    | ✅    | `Env` (`find`, `require`, types, `.env` and profiles), `ServerConfig`, `WinterContext` |
 | [Logging](logging.md)                                | ✅    | `ConsoleLogger`, `JsonLogger`, fields, the request id, what Winter logs      |
 | Testing                                              | 🕓    | `WinterTestClient`, tests without ports, `RequestScope.run`, fake clocks     |
 | Deployment                                           | 🕓    | `dart compile exe`, Docker, graceful shutdown, isolates, reverse proxy       |

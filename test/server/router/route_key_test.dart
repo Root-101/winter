@@ -1,18 +1,14 @@
 @TestOn('vm')
 library;
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
+  late WinterTestClient client;
   group('Test Route key', () {
-    int port = 9070;
-    String localUrl = 'http://localhost:$port';
-
     setUp(() async {
-      await Winter.start(
-        config: ServerConfig(port: port),
+      client = WinterTestClient.build(
         router: WinterRouter(
           routes: [
             Route(
@@ -37,14 +33,10 @@ void main() {
       );
     });
 
-    tearDownAll(() => Winter.close(force: true));
-
-    Uri url(String path) => Uri.parse(localUrl + path);
-
     test('Retrieve correct key', () async {
       String urlToTest = '/test';
 
-      http.Response response = await http.get(url(urlToTest));
+      TestResponse response = await client.get(urlToTest);
 
       expect(response.statusCode, 200);
       expect(response.body, 'test-key');

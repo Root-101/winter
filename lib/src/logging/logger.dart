@@ -8,7 +8,7 @@ enum LogLevel { debug, info, warning, error }
 
 /// Every log of the framework goes through a [WinterLogger], so they can be
 /// filtered by level or sent anywhere (a file, a logging service...) by
-/// replacing it in the `BuildContext`:
+/// replacing it in the `WinterContext`:
 ///
 /// ```dart
 /// Winter.context.setUp(logger: const JsonLogger()); // production: one JSON per line

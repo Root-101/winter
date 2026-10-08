@@ -1,17 +1,14 @@
 @TestOn('vm')
 library;
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9072;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
+    client = WinterTestClient.build(
       router: WinterRouter(
         routes: [
           Route.get(
@@ -55,13 +52,9 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   group('HEAD', () {
     test('HEAD is handled by the GET route, without body', () async {
-      final response = await http.head(url('/users'));
+      final response = await client.head('/users');
 
       expect(response.statusCode, 200);
       expect(response.body, isEmpty);
@@ -69,21 +62,21 @@ void main() {
     });
 
     test('An explicit HEAD route has priority over the GET one', () async {
-      final response = await http.head(url('/head-custom'));
+      final response = await client.head('/head-custom');
 
       expect(response.statusCode, 200);
       expect(response.headers['x-handled-by'], 'head');
     });
 
     test('HEAD without a GET route is still a 405', () async {
-      final response = await http.head(url('/only-post'));
+      final response = await client.head('/only-post');
 
       expect(response.statusCode, 405);
       expect(response.headers['allow'], 'POST, OPTIONS');
     });
 
     test('Allow header includes HEAD when GET is allowed', () async {
-      final response = await http.delete(url('/users'));
+      final response = await client.delete('/users');
 
       expect(response.statusCode, 405);
       expect(response.headers['allow'], 'GET, HEAD, OPTIONS');
@@ -92,21 +85,21 @@ void main() {
 
   group('Trailing slash', () {
     test('A route matches with a trailing slash', () async {
-      final response = await http.get(url('/users/'));
+      final response = await client.get('/users/');
 
       expect(response.statusCode, 200);
       expect(response.body, 'users');
     });
 
     test('A route declared with trailing slash matches without it', () async {
-      final response = await http.get(url('/users/42'));
+      final response = await client.get('/users/42');
 
       expect(response.statusCode, 200);
       expect(response.body, 'user 42');
     });
 
     test('Path params work with a trailing slash', () async {
-      final response = await http.get(url('/users/42/'));
+      final response = await client.get('/users/42/');
 
       expect(response.body, 'user 42');
     });
@@ -114,17 +107,17 @@ void main() {
 
   group('Literal dots', () {
     test('The dot of a static route is literal', () async {
-      expect((await http.get(url('/file.json'))).body, 'file');
-      expect((await http.get(url('/fileXjson'))).statusCode, 404);
+      expect((await client.get('/file.json')).body, 'file');
+      expect((await client.get('/fileXjson')).statusCode, 404);
     });
 
     test('The dot after a path param is literal', () async {
-      expect((await http.get(url('/files/notes.txt'))).body, 'txt notes');
-      expect((await http.get(url('/files/notesXtxt'))).statusCode, 404);
+      expect((await client.get('/files/notes.txt')).body, 'txt notes');
+      expect((await client.get('/files/notesXtxt')).statusCode, 404);
     });
 
     test('.* is still a regex', () async {
-      expect((await http.get(url('/regex/a/b/c'))).body, 'regex');
+      expect((await client.get('/regex/a/b/c')).body, 'regex');
     });
   });
 

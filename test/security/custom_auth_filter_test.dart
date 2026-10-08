@@ -1,13 +1,11 @@
 @TestOn('vm')
 library;
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9086;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   setUpAll(() async {
     /// The 401 and the 403 of AuthFilter are exceptions: on<T>() changes their response
@@ -22,8 +20,7 @@ void main() {
               const ForbiddenException(detail: 'Custom 403 message'),
         ),
     );
-    await Winter.start(
-      config: ServerConfig(port: port),
+    client = WinterTestClient.build(
       router: WinterRouter(
         routes: [
           Route(
@@ -81,12 +78,10 @@ void main() {
     Winter.context.setUp(exceptionHandler: SimpleExceptionHandler());
   });
 
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   test(
     'Should return custom body for 401 with on<UnauthorizedException>',
     () async {
-      http.Response response = await http.get(url('/unauthorized'));
+      TestResponse response = await client.get('/unauthorized');
 
       expect(response.statusCode, 401);
       expect(response.body, contains('Custom 401 message'));
@@ -99,7 +94,7 @@ void main() {
   );
 
   test('Should return custom body for 403 when rules fail with on<ForbiddenException>', () async {
-    http.Response response = await http.get(url('/forbidden-by-rules'));
+    TestResponse response = await client.get('/forbidden-by-rules');
 
     expect(response.statusCode, 403);
     expect(response.body, contains('Custom 403 message'));
@@ -111,7 +106,7 @@ void main() {
   });
 
   test('Should return 401 when authenticated=false but authentication present (not logged in)', () async {
-    http.Response response = await http.get(url('/forbidden-by-auth-state'));
+    TestResponse response = await client.get('/forbidden-by-auth-state');
 
     expect(response.statusCode, 401);
     expect(response.body, contains('Custom 401 message'));
@@ -124,14 +119,14 @@ void main() {
   test(
     'Should return 401 when an anonymous user does not match the rules',
     () async {
-      http.Response response = await http.get(url('/anonymous-by-rules'));
+      TestResponse response = await client.get('/anonymous-by-rules');
 
       expect(response.statusCode, 401);
     },
   );
 
   test('Should work normally when authentication passes', () async {
-    http.Response response = await http.get(url('/success'));
+    TestResponse response = await client.get('/success');
 
     expect(response.statusCode, 200);
     expect(response.body, contains('Success'));
@@ -164,7 +159,7 @@ class MockAuthFilter extends Filter {
         ),
       );
     } else {
-      request.securityContext.clearContext();
+      request.securityContext.clear();
     }
     return chain.doFilter(request);
   }

@@ -1,17 +1,14 @@
 @TestOn('vm')
 library;
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9045;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
+    client = WinterTestClient.build(
       router: WinterRouter(
         routes: [
           Route(
@@ -48,13 +45,9 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   test('Test /test_(any) #1', () async {
     String urlToTest = '/test_1';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
 
@@ -63,7 +56,7 @@ void main() {
 
   test('Test /test_(any) #2', () async {
     String urlToTest = '/test_abcdef';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
 
@@ -72,7 +65,7 @@ void main() {
 
   test('Test /hi_(any)/{id} #1', () async {
     String urlToTest = '/hi_abcdef/123';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
 
@@ -81,7 +74,7 @@ void main() {
 
   test('Test /hi_(any)/{id} #2', () async {
     String urlToTest = '/hi_123456/abc';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
 
@@ -92,14 +85,14 @@ void main() {
     String urlToTest = '/hi_abcdef';
 
     ///without the /{id} param
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 404);
   });
 
   test('Test /anything.* #1', () async {
     String urlToTest = '/anything';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'anything');
@@ -107,7 +100,7 @@ void main() {
 
   test('Test /anything.* #2', () async {
     String urlToTest = '/anything/test';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'anything/test');
@@ -115,14 +108,14 @@ void main() {
 
   test('Test some other url', () async {
     String urlToTest = '/hello/my/friend';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 404);
   });
 
   test('Test param regex url', () async {
     String urlToTest = '/param-regex/test/123/test.jpg';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'test/123/test.jpg');
@@ -130,13 +123,13 @@ void main() {
 
   test('Test param multi regex url', () async {
     String urlToTest1 = '/param-multi-regex/multi/test.jpg';
-    http.Response response1 = await http.get(url(urlToTest1));
+    TestResponse response1 = await client.get(urlToTest1);
 
     expect(response1.statusCode, 200);
     expect(response1.body, 'multi/test.jpg');
 
     String urlToTest2 = '/param-multi-regex-2/multi-2/test-2.jpg';
-    http.Response response2 = await http.get(url(urlToTest2));
+    TestResponse response2 = await client.get(urlToTest2);
     expect(response2.statusCode, 200);
     expect(response2.body, 'multi-2/test-2.jpg');
   });

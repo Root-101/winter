@@ -1,3 +1,4 @@
+import 'package:winter/src/i18n/winter_messages.dart';
 import 'package:winter/winter.dart';
 
 /// The validators of Winter, as extensions on [FieldValidator] for the type of the value.
@@ -60,7 +61,7 @@ extension CommonValidators<T> on FieldValidator<T> {
 
   /// The value is the name of one of the [values] of an enum, or what [resolver] gives for it
   /// (to compare with another property). For a body already deserialized as the enum
-  /// (`Deserializer.enumByName`), this check is not needed.
+  /// (`Deserializer<E>.enumByName`), this check is not needed.
   FieldValidator<T> isEnum<E extends Enum>(
     Iterable<E> values, {
     Object? Function(E value)? resolver,

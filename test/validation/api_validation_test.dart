@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
@@ -22,8 +21,7 @@ class LoginRequest implements Validatable {
 }
 
 void main() {
-  int port = 9056;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   ObjectMapper om = ObjectMapper(
     serializers: [Serializer<LoginRequest>((object) => object.toJson())],
@@ -45,9 +43,8 @@ void main() {
   );
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
-      context: BuildContext(objectMapper: om),
+    Winter.context.setUp(objectMapper: om);
+    client = WinterTestClient.build(
       router: WinterRouter(
         routes: [
           Route(
@@ -65,14 +62,10 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   group('API Validation Integration Tests', () {
     test('Successful login', () async {
-      final response = await http.post(
-        url('/login'),
+      final response = await client.post(
+        '/login',
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': 'test@example.com',
@@ -85,8 +78,8 @@ void main() {
     });
 
     test('Login failure - Invalid email and short password', () async {
-      final response = await http.post(
-        url('/login'),
+      final response = await client.post(
+        '/login',
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': 'invalid-email', 'password': 'short'}),
       );
@@ -105,8 +98,8 @@ void main() {
     });
 
     test('Login failure - Missing fields', () async {
-      final response = await http.post(
-        url('/login'),
+      final response = await client.post(
+        '/login',
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({}),
       );

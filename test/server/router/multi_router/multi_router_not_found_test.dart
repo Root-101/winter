@@ -1,7 +1,6 @@
 @TestOn('vm')
 library;
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
 import 'dart:async';
@@ -9,7 +8,7 @@ import 'dart:async';
 import 'package:winter/winter.dart';
 
 /// A router that never handles anything (and has no routes to allow)
-class _NeverRouter extends AbstractWinterRouter {
+class _NeverRouter extends BaseRouter {
   @override
   bool canHandle(RequestEntity request) => false;
 
@@ -19,12 +18,10 @@ class _NeverRouter extends AbstractWinterRouter {
 }
 
 void main() {
-  int port = 9062;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
+    client = WinterTestClient.build(
       router: MultiRouter([
         WinterRouter(
           routes: [
@@ -48,26 +45,22 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   test('Matching route still works', () async {
-    final response = await http.get(url('/users'));
+    final response = await client.get('/users');
 
     expect(response.statusCode, 200);
     expect(response.body, 'users');
   });
 
   test('Unknown path returns 404', () async {
-    final response = await http.get(url('/unknown'));
+    final response = await client.get('/unknown');
 
     expect(response.statusCode, 404);
     expect(response.body, isNot(contains('Bad state')));
   });
 
   test('Known path with wrong method returns 405', () async {
-    final response = await http.delete(url('/users'));
+    final response = await client.delete('/users');
 
     expect(response.statusCode, 405);
   });
@@ -75,7 +68,7 @@ void main() {
   test(
     'Known path with wrong method in a nested MultiRouter returns 405',
     () async {
-      final response = await http.get(url('/items/42'));
+      final response = await client.get('/items/42');
 
       expect(response.statusCode, 405);
     },

@@ -30,6 +30,16 @@ void main() {
         ),
       ),
       Route.get(
+        path: '/header-names',
+        handler: (request) => ResponseEntity.ok(
+          body: {
+            'names': request.headersAll.keys.toList(),
+            'hasHost': request.headersAll.containsKey('HOST'),
+            'hasMissing': request.headersAll.containsKey('x-missing'),
+          },
+        ),
+      ),
+      Route.get(
         path: '/headers',
         handler: (request) =>
             ResponseEntity.ok(body: request.headersAll['x-multi']),
@@ -116,6 +126,16 @@ void main() {
         'session',
         'theme',
       ]);
+    });
+
+    test('the headers of dart:io are read as a case insensitive map', () async {
+      final body = jsonDecode(
+        await utf8.decodeStream(await get('/header-names')),
+      ) as Map<String, dynamic>;
+
+      expect(body['names'], contains('host'));
+      expect(body['hasHost'], isTrue);
+      expect(body['hasMissing'], isFalse);
     });
 
     test('a header sent several times keeps all of its values', () async {

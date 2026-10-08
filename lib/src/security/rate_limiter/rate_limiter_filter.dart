@@ -4,30 +4,30 @@ import 'package:winter/winter.dart';
 
 /// A filter that limits the number of requests a client can make within a given time window.
 ///
-/// It uses a [RateLimiter] to track requests and can be configured to identify
-/// clients based on a custom [onRequest] function (by default, the IP of the client:
-/// behind proxies use `onRequest: (request) => request.clientIp(trustedProxies: 1) ?? 'unknown'`).
+/// It uses a [RateLimiter] to track requests, per client: [clientId] identifies it (by default, the
+/// IP of the client; behind proxies use
+/// `clientId: (request) => request.clientIp(trustedProxies: 1) ?? 'unknown'`).
 class RateLimiterFilter extends Filter {
   /// The underlying rate limiter implementation.
   final RateLimiter rateLimiter;
 
-  /// A function that extracts a unique identifier for the client from the request.
-  final FutureOr<String> Function(RequestEntity request) onRequest;
+  /// The id of the client of a request, whose requests are limited (the IP by default)
+  final FutureOr<String> Function(RequestEntity request) clientId;
 
-  /// An optional logging function called when a request is rate limited.
-  final void Function(RequestEntity request, String requestId)? log;
+  /// Called for every rejected request (a debug log by default), or null for nothing
+  final void Function(RequestEntity request, String clientId)? onLimited;
 
   RateLimiterFilter({
     required int maxRequests,
     required Duration window,
-    this.onRequest = clientIpRequestId,
-    this.log = defaultLogRateLimiter,
+    this.clientId = defaultClientId,
+    this.onLimited = defaultLogRateLimiter,
   }) : rateLimiter = RateLimiter(maxRequests, window);
 
   RateLimiterFilter.fromRateLimiter({
     required this.rateLimiter,
-    this.onRequest = clientIpRequestId,
-    this.log = defaultLogRateLimiter,
+    this.clientId = defaultClientId,
+    this.onLimited = defaultLogRateLimiter,
   });
 
   @override
@@ -35,8 +35,8 @@ class RateLimiterFilter extends Filter {
     RequestEntity request,
     FilterChain chain,
   ) async {
-    final requestId = await onRequest.call(request);
-    final RateLimitResult result = await rateLimiter.check(requestId);
+    final String id = await clientId(request);
+    final RateLimitResult result = await rateLimiter.check(id);
 
     // Standard Rate Limit headers
     // Reset: seconds until the oldest request leaves the window (a new slot is available)
@@ -47,7 +47,7 @@ class RateLimiterFilter extends Filter {
     };
 
     if (!result.allowed) {
-      log?.call(request, requestId);
+      onLimited?.call(request, id);
       final wait = _ceilSeconds(result.retryAfter);
       throw TooManyRequestsException(
         retryAfter: wait > 0 ? wait : 1,
@@ -67,14 +67,14 @@ class RateLimiterFilter extends Filter {
 
 /// Debug level: under an attack there is one log per rejected request,
 /// at info level it would flood the logs
-void defaultLogRateLimiter(RequestEntity request, String requestId) {
+void defaultLogRateLimiter(RequestEntity request, String clientId) {
   ///Skipped before building the message: under an attack there is one per rejected request
   if (!logger.isEnabled(LogLevel.debug)) return;
   logger.debug(
-    'Rate limit exceeded for id: $requestId in ${request.method} ${request.requestedUri.path}',
+    'Rate limit exceeded for id: $clientId in ${request.method} ${request.requestedUri.path}',
   );
 }
 
 /// Identify the client by its IP (the address of the connection, see [RequestEntity.clientIp])
-String clientIpRequestId(RequestEntity request) =>
+String defaultClientId(RequestEntity request) =>
     request.clientIp() ?? 'unknown';

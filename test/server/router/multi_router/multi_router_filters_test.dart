@@ -3,7 +3,6 @@ library;
 
 import 'dart:async';
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
@@ -36,12 +35,10 @@ class MarkerFilter extends Filter {
 }
 
 void main() {
-  int port = 9061;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
+    client = WinterTestClient.build(
       globalFilterConfig: FilterConfig([HeaderAuthFilter()]),
       router: MultiRouter([
         WinterRouter(
@@ -78,36 +75,29 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   test('Route AuthFilter is applied inside a MultiRouter', () async {
-    final response = await http.get(url('/secret'));
+    final response = await client.get('/secret');
 
     expect(response.statusCode, 401);
     expect(response.body, isNot(contains('secret data')));
   });
 
   test('Authenticated request passes the route AuthFilter', () async {
-    final response = await http.get(
-      url('/secret'),
-      headers: {'X-User': 'adam'},
-    );
+    final response = await client.get('/secret', headers: {'X-User': 'adam'});
 
     expect(response.statusCode, 200);
     expect(response.body, 'secret data');
   });
 
   test('Path params are resolved inside a MultiRouter', () async {
-    final response = await http.get(url('/items/42'));
+    final response = await client.get('/items/42');
 
     expect(response.statusCode, 200);
     expect(response.body, 'item 42');
   });
 
   test('Route filters are applied in nested MultiRouters', () async {
-    final response = await http.get(url('/nested'));
+    final response = await client.get('/nested');
 
     expect(response.statusCode, 200);
     expect(response.body, 'nested');
@@ -115,7 +105,7 @@ void main() {
   });
 
   test('ServeRouter inside a MultiRouter still works', () async {
-    final response = await http.get(url('/anything-else'));
+    final response = await client.get('/anything-else');
 
     expect(response.statusCode, 200);
     expect(response.body, 'fallback');

@@ -3,7 +3,6 @@ library;
 
 import 'dart:async';
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
@@ -34,13 +33,11 @@ class SeenStatusFilter extends Filter {
 }
 
 void main() {
-  int port = 9055;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
   const origin = 'http://localhost:3000';
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
+    client = WinterTestClient.build(
       securityConfig: SecurityConfig(cors: const CorsConfig()),
       globalFilterConfig: FilterConfig([FailingGlobalFilter()]),
       router: WinterRouter(
@@ -63,13 +60,9 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   test('CORS headers are present when the handler throws', () async {
-    final response = await http.get(
-      url('/not-found'),
+    final response = await client.get(
+      '/not-found',
       headers: {HttpHeader.origin: origin},
     );
 
@@ -78,8 +71,8 @@ void main() {
   });
 
   test('CORS headers are present when a global filter throws', () async {
-    final response = await http.get(
-      url('/ok'),
+    final response = await client.get(
+      '/ok',
       headers: {HttpHeader.origin: origin, 'X-Fail-Filter': 'true'},
     );
 
@@ -88,15 +81,15 @@ void main() {
   });
 
   test('Route filters receive the error response of the handler', () async {
-    final response = await http.get(url('/seen'));
+    final response = await client.get('/seen');
 
     expect(response.statusCode, 409);
     expect(response.headers['x-seen-status'], '409');
   });
 
   test('Successful requests are not affected', () async {
-    final response = await http.get(
-      url('/ok'),
+    final response = await client.get(
+      '/ok',
       headers: {HttpHeader.origin: origin},
     );
 

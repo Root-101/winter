@@ -1,416 +1,278 @@
-import 'package:collection/collection.dart'; //needed for firstWhereOrNull
-import 'package:winter/winter.dart';
-
-enum StatusCode with HttpStatusCode {
+/// The HTTP status codes, with their reason phrase:
+///
+/// ```dart
+/// throw ApiException(StatusCode.conflict, detail: 'The email is already registered');
+/// StatusCode.resolve(422)?.reasonPhrase; // Unprocessable Entity
+/// ```
+enum StatusCode {
   // 1xx Informational
 
-  /// {status-code: 100 Continue}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.2.1">HTTP/1.1: Semantics and Content, section 6.2.1</a>
-  //This has this name because 'continue' is a reserved keyword
+  /// 100 Continue ([HTTP/1.1: Semantics and Content, section 6.2.1](https://tools.ietf.org/html/rfc7231#section-6.2.1)). Named `continue100`: `continue` is a keyword
   continue100(100, Series.informational, 'Continue'),
 
-  /// {status-code: 101 Switching Protocols}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.2.2">HTTP/1.1: Semantics and Content, section 6.2.2</a>
+  /// 101 Switching Protocols ([HTTP/1.1: Semantics and Content, section 6.2.2](https://tools.ietf.org/html/rfc7231#section-6.2.2))
   switchingProtocols(101, Series.informational, 'Switching Protocols'),
 
-  /// {status-code: 102 Processing}.
-  /// @see <a href="https://tools.ietf.org/html/rfc2518#section-10.1">WebDAV</a>
+  /// 102 Processing ([WebDAV](https://tools.ietf.org/html/rfc2518#section-10.1))
   processing(102, Series.informational, 'Processing'),
 
-  /// {status-code: 103 Early Hints}.
-  /// @see <a href="https://tools.ietf.org/html/rfc8297">An HTTP Status Code for Indicating Hints</a>
-  /// @since 0.0.1.beta
+  /// 103 Early Hints ([An HTTP Status Code for Indicating Hints](https://tools.ietf.org/html/rfc8297))
   earlyHints(103, Series.informational, 'Early Hints'),
 
   // 2xx Success
 
-  /// {status-code: 200 OK}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.1">HTTP/1.1: Semantics and Content, section 6.3.1</a>
+  /// 200 OK ([HTTP/1.1: Semantics and Content, section 6.3.1](https://tools.ietf.org/html/rfc7231#section-6.3.1))
   ok(200, Series.successful, 'OK'),
 
-  /// {status-code: 201 Created}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.2">HTTP/1.1: Semantics and Content, section 6.3.2</a>
+  /// 201 Created ([HTTP/1.1: Semantics and Content, section 6.3.2](https://tools.ietf.org/html/rfc7231#section-6.3.2))
   created(201, Series.successful, 'Created'),
 
-  /// {status-code: 202 Accepted}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.3">HTTP/1.1: Semantics and Content, section 6.3.3</a>
+  /// 202 Accepted ([HTTP/1.1: Semantics and Content, section 6.3.3](https://tools.ietf.org/html/rfc7231#section-6.3.3))
   accepted(202, Series.successful, 'Accepted'),
 
-  /// {status-code: 203 Non-Authoritative Information}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.4">HTTP/1.1: Semantics and Content, section 6.3.4</a>
+  /// 203 Non-Authoritative Information ([HTTP/1.1: Semantics and Content, section 6.3.4](https://tools.ietf.org/html/rfc7231#section-6.3.4))
   nonAuthoritativeInformation(
     203,
     Series.successful,
     'Non-Authoritative Information',
   ),
 
-  /// {status-code: 204 No Content}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.5">HTTP/1.1: Semantics and Content, section 6.3.5</a>
+  /// 204 No Content ([HTTP/1.1: Semantics and Content, section 6.3.5](https://tools.ietf.org/html/rfc7231#section-6.3.5))
   noContent(204, Series.successful, 'No Content'),
 
-  /// {status-code: 205 Reset Content}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.3.6">HTTP/1.1: Semantics and Content, section 6.3.6</a>
+  /// 205 Reset Content ([HTTP/1.1: Semantics and Content, section 6.3.6](https://tools.ietf.org/html/rfc7231#section-6.3.6))
   resetContent(205, Series.successful, 'Reset Content'),
 
-  /// {status-code: 206 Partial Content}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7233#section-4.1">HTTP/1.1: Range Requests, section 4.1</a>
+  /// 206 Partial Content ([HTTP/1.1: Range Requests, section 4.1](https://tools.ietf.org/html/rfc7233#section-4.1))
   partialContent(206, Series.successful, 'Partial Content'),
 
-  /// {status-code: 207 Multi-Status}.
-  /// @see <a href="https://tools.ietf.org/html/rfc4918#section-13">WebDAV</a>
+  /// 207 Multi-Status ([WebDAV](https://tools.ietf.org/html/rfc4918#section-13))
   multiStatus(207, Series.successful, 'Multi-Status'),
 
-  /// {status-code: 208 Already Reported}.
-  /// @see <a href="https://tools.ietf.org/html/rfc5842#section-7.1">WebDAV Binding Extensions</a>
+  /// 208 Already Reported ([WebDAV Binding Extensions](https://tools.ietf.org/html/rfc5842#section-7.1))
   alreadyReported(208, Series.successful, 'Already Reported'),
 
-  /// {status-code: 226 IM Used}.
-  /// @see <a href="https://tools.ietf.org/html/rfc3229#section-10.4.1">Delta encoding in HTTP</a>
+  /// 226 IM Used ([Delta encoding in HTTP](https://tools.ietf.org/html/rfc3229#section-10.4.1))
   imUsed(226, Series.successful, 'IM Used'),
 
   // 3xx Redirection
 
-  /// {status-code: 300 Multiple Choices}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.1">HTTP/1.1: Semantics and Content, section 6.4.1</a>
+  /// 300 Multiple Choices ([HTTP/1.1: Semantics and Content, section 6.4.1](https://tools.ietf.org/html/rfc7231#section-6.4.1))
   multipleChoices(300, Series.redirection, 'Multiple Choices'),
 
-  /// {status-code: 301 Moved Permanently}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.2">HTTP/1.1: Semantics and Content, section 6.4.2</a>
+  /// 301 Moved Permanently ([HTTP/1.1: Semantics and Content, section 6.4.2](https://tools.ietf.org/html/rfc7231#section-6.4.2))
   movedPermanently(301, Series.redirection, 'Moved Permanently'),
 
-  /// {status-code: 302 Found}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.3">HTTP/1.1: Semantics and Content, section 6.4.3</a>
+  /// 302 Found ([HTTP/1.1: Semantics and Content, section 6.4.3](https://tools.ietf.org/html/rfc7231#section-6.4.3))
   found(302, Series.redirection, 'Found'),
 
-  /// {status-code: 302 Moved Temporarily}.
-  /// @see <a href="https://tools.ietf.org/html/rfc1945#section-9.3">HTTP/1.0, section 9.3</a>
-  @Deprecated(
-    'In favor of {@link #found} which will be returned from {status-code: StatusCode.valueOf(302)}',
-  )
-  movedTemporarily(302, Series.redirection, 'Moved Temporarily'),
-
-  /// {status-code: 303 See Other}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.4">HTTP/1.1: Semantics and Content, section 6.4.4</a>
+  /// 303 See Other ([HTTP/1.1: Semantics and Content, section 6.4.4](https://tools.ietf.org/html/rfc7231#section-6.4.4))
   seeOther(303, Series.redirection, 'See Other'),
 
-  /// {status-code: 304 Not Modified}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7232#section-4.1">HTTP/1.1: Conditional Requests, section 4.1</a>
+  /// 304 Not Modified ([HTTP/1.1: Conditional Requests, section 4.1](https://tools.ietf.org/html/rfc7232#section-4.1))
   notModified(304, Series.redirection, 'Not Modified'),
 
-  /// {status-code: 305 Use Proxy}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.5">HTTP/1.1: Semantics and Content, section 6.4.5</a>
-  @Deprecated(
-    'Due to security concerns regarding in-band configuration of a proxy',
-  )
-  useProxy(305, Series.redirection, 'Use Proxy'),
-
-  /// {status-code: 307 Temporary Redirect}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.4.7">HTTP/1.1: Semantics and Content, section 6.4.7</a>
+  /// 307 Temporary Redirect ([HTTP/1.1: Semantics and Content, section 6.4.7](https://tools.ietf.org/html/rfc7231#section-6.4.7))
   temporaryRedirect(307, Series.redirection, 'Temporary Redirect'),
 
-  /// {status-code: 308 Permanent Redirect}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7238">RFC 7238</a>
+  /// 308 Permanent Redirect ([RFC 7238](https://tools.ietf.org/html/rfc7238))
   permanentRedirect(308, Series.redirection, 'Permanent Redirect'),
 
-  // --- 4xx Client Error ---
+  // 4xx Client Error
 
-  /// {status-code: 400 Bad Request}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.1">HTTP/1.1: Semantics and Content, section 6.5.1</a>
+  /// 400 Bad Request ([HTTP/1.1: Semantics and Content, section 6.5.1](https://tools.ietf.org/html/rfc7231#section-6.5.1))
   badRequest(400, Series.clientError, 'Bad Request'),
 
-  /// {status-code: 401 Unauthorized}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7235#section-3.1">HTTP/1.1: Authentication, section 3.1</a>
+  /// 401 Unauthorized ([HTTP/1.1: Authentication, section 3.1](https://tools.ietf.org/html/rfc7235#section-3.1))
   unauthorized(401, Series.clientError, 'Unauthorized'),
 
-  /// {status-code: 402 Payment Required}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.2">HTTP/1.1: Semantics and Content, section 6.5.2</a>
+  /// 402 Payment Required ([HTTP/1.1: Semantics and Content, section 6.5.2](https://tools.ietf.org/html/rfc7231#section-6.5.2))
   paymentRequired(402, Series.clientError, 'Payment Required'),
 
-  /// {status-code: 403 Forbidden}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.3">HTTP/1.1: Semantics and Content, section 6.5.3</a>
+  /// 403 Forbidden ([HTTP/1.1: Semantics and Content, section 6.5.3](https://tools.ietf.org/html/rfc7231#section-6.5.3))
   forbidden(403, Series.clientError, 'Forbidden'),
 
-  /// {status-code: 404 Not Found}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.4">HTTP/1.1: Semantics and Content, section 6.5.4</a>
+  /// 404 Not Found ([HTTP/1.1: Semantics and Content, section 6.5.4](https://tools.ietf.org/html/rfc7231#section-6.5.4))
   notFound(404, Series.clientError, 'Not Found'),
 
-  /// {status-code: 405 Method Not Allowed}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.5">HTTP/1.1: Semantics and Content, section 6.5.5</a>
+  /// 405 Method Not Allowed ([HTTP/1.1: Semantics and Content, section 6.5.5](https://tools.ietf.org/html/rfc7231#section-6.5.5))
   methodNotAllowed(405, Series.clientError, 'Method Not Allowed'),
 
-  /// {status-code: 406 Not Acceptable}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.6">HTTP/1.1: Semantics and Content, section 6.5.6</a>
+  /// 406 Not Acceptable ([HTTP/1.1: Semantics and Content, section 6.5.6](https://tools.ietf.org/html/rfc7231#section-6.5.6))
   notAcceptable(406, Series.clientError, 'Not Acceptable'),
 
-  /// {status-code: 407 Proxy Authentication Required}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7235#section-3.2">HTTP/1.1: Authentication, section 3.2</a>
+  /// 407 Proxy Authentication Required ([HTTP/1.1: Authentication, section 3.2](https://tools.ietf.org/html/rfc7235#section-3.2))
   proxyAuthenticationRequired(
     407,
     Series.clientError,
     'Proxy Authentication Required',
   ),
 
-  /// {status-code: 408 Request Timeout}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.7">HTTP/1.1: Semantics and Content, section 6.5.7</a>
+  /// 408 Request Timeout ([HTTP/1.1: Semantics and Content, section 6.5.7](https://tools.ietf.org/html/rfc7231#section-6.5.7))
   requestTimeout(408, Series.clientError, 'Request Timeout'),
 
-  /// {status-code: 409 Conflict}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.8">HTTP/1.1: Semantics and Content, section 6.5.8</a>
+  /// 409 Conflict ([HTTP/1.1: Semantics and Content, section 6.5.8](https://tools.ietf.org/html/rfc7231#section-6.5.8))
   conflict(409, Series.clientError, 'Conflict'),
 
-  /// {status-code: 410 Gone}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.9">
-  ///     HTTP/1.1: Semantics and Content, section 6.5.9</a>
+  /// 410 Gone
   gone(410, Series.clientError, 'Gone'),
 
-  /// {status-code: 411 Length Required}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.10">
-  ///     HTTP/1.1: Semantics and Content, section 6.5.10</a>
+  /// 411 Length Required
   lengthRequired(411, Series.clientError, 'Length Required'),
 
-  /// {status-code: 412 Precondition failed}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7232#section-4.2">
-  ///     HTTP/1.1: Conditional Requests, section 4.2</a>
+  /// 412 Precondition Failed
   preconditionFailed(412, Series.clientError, 'Precondition Failed'),
 
-  /// {status-code: 413 Payload Too Large}.
-  /// @since 0.0.1.beta
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.11">
-  ///     HTTP/1.1: Semantics and Content, section 6.5.11</a>
+  /// 413 Payload Too Large
   payloadTooLarge(413, Series.clientError, 'Payload Too Large'),
 
-  /// {status-code: 413 Request Entity Too Large}.
-  /// @see <a href="https://tools.ietf.org/html/rfc2616#section-10.4.14">HTTP/1.1, section 10.4.14</a>
-  @Deprecated(
-    'In favor of {@link #payloadTooLarge} which will be returned from {status-code: StatusCode.valueOf(413)}',
-  )
-  requestEntityTooLarge(413, Series.clientError, 'Request Entity Too Large'),
-
-  /// {status-code: 414 URI Too Long}.
-  /// @since 0.0.1.beta
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.12">
-  ///     HTTP/1.1: Semantics and Content, section 6.5.12</a>
+  /// 414 URI Too Long
   uriTooLong(414, Series.clientError, 'URI Too Long'),
 
-  /// {status-code: 414 Request-URI Too Long}.
-  /// @see <a href="https://tools.ietf.org/html/rfc2616#section-10.4.15">HTTP/1.1, section 10.4.15</a>
-  @Deprecated(
-    'In favor of {@link #uriTooLong} which will be returned from {status-code: StatusCode.valueOf(414)}',
-  )
-  requestURITooLong(414, Series.clientError, 'Request-URI Too Long'),
-
-  /// {status-code: 415 Unsupported Media Type}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.13">
-  ///     HTTP/1.1: Semantics and Content, section 6.5.13</a>
+  /// 415 Unsupported Media Type
   unsupportedMediaType(415, Series.clientError, 'Unsupported Media Type'),
 
-  /// {status-code: 416 Requested Range Not Satisfiable}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7233#section-4.4">HTTP/1.1: Range Requests, section 4.4</a>
+  /// 416 Requested range not satisfiable ([HTTP/1.1: Range Requests, section 4.4](https://tools.ietf.org/html/rfc7233#section-4.4))
   rangeNotSatisfiable(
     416,
     Series.clientError,
     'Requested range not satisfiable',
   ),
 
-  /// {status-code: 417 Expectation Failed}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.5.14">
-  ///     HTTP/1.1: Semantics and Content, section 6.5.14</a>
+  /// 417 Expectation Failed
   expectationFailed(417, Series.clientError, 'Expectation Failed'),
 
-  /// {status-code: 418 I'm a teapot}.
-  /// @see <a href="https://tools.ietf.org/html/rfc2324#section-2.3.2">HTCPCP/1.0</a>
+  /// 418 I'm a teapot ([HTCPCP/1.0](https://tools.ietf.org/html/rfc2324#section-2.3.2))
   imATeapot(418, Series.clientError, "I'm a teapot"),
-  @Deprecated(
-    'See WebDAV Draft Changes: https://tools.ietf.org/rfcdiff?difftype=--hwdiff&amp;url2=draft-ietf-webdav-protocol-06.txt',
-  )
-  insufficientSpaceOnResource(
-    419,
-    Series.clientError,
-    'Insufficient Space On Resource',
-  ),
-  @Deprecated(
-    'See WebDAV Draft Changes: https://tools.ietf.org/rfcdiff?difftype=--hwdiff&amp;url2=draft-ietf-webdav-protocol-06.txt',
-  )
-  methodFailure(420, Series.clientError, 'Method Failure'),
-  @Deprecated(
-    'See WebDAV Draft Changes: https://tools.ietf.org/rfcdiff?difftype=--hwdiff&amp;url2=draft-ietf-webdav-protocol-06.txt',
-  )
-  destinationLocked(421, Series.clientError, 'Destination Locked'),
 
-  /// {status-code: 422 Unprocessable Entity}.
-  /// @see <a href="https://tools.ietf.org/html/rfc4918#section-11.2">WebDAV</a>
+  /// 422 Unprocessable Entity ([WebDAV](https://tools.ietf.org/html/rfc4918#section-11.2))
   unprocessableEntity(422, Series.clientError, 'Unprocessable Entity'),
 
-  /// {status-code: 423 Locked}.
-  /// @see <a href="https://tools.ietf.org/html/rfc4918#section-11.3">WebDAV</a>
+  /// 423 Locked ([WebDAV](https://tools.ietf.org/html/rfc4918#section-11.3))
   locked(423, Series.clientError, 'Locked'),
 
-  /// {status-code: 424 Failed Dependency}.
-  /// @see <a href="https://tools.ietf.org/html/rfc4918#section-11.4">WebDAV</a>
+  /// 424 Failed Dependency ([WebDAV](https://tools.ietf.org/html/rfc4918#section-11.4))
   failedDependency(424, Series.clientError, 'Failed Dependency'),
 
-  /// {status-code: 425 Too Early}.
-  /// @since 0.0.1.beta
-  /// @see <a href="https://tools.ietf.org/html/rfc8470">RFC 8470</a>
+  /// 425 Too Early ([RFC 8470](https://tools.ietf.org/html/rfc8470))
   tooEarly(425, Series.clientError, 'Too Early'),
 
-  /// {status-code: 426 Upgrade Required}.
-  /// @see <a href="https://tools.ietf.org/html/rfc2817#section-6">Upgrading to TLS Within HTTP/1.1</a>
+  /// 426 Upgrade Required ([Upgrading to TLS Within HTTP/1.1](https://tools.ietf.org/html/rfc2817#section-6))
   upgradeRequired(426, Series.clientError, 'Upgrade Required'),
 
-  /// {status-code: 428 Precondition Required}.
-  /// @see <a href="https://tools.ietf.org/html/rfc6585#section-3">Additional HTTP Status Codes</a>
+  /// 428 Precondition Required ([Additional HTTP Status Codes](https://tools.ietf.org/html/rfc6585#section-3))
   preconditionRequired(428, Series.clientError, 'Precondition Required'),
 
-  /// {status-code: 429 Too Many Requests}.
-  /// @see <a href="https://tools.ietf.org/html/rfc6585#section-4">Additional HTTP Status Codes</a>
+  /// 429 Too Many Requests ([Additional HTTP Status Codes](https://tools.ietf.org/html/rfc6585#section-4))
   tooManyRequests(429, Series.clientError, 'Too Many Requests'),
 
-  /// {status-code: 431 Request Header Fields Too Large}.
-  /// @see <a href="https://tools.ietf.org/html/rfc6585#section-5">Additional HTTP Status Codes</a>
+  /// 431 Request Header Fields Too Large ([Additional HTTP Status Codes](https://tools.ietf.org/html/rfc6585#section-5))
   requestHeaderFieldsTooLarge(
     431,
     Series.clientError,
     'Request Header Fields Too Large',
   ),
 
-  /// {status-code: 451 Unavailable For Legal Reasons}.
-  /// @see <a href="https://tools.ietf.org/html/draft-ietf-httpbis-legally-restricted-status-04">
-  /// An HTTP Status Code to Report Legal Obstacles</a>
-  /// @since 0.0.1.beta
+  /// 451 Unavailable For Legal Reasons
   unavailableForLegalReasons(
     451,
     Series.clientError,
     'Unavailable For Legal Reasons',
   ),
 
-  // --- 5xx Server Error ---
+  // 5xx Server Error
 
-  /// {status-code: 500 Internal Server Error}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.1">HTTP/1.1: Semantics and Content, section 6.6.1</a>
+  /// 500 Internal Server Error ([HTTP/1.1: Semantics and Content, section 6.6.1](https://tools.ietf.org/html/rfc7231#section-6.6.1))
   internalServerError(500, Series.serverError, 'Internal Server Error'),
 
-  /// {status-code: 501 Not Implemented}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.2">HTTP/1.1: Semantics and Content, section 6.6.2</a>
+  /// 501 Not Implemented ([HTTP/1.1: Semantics and Content, section 6.6.2](https://tools.ietf.org/html/rfc7231#section-6.6.2))
   notImplemented(501, Series.serverError, 'Not Implemented'),
 
-  /// {status-code: 502 Bad Gateway}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.3">HTTP/1.1: Semantics and Content, section 6.6.3</a>
+  /// 502 Bad Gateway ([HTTP/1.1: Semantics and Content, section 6.6.3](https://tools.ietf.org/html/rfc7231#section-6.6.3))
   badGateway(502, Series.serverError, 'Bad Gateway'),
 
-  /// {status-code: 503 Service Unavailable}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.4">HTTP/1.1: Semantics and Content, section 6.6.4</a>
+  /// 503 Service Unavailable ([HTTP/1.1: Semantics and Content, section 6.6.4](https://tools.ietf.org/html/rfc7231#section-6.6.4))
   serviceUnavailable(503, Series.serverError, 'Service Unavailable'),
 
-  /// {status-code: 504 Gateway Timeout}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.5">HTTP/1.1: Semantics and Content, section 6.6.5</a>
+  /// 504 Gateway Timeout ([HTTP/1.1: Semantics and Content, section 6.6.5](https://tools.ietf.org/html/rfc7231#section-6.6.5))
   gatewayTimeout(504, Series.serverError, 'Gateway Timeout'),
 
-  /// {status-code: 505 HTTP Version Not Supported}.
-  /// @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.6">HTTP/1.1: Semantics and Content, section 6.6.6</a>
+  /// 505 HTTP Version not supported ([HTTP/1.1: Semantics and Content, section 6.6.6](https://tools.ietf.org/html/rfc7231#section-6.6.6))
   httpVersionNotSupported(
     505,
     Series.serverError,
     'HTTP Version not supported',
   ),
 
-  /// {status-code: 506 Variant Also Negotiates}
-  /// @see <a href="https://tools.ietf.org/html/rfc2295#section-8.1">Transparent Content Negotiation</a>
+  /// 506 Variant Also Negotiates ([Transparent Content Negotiation](https://tools.ietf.org/html/rfc2295#section-8.1))
   variantAlsoNegotiates(506, Series.serverError, 'Variant Also Negotiates'),
 
-  /// {status-code: 507 Insufficient Storage}
-  /// @see <a href="https://tools.ietf.org/html/rfc4918#section-11.5">WebDAV</a>
+  /// 507 Insufficient Storage ([WebDAV](https://tools.ietf.org/html/rfc4918#section-11.5))
   insufficientStorage(507, Series.serverError, 'Insufficient Storage'),
 
-  /// {status-code: 508 Loop Detected}
-  /// @see <a href="https://tools.ietf.org/html/rfc5842#section-7.2">WebDAV Binding Extensions</a>
+  /// 508 Loop Detected ([WebDAV Binding Extensions](https://tools.ietf.org/html/rfc5842#section-7.2))
   loopDetected(508, Series.serverError, 'Loop Detected'),
 
-  /// {status-code: 509 Bandwidth Limit Exceeded}
+  /// 509 Bandwidth Limit Exceeded
   bandwidthLimitExceeded(509, Series.serverError, 'Bandwidth Limit Exceeded'),
 
-  /// {status-code: 510 Not Extended}
-  /// @see <a href="https://tools.ietf.org/html/rfc2774#section-7">HTTP Extension Framework</a>
+  /// 510 Not Extended ([HTTP Extension Framework](https://tools.ietf.org/html/rfc2774#section-7))
   notExtended(510, Series.serverError, 'Not Extended'),
 
-  /// {status-code: 511 Network Authentication Required}.
-  /// @see <a href="https://tools.ietf.org/html/rfc6585#section-6">Additional HTTP Status Codes</a>
+  /// 511 Network Authentication Required ([Additional HTTP Status Codes](https://tools.ietf.org/html/rfc6585#section-6))
   networkAuthenticationRequired(
     511,
     Series.serverError,
     'Network Authentication Required',
   );
 
-  @override
+  /// The numeric code (`404`)
   final int value;
 
+  /// The class of the code (`Series.clientError` for a 404)
   final Series series;
 
+  /// The text of the status line (`Not Found`)
   final String reasonPhrase;
 
   const StatusCode(this.value, this.series, this.reasonPhrase);
 
+  /// 1xx
+  bool get isInformational => series == Series.informational;
+
+  /// 2xx
+  bool get isSuccessful => series == Series.successful;
+
+  /// 3xx
+  bool get isRedirection => series == Series.redirection;
+
+  /// 4xx
+  bool get isClientError => series == Series.clientError;
+
+  /// 5xx
+  bool get isServerError => series == Series.serverError;
+
+  /// 4xx or 5xx
+  bool get isError => isClientError || isServerError;
+
+  /// `404 notFound`
   @override
-  bool is1xxInformational() {
-    return series == Series.informational;
-  }
+  String toString() => '$value $name';
 
-  @override
-  bool is2xxSuccessful() {
-    return series == Series.successful;
-  }
+  /// The status of [code]: an [ArgumentError] if it's not one of these values
+  static StatusCode valueOf(int code) =>
+      resolve(code) ??
+      (throw ArgumentError.value(code, 'code', 'Not a known status code'));
 
-  @override
-  bool is3xxRedirection() {
-    return series == Series.redirection;
-  }
+  /// The status of [code], or null if it's not one of these values (a non standard code)
+  static StatusCode? resolve(int code) => _byValue[code];
 
-  @override
-  bool is4xxClientError() {
-    return series == Series.clientError;
-  }
-
-  @override
-  bool is5xxServerError() {
-    return series == Series.serverError;
-  }
-
-  @override
-  bool isError() {
-    return (is4xxClientError() || is5xxServerError());
-  }
-
-  /// Return a string representation of this status code.
-  @override
-  String toString() {
-    return '$value $name';
-  }
-
-  /// Return the {status-code: StatusCode} enum constant with the specified numeric value.
-  /// @param statusCode the numeric value of the enum to be returned
-  /// @return the enum constant with the specified numeric value
-  /// @throws IllegalArgumentException if this enum has no constant for the specified numeric value
-  static StatusCode valueOf(int statusCode) {
-    StatusCode? status = resolve(statusCode);
-    if (status == null) {
-      throw StateError('No matching constant for [$statusCode]');
-    }
-    return status;
-  }
-
-  /// Resolve the given status code to an {status-code: StatusCode}, if possible.
-  /// @param statusCode the HTTP status code (potentially non-standard)
-  /// @return the corresponding {status-code: StatusCode}, or {status-code: null} if not found
-  /// @since 0.0.1.beta
-  static StatusCode? resolve(int statusCode) {
-    // Use cached VALUES instead of values() to prevent array allocation.
-    return values.firstWhereOrNull((element) => element.value == statusCode);
-  }
+  static final Map<int, StatusCode> _byValue = {
+    for (final status in values) status.value: status,
+  };
 }
 
-/// Enumeration of HTTP status series.
-/// <p>Retrievable via {@link StatusCode#series()}.
-///
+/// The class of a status code, its first digit
 enum Series {
   informational(1),
   successful(2),
@@ -418,34 +280,25 @@ enum Series {
   clientError(4),
   serverError(5);
 
+  /// The first digit of the codes of this series
   final int value;
 
   const Series(this.value);
 
-  /// Return the {status-code: Series} enum constant for the supplied status code.
-  /// @param statusCode the HTTP status code (potentially non-standard)
-  /// @return the {status-code: Series} enum constant for the supplied status code
-  /// @throws IllegalArgumentException if this enum has no corresponding constant
-  ///
-  static Series valueOf(int statusCode) {
-    Series? series = resolve(statusCode);
-    if (series == null) {
-      throw StateError('No matching constant for [$statusCode]');
-    }
-    return series;
-  }
+  /// The series of [statusCode]: an [ArgumentError] if it's not between 100 and 599
+  static Series valueOf(int statusCode) =>
+      resolve(statusCode) ??
+      (throw ArgumentError.value(
+        statusCode,
+        'statusCode',
+        'Not between 100 and 599',
+      ));
 
-  /// Resolve the given status code to an {status-code: StatusCode.Series}, if possible.
-  /// @param statusCode the HTTP status code (potentially non-standard)
-  /// @return the corresponding {status-code: Series}, or {status-code: null} if not found
-  /// @since 0.0.1.beta
-  ///
+  /// The series of [statusCode], or null if it's not between 100 and 599
   static Series? resolve(int statusCode) {
-    int seriesCode = statusCode ~/ 100;
-    for (Series series in Series.values) {
-      if (series.value == seriesCode) {
-        return series;
-      }
+    final int first = statusCode ~/ 100;
+    for (final series in Series.values) {
+      if (series.value == first) return series;
     }
     return null;
   }

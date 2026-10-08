@@ -21,7 +21,7 @@ void main() async {
   Winter.context.setUp(logger: const JsonLogger()); // production
 
   await Winter.start(
-    globalFilterConfig: FilterConfig([LogsFilter()]),
+    globalFilterConfig: FilterConfig([LoggingFilter()]),
     router: WinterRouter(
       routes: [
         Route.post(
@@ -105,21 +105,21 @@ Every request has an id, without adding anything:
 | Level   | What                                                                     |
 |---------|--------------------------------------------------------------------------|
 | info    | `Server started on port 8080 (0.2 sec)`, `Shutting down...`, `Server stopped` |
-| info    | `REQUEST`/`RESPONSE` of every request, with `LogsFilter`                 |
+| info    | `REQUEST`/`RESPONSE` of every request, with `LoggingFilter`                 |
 | info    | The routes loaded, only with `RouterConfig(onLoadedRoutes: DefaultOnLoadedRoutes.log())` |
-| warning | A duplicated or invalid route (with `RouterConfig` `ignore()`; by default it fails), a serializer registered as `dynamic`, languages without Winter's messages, requests still in progress at the end of the shutdown |
+| warning | A duplicated or invalid route (with `RouterConfig` `ignore()`; by default it fails), languages without Winter's messages, requests still in progress at the end of the shutdown |
 | error   | An unexpected error (the 500), with its stack trace; a failing `onDispose` or `onComplete` |
 | debug   | A rate limited request (with the client id), the type of the error of a failed deserialization |
 
-### `LogsFilter`
+### `LoggingFilter`
 
 ```dart
-await Winter.start(globalFilterConfig: FilterConfig([LogsFilter()]), router: router);
+await Winter.start(globalFilterConfig: FilterConfig([LoggingFilter()]), router: router);
 ```
 
 It writes two lines per request, both in info and with the request id:
 `REQUEST: GET /users/1` when it arrives, and `RESPONSE: GET /users/1 => 200 (12 ms)` when it's
-answered (error responses too). `LogsFilter(logRequest: ..., logResponse: ...)` replaces them.
+answered (error responses too). `LoggingFilter(logRequest: ..., logResponse: ...)` replaces them.
 
 **It never logs the body nor the query string**: they may contain passwords, tokens or personal
 data (`?email=...`), and a body may be huge. For the same reason, a failed deserialization logs the

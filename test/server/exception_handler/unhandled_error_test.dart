@@ -3,7 +3,6 @@ library;
 
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
@@ -12,8 +11,7 @@ class Unserializable {
 }
 
 void main() {
-  int port = 9064;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   final List<Object> loggedErrors = [];
 
@@ -26,15 +24,14 @@ void main() {
       ],
     );
 
-    await Winter.start(
-      config: ServerConfig(port: port),
-      context: BuildContext(
-        objectMapper: objectMapper,
-        exceptionHandler: SimpleExceptionHandler(
-          logUnhandledError: (request, error, stackTrace) =>
-              loggedErrors.add(error),
-        ),
+    Winter.context.setUp(
+      objectMapper: objectMapper,
+      exceptionHandler: SimpleExceptionHandler(
+        logUnhandledError: (request, error, stackTrace) =>
+            loggedErrors.add(error),
       ),
+    );
+    client = WinterTestClient.build(
       router: WinterRouter(
         routes: [
           Route.get(
@@ -58,14 +55,10 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
   setUp(loggedErrors.clear);
 
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   test('Error in handler returns a generic 500 and is logged', () async {
-    final response = await http.get(url('/error'));
+    final response = await client.get('/error');
 
     expect(response.statusCode, 500);
     expect(
@@ -78,7 +71,7 @@ void main() {
   });
 
   test('Unknown exception returns a generic 500 and is logged', () async {
-    final response = await http.get(url('/exception'));
+    final response = await client.get('/exception');
 
     expect(response.statusCode, 500);
     expect(
@@ -91,7 +84,7 @@ void main() {
   });
 
   test('Failed response serialization is a 500, not a 400', () async {
-    final response = await http.get(url('/serialization'));
+    final response = await client.get('/serialization');
 
     expect(response.statusCode, 500);
     expect(
@@ -103,7 +96,7 @@ void main() {
   });
 
   test('Expected API exceptions are not logged', () async {
-    final response = await http.get(url('/not-found'));
+    final response = await client.get('/not-found');
 
     expect(response.statusCode, 404);
     expect(loggedErrors, isEmpty);

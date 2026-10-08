@@ -31,8 +31,9 @@ extension RequestPrincipalX on RequestEntity {
   T? principalOrNull<T>() => _principalOf<T>(securityContext.authentication);
 }
 
-UnauthorizedException get _notAuthenticated =>
-    UnauthorizedException(headers: {HttpHeader.wwwAuthenticate: 'Bearer'});
+UnauthorizedException get _notAuthenticated => const UnauthorizedException(
+  headers: {HttpHeader.wwwAuthenticate: 'Bearer'},
+);
 
 T? _principalOf<T>(Authentication? authentication) {
   if (authentication == null || !authentication.authenticated) return null;

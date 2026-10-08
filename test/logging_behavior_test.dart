@@ -304,9 +304,9 @@ void main() {
       expect(memory.entries.single.requestId, id);
     });
 
-    test('LogsFilter writes its two lines with it', () async {
+    test('LoggingFilter writes its two lines with it', () async {
       final logged = WinterTestClient.build(
-        globalFilterConfig: FilterConfig([LogsFilter()]),
+        globalFilterConfig: FilterConfig([LoggingFilter()]),
         router: WinterRouter(
           routes: [
             Route.get(path: '/users/1', handler: (r) => ResponseEntity.ok()),

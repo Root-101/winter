@@ -1,14 +1,14 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
+import 'package:winter/src/router/winter_router.dart' show noRouteResponse;
 import 'package:winter/winter.dart';
 
 ///A router made of [routers]: a request goes to the first one that can handle it
-class MultiRouter extends AbstractWinterRouter {
-  final List<AbstractWinterRouter> routers;
+class MultiRouter extends BaseRouter {
+  final List<BaseRouter> routers;
 
-  MultiRouter(List<AbstractWinterRouter> routers)
-    : routers = List.unmodifiable(routers);
+  MultiRouter(List<BaseRouter> routers) : routers = List.unmodifiable(routers);
 
   @override
   bool canHandle(RequestEntity request) {
@@ -26,7 +26,7 @@ class MultiRouter extends AbstractWinterRouter {
 
   @override
   FutureOr<ResponseEntity> handler(RequestEntity request) {
-    AbstractWinterRouter? router = routers.firstWhereOrNull(
+    BaseRouter? router = routers.firstWhereOrNull(
       (element) => element.canHandle(request),
     );
     if (router == null) {

@@ -1,17 +1,14 @@
 @TestOn('vm')
 library;
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9021;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
+    client = WinterTestClient.build(
       globalFilterConfig: FilterConfig([
         BlockFilter(),
         InterceptFilter(),
@@ -57,14 +54,10 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   group('Global Filter Tests', () {
     test('Test Global Filter clears params on /global-filter/{id}', () async {
       String urlToTest = '/global-filter/55?some=123&another=963';
-      http.Response response = await http.get(url(urlToTest));
+      TestResponse response = await client.get(urlToTest);
       expect(response.statusCode, 200);
       expect(response.body, 'path: {id: 55}, query: {}');
       expect(response.headers['x-global-filter'], 'true');
@@ -72,21 +65,21 @@ void main() {
 
     test('Test Global Filter clears params on /global-filter/2/{id}', () async {
       String urlToTest = '/global-filter/2/66?some=456&another=852';
-      http.Response response = await http.get(url(urlToTest));
+      TestResponse response = await client.get(urlToTest);
       expect(response.statusCode, 200);
       expect(response.body, 'path: {id: 66}, query: {}');
       expect(response.headers['x-global-filter'], 'true');
     });
 
     test('Test Global Filter on route without params', () async {
-      http.Response response = await http.get(url('/no-params'));
+      TestResponse response = await client.get('/no-params');
       expect(response.statusCode, 200);
       expect(response.body, 'no params here');
       expect(response.headers['x-global-filter'], 'true');
     });
 
     test('Test Global and Local Filter combination', () async {
-      http.Response response = await http.get(url('/local-filter'));
+      TestResponse response = await client.get('/local-filter');
       expect(response.statusCode, 200);
       expect(response.body, 'local filter test');
       expect(response.headers['x-global-filter'], 'true');
@@ -94,7 +87,7 @@ void main() {
     });
 
     test('Test Intercepting Global Filter', () async {
-      http.Response response = await http.get(url('/will-be-intercepted'));
+      TestResponse response = await client.get('/will-be-intercepted');
       expect(response.statusCode, 200);
       expect(response.body, 'Intercepted by filter');
       // InterceptFilter is BEFORE AddGlobalHeaderFilter and doesn't call chain.doFilter
@@ -102,8 +95,8 @@ void main() {
     });
 
     test('Test Blocking Global Filter', () async {
-      http.Response response = await http.get(
-        url('/no-params'),
+      TestResponse response = await client.get(
+        '/no-params',
         headers: {'x-block': 'true'},
       );
       expect(response.statusCode, 401);
@@ -112,7 +105,7 @@ void main() {
     });
 
     test('Test Global Filter runs even on 404', () async {
-      http.Response response = await http.get(url('/non-existent-route'));
+      TestResponse response = await client.get('/non-existent-route');
       expect(response.statusCode, 404);
       expect(response.headers['x-global-filter'], 'true');
     });

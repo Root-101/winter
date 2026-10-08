@@ -3,13 +3,11 @@ library;
 
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9042;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   DateTime createdAt = DateTime.now();
   ObjectMapper om = ObjectMapper(
@@ -38,9 +36,8 @@ void main() {
   );
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
-      context: BuildContext(objectMapper: om),
+    Winter.context.setUp(objectMapper: om);
+    client = WinterTestClient.build(
       router: WinterRouter(
         routes: [
           Route(
@@ -148,16 +145,12 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   test('Send and receive body object', () async {
     String urlToTest = '/create-user';
     UserRequest requestBody = UserRequest(email: 'test@test.com');
 
-    http.Response response = await http.post(
-      url(urlToTest),
+    TestResponse response = await client.post(
+      urlToTest,
       body: jsonEncode(om.serialize(requestBody)),
     );
 
@@ -178,8 +171,8 @@ void main() {
       UserRequest(email: 'test1@test1.com'),
     ];
 
-    http.Response response = await http.post(
-      url(urlToTest),
+    TestResponse response = await client.post(
+      urlToTest,
       body: jsonEncode(om.serialize(requestBody)),
     );
 
@@ -203,10 +196,7 @@ void main() {
   test('Send and receive body primitive', () async {
     String urlToTest = '/sqrt';
 
-    http.Response response = await http.post(
-      url(urlToTest),
-      body: jsonEncode(5),
-    );
+    TestResponse response = await client.post(urlToTest, body: jsonEncode(5));
 
     expect(response.statusCode, 200);
 
@@ -217,8 +207,8 @@ void main() {
   test('Send and receive body primitive list', () async {
     String urlToTest = '/sqrt-list';
 
-    http.Response response = await http.post(
-      url(urlToTest),
+    TestResponse response = await client.post(
+      urlToTest,
       body: jsonEncode([5, 6, 7]),
     );
 
@@ -235,8 +225,8 @@ void main() {
       'nested': {'a': 1},
     };
 
-    http.Response response = await http.post(
-      url(urlToTest),
+    TestResponse response = await client.post(
+      urlToTest,
       body: jsonEncode(requestBody),
     );
 
@@ -248,8 +238,8 @@ void main() {
     String urlToTest = '/echo-datetime';
     DateTime now = DateTime.now();
 
-    http.Response response = await http.post(
-      url(urlToTest),
+    TestResponse response = await client.post(
+      urlToTest,
       body: jsonEncode(now.toIso8601String()),
     );
 
@@ -264,8 +254,8 @@ void main() {
     String urlToTest = '/serializable';
     SerializableUser user = SerializableUser(name: 'Adam');
 
-    http.Response response = await http.post(
-      url(urlToTest),
+    TestResponse response = await client.post(
+      urlToTest,
       body: jsonEncode(user),
     );
 
@@ -280,8 +270,8 @@ void main() {
       SerializableUser(name: 'Eve'),
     ];
 
-    http.Response response = await http.post(
-      url(urlToTest),
+    TestResponse response = await client.post(
+      urlToTest,
       body: jsonEncode(users),
     );
 
@@ -292,10 +282,7 @@ void main() {
   test('Send invalid JSON returns 400', () async {
     String urlToTest = '/sqrt';
 
-    http.Response response = await http.post(
-      url(urlToTest),
-      body: 'not-a-json',
-    );
+    TestResponse response = await client.post(urlToTest, body: 'not-a-json');
 
     expect(response.statusCode, 400);
   });
@@ -303,8 +290,8 @@ void main() {
   test('Request unregistered type throws 500', () async {
     String urlToTest = '/unregistered';
 
-    http.Response response = await http.post(
-      url(urlToTest),
+    TestResponse response = await client.post(
+      urlToTest,
       body: jsonEncode({'name': 'test'}),
     );
 

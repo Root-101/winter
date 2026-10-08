@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:test/test.dart';
+import 'package:winter/src/winter_server.dart' show addVary;
 import 'package:winter/winter.dart';
 
 const WinterLocale english = WinterLocale.english;

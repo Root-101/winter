@@ -31,7 +31,7 @@ void main() {
         '/items/{id}',
       ]);
       expect(
-        router.handlerRoute(request('GET', '/items/1'))?.path,
+        router.resolveRoute(request('GET', '/items/1'))?.path,
         '/items/{id}',
       );
       expect(router.routes[0].key, isNot(router.routes[1].key));
@@ -101,7 +101,7 @@ void main() {
         'get /api/users/{id}',
         'delete /api/users/{id}',
       ]);
-      expect(router.handlerRoute(request('GET', '/api/users/1')), isNotNull);
+      expect(router.resolveRoute(request('GET', '/api/users/1')), isNotNull);
     });
 
     test('detects duplicates with the existing routes', () {

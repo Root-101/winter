@@ -1,17 +1,14 @@
 @TestOn('vm')
 library;
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9069;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
+    client = WinterTestClient.build(
       router: WinterRouter(
         routes: [
           Route(
@@ -59,13 +56,9 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   test('Test /parent.*/child-1', () async {
     String urlToTest = '/parent_hello_world/child-1';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Return from response /parent/child-1');
@@ -73,7 +66,7 @@ void main() {
 
   test('Test /parent.*/child-2', () async {
     String urlToTest = '/parent_hi/child-2';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Return from response /parent/child-2');
@@ -81,7 +74,7 @@ void main() {
 
   test('Test /single-route.* #1', () async {
     String urlToTest = '/single-route-alleluia';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Return from response /single-route');
@@ -89,7 +82,7 @@ void main() {
 
   test('Test /single-route.* #2', () async {
     String urlToTest = '/single-route/bye';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Return from response /single-route');
@@ -97,7 +90,7 @@ void main() {
 
   test('Test /route-parent', () async {
     String urlToTest = '/route-parent';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Return from response /route-parent');
@@ -105,7 +98,7 @@ void main() {
 
   test('Test /route-parent/child', () async {
     String urlToTest = '/route-parent/child_123546789';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Return from response /route-parent/child');

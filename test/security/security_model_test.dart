@@ -50,7 +50,7 @@ void main() {
       request.securityContext.setAuthentication(Authentication(principal: 'a'));
       expect(request.securityContext.isAuthenticated, isTrue);
 
-      request.securityContext.clearContext();
+      request.securityContext.clear();
       expect(request.securityContext.authentication, isNull);
     });
   });

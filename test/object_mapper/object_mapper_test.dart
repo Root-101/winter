@@ -334,18 +334,53 @@ void main() {
       expect(parser.serialize(list), list);
     });
 
-    test('Serializer/Deserializer registered as dynamic log a warning', () {
-      final warnings = <String>[];
-      Winter.context.setUp(logger: _MemoryLogger(warnings));
-      addTearDown(() => Winter.context.setUp(logger: const ConsoleLogger()));
+    test('a Serializer or Deserializer without its type fails at once', () {
+      expect(
+        () => Serializer<dynamic>((obj) => obj),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('Serializer<Money>'),
+          ),
+        ),
+      );
+      expect(
+        () => Deserializer<dynamic>((data) => data),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('Deserializer<User>.json'),
+          ),
+        ),
+      );
+      expect(() => Serializer<Tool>((tool) => tool.toJson()), returnsNormally);
+    });
 
-      Serializer<dynamic>((obj) => obj);
-      Deserializer<dynamic>((data) => data);
-      Serializer<Tool>((tool) => tool.toJson());
-
-      expect(warnings, hasLength(2));
-      expect(warnings.first, contains('Serializer<YOUR_TYPE>'));
-      expect(warnings.last, contains('Deserializer<YOUR_TYPE>'));
+    test('inside a list, a Deserializer without its type is dynamic or Enum: it fails', () {
+      expect(
+        () => ObjectMapper(deserializers: [Deserializer.json(Tool.fromJson)]),
+        throwsArgumentError,
+      );
+      // Dart infers Deserializer<Enum> from the list, not Deserializer<_Kind> from the values
+      expect(
+        () => ObjectMapper(
+          deserializers: [Deserializer.enumByName(_Kind.values)],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => Deserializer<String>.enumByName(['a']),
+        throwsArgumentError,
+        reason: 'not the values of an enum',
+      );
+      expect(
+        ObjectMapper(
+          deserializers: [Deserializer<_Kind>.enumByName(_Kind.values)],
+        ).deserialize<_Kind>('b'),
+        _Kind.b,
+      );
     });
   });
 
@@ -762,19 +797,4 @@ class _Event {
   Object? toJson() => {'at': at, 'color': color, 'gadgets': gadgets};
 }
 
-class _MemoryLogger extends WinterLogger {
-  final List<String> warnings;
-
-  _MemoryLogger(this.warnings);
-
-  @override
-  void log(
-    LogLevel level,
-    String message, {
-    Object? error,
-    StackTrace? stackTrace,
-    Map<String, Object?> fields = const {},
-  }) {
-    if (level == LogLevel.warning) warnings.add(message);
-  }
-}
+enum _Kind { a, b }

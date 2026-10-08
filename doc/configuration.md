@@ -166,7 +166,7 @@ For the `ServerConfig`, the router and the `SecurityConfig`, in this order:
 
 The one used is registered in `di`, and `Winter.close()` restores what was there before.
 
-### `BuildContext`
+### `WinterContext`
 
 `Winter.context` holds the global services: `env`, `om` (the object mapper), `eh` (the exception
 handler), `di`, `logger` and `localeConfig`. Replace any of them with `setUp`, before starting the
@@ -179,7 +179,7 @@ Winter.context.setUp(
 );
 ```
 
-`Winter.start(context: BuildContext(...))` replaces the whole context instead.
+`Winter.start(context: WinterContext(...))` replaces the whole context instead.
 
 ## Common cases
 
