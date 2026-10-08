@@ -1,3 +1,5 @@
+import 'package:winter/src/context/object_mapper/object_mapper.dart'
+    show lostRegistrations;
 import 'package:winter/winter.dart';
 
 /// What the whole app shares: the object mapper, the exception handler, the dependencies, the
@@ -62,7 +64,22 @@ class WinterContext {
        _env = env ?? Env(),
        _localeConfig = localeConfig ?? LocaleConfig();
 
-  /// Replaces the values given and keeps the rest
+  /// What the app registered in the mapper being replaced and the new one doesn't have: a
+  /// `request.body<User>()` would be a 500 at runtime, so it's said now. (Register them in the
+  /// new mapper, or set up the mapper before registering.)
+  void _warnLostRegistrations(ObjectMapper previous, ObjectMapper next) {
+    if (identical(previous, next)) return;
+    final List<Type> lost = lostRegistrations(previous, next);
+    if (lost.isEmpty) return;
+    _logger.warning(
+      'The object mapper was replaced, and the new one has no serializer or deserializer of '
+      '${lost.join(', ')}, registered in the previous one. Register them in the new mapper, '
+      'or set up the mapper before registering them.',
+    );
+  }
+
+  /// Replaces the values given and keeps the rest. Replacing the object mapper warns about the
+  /// serializers and deserializers of the app that the new one doesn't have.
   void setUp({
     ObjectMapper? objectMapper,
     ExceptionHandler? exceptionHandler,
@@ -72,6 +89,7 @@ class WinterContext {
     LocaleConfig? localeConfig,
   }) {
     if (objectMapper != null) {
+      _warnLostRegistrations(_objectMapper, objectMapper);
       _objectMapper = objectMapper;
     }
     if (exceptionHandler != null) {

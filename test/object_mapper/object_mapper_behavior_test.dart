@@ -916,6 +916,78 @@ void main() {
     });
   });
 
+  group('Replacing the mapper warns about what is lost', () {
+    late List<String> logs;
+    late ObjectMapper previous;
+
+    setUp(() {
+      logs = [];
+      previous = om;
+      Winter.context.setUp(logger: _ListLogger(logs));
+    });
+
+    tearDown(() {
+      Winter.context.setUp(logger: const ConsoleLogger());
+      Winter.context.setUp(objectMapper: previous);
+    });
+
+    test('the types of the app that the new mapper has not', () {
+      Winter.context.setUp(
+        objectMapper: ObjectMapper()
+          ..addDeserializer(Deserializer<_Cents>.integer(_Cents.new))
+          ..addSerializer(Serializer<_Ratio>((ratio) => ratio.value))
+          ..addAdapter(
+            JsonAdapter<Uri>.string(
+              toJson: (uri) => '$uri',
+              fromJson: Uri.parse,
+            ),
+          ),
+      );
+      logs.clear();
+
+      Winter.context.setUp(
+        objectMapper: ObjectMapper(
+          fieldNaming: FieldNaming.snakeCase,
+          deserializers: [Deserializer<_Cents>.integer(_Cents.new)],
+        ),
+      );
+
+      expect(logs, [
+        'warning: The object mapper was replaced, and the new one has no serializer or '
+            'deserializer of _Ratio, Uri, registered in the previous one. Register them in the '
+            'new mapper, or set up the mapper before registering them.',
+      ]);
+    });
+
+    test(
+      'nothing to say: only defaults, the same mapper, or all of them kept',
+      () {
+        Winter.context.setUp(objectMapper: ObjectMapper());
+        Winter.context.setUp(objectMapper: om);
+        // Registered and removed: nothing of the app is left to lose
+        Winter.context.setUp(
+          objectMapper: ObjectMapper()
+            ..addDeserializer(Deserializer<_Cents>.integer(_Cents.new))
+            ..removeDeserializer<_Cents>(),
+        );
+        Winter.context.setUp(objectMapper: ObjectMapper());
+        // Kept by the new mapper
+        Winter.context.setUp(
+          objectMapper: ObjectMapper(
+            deserializers: [Deserializer<_Cents>.integer(_Cents.new)],
+          ),
+        );
+        Winter.context.setUp(
+          objectMapper: ObjectMapper(
+            deserializers: [Deserializer<_Cents>.integer(_Cents.new)],
+          ),
+        );
+
+        expect(logs, isEmpty);
+      },
+    );
+  });
+
   group('TestResponse.as<T>()', () {
     test(
       'reads the body with the mapper, like body<T>() reads a request',
@@ -1030,4 +1102,19 @@ class _Raw {
   final Map<String, dynamic> json;
 
   _Raw(this.json);
+}
+
+class _ListLogger extends WinterLogger {
+  final List<String> logs;
+
+  _ListLogger(this.logs);
+
+  @override
+  void log(
+    LogLevel level,
+    String message, {
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, Object?> fields = const {},
+  }) => logs.add('${level.name}: $message');
 }

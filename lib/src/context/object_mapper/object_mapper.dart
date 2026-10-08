@@ -243,6 +243,16 @@ class Deserializer<T> extends _MapperEntity<T> {
   }
 }
 
+/// The types that the app registered in [previous] (a serializer or a deserializer) and [next] has
+/// none of: what replacing [previous] with [next] loses. Internal: `WinterContext.setUp` warns
+/// with them.
+List<Type> lostRegistrations(ObjectMapper previous, ObjectMapper next) => {
+  for (final Type type in previous._appSerializers)
+    if (!next._serializers.containsKey(type)) type,
+  for (final Type type in previous._appDeserializers)
+    if (!next._deserializers.containsKey(type)) type,
+}.toList();
+
 /// The [Serializer] and the [Deserializer] of a type, in one: for a type you don't own (`Uri`,
 /// a class of another package) that is written as a JSON string, number or object.
 ///
@@ -359,22 +369,33 @@ class ObjectMapper {
     this.durationFormat = DurationFormat.milliseconds,
     this.prettyPrint = true,
   }) {
+    for (final s in _defaultSerializers()) {
+      _serializers[s.type] = s;
+    }
     for (final s in [
-      ..._defaultSerializers(),
       ...?serializers,
       ...?adapters?.map((adapter) => adapter.serializer),
     ]) {
       _serializers[s.type] = s;
+      _appSerializers.add(s.type);
+    }
+    for (final d in _defaultDeserializers()) {
+      _deserializers[d.type] = d;
     }
     for (final d in [
-      ..._defaultDeserializers(),
       ...?deserializers,
       ...?adapters?.map((adapter) => adapter.deserializer),
     ]) {
       _deserializers[d.type] = d;
+      _appDeserializers.add(d.type);
     }
     _rebuildDerivedDeserializers();
   }
+
+  /// The types with a serializer (or a deserializer) of the app, not a default one: what is lost
+  /// when the mapper is replaced (see [lostRegistrations])
+  final Set<Type> _appSerializers = {};
+  final Set<Type> _appDeserializers = {};
 
   static List<Serializer> _defaultSerializers() => [
     Serializer<DateTime>._withMapper(
@@ -428,12 +449,14 @@ class ObjectMapper {
   /// Adds a [Serializer] to the mapper (it replaces the one of the same type).
   void addSerializer<T>(Serializer<T> serializer) {
     _serializers[serializer.type] = serializer;
+    _appSerializers.add(serializer.type);
     _converters.clear();
   }
 
   /// Removes the [Serializer] for type [T].
   void removeSerializer<T>() {
     _serializers.remove(T);
+    _appSerializers.remove(T);
     _converters.clear();
   }
 
@@ -441,6 +464,7 @@ class ObjectMapper {
   /// with its derived types (see [Deserializer]).
   void addDeserializer<T>(Deserializer<T> deserializer) {
     _deserializers[deserializer.type] = deserializer;
+    _appDeserializers.add(deserializer.type);
     _rebuildDerivedDeserializers();
   }
 
@@ -454,6 +478,7 @@ class ObjectMapper {
   /// Removes the [Deserializer] for type [T] and its derived types.
   void removeDeserializer<T>() {
     _deserializers.remove(T);
+    _appDeserializers.remove(T);
     _rebuildDerivedDeserializers();
   }
 
