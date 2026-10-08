@@ -119,6 +119,26 @@ di
 A cycle (`A` needs `B`, which needs `A`) is a `StateError` with the chain:
 `Circular dependency: OrderService -> PaymentClient -> OrderService`.
 
+### Failing at start-up: `createAll`
+
+A lazy singleton that can't be created (a missing dependency, a cycle, a constructor that throws)
+fails in the first request that needs it, maybe hours after a deploy. `di.createAll()` creates
+every lazy singleton now, so the same mistake stops the start-up instead:
+
+```dart
+registerDependencies();   // in any order, as always
+di.createAll();           // every putLazy, created now
+await Winter.start();
+```
+
+- Optional: without it, a lazy singleton is created by its first `find` (a faster start, and
+  nothing unused is ever created). The order of registration stays free either way.
+- Every lazy singleton is tried: each failure is logged with its stack trace, and then one
+  `StateError` names all of them (`2 dependencies could not be created: - <Db>: ...`). One that
+  fails stays registered and not created.
+- Factories and scoped dependencies are not created: they belong to a `find` or a request. A lazy
+  singleton that depends on a scoped one is found here too.
+
 ### One instance per request: `putScoped`
 
 ```dart
@@ -241,6 +261,8 @@ di.put(AppConfig.fromEnv(env)); // read once at start-up, fail fast if something
   it's a `StateError`; run that code inside `RequestScope.run` or use a lazy or factory dependency.
 - **A lazy singleton that depends on a scoped one**: it's a `StateError`. Register the service with
   `putFactory` or `putScoped`.
+- **A broken registration found in production**: a lazy singleton fails when it's first found.
+  Call `di.createAll()` before `Winter.start` to fail at start-up.
 - **No constructor injection**: dependencies are found by your code (`di.find()` in the
   functions), never injected by Winter. It's a service locator on purpose: AOT has no reflection,
   and the project avoids code generation.

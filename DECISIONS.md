@@ -141,6 +141,10 @@ Guide: [`doc/dependency-injection.md`](doc/dependency-injection.md).
 - **Lifetimes**: `put` (an instance), `putLazy` (created by the first `find`; a cycle is a
   `StateError` with the chain), `putFactory` (one per `find`) and `putScoped` (one per request, in
   its `RequestScope`). The functions are synchronous: await an async initialization before.
+- **`createAll()`, optional**: lazy keeps the order of registration free and the start fast, but a
+  broken registration only fails when it's first found. Without reflection the graph can't be
+  checked without creating it, so `createAll()` creates every lazy singleton (not factories nor
+  scoped ones) and reports every failure in one `StateError`, as `Env.requireAll` does.
 - **A scoped dependency can't be captured**: finding one while a lazy singleton is being created,
   or after its request ended, is a `StateError` (it would keep a disposed instance).
 - **`onDispose`** runs on `Winter.shutdown()` (after the requests and `onShutdown`) or

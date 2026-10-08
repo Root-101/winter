@@ -383,6 +383,139 @@ void main() {
     });
   });
 
+  group('createAll (§5)', () {
+    late List<String> logs;
+
+    setUp(() {
+      logs = [];
+      Winter.context.setUp(logger: _MemoryLogger(logs));
+      addTearDown(() => Winter.context.setUp(logger: const ConsoleLogger()));
+    });
+
+    test('creates every lazy singleton once, in order of registration', () {
+      final List<String> created = [];
+      di
+        ..putLazy<String>(() {
+          created.add('a');
+          return 'a ${di.find<String>(tag: 'b')}';
+        }, tag: 'a')
+        ..putLazy<String>(() {
+          created.add('b');
+          return 'b';
+        }, tag: 'b')
+        ..putLazy<String>(() {
+          created.add('c');
+          return 'c';
+        }, tag: 'c');
+      di.find<String>(tag: 'c');
+
+      di.createAll();
+      di.createAll();
+
+      expect(created, ['c', 'a', 'b']);
+      expect(di.find<String>(tag: 'a'), 'a b');
+      expect(logs, isEmpty);
+    });
+
+    test('factories and scoped dependencies are not created', () {
+      final List<String> created = [];
+      di
+        ..putFactory<_Service>(() {
+          created.add('factory');
+          return _Service();
+        })
+        ..putScoped<_UnitOfWork>(() {
+          created.add('scoped');
+          return _UnitOfWork();
+        })
+        ..put<int>(1);
+
+      di.createAll();
+
+      expect(created, isEmpty);
+    });
+
+    test('every failure is logged and named in one StateError', () {
+      di
+        ..putLazy<_Service>(_Service.new)
+        ..putLazy<_OrderService>(() => _OrderService(di.find()))
+        ..putLazy<String>(() => throw StateError('bad url'), tag: 'db')
+        ..putLazy<int>(() => di.find<int>(tag: 'b'), tag: 'a')
+        ..putLazy<int>(() => di.find<int>(tag: 'a'), tag: 'b');
+
+      expect(
+        di.createAll,
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              startsWith('4 dependencies could not be created:\n'),
+              contains(
+                '- <_OrderService>: Bad state: Dependency of <_UnitOfWork>',
+              ),
+              contains('- <String>: Bad state: bad url'),
+              contains('Circular dependency: int -> int -> int'),
+            ),
+          ),
+        ),
+      );
+      expect(logs, [
+        'The dependency <_OrderService> could not be created',
+        'The dependency <String> could not be created',
+        'The dependency <int> could not be created',
+        'The dependency <int> could not be created',
+      ]);
+      expect(di.find<_Service>(), isA<_Service>());
+
+      // What failed stays registered and not created: once fixed, createAll works
+      expect(di.isRegistered<String>(tag: 'db'), isTrue);
+      di
+        ..putFactory<_OrderService>(() => _OrderService(_UnitOfWork()))
+        ..putLazy<String>(() => 'postgres://db', tag: 'db')
+        ..putLazy<int>(() => 1, tag: 'a');
+      logs.clear();
+
+      di.createAll();
+
+      expect(di.find<String>(tag: 'db'), 'postgres://db');
+      expect(di.find<int>(tag: 'b'), 1);
+      expect(logs, isEmpty);
+    });
+
+    test('one failure says so', () {
+      di.putLazy<String>(() => throw StateError('bad url'));
+
+      expect(
+        di.createAll,
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'A dependency could not be created:\n- <String>: Bad state: bad url',
+          ),
+        ),
+      );
+    });
+
+    test('a lazy one that depends on a scoped one is found at start', () {
+      di
+        ..putScoped<_UnitOfWork>(_UnitOfWork.new)
+        ..putLazy<_OrderService>(() => _OrderService(di.find()));
+
+      expect(
+        di.createAll,
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('is scoped to a request'), contains('putFactory')),
+          ),
+        ),
+      );
+    });
+  });
+
   group('Use cases (§5, §5)', () {
     test('tags with every kind of registration', () {
       di
