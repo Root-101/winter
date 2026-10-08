@@ -33,6 +33,10 @@
     <button>Upload</button>
   </form>
 
+  <h2>Chat (WebSocket)</h2>
+  <ul id="chat"></ul>
+  <form id="say"><input id="text" placeholder="Say something" autocomplete="off"><button>Send</button></form>
+
   <h2>Photos</h2>
   <div id="photos">Log in to see them.</div>
   <script>
@@ -50,6 +54,20 @@
     }
     // Server-Sent Events: the photos uploaded from now on, by anyone
     new EventSource('/photos/events').addEventListener('photo', (event) => show(JSON.parse(event.data)));
+    // WebSocket: the cookie of the session goes with the handshake
+    const chat = new WebSocket(`ws://${location.host}/chat`);
+    chat.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      const item = document.createElement('li');
+      item.textContent = `${message.from}: ${message.text}`;
+      document.getElementById('chat').append(item);
+    };
+    document.getElementById('say').onsubmit = (event) => {
+      event.preventDefault();
+      const input = document.getElementById('text');
+      chat.send(input.value);
+      input.value = '';
+    };
     fetch('/photos').then((response) => response.ok ? response.json() : []).then((photos) => {
       for (const photo of photos) show(photo);
     });

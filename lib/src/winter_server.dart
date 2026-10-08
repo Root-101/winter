@@ -5,6 +5,8 @@ import 'package:winter/src/i18n/winter_messages.dart';
 import 'package:winter/src/request_entity.dart'
     show attachRoute, limitRequestBody, requestFromHttpRequest;
 import 'package:winter/src/response_entity.dart' show writeResponse;
+import 'package:winter/src/websocket.dart'
+    show WebSocketUpgrade, webSocketUpgradeKey;
 import 'package:winter/winter.dart';
 
 ///Dependency Injection: easy access to the current dependency injection instance
@@ -89,6 +91,9 @@ class Winter {
   ///Requests being handled right now, to wait for them on a graceful close
   final _InFlightRequests _inFlightRequests;
 
+  ///The WebSockets open now: they are closed (1001, going away) when the server closes
+  final _WebSockets _webSockets;
+
   ///Restore the dependencies registered by [start] to its previous state
   final void Function() _restoreDependencies;
 
@@ -112,6 +117,7 @@ class Winter {
     required this.securityConfig,
     required this._rawServer,
     required this._inFlightRequests,
+    required this._webSockets,
     required this._restoreDependencies,
   }) : timestamp = DateTime.now();
 
@@ -204,6 +210,7 @@ class Winter {
     }
 
     final _InFlightRequests inFlightRequests = _InFlightRequests();
+    final _WebSockets webSockets = _WebSockets();
     final HttpServer rawServer;
     try {
       final SecurityContext? securityContext = nonNullConfig.securityContext;
@@ -246,6 +253,7 @@ class Winter {
         request,
         handler,
         inFlightRequests,
+        webSockets,
         compress: nonNullConfig.autoCompress,
       ),
 
@@ -263,6 +271,7 @@ class Winter {
       securityConfig: nonNullSecurityConfig,
       rawServer: rawServer,
       inFlightRequests: inFlightRequests,
+      webSockets: webSockets,
       restoreDependencies: restoreDependencies,
     );
 
@@ -293,6 +302,9 @@ class Winter {
     if (isRunning) {
       final Winter current = server;
       if (!current._closing.isCompleted) current._closing.complete();
+
+      ///An upgraded connection is not the server's any more: close the WebSockets ourselves
+      current._webSockets.closeAll();
 
       if (force) {
         ///Not awaited: if the server is already closing, this future never completes
@@ -424,7 +436,8 @@ class Winter {
   static Future<void> _serve(
     HttpRequest request,
     RequestHandler handler,
-    _InFlightRequests inFlightRequests, {
+    _InFlightRequests inFlightRequests,
+    _WebSockets webSockets, {
     required bool compress,
   }) async {
     inFlightRequests.start();
@@ -441,6 +454,20 @@ class Winter {
         );
         response = internalServerErrorResponse();
       }
+      final WebSocketUpgrade? upgrade = response.context.get(
+        webSocketUpgradeKey,
+      );
+      if (upgrade != null &&
+          response.statusCode == StatusCode.switchingProtocols.value &&
+          WebSocketTransformer.isUpgradeRequest(request)) {
+        await _upgrade(
+          request,
+          upgrade,
+          webSockets,
+          response.headers[HttpHeader.xRequestId],
+        );
+        return;
+      }
       await writeResponse(
         response,
         request.response,
@@ -450,6 +477,54 @@ class Winter {
     } finally {
       inFlightRequests.end();
     }
+  }
+
+  /// Upgrades [request] to a WebSocket and runs the handler of the route on it, in a
+  /// [RequestScope] of its own (the principal, the language and the id of the handshake), which
+  /// completes when the socket closes. The handler is not awaited: an open socket doesn't hold a
+  /// request in progress (the sockets are closed by [close]).
+  static Future<void> _upgrade(
+    HttpRequest request,
+    WebSocketUpgrade upgrade,
+    _WebSockets webSockets,
+    String? requestId,
+  ) async {
+    final WebSocket socket;
+    try {
+      socket = await WebSocketTransformer.upgrade(
+        request,
+        protocolSelector: upgrade.protocols.isEmpty
+            ? null
+            : upgrade.selectProtocol,
+      );
+    } catch (error) {
+      ///A handshake that dart:io refuses (a version it doesn't speak, no subprotocol in common)
+      logger.debug('A WebSocket upgrade failed', error: error);
+      return;
+    }
+    socket.pingInterval = upgrade.pingInterval;
+    if (!webSockets.add(socket)) return;
+    final RequestEntity handshake = upgrade.request;
+    final RequestScope scope = RequestScope(
+      securityContext: handshake.securityContext,
+      locale: handshake.locale,
+      requestId: requestId,
+    );
+    unawaited(socket.done.whenComplete(scope.complete));
+    unawaited(
+      RequestScope.run(scope, () async {
+        try {
+          await upgrade.handler(socket, handshake);
+        } catch (error, stackTrace) {
+          logger.error(
+            'The WebSocket handler of ${handshake.requestedUri.path} failed',
+            error: error,
+            stackTrace: stackTrace,
+          );
+          await socket.close(WebSocketStatus.internalServerError);
+        }
+      }),
+    );
   }
 
   /// The global filters, with the [CorsFilter] first if CORS is enabled in the [SecurityConfig]
@@ -671,6 +746,35 @@ class _RequestTimeoutFilter extends Filter {
           );
         },
       );
+}
+
+/// The WebSockets of a server. Once it's closing, a socket that finishes its upgrade (a handshake
+/// that came just before) is closed at once, so none is left open after the server
+class _WebSockets {
+  final Set<WebSocket> _open = {};
+  bool _closing = false;
+
+  /// Keeps [socket] until it closes; false (and closed) when the server is closing
+  bool add(WebSocket socket) {
+    if (_closing) {
+      unawaited(_goAway(socket));
+      return false;
+    }
+    _open.add(socket);
+    unawaited(socket.done.whenComplete(() => _open.remove(socket)));
+    return true;
+  }
+
+  /// Closes every socket (1001, going away), and the ones that come from now on
+  void closeAll() {
+    _closing = true;
+    for (final WebSocket socket in _open.toList()) {
+      unawaited(_goAway(socket));
+    }
+  }
+
+  static Future<void> _goAway(WebSocket socket) =>
+      socket.close(WebSocketStatus.goingAway, 'Server shutting down');
 }
 
 /// Counter of the requests being handled, to know when a server can be closed gracefully

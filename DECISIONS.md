@@ -338,9 +338,15 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
   closing: an endless stream would otherwise hold every graceful shutdown until its timeout, and
   the browser reconnects anyway. `event` and `id` with a line break are an `ArgumentError`: they
   would inject another event.
-- **WebSockets** (planned): a response of its own kind, recognized by the server before writing,
-  will hand the `HttpRequest` to `WebSocketTransformer.upgrade` after the filters ran. Nothing in
-  the current API blocks it.
+- **WebSockets** (`Route.websocket`): the handshake is a `GET` route, so the filters (auth, rate
+  limit, logs) and the request scope apply before the upgrade. Its handler answers a 101 that
+  carries the upgrade in its context; the server recognizes it before writing and hands the
+  `HttpRequest` to `WebSocketTransformer.upgrade`. The socket is the `WebSocket` of `dart:io`
+  (no wrapper to learn), plus `sendJson`. `allowedOrigins` is explicit because CORS doesn't cover
+  WebSockets and a browser sends the cookies to any of them (cross-site WebSocket hijacking). The
+  handler runs in a request scope of its own, completed when the socket closes; it isn't awaited
+  as a request in progress, so the server closes the sockets itself (1001) when it shuts down,
+  also the ones that finish their upgrade while it's closing.
 
 ## 11. The public API
 

@@ -167,6 +167,34 @@ String? imageExtension(Uint8List bytes) {
 bool isMp4(Uint8List bytes) =>
     bytes.length >= 8 && String.fromCharCodes(bytes.sublist(4, 8)) == 'ftyp';
 
+/// The chat of the gallery: every logged in user connected by WebSocket gets the messages of all
+/// of them. In memory, like the sessions.
+class Chat {
+  final Set<WebSocket> _sockets = {};
+
+  /// The code of `Route.websocket('/chat')`: the user comes from the session cookie of the
+  /// handshake, through `SessionFilter` and `AuthFilter` like any request
+  Future<void> join(WebSocket socket, RequestEntity request) async {
+    final String user = request.principal<String>();
+    _sockets.add(socket);
+    _send({'from': 'server', 'text': '$user joined'});
+    await for (final Object? message in socket) {
+      if (message is String && message.trim().isNotEmpty) {
+        _send({'from': user, 'text': message.trim()});
+      }
+    }
+    // The client left
+    _sockets.remove(socket);
+    _send({'from': 'server', 'text': '$user left'});
+  }
+
+  void _send(Map<String, String> message) {
+    for (final WebSocket socket in _sockets) {
+      socket.sendJson(message);
+    }
+  }
+}
+
 class FilesApp {
   /// Only a logged in user uploads or sees the files. Its challenge (required by a 401) says that
   /// the session is a cookie.
@@ -176,7 +204,9 @@ class FilesApp {
   static WinterRouter router({
     required Sessions sessions,
     required FileStore files,
+    Chat? chat,
     String web = 'web',
+    List<String> origins = const ['http://localhost:8080'],
   }) => WinterRouter(
     routes: [
       /// An HTML form: `application/x-www-form-urlencoded`
@@ -293,6 +323,15 @@ class FilesApp {
         handler: (request) => StaticFiles(
           files.videos.path,
         ).serve(request, request.pathParam<String>('id')),
+      ),
+
+      /// A WebSocket: the chat of the logged in users. Only from the origin of the page: browsers
+      /// send the cookie on a WebSocket of any website (no CORS here), so the origin is checked
+      Route.websocket(
+        path: '/chat',
+        filterConfig: _loggedIn,
+        allowedOrigins: origins,
+        handler: (chat ?? Chat()).join,
       ),
 
       /// The page with the forms. Last: it matches every GET

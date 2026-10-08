@@ -379,6 +379,8 @@ RateLimiterFilter.fromRateLimiter(
   slow clients that send their headers byte by byte, the size of the headers (`dart:io` accepts
   tens of KB), and the number of connections per client.
 - `ServerConfig.requestTimeout` so a slow upload or a stuck handler can't hold a request forever.
+- `allowedOrigins` on every `Route.websocket` of an app with a session in a cookie: browsers send
+  the cookie to a WebSocket of any website, and CORS doesn't apply to them.
 
 ## Typical mistakes and limitations
 
