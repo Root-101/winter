@@ -181,7 +181,7 @@ the same dependencies. Call `di.disposeAll()` yourself when you need it.
 
 ### What Winter registers
 
-`Winter.start` registers the `ServerConfig`, the router (as `AbstractWinterRouter`) and the
+`Winter.start` registers the `ServerConfig`, the router (as `BaseRouter`) and the
 `SecurityConfig` it uses (the ones given, or the ones already registered, or the defaults), and
 `Winter.close()` restores what was there before, so nothing leaks to the next server.
 

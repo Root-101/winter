@@ -3,17 +3,14 @@ library;
 
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9063;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
+    client = WinterTestClient.build(
       router: WinterRouter(
         routes: [
           Route.post(
@@ -46,10 +43,6 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   test(
     'body<Map<String, dynamic>> works without a custom deserializer',
     () async {
@@ -59,10 +52,7 @@ void main() {
         'list': [1, 2],
       };
 
-      final response = await http.post(
-        url('/map'),
-        body: jsonEncode(requestBody),
-      );
+      final response = await client.post('/map', body: jsonEncode(requestBody));
 
       expect(response.statusCode, 200);
       expect(jsonDecode(response.body), requestBody);
@@ -70,8 +60,8 @@ void main() {
   );
 
   test('body<Map<String, int>> deserializes the values', () async {
-    final response = await http.post(
-      url('/map-int'),
+    final response = await client.post(
+      '/map-int',
       body: jsonEncode({'a': 1, 'b': 2, 'c': 3}),
     );
 
@@ -80,20 +70,20 @@ void main() {
   });
 
   test('body<Map> with a JSON array returns 400', () async {
-    final response = await http.post(url('/map'), body: jsonEncode([1, 2]));
+    final response = await client.post('/map', body: jsonEncode([1, 2]));
 
     expect(response.statusCode, 400);
   });
 
   test('body<Map> with invalid JSON returns 400', () async {
-    final response = await http.post(url('/map'), body: '{not-json');
+    final response = await client.post('/map', body: '{not-json');
 
     expect(response.statusCode, 400);
   });
 
   test('body() can be called multiple times with different types', () async {
-    final response = await http.post(
-      url('/twice'),
+    final response = await client.post(
+      '/twice',
       body: jsonEncode({'name': 'Adam'}),
     );
 

@@ -1,20 +1,17 @@
 @TestOn('vm')
 library;
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9011;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   ExceptionHandler exc = TestExceptionHandler();
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
-      context: BuildContext(exceptionHandler: exc),
+    Winter.context.setUp(exceptionHandler: exc);
+    client = WinterTestClient.build(
       router: WinterRouter(
         routes: [
           Route(
@@ -54,48 +51,44 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   test('Test Exception #1', () async {
     String urlToTest = '/exception/1';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
     expect(response.statusCode, 400);
     expect(response.body, 'Error from /exception');
   });
 
   test('Test Exception #2', () async {
     String urlToTest = '/exception/2';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
     expect(response.statusCode, 200);
     expect(response.body, 'Hello world!!!');
   });
 
   test('Test Exception #3 - Generic', () async {
     String urlToTest = '/exception/3';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
     expect(response.statusCode, 400);
     expect(response.body, 'Exception: Generic exception');
   });
 
   test('Test Exception #4 - POST', () async {
     String urlToTest = '/exception/post';
-    http.Response response = await http.post(url(urlToTest));
+    TestResponse response = await client.post(urlToTest);
     expect(response.statusCode, 400);
     expect(response.body, 'Error from POST');
   });
 
   test('Test Exception #5 - Custom Status', () async {
     String urlToTest = '/exception/custom-status';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
     expect(response.statusCode, 418);
     expect(response.body, 'Custom code: 418');
   });
 
   test('Test Exception #6 - Request Info in Handler', () async {
     String urlToTest = '/exception/path-check';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
     expect(response.statusCode, 200);
     expect(response.body, 'Path: /exception/path-check');
   });

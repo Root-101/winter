@@ -1,6 +1,6 @@
 import 'package:winter/winter.dart';
 
-class BuildContext {
+class WinterContext {
   ///When was this context created
   final DateTime timestamp;
 
@@ -29,7 +29,7 @@ class BuildContext {
   ///Languages of the responses, used by `request.locale`
   LocaleConfig get localeConfig => _localeConfig;
 
-  BuildContext({
+  WinterContext({
     ObjectMapper? objectMapper,
     ExceptionHandler? exceptionHandler,
     DependencyInjection? dependencyInjection,

@@ -1,3 +1,4 @@
+import 'package:winter/src/router/winter_router.dart' show allowHeader;
 import 'package:winter/winter.dart';
 
 /// The body of every error response: a Problem Details (RFC 9457), sent as

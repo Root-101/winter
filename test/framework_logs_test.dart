@@ -1,18 +1,5 @@
-import 'dart:io';
-
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
-
-/// Captures everything written to stdout or stderr
-class _CapturedOutput implements Stdout {
-  final StringBuffer buffer = StringBuffer();
-
-  @override
-  void writeln([Object? object = '']) => buffer.writeln(object);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
-}
 
 class _MemoryLogger extends WinterLogger {
   final List<String> logs = [];
@@ -27,55 +14,9 @@ class _MemoryLogger extends WinterLogger {
   }) => logs.add('${level.name}: $message${error == null ? '' : ' ($error)'}');
 }
 
+/// The logs that the framework writes go through the logger of the context (the loggers
+/// themselves are in `logging_behavior_test.dart`)
 void main() {
-  group('ConsoleLogger', () {
-    test(
-      'info to stdout, warning & error to stderr, debug ignored by default',
-      () {
-        final out = _CapturedOutput();
-        final err = _CapturedOutput();
-
-        IOOverrides.runZoned(
-          () {
-            const logger = ConsoleLogger();
-            logger.debug('debug message');
-            logger.info('info message');
-            logger.warning('warning message');
-            logger.error('error message', error: StateError('boom'));
-          },
-          stdout: () => out,
-          stderr: () => err,
-        );
-
-        expect(out.buffer.toString(), contains('[INFO] info message'));
-        expect(out.buffer.toString(), isNot(contains('debug message')));
-        expect(err.buffer.toString(), contains('[WARNING] warning message'));
-        expect(err.buffer.toString(), contains('[ERROR] error message'));
-        expect(err.buffer.toString(), contains('Bad state: boom'));
-      },
-    );
-
-    test('minLevel filters the less important logs', () {
-      final out = _CapturedOutput();
-      final err = _CapturedOutput();
-
-      IOOverrides.runZoned(
-        () {
-          const logger = ConsoleLogger(minLevel: LogLevel.error);
-          logger.info('info message');
-          logger.warning('warning message');
-          logger.error('error message');
-        },
-        stdout: () => out,
-        stderr: () => err,
-      );
-
-      expect(out.buffer.toString(), isEmpty);
-      expect(err.buffer.toString(), isNot(contains('warning message')));
-      expect(err.buffer.toString(), contains('error message'));
-    });
-  });
-
   group('Framework logs go through the logger of the context', () {
     late _MemoryLogger memoryLogger;
 
@@ -121,7 +62,7 @@ void main() {
       final filter = RateLimiterFilter(
         maxRequests: 1,
         window: const Duration(minutes: 1),
-        onRequest: (request) => 'client',
+        clientId: (request) => 'client',
       );
       final chain = FilterChain(
         [filter],

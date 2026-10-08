@@ -53,12 +53,12 @@ void main() {
         securityHeaders: const SecurityHeaders(),
       ),
       globalFilterConfig: FilterConfig([
-        LogsFilter(),
+        LoggingFilter(),
         BearerFilter(),
         RateLimiterFilter(
           maxRequests: env.require<int>('RATE_LIMIT'),
           window: const Duration(minutes: 1),
-          onRequest: (request) =>
+          clientId: (request) =>
               requestPrincipalOrNull<User>()?.name ?? 'anonymous',
         ),
       ]),

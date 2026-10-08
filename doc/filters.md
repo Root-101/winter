@@ -27,7 +27,7 @@ class TimingFilter extends Filter {
 
 void main() async {
   await Winter.start(
-    globalFilterConfig: FilterConfig([LogsFilter(), TimingFilter()]),
+    globalFilterConfig: FilterConfig([LoggingFilter(), TimingFilter()]),
     router: WinterRouter(
       routes: [Route.get(path: '/hello', handler: (request) => ResponseEntity.ok(body: 'hi'))],
     ),
@@ -66,7 +66,7 @@ class MaintenanceFilter extends Filter {
 
 ```dart
 await Winter.start(
-  globalFilterConfig: FilterConfig([LogsFilter()]),       // every request
+  globalFilterConfig: FilterConfig([LoggingFilter()]),       // every request
   router: WinterRouter(
     routes: [
       Route.parent(
@@ -123,7 +123,7 @@ When a filter or the handler throws (an `ApiException`, a `StateError`...), the 
 `ExceptionHandler` turns it into a response right there, and that response goes back through the
 outer filters. So:
 
-- `LogsFilter`, CORS and the security headers see every error response.
+- `LoggingFilter`, CORS and the security headers see every error response.
 - A `try`/`catch` around `chain.doFilter` never catches the error of the handler: look at the
   status of the response instead. To change how an error is answered, use the exception handler
   (see [error handling](error-handling.md)).
@@ -133,7 +133,7 @@ outer filters. So:
 
 | Filter                    | What it does                                                         |
 |---------------------------|----------------------------------------------------------------------|
-| `LogsFilter`              | Logs `REQUEST`/`RESPONSE` with the status and the time (never the body nor the query) |
+| `LoggingFilter`              | Logs `REQUEST`/`RESPONSE` with the status and the time (never the body nor the query) |
 | `CorsFilter`              | Added by `SecurityConfig(cors:)` (see [security](security.md#cors))  |
 | `SecurityHeadersFilter`   | Added by `SecurityConfig(securityHeaders:)`                          |
 | `AuthFilter`              | 401/403 by authentication and rules ([security](security.md))        |

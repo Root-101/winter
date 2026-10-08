@@ -3,18 +3,15 @@ library;
 
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
   group('Route Filter Tests', () {
-    int port = 9023;
-    String localUrl = 'http://localhost:$port';
+    late WinterTestClient client;
 
     setUpAll(() async {
-      await Winter.start(
-        config: ServerConfig(port: port),
+      client = WinterTestClient.build(
         router: WinterRouter(
           routes: [
             Route(
@@ -66,13 +63,9 @@ void main() {
       );
     });
 
-    tearDownAll(() => Winter.close(force: true));
-
-    Uri url(String path) => Uri.parse(localUrl + path);
-
     test('Test Route Filter - Parameters removal', () async {
       String urlToTest = '/route-filter/55?some=123&another=963';
-      http.Response response = await http.get(url(urlToTest));
+      TestResponse response = await client.get(urlToTest);
       expect(response.statusCode, 200);
 
       ///body with empty params
@@ -81,7 +74,7 @@ void main() {
 
     test('Test Route Filter #2 - No filters applied', () async {
       String urlToTest = '/route-filter/2/55?some=123&another=963';
-      http.Response response = await http.get(url(urlToTest));
+      TestResponse response = await client.get(urlToTest);
       expect(response.statusCode, 200);
 
       ///body with current params (not removed by filter)
@@ -89,14 +82,14 @@ void main() {
     });
 
     test('Test Auth Filter - Unauthorized', () async {
-      http.Response response = await http.get(url('/protected'));
+      TestResponse response = await client.get('/protected');
       expect(response.statusCode, 401);
       expect(jsonDecode(response.body), {'message': 'Unauthorized'});
     });
 
     test('Test Auth Filter - Authorized', () async {
-      http.Response response = await http.get(
-        url('/protected'),
+      TestResponse response = await client.get(
+        '/protected',
         headers: {'Authorization': 'Bearer my-token'},
       );
       expect(response.statusCode, 200);
@@ -104,30 +97,28 @@ void main() {
     });
 
     test('Test Add Response Header Filter', () async {
-      http.Response response = await http.get(url('/with-header'));
+      TestResponse response = await client.get('/with-header');
       expect(response.statusCode, 200);
       expect(response.headers['x-added-by-filter'], 'true');
     });
 
     test('Test Modify Request Filter', () async {
-      http.Response response = await http.get(url('/modify-request'));
+      TestResponse response = await client.get('/modify-request');
       expect(response.statusCode, 200);
       expect(response.body, 'True');
     });
 
     test('Test Filter Error Handling', () async {
-      http.Response response = await http.get(url('/filter-error'));
+      TestResponse response = await client.get('/filter-error');
       expect(response.statusCode, 500);
     });
   });
 
   group('Global Filter Tests', () {
-    int port = 9024;
-    String localUrl = 'http://localhost:$port';
+    late WinterTestClient client;
 
     setUpAll(() async {
-      await Winter.start(
-        config: ServerConfig(port: port),
+      client = WinterTestClient.build(
         globalFilterConfig: FilterConfig([GlobalHeaderFilter()]),
         router: WinterRouter(
           routes: [
@@ -141,12 +132,8 @@ void main() {
       );
     });
 
-    tearDownAll(() => Winter.close(force: true));
-
-    Uri url(String path) => Uri.parse(localUrl + path);
-
     test('Test Global Filter - Applied to all routes', () async {
-      http.Response response = await http.get(url('/hello'));
+      TestResponse response = await client.get('/hello');
       expect(response.statusCode, 200);
       expect(response.headers['x-global-filter'], 'applied');
     });

@@ -23,18 +23,20 @@ enum DurationFormat {
   iso8601,
 }
 
-/// Common base for Serializers and Deserializers to handle type inference warnings.
+/// Common base for Serializers and Deserializers: the type they are registered with.
 abstract class _MapperEntity<T> {
   final Type type;
 
-  _MapperEntity({bool warnDynamic = true}) : type = T {
-    if (warnDynamic && T == dynamic) {
-      logger.warning(
-        'Unable to infer type for $runtimeType. '
-        'The registry was made as "dynamic", which usually happens when '
-        'the generic type argument is omitted. '
-        'Declare it explicitly, for example: '
-        '${runtimeType.toString().split('<').first}<YOUR_TYPE>((value) => ...)',
+  /// An [ArgumentError] when the type is `dynamic` or `Enum`: inside a list (`deserializers: [...]`)
+  /// Dart infers the type from the list, not from the arguments, and the mapper would register it
+  /// for the wrong type (a 500 on the first request). Failing here shows it at start.
+  _MapperEntity({bool checkType = true}) : type = T {
+    if (checkType && (T == dynamic || T == Enum)) {
+      final String kind = runtimeType.toString().split('<').first;
+      throw ArgumentError(
+        'A $kind needs its type: it was inferred as <$T>, which happens when the type argument '
+        'is left out inside a list. Declare it: '
+        '${kind == 'Serializer' ? 'Serializer<Money>((money) => ...)' : 'Deserializer<User>.json(User.fromJson)'}',
       );
     }
   }
@@ -52,7 +54,7 @@ class Serializer<T> extends _MapperEntity<T> {
   Serializer(Object? Function(T object) serializer)
     : _serialize = ((object, _) => serializer(object));
 
-  Serializer._withMapper(this._serialize) : super(warnDynamic: false);
+  Serializer._withMapper(this._serialize) : super(checkType: false);
 
   bool _accepts(Object object) => object is T;
 
@@ -116,23 +118,34 @@ class Deserializer<T> extends _MapperEntity<T> {
     : _deserialize = ((data, _) =>
           fromBool(data is bool ? data : throw _expected('a boolean', data)));
 
-  Deserializer._withMapper(this._deserialize) : super(warnDynamic: false);
+  Deserializer._withMapper(this._deserialize) : super(checkType: false);
 
   /// Deserializer of an enum written as its `name`, the way enums are serialized by default:
   ///
   /// ```dart
-  /// om.addDeserializer(Deserializer.enumByName(Status.values));
+  /// Deserializer<Status>.enumByName(Status.values)
   /// ```
   ///
   /// Any other value is a 400 that lists the valid names
   /// (`$.status: expected one of pending, paid, got another string`).
-  /// An enum with its own `toJson()` needs its own deserializer.
-  static Deserializer<E> enumByName<E extends Enum>(List<E> values) {
-    final Map<String, E> byName = {
-      for (final value in values) value.name: value,
+  /// An enum with its own `toJson()` needs its own deserializer. [values] must be the values of
+  /// an enum ([ArgumentError] otherwise), and the type is always written, like for the other
+  /// constructors.
+  factory Deserializer.enumByName(List<T> values) {
+    if (T == dynamic || T == Enum) {
+      throw ArgumentError(
+        'A Deserializer needs its type: it was inferred as <$T>. '
+        'Declare it: Deserializer<Status>.enumByName(Status.values)',
+      );
+    }
+    if (values.isEmpty || values.first is! Enum) {
+      throw ArgumentError.value(values, 'values', 'The values of an enum');
+    }
+    final Map<String, T> byName = {
+      for (final value in values) (value as Enum).name: value,
     };
     final String names = byName.keys.join(', ');
-    return Deserializer<E>._withMapper((data, _) {
+    return Deserializer<T>._withMapper((data, _) {
       if (data is! String) throw _expected('one of $names', data);
       return byName[data] ??
           (throw DeserializationException(

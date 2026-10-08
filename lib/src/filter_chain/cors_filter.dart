@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:winter/src/winter_server.dart' show addVary;
 import 'package:winter/winter.dart';
 
 /// A filter that handles CORS preflight requests and adds CORS headers to responses.

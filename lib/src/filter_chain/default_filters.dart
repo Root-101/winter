@@ -20,7 +20,7 @@ void defaultLogResponse(
   );
 }
 
-class LogsFilter extends Filter {
+class LoggingFilter extends Filter {
   final void Function(RequestEntity request) logRequest;
 
   /// Called with every response, including the error ones: the exceptions are converted
@@ -32,7 +32,7 @@ class LogsFilter extends Filter {
   )
   logResponse;
 
-  LogsFilter({
+  LoggingFilter({
     void Function(RequestEntity request)? logRequest,
     void Function(
       RequestEntity request,

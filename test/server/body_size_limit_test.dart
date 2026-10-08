@@ -6,6 +6,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
+import 'package:winter/src/winter_server.dart' show limitBodySize;
 import 'package:winter/winter.dart';
 
 void main() {

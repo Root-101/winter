@@ -1,17 +1,14 @@
 @TestOn('vm')
 library;
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9066;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
+    client = WinterTestClient.build(
       router: MultiRouter([
         WinterRouter(
           routes: [
@@ -43,46 +40,42 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   test('Static route wins over a param route declared before', () async {
-    final response = await http.get(url('/users/me'));
+    final response = await client.get('/users/me');
 
     expect(response.statusCode, 200);
     expect(response.body, 'me');
   });
 
   test('Param route still handles the other paths', () async {
-    final response = await http.get(url('/users/42'));
+    final response = await client.get('/users/42');
 
     expect(response.statusCode, 200);
     expect(response.body, 'user 42');
   });
 
   test('Path params are url-decoded', () async {
-    final response = await http.get(url('/users/John%20Doe'));
+    final response = await client.get('/users/John%20Doe');
 
     expect(response.body, 'user John Doe');
   });
 
   test('405 includes the Allow header', () async {
-    final response = await http.put(url('/users/42'));
+    final response = await client.put('/users/42');
 
     expect(response.statusCode, 405);
     expect(response.headers['allow'], 'GET, DELETE, HEAD, OPTIONS');
   });
 
   test('405 from another router of the MultiRouter includes Allow', () async {
-    final response = await http.get(url('/items'));
+    final response = await client.get('/items');
 
     expect(response.statusCode, 405);
     expect(response.headers['allow'], 'POST, OPTIONS');
   });
 
   test('Unknown path is still a 404 without Allow', () async {
-    final response = await http.get(url('/unknown'));
+    final response = await client.get('/unknown');
 
     expect(response.statusCode, 404);
     expect(response.headers.containsKey('allow'), isFalse);
@@ -101,11 +94,11 @@ void main() {
     );
 
     test('Static route has priority over params and regex', () {
-      expect(router.handlerRoute(request('GET', '/a/b'))!.path, '/a/b');
+      expect(router.resolveRoute(request('GET', '/a/b'))!.path, '/a/b');
     });
 
     test('Between dynamic routes the first declared wins', () {
-      expect(router.handlerRoute(request('GET', '/a/c'))!.path, '/a/{x}');
+      expect(router.resolveRoute(request('GET', '/a/c'))!.path, '/a/{x}');
     });
 
     test('isStatic', () {

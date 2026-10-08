@@ -540,9 +540,9 @@ void main() {
     });
   });
 
-  group('Enums: Deserializer.enumByName', () {
+  group('Enums: Deserializer<E>.enumByName', () {
     setUp(() {
-      mapper.addDeserializer(Deserializer.enumByName(_Status.values));
+      mapper.addDeserializer(Deserializer<_Status>.enumByName(_Status.values));
     });
 
     test('reads the name, the way enums are serialized', () {
@@ -554,7 +554,7 @@ void main() {
     });
 
     test('the type is inferred and the derived types come with it', () {
-      expect(Deserializer.enumByName(_Status.values).type, _Status);
+      expect(Deserializer<_Status>.enumByName(_Status.values).type, _Status);
       expect(mapper.decode<List<_Status>>('["paid","pending"]'), [
         _Status.paid,
         _Status.pending,

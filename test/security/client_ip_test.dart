@@ -74,7 +74,7 @@ void main() {
                 RateLimiterFilter(
                   maxRequests: 2,
                   window: const Duration(minutes: 1),
-                  log: null,
+                  onLimited: null,
                 ),
               ]),
             ),

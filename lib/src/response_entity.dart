@@ -354,7 +354,7 @@ class _ResponseBody {
 }
 
 /// Write [response] to the [HttpResponse] of `dart:io` (what the server does with every
-/// response): its status with the reason phrase of [StatusCode] (`422 Unprocessable Entity`;
+/// response; internal, not exported by `winter.dart`): its status with the reason phrase of [StatusCode] (`422 Unprocessable Entity`;
 /// `dart:io` alone sends `422 Status 422`), its headers, a `Date`, and its body, with a `Content-Length` or
 /// chunked for a stream (sent as it's produced, for Server-Sent Events). A HEAD request, a 204
 /// and a 304 get no body.
@@ -380,7 +380,7 @@ Future<void> writeResponse(
   final _ResponseBody body = response._body;
   try {
     output.statusCode = status;
-    final String? reasonPhrase = _reasonPhrases[status];
+    final String? reasonPhrase = StatusCode.resolve(status)?.reasonPhrase;
     if (reasonPhrase != null) output.reasonPhrase = reasonPhrase;
     response.headersAll.forEach(output.headers.set);
     if (!response.headersAll.containsKey(HttpHeader.date)) {
@@ -414,13 +414,6 @@ Future<void> writeResponse(
     }
   }
 }
-
-/// The reason phrase of every status of [StatusCode]: of a code with several values, the first one
-/// (the deprecated ones come after it)
-final Map<int, String> _reasonPhrases = {
-  for (final status in StatusCode.values.reversed)
-    status.value: status.reasonPhrase,
-};
 
 /// The `Date` of the responses, formatted once per second
 class _HttpDateCache {

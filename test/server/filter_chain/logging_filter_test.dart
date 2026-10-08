@@ -28,7 +28,7 @@ void main() {
 
       await IOOverrides.runZoned(() async {
         final chain = FilterChain([
-          LogsFilter(),
+          LoggingFilter(),
         ], (request) => ResponseEntity.ok(body: {'token': 'secret-body'}));
         await chain.doFilter(request());
       }, stdout: () => captured);
@@ -45,7 +45,7 @@ void main() {
     final logged = <int>[];
     final chain = FilterChain(
       [
-        LogsFilter(
+        LoggingFilter(
           logResponse: (req, res, duration) => logged.add(res.statusCode),
         ),
       ],
@@ -63,7 +63,7 @@ void main() {
     Duration? loggedDuration;
     final chain = FilterChain(
       [
-        LogsFilter(
+        LoggingFilter(
           logResponse: (req, res, duration) => loggedDuration = duration,
         ),
       ],

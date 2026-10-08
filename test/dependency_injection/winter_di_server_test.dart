@@ -43,7 +43,7 @@ void main() {
 
     expect(di.tryFind<ServerConfig>(), isNull);
     expect(di.tryFind<SecurityConfig>(), isNull);
-    expect(di.tryFind<AbstractWinterRouter>(), isNull);
+    expect(di.tryFind<BaseRouter>(), isNull);
   });
 
   test('Dependencies registered by the user are restored on close', () async {
@@ -62,16 +62,16 @@ void main() {
     di.delete<SecurityConfig>();
   });
 
-  test('Any router registered as AbstractWinterRouter is used', () async {
+  test('Any router registered as BaseRouter is used', () async {
     final router = MultiRouter([WinterRouter()]);
-    di.put<AbstractWinterRouter>(router);
+    di.put<BaseRouter>(router);
 
     await Winter.start(config: ServerConfig(port: port));
     expect(Winter.server.router, same(router));
 
     await Winter.close(force: true);
-    expect(di.find<AbstractWinterRouter>(), same(router));
-    di.delete<AbstractWinterRouter>();
+    expect(di.find<BaseRouter>(), same(router));
+    di.delete<BaseRouter>();
   });
 
   test('A router registered as WinterRouter is used', () async {

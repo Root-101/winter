@@ -180,7 +180,7 @@ void main() {
       rateLimiter = limiter(2, const Duration(seconds: 1));
       filter = RateLimiterFilter.fromRateLimiter(
         rateLimiter: rateLimiter,
-        onRequest: (req) => 'test-user',
+        clientId: (req) => 'test-user',
       );
       request = RequestEntity('GET', Uri.parse('http://localhost/test'));
     });
@@ -227,7 +227,7 @@ void main() {
     test('should handle different users independently', () async {
       final multiUserFilter = RateLimiterFilter.fromRateLimiter(
         rateLimiter: limiter(1, const Duration(seconds: 1)),
-        onRequest: (req) => req.headers['user-id'] ?? 'anonymous',
+        clientId: (req) => req.headers['user-id'] ?? 'anonymous',
       );
       final chain = FilterChain([], handle);
       final user1 = RequestEntity(
@@ -261,7 +261,7 @@ void main() {
       final chain = FilterChain([], handle);
       final slowFilter = RateLimiterFilter.fromRateLimiter(
         rateLimiter: limiter(1, const Duration(seconds: 10)),
-        onRequest: (req) => 'test-user',
+        clientId: (req) => 'test-user',
       );
       await _run(slowFilter, request, chain);
 
@@ -276,7 +276,7 @@ void main() {
       final chain = FilterChain([], handle);
       final countDownFilter = RateLimiterFilter.fromRateLimiter(
         rateLimiter: limiter(5, const Duration(seconds: 3)),
-        onRequest: (req) => 'id',
+        clientId: (req) => 'id',
       );
 
       final first = await _run(countDownFilter, request, chain);
@@ -290,7 +290,7 @@ void main() {
     test('should work with an async ID extractor', () async {
       final asyncFilter = RateLimiterFilter.fromRateLimiter(
         rateLimiter: limiter(1, const Duration(seconds: 1)),
-        onRequest: (req) async {
+        clientId: (req) async {
           await Future<void>.delayed(Duration.zero);
           return 'async-user';
         },
@@ -305,8 +305,8 @@ void main() {
       final loggedIds = <String>[];
       final loggingFilter = RateLimiterFilter.fromRateLimiter(
         rateLimiter: limiter(1, const Duration(seconds: 1)),
-        onRequest: (req) => 'test-user',
-        log: (req, id) => loggedIds.add(id),
+        clientId: (req) => 'test-user',
+        onLimited: (req, id) => loggedIds.add(id),
       );
       final chain = FilterChain([], handle);
 
@@ -381,6 +381,57 @@ void main() {
         threshold: const Duration(seconds: 2),
       );
       expect(store.trackedIds, 0);
+    });
+  });
+
+  group('RateLimiterFilter in the pipeline', () {
+    WinterTestClient client() => WinterTestClient.build(
+      router: WinterRouter(
+        routes: [
+          Route.get(
+            path: '/limited',
+            handler: (request) => ResponseEntity.ok(body: 'ok'),
+            filterConfig: FilterConfig([
+              RateLimiterFilter(
+                maxRequests: 1,
+                window: const Duration(minutes: 1),
+                clientId: (request) => 'client',
+              ),
+            ]),
+          ),
+          Route.get(
+            path: '/unlimited',
+            handler: (request) => ResponseEntity.ok(body: 'ok'),
+          ),
+        ],
+      ),
+    );
+
+    test(
+      'the 429 is a Problem Details with Retry-After and the limits',
+      () async {
+        final limited = client();
+        await limited.get('/limited');
+        final response = await limited.get('/limited');
+
+        expect(response.statusCode, 429);
+        expect(
+          response.headers['content-type'],
+          startsWith('application/problem+json'),
+        );
+        expect(response.headers['retry-after'], isNotNull);
+        expect(response.headers['x-ratelimit-limit'], '1');
+        expect(response.headers['x-ratelimit-remaining'], '0');
+      },
+    );
+
+    test('a route without the filter is never limited', () async {
+      final unlimited = client();
+      for (var i = 0; i < 5; i++) {
+        final response = await unlimited.get('/unlimited');
+        expect(response.statusCode, 200);
+        expect(response.headers.containsKey('x-ratelimit-limit'), isFalse);
+      }
     });
   });
 }

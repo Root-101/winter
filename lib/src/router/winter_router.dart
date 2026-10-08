@@ -5,9 +5,10 @@ import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:winter/src/router/path_template.dart';
+import 'package:winter/src/utils/valid_url.dart';
 import 'package:winter/winter.dart';
 
-abstract class AbstractWinterRouter {
+abstract class BaseRouter {
   bool canHandle(RequestEntity request);
 
   FutureOr<ResponseEntity> handler(RequestEntity request);
@@ -21,7 +22,7 @@ abstract class AbstractWinterRouter {
 ///Example:
 ///ServeRouter((request) => ResponseEntity.ok(body: 'Hello world!!!'))
 ///This will handle all request and always return a 200:Hello world!!!
-class ServeRouter extends AbstractWinterRouter {
+class ServeRouter extends BaseRouter {
   final RequestHandler function;
 
   ServeRouter(this.function);
@@ -63,7 +64,7 @@ ResponseEntity noRouteResponse(
 String allowHeader(Set<HttpMethod> methods) =>
     methods.map((method) => method.name.toUpperCase()).join(', ');
 
-class WinterRouter extends AbstractWinterRouter {
+class WinterRouter extends BaseRouter {
   final RouterConfig config;
 
   final String basePath;
@@ -180,7 +181,7 @@ class WinterRouter extends AbstractWinterRouter {
   ///
   ///A HEAD request without a HEAD route is handled by the GET route of the path
   ///(the server sends the headers without the body).
-  Route? handlerRoute(RequestEntity request) {
+  Route? _handlerRoute(RequestEntity request) {
     HttpMethod method = HttpMethod(request.method);
     String urlPath = request.requestedUri.path;
 
@@ -217,20 +218,20 @@ class WinterRouter extends AbstractWinterRouter {
   }
 
   @override
-  Route? resolveRoute(RequestEntity request) => handlerRoute(request);
+  Route? resolveRoute(RequestEntity request) => _handlerRoute(request);
 
   ///Return true or false if this router can successfully process a request
   ///This means if the router if found, and the methods match
   @override
   bool canHandle(RequestEntity request) {
-    return handlerRoute(request) != null;
+    return _handlerRoute(request) != null;
   }
 
   @override
   FutureOr<ResponseEntity> handler(RequestEntity request) {
     ///The server already resolved the route (see resolveRoute) and saved it in the routing context,
     ///reuse it instead of matching every route again
-    Route? finalRoute = _routeFromContext(request) ?? handlerRoute(request);
+    Route? finalRoute = _routeFromContext(request) ?? _handlerRoute(request);
     if (finalRoute != null) {
       return finalRoute.handler!(request);
     }

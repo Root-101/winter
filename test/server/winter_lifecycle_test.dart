@@ -10,7 +10,7 @@ import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 /// A router that fails while resolving the route (outside the filter chain)
-class _FailingRouter extends AbstractWinterRouter {
+class _FailingRouter extends BaseRouter {
   @override
   bool canHandle(RequestEntity request) => true;
 
@@ -83,9 +83,9 @@ void main() {
     );
   });
 
-  group('BuildContext', () {
+  group('WinterContext', () {
     test('setUp replaces only the given components', () {
-      final context = BuildContext();
+      final context = WinterContext();
       final objectMapper = ObjectMapper();
       final exceptionHandler = SimpleExceptionHandler();
       final dependencyInjection = DependencyInjection();

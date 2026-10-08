@@ -2,18 +2,10 @@ import 'dart:async';
 
 import 'package:winter/winter.dart';
 
-/// A function which handles a [RequestEntity].
+/// A function that answers a [RequestEntity] with a [ResponseEntity]: the handler of a `Route`,
+/// and the whole pipeline that `Winter.buildHandler` returns (what `WinterTestClient` calls).
 ///
-/// For example a static file handler may read the requested URI from the
-/// filesystem and return it as the body of the [Response].
-///
-/// A [RequestHandler] which wraps one or more other handlers to perform pre or post
-/// processing is known as a "middleware".
-///
-/// A [RequestHandler] may receive a request directly from an HTTP server or it
-/// may have been touched by other middleware. Similarly the response may be
-/// directly returned by an HTTP server or have further processing done by other
-/// middleware.
+/// Code that runs before or after a handler is a `Filter`.
 typedef RequestHandler = FutureOr<ResponseEntity> Function(
   RequestEntity request,
 );

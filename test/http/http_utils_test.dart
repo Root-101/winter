@@ -7,73 +7,34 @@ void main() {
       expect(StatusCode.valueOf(404), StatusCode.notFound);
       expect(StatusCode.resolve(200), StatusCode.ok);
       expect(StatusCode.resolve(999), isNull);
-      expect(() => StatusCode.valueOf(999), throwsStateError);
+      expect(() => StatusCode.valueOf(999), throwsArgumentError);
     });
 
-    test('A deprecated alias resolves to the current constant', () {
+    test('one constant per code, without the deprecated aliases', () {
       expect(StatusCode.valueOf(413), StatusCode.payloadTooLarge);
+      expect(
+        StatusCode.values.map((status) => status.value).toSet(),
+        hasLength(StatusCode.values.length),
+      );
     });
 
     test('series & predicates', () {
-      expect(StatusCode.continue100.is1xxInformational(), isTrue);
-      expect(StatusCode.created.is2xxSuccessful(), isTrue);
-      expect(StatusCode.movedPermanently.is3xxRedirection(), isTrue);
-      expect(StatusCode.badRequest.is4xxClientError(), isTrue);
-      expect(StatusCode.badGateway.is5xxServerError(), isTrue);
+      expect(StatusCode.continue100.isInformational, isTrue);
+      expect(StatusCode.created.isSuccessful, isTrue);
+      expect(StatusCode.movedPermanently.isRedirection, isTrue);
+      expect(StatusCode.badRequest.isClientError, isTrue);
+      expect(StatusCode.badGateway.isServerError, isTrue);
 
       expect(StatusCode.notFound.series, Series.clientError);
-      expect(StatusCode.notFound.isError(), isTrue);
-      expect(StatusCode.internalServerError.isError(), isTrue);
-      expect(StatusCode.ok.isError(), isFalse);
+      expect(StatusCode.notFound.isError, isTrue);
+      expect(StatusCode.internalServerError.isError, isTrue);
+      expect(StatusCode.ok.isError, isFalse);
     });
 
     test('value, reason phrase & toString', () {
       expect(StatusCode.notFound.value, 404);
       expect(StatusCode.notFound.reasonPhrase, 'Not Found');
-      expect(StatusCode.notFound.toString(), startsWith('404'));
-    });
-  });
-
-  group('HttpStatusCode', () {
-    test('valueOf returns the StatusCode constant for a standard code', () {
-      expect(HttpStatusCode.valueOf(201), same(StatusCode.created));
-    });
-
-    test('valueOf returns a DefaultHttpStatusCode for a non standard code', () {
-      final custom = HttpStatusCode.valueOf(599);
-
-      expect(custom, isA<DefaultHttpStatusCode>());
-      expect(custom.value, 599);
-      expect(custom.is5xxServerError(), isTrue);
-      expect(custom.isError(), isTrue);
-      expect(custom.is4xxClientError(), isFalse);
-      expect(custom.toString(), '599');
-    });
-
-    test('DefaultHttpStatusCode predicates for every series', () {
-      expect(DefaultHttpStatusCode(199).is1xxInformational(), isTrue);
-      expect(DefaultHttpStatusCode(299).is2xxSuccessful(), isTrue);
-      expect(DefaultHttpStatusCode(399).is3xxRedirection(), isTrue);
-      expect(DefaultHttpStatusCode(499).is4xxClientError(), isTrue);
-      expect(DefaultHttpStatusCode(499).isError(), isTrue);
-      expect(DefaultHttpStatusCode(299).isError(), isFalse);
-    });
-
-    test('valueOf only accepts three-digit codes', () {
-      expect(() => HttpStatusCode.valueOf(42), throwsA(isA<AssertionError>()));
-    });
-
-    test('equality & isSameCodeAs', () {
-      expect(DefaultHttpStatusCode(599), DefaultHttpStatusCode(599));
-      expect(
-        DefaultHttpStatusCode(599).hashCode,
-        DefaultHttpStatusCode(599).hashCode,
-      );
-      expect(DefaultHttpStatusCode(599), isNot(DefaultHttpStatusCode(598)));
-      expect(
-        DefaultHttpStatusCode(404).isSameCodeAs(StatusCode.notFound),
-        isTrue,
-      );
+      expect(StatusCode.notFound.toString(), '404 notFound');
     });
   });
 
@@ -82,7 +43,7 @@ void main() {
       expect(Series.valueOf(204), Series.successful);
       expect(Series.resolve(503), Series.serverError);
       expect(Series.resolve(700), isNull);
-      expect(() => Series.valueOf(700), throwsStateError);
+      expect(() => Series.valueOf(700), throwsArgumentError);
     });
   });
 

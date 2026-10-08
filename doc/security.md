@@ -262,9 +262,9 @@ until a slot is free).
 
 - The client is its IP, the address of the connection. Behind a proxy (a load balancer, nginx),
   that's the proxy: trust its `X-Forwarded-For` with
-  `onRequest: (request) => request.clientIp(trustedProxies: 1) ?? 'unknown'` (the number of proxies
+  `clientId: (request) => request.clientIp(trustedProxies: 1) ?? 'unknown'` (the number of proxies
   in front of the app). Never trust it without a proxy: a client can send any value.
-- `onRequest` can return any id: the user (`requestPrincipalOrNull<User>()?.name`), an API key...
+- `clientId` can return any id: the user (`requestPrincipalOrNull<User>()?.name`), an API key...
 - A `maxRequests` under 1 or a `window` that isn't positive is an `ArgumentError` when it's created.
 - Inactive clients are forgotten once per window, so the memory doesn't grow with every new IP.
 
@@ -296,8 +296,8 @@ login) and `clear()` forgets all of them.
 | `AuthFilter(rules:)`                    | `null`         | The rules the user must pass                   |
 | `AuthFilter(challenge:)`                | `'Bearer'`     | The `WWW-Authenticate` of a 401                |
 | `AuthFilter(shouldFilter:)`             | every request  | Which requests it checks                       |
-| `RateLimiterFilter(onRequest:)`         | the client IP  | The id that is limited                         |
-| `RateLimiterFilter(log:)`               | a debug log    | Called for every rejected request              |
+| `RateLimiterFilter(clientId:)`          | the client IP  | The id that is limited                         |
+| `RateLimiterFilter(onLimited:)`         | a debug log    | Called for every rejected request              |
 
 `SecurityConfig` is resolved like the router and `ServerConfig`: the argument of `Winter.start`,
 then `di.tryFind<SecurityConfig>()`, then the default (no CORS, no extra headers). Extend it to
@@ -373,7 +373,7 @@ RateLimiterFilter.fromRateLimiter(
 - A rate limit on the login, per account, besides the one per IP.
 - `ServerConfig.maxBodySize` (10 MB by default) as small as your biggest request.
 - Secrets (the key of the JWTs) from the environment: `env.require<String>('JWT_SECRET')`.
-- Never log tokens, passwords nor bodies (`LogsFilter` doesn't), and `sensitive: true` on the
+- Never log tokens, passwords nor bodies (`LoggingFilter` doesn't), and `sensitive: true` on the
   validation of secret fields, so their value never ends in a violation.
 
 ## Typical mistakes and limitations

@@ -3,17 +3,14 @@ library;
 
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  int port = 9068;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
   setUpAll(() async {
-    await Winter.start(
-      config: ServerConfig(port: port),
+    client = WinterTestClient.build(
       router: WinterRouter(
         routes: [
           Route(
@@ -63,13 +60,9 @@ void main() {
     );
   });
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
   test('Get-Method', () async {
     String urlToTest = '/get-method';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Response from get-method');
@@ -77,7 +70,7 @@ void main() {
 
   test('Post-Method', () async {
     String urlToTest = '/post-method';
-    http.Response response = await http.post(url(urlToTest));
+    TestResponse response = await client.post(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Response from post-method');
@@ -85,7 +78,7 @@ void main() {
 
   test('Put-Method', () async {
     String urlToTest = '/put-method';
-    http.Response response = await http.put(url(urlToTest));
+    TestResponse response = await client.put(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Response from put-method');
@@ -93,7 +86,7 @@ void main() {
 
   test('Delete-Method', () async {
     String urlToTest = '/delete-method';
-    http.Response response = await http.delete(url(urlToTest));
+    TestResponse response = await client.delete(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Response from delete-method');
@@ -101,7 +94,7 @@ void main() {
 
   test('Patch-Method', () async {
     String urlToTest = '/patch-method';
-    http.Response response = await http.patch(url(urlToTest));
+    TestResponse response = await client.patch(urlToTest);
 
     expect(response.statusCode, 200);
     expect(response.body, 'Response from patch-method');
@@ -109,7 +102,7 @@ void main() {
 
   test('405: Method not allowed', () async {
     String urlToTest = '/get-method';
-    http.Response response = await http.post(url(urlToTest));
+    TestResponse response = await client.post(urlToTest);
 
     expect(response.statusCode, 405);
     expect((jsonDecode(response.body) as Map)['title'], 'Method Not Allowed');
@@ -117,7 +110,7 @@ void main() {
 
   test('404: Not found', () async {
     String urlToTest = '/some-other-method';
-    http.Response response = await http.get(url(urlToTest));
+    TestResponse response = await client.get(urlToTest);
 
     expect(response.statusCode, 404);
     expect((jsonDecode(response.body) as Map)['title'], 'Not Found');

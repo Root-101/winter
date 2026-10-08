@@ -127,7 +127,7 @@ number type, so `12.0` is a valid `int` and `1` a valid `double`.
 | An integer         | `Deserializer<T>.integer(fromInt)`   | `Deserializer<Cents>.integer(Cents.new)`                      |
 | A number           | `Deserializer<T>.number(fromNumber)` | `Deserializer<Ratio>.number(Ratio.new)`                       |
 | A boolean          | `Deserializer<T>.boolean(fromBool)`  | `Deserializer<Flag>.boolean(Flag.new)`                        |
-| An enum `name`     | `Deserializer.enumByName(values)`    | `Deserializer.enumByName(Status.values)`                      |
+| An enum `name`     | `Deserializer.enumByName(values)`    | `Deserializer<Status>.enumByName(Status.values)`                      |
 | Anything else      | `Deserializer<T>(fromAnyValue)`      | `Deserializer<Point>((data) => Point.fromList(data as List))` |
 
 The typed constructors check the JSON type before calling your function, so a wrong one is a 400
@@ -139,7 +139,7 @@ plain `Deserializer<T>(...)` constructor every failure is `invalid value`.
 deserializer, since Dart can't list the values of an enum from its type:
 
 ```dart
-om.addDeserializer(Deserializer.enumByName(Status.values));
+om.addDeserializer(Deserializer<Status>.enumByName(Status.values));
 // body<Status>(), List<Status>, Map<String, Status>...
 // "refunded" → 400 $.status: expected one of pending, paid, got another string
 ```
@@ -312,11 +312,13 @@ email...) are a 422 of the validation, see [validation](validation.md).
 
 ## Typical mistakes and limitations
 
-- **Forgetting the type argument**: `Deserializer.json(User.fromJson)` infers `User`, but inside a
-  list (`deserializers: [Deserializer((data) => ...)]`) the type of the list wins and it's
-  registered as `dynamic`. A warning is logged; write `Deserializer<User>(...)`.
+- **Forgetting the type argument**: inside a list (`deserializers: [...]`) Dart infers the type
+  from the list, not from the arguments: `Deserializer.json(User.fromJson)` is a
+  `Deserializer<dynamic>` and `Deserializer.enumByName(Status.values)` a `Deserializer<Enum>`. Both
+  are an `ArgumentError` when they are created, so it shows at start; always write the type:
+  `Deserializer<User>.json(...)`, `Deserializer<Status>.enumByName(...)`.
 - **Enums are not read automatically**: `body<Status>()` without
-  `Deserializer.enumByName(Status.values)` is a `MissingDeserializerError` (500), even though
+  `Deserializer<Status>.enumByName(Status.values)` is a `MissingDeserializerError` (500), even though
   writing them needs nothing.
 - **Asking for a type that is not registered**, like `List<List<User>>` without registering
   `List<User>`, is a `MissingDeserializerError` (500), not a 400.

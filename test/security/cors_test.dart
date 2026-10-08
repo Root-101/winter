@@ -1,9 +1,6 @@
 @TestOn('vm')
 library;
 
-import 'dart:io';
-
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
@@ -21,195 +18,219 @@ class CustomCorsSecurityConfig extends SecurityConfig {
 }
 
 void main() {
-  int port = 9022;
-  String localUrl = 'http://localhost:$port';
-
-  group('CORS Tests', () {
-    tearDown(() async {
-      await Winter.close(force: true);
-    });
-
-    test(
-      'Should NOT have CORS headers when SecurityConfig returns null',
-      () async {
-        await Winter.start(
-          config: ServerConfig(port: port),
-          securityConfig: SecurityConfig(), // Default returns null
-          router: WinterRouter(
-            routes: [
-              Route(
-                path: '/test',
-                method: HttpMethod.get,
-                handler: (req) => ResponseEntity.ok(body: 'ok'),
-              ),
-            ],
-          ),
-        );
-
-        final response = await http.get(Uri.parse('$localUrl/test'));
-        expect(response.statusCode, 200);
-        expect(
-          response.headers.containsKey(HttpHeader.accessControlAllowOrigin),
-          isFalse,
-        );
-      },
-    );
-
-    test('Should have default CORS headers when enabled', () async {
-      await Winter.start(
-        config: ServerConfig(port: port),
-        securityConfig: SecurityConfig(cors: const CorsConfig()),
+  WinterTestClient clientWith(SecurityConfig securityConfig) =>
+      WinterTestClient.build(
+        securityConfig: securityConfig,
         router: WinterRouter(
           routes: [
-            Route(
+            Route.get(
               path: '/test',
-              method: HttpMethod.get,
+              handler: (req) => ResponseEntity.ok(body: 'ok'),
+            ),
+            Route.post(
+              path: '/test',
               handler: (req) => ResponseEntity.ok(body: 'ok'),
             ),
           ],
         ),
       );
 
-      final response = await http.get(
-        Uri.parse('$localUrl/test'),
-        headers: {HttpHeader.origin: 'http://localhost:3000'},
-      );
-      expect(response.statusCode, 200);
-      // http package headers are lowercase
-      expect(
-        response.headers[HttpHeader.accessControlAllowOrigin.toLowerCase()],
-        '*',
-      );
-    });
+  group('CORS through the pipeline', () {
+    test('no CORS headers when SecurityConfig has no CORS', () async {
+      final response = await clientWith(SecurityConfig())
+          .get('/test', headers: {HttpHeader.origin: 'http://localhost:3000'});
 
-    test('Should handle Preflight (OPTIONS) request', () async {
-      await Winter.start(
-        config: ServerConfig(port: port),
-        securityConfig: SecurityConfig(cors: const CorsConfig()),
-        router: WinterRouter(
-          routes: [
-            Route(
-              path: '/test',
-              method: HttpMethod.get,
-              handler: (req) => ResponseEntity.ok(body: 'ok'),
-            ),
-          ],
-        ),
-      );
-
-      // Manual OPTIONS request to simulate preflight
-      final request = await HttpClient().openUrl(
-        'OPTIONS',
-        Uri.parse('$localUrl/test'),
-      );
-      request.headers.add(HttpHeader.accessControlRequestMethod, 'GET');
-      request.headers.add(HttpHeader.origin, 'http://localhost:3000');
-      final response = await request.close();
-
-      expect(response.statusCode, 200);
-      expect(response.headers.value(HttpHeader.accessControlAllowOrigin), '*');
-      expect(
-        response.headers.value(HttpHeader.accessControlAllowMethods),
-        contains('GET'),
-      );
-      expect(
-        response.headers.value(HttpHeader.accessControlAllowMethods),
-        contains('POST'),
-      );
-    });
-
-    test('Should apply custom CORS configuration', () async {
-      await Winter.start(
-        config: ServerConfig(port: port),
-        securityConfig: CustomCorsSecurityConfig(),
-        router: WinterRouter(
-          routes: [
-            Route(
-              path: '/test',
-              method: HttpMethod.post,
-              handler: (req) => ResponseEntity.ok(body: 'ok'),
-            ),
-          ],
-        ),
-      );
-
-      // Preflight
-      final preflightRequest = await HttpClient().openUrl(
-        'OPTIONS',
-        Uri.parse('$localUrl/test'),
-      );
-      preflightRequest.headers.add(
-        HttpHeader.accessControlRequestMethod,
-        'POST',
-      );
-      preflightRequest.headers.add(HttpHeader.origin, 'https://example.com');
-      final preflightResponse = await preflightRequest.close();
-
-      expect(preflightResponse.statusCode, 200);
-      expect(
-        preflightResponse.headers.value(HttpHeader.accessControlAllowOrigin),
-        'https://example.com',
-      );
-      expect(
-        preflightResponse.headers.value(HttpHeader.accessControlAllowMethods),
-        'GET, POST',
-      );
-      expect(
-        preflightResponse.headers.value(HttpHeader.accessControlAllowHeaders),
-        isNotNull,
-      );
-      expect(
-        preflightResponse.headers.value(
-          HttpHeader.accessControlAllowCredentials,
-        ),
-        'true',
-      );
-      expect(
-        preflightResponse.headers.value(HttpHeader.accessControlMaxAge),
-        '3600',
-      );
-
-      // Actual request
-      final response = await http.post(
-        Uri.parse('$localUrl/test'),
-        headers: {HttpHeader.origin: 'https://example.com'},
-      );
-      expect(response.statusCode, 200);
-      expect(
-        response.headers[HttpHeader.accessControlAllowOrigin.toLowerCase()],
-        'https://example.com',
-      );
-      expect(
-        response.headers[HttpHeader.accessControlAllowCredentials
-            .toLowerCase()],
-        'true',
-      );
-    });
-
-    test('Should NOT allow origin if not in custom list', () async {
-      await Winter.start(
-        config: ServerConfig(port: port),
-        securityConfig: CustomCorsSecurityConfig(),
-        router: WinterRouter(
-          routes: [
-            Route(
-              path: '/test',
-              method: HttpMethod.get,
-              handler: (req) => ResponseEntity.ok(body: 'ok'),
-            ),
-          ],
-        ),
-      );
-
-      final response = await http.get(
-        Uri.parse('$localUrl/test'),
-        headers: {HttpHeader.origin: 'https://malicious.com'},
-      );
       expect(response.statusCode, 200);
       expect(
         response.headers.containsKey(HttpHeader.accessControlAllowOrigin),
         isFalse,
       );
+    });
+
+    test('the default configuration allows any origin', () async {
+      final response = await clientWith(
+        SecurityConfig(cors: const CorsConfig()),
+      ).get('/test', headers: {HttpHeader.origin: 'http://localhost:3000'});
+
+      expect(response.headers[HttpHeader.accessControlAllowOrigin], '*');
+    });
+
+    test('a preflight is answered before the router', () async {
+      final response =
+          await clientWith(SecurityConfig(cors: const CorsConfig())).request(
+            'OPTIONS',
+            '/test',
+            headers: {
+              HttpHeader.accessControlRequestMethod: 'GET',
+              HttpHeader.origin: 'http://localhost:3000',
+            },
+          );
+
+      expect(response.statusCode, 200);
+      expect(response.headers[HttpHeader.accessControlAllowOrigin], '*');
+      expect(
+        response.headers[HttpHeader.accessControlAllowMethods],
+        allOf(contains('GET'), contains('POST')),
+      );
+    });
+
+    test('a SecurityConfig of the app (preflight and request)', () async {
+      final client = clientWith(CustomCorsSecurityConfig());
+
+      final preflight = await client.request(
+        'OPTIONS',
+        '/test',
+        headers: {
+          HttpHeader.accessControlRequestMethod: 'POST',
+          HttpHeader.origin: 'https://example.com',
+        },
+      );
+      expect(preflight.statusCode, 200);
+      expect(
+        preflight.headers[HttpHeader.accessControlAllowOrigin],
+        'https://example.com',
+      );
+      expect(
+        preflight.headers[HttpHeader.accessControlAllowMethods],
+        'GET, POST',
+      );
+      expect(
+        preflight.headers[HttpHeader.accessControlAllowHeaders],
+        isNotNull,
+      );
+      expect(
+        preflight.headers[HttpHeader.accessControlAllowCredentials],
+        'true',
+      );
+      expect(preflight.headers[HttpHeader.accessControlMaxAge], '3600');
+
+      final response = await client.post(
+        '/test',
+        headers: {HttpHeader.origin: 'https://example.com'},
+      );
+      expect(response.statusCode, 200);
+      expect(
+        response.headers[HttpHeader.accessControlAllowOrigin],
+        'https://example.com',
+      );
+      expect(
+        response.headers[HttpHeader.accessControlAllowCredentials],
+        'true',
+      );
+    });
+
+    test('an origin out of the list gets no Allow-Origin', () async {
+      final response = await clientWith(CustomCorsSecurityConfig())
+          .get('/test', headers: {HttpHeader.origin: 'https://malicious.com'});
+
+      expect(response.statusCode, 200);
+      expect(
+        response.headers.containsKey(HttpHeader.accessControlAllowOrigin),
+        isFalse,
+      );
+    });
+  });
+
+  group('CorsFilter alone', () {
+    const origin = 'http://localhost:3000';
+
+    Future<ResponseEntity> runCors(CorsConfig config, {String? method}) async {
+      final filter = CorsFilter(config: config);
+      final chain = FilterChain([], (request) => ResponseEntity.ok());
+      final request = RequestEntity(
+        method ?? 'GET',
+        Uri.parse('http://localhost/test'),
+        headers: {HttpHeader.origin: origin},
+      );
+      return filter.doFilter(request, chain);
+    }
+
+    group('CORS with credentials', () {
+      test('Wildcard origin with credentials echoes the origin', () async {
+        final response = await runCors(
+          const CorsConfig(allowCredentials: true),
+        );
+
+        expect(response.headers[HttpHeader.accessControlAllowOrigin], origin);
+        expect(
+          response.headers[HttpHeader.accessControlAllowCredentials],
+          'true',
+        );
+        expect(response.headers[HttpHeader.vary], HttpHeader.origin);
+      });
+
+      test('Wildcard origin without credentials stays as *', () async {
+        final response = await runCors(const CorsConfig());
+
+        expect(response.headers[HttpHeader.accessControlAllowOrigin], '*');
+        expect(response.headers[HttpHeader.vary], isNull);
+      });
+
+      test('Not allowed origin gets no Allow-Origin header', () async {
+        final response = await runCors(
+          const CorsConfig(
+            allowedOrigins: ['https://example.com'],
+            allowCredentials: true,
+          ),
+        );
+
+        expect(response.headers[HttpHeader.accessControlAllowOrigin], isNull);
+      });
+    });
+
+    group('CORS headers', () {
+      test('exposed headers are sent', () async {
+        final response = await runCors(
+          const CorsConfig(exposedHeaders: ['X-Total', 'X-Page']),
+        );
+
+        expect(
+          response.headers[HttpHeader.accessControlExposeHeaders],
+          // X-Request-Id is always exposed
+          'X-Request-Id, X-Total, X-Page',
+        );
+      });
+
+      test(
+        'preflight with allowedHeaders * echoes the requested headers',
+        () async {
+          final filter = CorsFilter(config: const CorsConfig(maxAge: 600));
+          final preflight = RequestEntity(
+            'OPTIONS',
+            Uri.parse('http://localhost/test'),
+            headers: {
+              HttpHeader.origin: origin,
+              HttpHeader.accessControlRequestMethod: 'POST',
+              HttpHeader.accessControlRequestHeaders: 'X-Custom, Content-Type',
+            },
+          );
+
+          final response = await filter.doFilter(
+            preflight,
+            FilterChain([], (request) => ResponseEntity.ok()),
+          );
+
+          expect(
+            response.headers[HttpHeader.accessControlAllowHeaders],
+            'X-Custom, Content-Type',
+          );
+          expect(response.headers[HttpHeader.accessControlMaxAge], '600');
+          expect(
+            response.headers[HttpHeader.accessControlAllowMethods],
+            contains('POST'),
+          );
+        },
+      );
+
+      test('without Origin no CORS header is added', () async {
+        final filter = CorsFilter();
+        final response = await filter.doFilter(
+          RequestEntity('GET', Uri.parse('http://localhost/test')),
+          FilterChain([], (request) => ResponseEntity.ok()),
+        );
+
+        expect(response.headers[HttpHeader.accessControlAllowOrigin], isNull);
+      });
     });
   });
 }

@@ -5,7 +5,7 @@ class RequestSecurityContext<T> {
 
   RequestSecurityContext.empty();
 
-  void clearContext() {
+  void clear() {
     _authentication = null;
   }
 

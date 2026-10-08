@@ -23,7 +23,7 @@ class WinterTestClient {
 
   /// Build the client with the same parameters as [Winter.buildHandler]
   factory WinterTestClient.build({
-    required AbstractWinterRouter router,
+    required BaseRouter router,
     FilterConfig? globalFilterConfig,
     SecurityConfig? securityConfig,
     int? maxBodySize = defaultMaxBodySize,
