@@ -292,7 +292,10 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
 - **The request is read-only** (headers, query and path params): a filter passes a copy to the
   chain. `headers` (one value, case insensitive) and `headersAll` (every value); the headers of
   `dart:io` are read as a view, not copied. The body is read once and shared by the copies;
-  `body<T>()` caches it. The size limit (`maxBodySize`) wraps that body, without a copy.
+  `body<T>()` caches it. The size limit (`maxBodySize`) wraps that body, without a copy. A body
+  that stops being read before its end (a 413, a malformed multipart body) is read to the end and
+  discarded instead of cancelled: cancelling the body of `dart:io` closes the connection, and the
+  client would never get the answer.
 - **The context is extensible and typed**: data attached to a request (or a response) is found by
   a `ContextKey<T>`, an object, not a name, so two packages never overwrite each other and a value
   has its type without casts. An extension turns it into a property (`request.securityContext`

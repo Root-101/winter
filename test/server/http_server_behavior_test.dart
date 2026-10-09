@@ -72,6 +72,15 @@ void main() {
           })(),
         ),
       ),
+      Route.post(
+        path: '/parts',
+        handler: (request) async {
+          await for (final part in request.multipart()) {
+            await part.readAsBytes();
+          }
+          return ResponseEntity.ok();
+        },
+      ),
       Route.get(
         path: '/events',
         handler: (request) => ResponseEntity<Stream<List<int>>>(
@@ -270,6 +279,30 @@ void main() {
       // A code that StatusCode doesn't know keeps the one of dart:io
       expect(await statusLine(799), 'HTTP/1.1 799 Status 799');
     });
+
+    test(
+      'a body rejected half read still gets its answer (the rest is discarded)',
+      () async {
+        // A part header of 100 KB: the parser stops at its limit, far before the end of the body.
+        // Cancelling the body of dart:io there closed the connection without the 400.
+        final List<int> body = ascii.encode(
+          '--B\r\nContent-Disposition: form-data; name="f"\r\n'
+          'X: ${'a' * 100000}\r\n\r\nabc\r\n--B--\r\n',
+        );
+        final socket = await Socket.connect('localhost', port);
+        socket
+          ..write(
+            'POST /parts HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n'
+            'Content-Type: multipart/form-data; boundary=B\r\n'
+            'Content-Length: ${body.length}\r\n\r\n',
+          )
+          ..add(body);
+        final String answer = await utf8.decodeStream(socket);
+        socket.destroy();
+
+        expect(answer, startsWith('HTTP/1.1 400'));
+      },
+    );
 
     test(
       'a malformed request is answered by dart:io, the server goes on',

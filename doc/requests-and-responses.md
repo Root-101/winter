@@ -108,7 +108,8 @@ final Uint8List image = await request.bytes();                 // binary, any Co
 - `read()` (the bytes as they arrive) and `readAsString()` read the stream itself: once, and not
   after the cached methods. `read()` is for a big body that goes to a file without being in memory.
 - A body over `ServerConfig.maxBodySize` (10 MB) is a **413** when it's read; a body nobody reads
-  is never rejected.
+  is never rejected. The rest of a body rejected half read (a 413, a malformed multipart body) is
+  read and discarded, so the client gets the answer.
 
 [`example/bodies`](../example/bodies) has a case for each kind, with the `curl` of each one.
 

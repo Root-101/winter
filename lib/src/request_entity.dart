@@ -684,8 +684,39 @@ RequestEntity requestFromHttpRequest(HttpRequest request) =>
       headersAll: ioHeaders(request.headers),
       context: ContextMap(),
       connectionInfo: request.connectionInfo,
-      body: _RequestBody(request),
+      body: _RequestBody(_discardedOnCancel(request)),
     );
+
+/// [body], but a reader that stops before its end (a 413 of `maxBodySize`, a malformed multipart
+/// body, a handler that reads only the start) doesn't cancel it: the rest is read and discarded.
+/// Cancelling the stream of an `HttpRequest` makes `dart:io` close the connection, and the client
+/// would never get the response (the 413 or the 400). A body nobody reads is discarded by `dart:io`
+/// the same way.
+Stream<List<int>> _discardedOnCancel(Stream<List<int>> body) {
+  StreamSubscription<List<int>>? subscription;
+  late final StreamController<List<int>> controller;
+  controller = StreamController<List<int>>(
+    onListen: () => subscription = body.listen(
+      controller.add,
+      onError: controller.addError,
+      onDone: controller.close,
+    ),
+    onPause: () => subscription?.pause(),
+    onResume: () => subscription?.resume(),
+    onCancel: () {
+      final StreamSubscription<List<int>>? rest = subscription;
+      if (rest == null) return;
+      rest
+        ..onData(null)
+        ..onError((Object _) {})
+        ..onDone(null);
+      while (rest.isPaused) {
+        rest.resume();
+      }
+    },
+  );
+  return controller.stream;
+}
 
 /// Sets the route that answers [request] (the server does it once it's resolved). Internal: not
 /// exported by `winter.dart`.

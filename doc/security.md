@@ -384,10 +384,17 @@ RateLimiterFilter.fromRateLimiter(
   validation of secret fields, so their value never ends in a violation.
 - A reverse proxy in front of the app (nginx, a load balancer) for what `dart:io` doesn't limit:
   slow clients that send their headers byte by byte, the size of the headers (`dart:io` accepts
-  tens of KB), and the number of connections per client.
+  tens of KB, 20 000 headers were accepted in the probe), the number of connections per client,
+  a body that never ends (a rejected body is read to its end and discarded, so the client gets
+  the 413), and a request with both `Content-Length` and `Transfer-Encoding` (`dart:io` reads it
+  as chunked; a proxy that reads the other one is open to request smuggling).
 - `ServerConfig.requestTimeout` so a slow upload or a stuck handler can't hold a request forever.
 - `allowedOrigins` on every `Route.websocket` of an app with a session in a cookie: browsers send
   the cookie to a WebSocket of any website, and CORS doesn't apply to them.
+- Never redirect to a URL taken from the request (`?next=https://evil.example`) without checking
+  it is one of yours: `ResponseEntity.seeOther(next)` sends the user anywhere (an open redirect).
+- A path param is URL-decoded, `%2F` included: `/files/{name}` gets `a/b` for `/files/a%2Fb`.
+  Never use it as a path of the file system; `Route.static` checks its own.
 
 ## Typical mistakes and limitations
 
