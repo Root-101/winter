@@ -1129,6 +1129,14 @@ void main() {
       );
     });
 
+    test('json.object() outside a mapper uses the global om too', () {
+      final Map<String, dynamic> json = {
+        'home': {'zipCode': '28001'},
+      };
+
+      expect(json.object('home', _HomeAddress.fromJson).zipCode, '28001');
+    });
+
     test('outside a mapper it uses the global om', () {
       final Map<String, dynamic> json = {'n': 3};
 
@@ -1265,6 +1273,24 @@ void main() {
       });
     });
 
+    test('a fromJson that changes the map works on the real one', () {
+      final mapper = ObjectMapper(
+        rejectUnknownFields: true,
+        deserializers: [
+          Deserializer<int>.json((json) {
+            json['added'] = 1;
+            json.remove('a');
+            final int count = json.length;
+            json.clear();
+            return count;
+          }),
+        ],
+      );
+
+      // 'a' was removed, 'added' never came: nothing unknown is left
+      expect(mapper.deserialize<int>({'a': 1, 'b': 2}), 2);
+    });
+
     test('through body<T>(): a 400 Problem Details', () async {
       final previous = om;
       Winter.context.setUp(objectMapper: strict());
@@ -1316,6 +1342,18 @@ void main() {
       expect(cleared.nickname.value, isNull);
       expect(changed.name.value, 'Bob');
       expect(changed.nickname, const PatchValue<String?>.of('bobby'));
+    });
+
+    test('equality: the same presence and the same value', () {
+      expect(const PatchValue<int>.of(1), const PatchValue<int>.of(1));
+      expect(
+        const PatchValue<int>.of(1).hashCode,
+        const PatchValue<int>.of(1).hashCode,
+      );
+      expect(
+        const PatchValue<int?>.absent(),
+        isNot(const PatchValue<int?>.of(null)),
+      );
     });
 
     test('orElse gives the value after the update', () {

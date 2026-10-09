@@ -6,327 +6,108 @@ import 'dart:convert';
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
+/// Every shape of a JSON body, there and back through the whole pipeline: `body<T>()` reads it,
+/// ResponseEntity writes it, `TestResponse.as<T>()` reads the answer
 void main() {
-  late WinterTestClient client;
-
-  DateTime createdAt = DateTime.now();
-  ObjectMapper om = ObjectMapper(
-    serializers: [
-      Serializer<UserRequest>((object) => object.toJson()),
-      Serializer<UserResponse>((object) => object.toJson()),
-    ],
-    deserializers: [
-      Deserializer<UserRequest>(
-        (data) => UserRequest(email: data['email'] as String?),
-      ),
-      Deserializer<UserResponse>(
-        (data) => UserResponse.build(
-          username: data['username'] as String?,
-          createdAt:
-              DateTime.tryParse(data['createdAt'] as String) ?? DateTime.now(),
-        ),
-      ),
-      Deserializer<SerializableUser>(
-        (data) => SerializableUser(name: data['name'] as String),
-      ),
-      Deserializer<Map<String, dynamic>>(
-        (data) => {'key': data['key'], 'nested': data['nested']},
-      ),
-    ],
+  final ObjectMapper mapper = ObjectMapper(
+    deserializers: [Deserializer<_User>.json(_User.fromJson)],
   );
 
-  setUpAll(() async {
-    Winter.context.setUp(objectMapper: om);
+  Route echo<T>(String path, Object? Function(T body) answer) => Route.post(
+    path: path,
+    handler: (request) async =>
+        ResponseEntity.ok(body: answer(await request.body<T>())),
+  );
+
+  late WinterTestClient client;
+
+  setUpAll(() {
+    Winter.context.setUp(objectMapper: mapper);
     client = WinterTestClient.build(
       router: WinterRouter(
         routes: [
-          Route(
-            path: '/create-user',
-            method: HttpMethod.post,
-            handler: (request) async {
-              UserRequest requestBody = await request.body<UserRequest>();
-
-              ///Username will be the email without the provider
-              ///email: `test@test.com` will be username: `test`
-              String username = requestBody.email!.split('@')[0];
-
-              UserResponse responseBody = UserResponse.build(
-                username: username,
-                createdAt: createdAt,
-              );
-
-              return ResponseEntity.ok(body: responseBody);
-            },
+          echo<_User>('/user', (user) => user.renamed()),
+          echo<List<_User>>(
+            '/users',
+            (users) => [for (final user in users) user.renamed()],
           ),
-          Route(
-            path: '/create-multiple-users',
-            method: HttpMethod.post,
-            handler: (request) async {
-              ///Note that we use the null operator (!) because its a controlled test
-              ///In other test we will validate that this elements are not null to avoid using '!'
-              List<UserRequest> requestBody = await request
-                  .body<List<UserRequest>>();
-
-              ///Username will be the email without the provider
-              ///email: `test@test.com` will be username: `test`
-              String username0 = requestBody[0].email!.split('@')[0];
-              String username1 = requestBody[1].email!.split('@')[0];
-
-              List<UserResponse> responseBody = [
-                UserResponse.build(username: username0, createdAt: createdAt),
-                UserResponse.build(username: username1, createdAt: createdAt),
-              ];
-
-              return ResponseEntity.ok(body: responseBody);
-            },
-          ),
-          Route(
-            path: '/sqrt',
-            method: HttpMethod.post,
-            handler: (request) async {
-              int requestBody = await request.body<int>();
-
-              return ResponseEntity<int>.ok(body: requestBody * requestBody);
-            },
-          ),
-          Route(
-            path: '/sqrt-list',
-            method: HttpMethod.post,
-            handler: (request) async {
-              List<int> requestBody = await request.body<List<int>>();
-
-              return ResponseEntity<List<int>>.ok(
-                body: requestBody.map((e) => e * e).toList(),
-              );
-            },
-          ),
-          Route(
-            path: '/echo-map',
-            method: HttpMethod.post,
-            handler: (request) async {
-              var body = await request.body<Map<String, dynamic>>();
-              return ResponseEntity.ok(body: body);
-            },
-          ),
-          Route(
-            path: '/echo-datetime',
-            method: HttpMethod.post,
-            handler: (request) async {
-              var body = await request.body<DateTime>();
-              return ResponseEntity.ok(body: body);
-            },
-          ),
-          Route(
-            path: '/serializable',
-            method: HttpMethod.post,
-            handler: (request) async {
-              var body = await request.body<SerializableUser>();
-              return ResponseEntity.ok(body: body);
-            },
-          ),
-          Route(
-            path: '/serializable-list',
-            method: HttpMethod.post,
-            handler: (request) async {
-              var body = await request.body<List<SerializableUser>>();
-              return ResponseEntity.ok(body: body);
-            },
-          ),
-          Route(
-            path: '/unregistered',
-            method: HttpMethod.post,
-            handler: (request) async {
-              await request.body<UnregisteredType>();
-              return ResponseEntity.ok(body: 'ok');
-            },
-          ),
+          echo<int>('/square', (n) => n * n),
+          echo<List<int>>('/squares', (list) => [for (final n in list) n * n]),
+          echo<Map<String, dynamic>>('/map', (map) => map),
+          echo<DateTime>('/date', (date) => date),
+          echo<_Unregistered>('/unregistered', (body) => 'never'),
         ],
       ),
     );
   });
 
-  test('Send and receive body object', () async {
-    String urlToTest = '/create-user';
-    UserRequest requestBody = UserRequest(email: 'test@test.com');
+  tearDownAll(() => Winter.context.setUp(objectMapper: ObjectMapper()));
 
-    TestResponse response = await client.post(
-      urlToTest,
-      body: jsonEncode(om.serialize(requestBody)),
+  test('an object and a list of objects', () async {
+    final user = await client.post('/user', body: {'email': 'ann@x.com'});
+    final users = await client.post(
+      '/users',
+      body: [
+        {'email': 'ann@x.com'},
+        {'email': 'bob@x.com'},
+      ],
     );
 
-    expect(response.statusCode, 200);
-
-    UserResponse responseBody = om.decode(response.body);
-    expect(responseBody.username, 'test');
-    expect(
-      responseBody.createdAt?.toIso8601String(),
-      createdAt.toIso8601String(),
-    );
+    expect(user.as<_User>(objectMapper: mapper).email, 'ann');
+    expect(users.as<List<_User>>(objectMapper: mapper).map((u) => u.email), [
+      'ann',
+      'bob',
+    ]);
   });
 
-  test('Send and receive body List<object>', () async {
-    String urlToTest = '/create-multiple-users';
-    List<UserRequest> requestBody = [
-      UserRequest(email: 'test0@test0.com'),
-      UserRequest(email: 'test1@test1.com'),
-    ];
-
-    TestResponse response = await client.post(
-      urlToTest,
-      body: jsonEncode(om.serialize(requestBody)),
-    );
-
-    expect(response.statusCode, 200);
-
-    List<UserResponse> responseBody = om.deserialize<List<UserResponse>>(
-      jsonDecode(response.body),
-    );
-    expect(responseBody[0].username, 'test0');
-    expect(responseBody[1].username, 'test1');
-    expect(
-      responseBody[0].createdAt?.toIso8601String(),
-      createdAt.toIso8601String(),
-    );
-    expect(
-      responseBody[1].createdAt?.toIso8601String(),
-      createdAt.toIso8601String(),
-    );
+  test('a primitive and a list of primitives', () async {
+    expect((await client.post('/square', body: '5')).json, 25);
+    expect((await client.post('/squares', body: [5, 6, 7])).json, [25, 36, 49]);
   });
 
-  test('Send and receive body primitive', () async {
-    String urlToTest = '/sqrt';
-
-    TestResponse response = await client.post(urlToTest, body: jsonEncode(5));
-
-    expect(response.statusCode, 200);
-
-    int responseBody = om.decode(response.body);
-    expect(responseBody, 25);
-  });
-
-  test('Send and receive body primitive list', () async {
-    String urlToTest = '/sqrt-list';
-
-    TestResponse response = await client.post(
-      urlToTest,
-      body: jsonEncode([5, 6, 7]),
-    );
-
-    expect(response.statusCode, 200);
-
-    List<int> responseBody = om.decode(response.body);
-    expect(responseBody, [25, 36, 49]);
-  });
-
-  test('Send and receive Map body', () async {
-    String urlToTest = '/echo-map';
-    Map<String, dynamic> requestBody = {
+  test('a map, kept as it came', () async {
+    final Map<String, Object> body = {
       'key': 'value',
       'nested': {'a': 1},
     };
 
-    TestResponse response = await client.post(
-      urlToTest,
-      body: jsonEncode(requestBody),
-    );
-
-    expect(response.statusCode, 200);
-    expect(jsonDecode(response.body), requestBody);
+    expect((await client.post('/map', body: body)).json, body);
   });
 
-  test('Send and receive DateTime body', () async {
-    String urlToTest = '/echo-datetime';
-    DateTime now = DateTime.now();
+  test('a DateTime, written back in UTC', () async {
+    final DateTime now = DateTime.now();
 
-    TestResponse response = await client.post(
-      urlToTest,
+    final response = await client.post(
+      '/date',
       body: jsonEncode(now.toIso8601String()),
     );
 
-    expect(response.statusCode, 200);
-    // DateTime is always serialized in UTC
-    final String echoed = jsonDecode(response.body) as String;
+    final String echoed = response.json as String;
     expect(echoed, endsWith('Z'));
     expect(DateTime.parse(echoed).isAtSameMomentAs(now), isTrue);
   });
 
-  test('Send and receive Serializable body', () async {
-    String urlToTest = '/serializable';
-    SerializableUser user = SerializableUser(name: 'Adam');
-
-    TestResponse response = await client.post(
-      urlToTest,
-      body: jsonEncode(user),
+  test('invalid JSON is a 400; a type without deserializer a 500', () async {
+    expect((await client.post('/square', body: 'not-json')).statusCode, 400);
+    expect(
+      (await client.post('/unregistered', body: {'name': 'x'})).statusCode,
+      500,
     );
-
-    expect(response.statusCode, 200);
-    expect(jsonDecode(response.body), user.toJson());
-  });
-
-  test('Send and receive List<Serializable> body', () async {
-    String urlToTest = '/serializable-list';
-    List<SerializableUser> users = [
-      SerializableUser(name: 'Adam'),
-      SerializableUser(name: 'Eve'),
-    ];
-
-    TestResponse response = await client.post(
-      urlToTest,
-      body: jsonEncode(users),
-    );
-
-    expect(response.statusCode, 200);
-    expect(jsonDecode(response.body), users.map((e) => e.toJson()).toList());
-  });
-
-  test('Send invalid JSON returns 400', () async {
-    String urlToTest = '/sqrt';
-
-    TestResponse response = await client.post(urlToTest, body: 'not-a-json');
-
-    expect(response.statusCode, 400);
-  });
-
-  test('Request unregistered type throws 500', () async {
-    String urlToTest = '/unregistered';
-
-    TestResponse response = await client.post(
-      urlToTest,
-      body: jsonEncode({'name': 'test'}),
-    );
-
-    expect(response.statusCode, 500);
   });
 }
 
-class UserRequest {
-  String? email;
-  Object? toJson() {
-    return {'email': email};
-  }
+class _User {
+  final String email;
 
-  UserRequest({required this.email});
+  _User(this.email);
+
+  factory _User.fromJson(Map<String, dynamic> json) =>
+      _User(json['email'] as String);
+
+  /// The name of the email (`ann@x.com` → `ann`), so the answer differs from the request
+  _User renamed() => _User(email.split('@').first);
+
+  Map<String, Object> toJson() => {'email': email};
 }
 
-class UserResponse {
-  String? username;
-  DateTime? createdAt;
-
-  UserResponse.build({required this.username, required this.createdAt});
-  Object? toJson() {
-    return {'username': username, 'createdAt': createdAt?.toIso8601String()};
-  }
-}
-
-class SerializableUser {
-  final String name;
-
-  SerializableUser({required this.name});
-  Object? toJson() => {'name': name};
-}
-
-class UnregisteredType {
-  final String name;
-
-  UnregisteredType(this.name);
-}
+class _Unregistered {}
