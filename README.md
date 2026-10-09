@@ -73,24 +73,24 @@ That's as simple as it gets, but Winter does a lot more.
 
 ## Features
 
-| Feature                | What you get                                                                              | Guide                                                   |
-|------------------------|-------------------------------------------------------------------------------------------|---------------------------------------------------------|
-| Routing                | Nested routes, typed path and query params, regex, 404/405, `HEAD` and `OPTIONS`, static files, health checks | [routing](doc/routing.md)                               |
-| Filters                | Global and route filters, ordered, that see every error                                   | [filters](doc/filters.md)                               |
-| Requests and responses | Headers, cookies, every kind of body (JSON, forms, uploads, binary), streams              | [requests and responses](doc/requests-and-responses.md) |
-| JSON                   | `toJson()` without interfaces, your own serializers, generics, `snake_case`, clear errors | [object mapper](doc/object-mapper.md)                   |
-| Validation             | Typed validators, nested objects, async rules, a 422 with a code per field                | [validation](doc/validation.md)                         |
-| Errors                 | Every error is a Problem Details (RFC 9457); a 500 never leaks details                    | [error handling](doc/error-handling.md)                 |
-| Security               | Authentication filters, roles and permissions, CORS, security headers, a rate limiter     | [security](doc/security.md)                             |
-| Dependency injection   | Singletons, lazy, factories, one instance per request, async startup, disposal on shutdown | [dependency injection](doc/dependency-injection.md)     |
-| Configuration          | Typed environment variables, `.env` files and profiles                                    | [configuration](doc/configuration.md)                   |
-| Logging                | Console and JSON loggers, a request id in every log                                       | [logging](doc/logging.md)                               |
-| i18n                   | Messages in the language of the request                                                   | [i18n](doc/i18n.md)                                     |
-| Real time              | WebSockets that go through the filters first, and Server-Sent Events                      | [routing](doc/routing.md#websockets), [SSE](doc/requests-and-responses.md#server-sent-events) |
-| OpenAPI                | The document of the routes and Swagger UI, schemas from an example and its `validate()`   | [openapi](doc/openapi.md)                               |
-| Scheduled tasks        | Intervals and cron expressions, started and stopped with the server                       | [scheduling](doc/scheduling.md)                         |
-| Testing                | The whole pipeline in memory, without ports                                               | [testing](doc/testing.md)                               |
-| Deployment             | Native executables, Docker, graceful shutdown, health checks                              | [deployment](doc/deployment.md)                         |
+| Feature                | What you get                                                                                                  | Guide                                                                                         |
+|------------------------|---------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
+| Routing                | Nested routes, typed path and query params, regex, 404/405, `HEAD` and `OPTIONS`, static files, health checks | [routing](doc/routing.md)                                                                     |
+| Filters                | Global and route filters, ordered, that see every error                                                       | [filters](doc/filters.md)                                                                     |
+| Requests and responses | Headers, cookies, every kind of body (JSON, forms, uploads, binary), streams                                  | [requests and responses](doc/requests-and-responses.md)                                       |
+| JSON                   | `toJson()` without interfaces, your own serializers, generics, `snake_case`, clear errors                     | [object mapper](doc/object-mapper.md)                                                         |
+| Validation             | Typed validators, nested objects, async rules, a 422 with a code per field                                    | [validation](doc/validation.md)                                                               |
+| Errors                 | Every error is a Problem Details (RFC 9457); a 500 never leaks details                                        | [error handling](doc/error-handling.md)                                                       |
+| Security               | Authentication filters, roles and permissions, CORS, security headers, a rate limiter                         | [security](doc/security.md)                                                                   |
+| Dependency injection   | Singletons, lazy, factories, one instance per request, async startup, disposal on shutdown                    | [dependency injection](doc/dependency-injection.md)                                           |
+| Configuration          | Typed environment variables, `.env` files and profiles                                                        | [configuration](doc/configuration.md)                                                         |
+| Logging                | Console and JSON loggers, a request id in every log                                                           | [logging](doc/logging.md)                                                                     |
+| i18n                   | Messages in the language of the request                                                                       | [i18n](doc/i18n.md)                                                                           |
+| Real time              | WebSockets that go through the filters first, and Server-Sent Events                                          | [routing](doc/routing.md#websockets), [SSE](doc/requests-and-responses.md#server-sent-events) |
+| OpenAPI                | The document of the routes and Swagger UI, schemas from an example and its `validate()`                       | [openapi](doc/openapi.md)                                                                     |
+| Scheduled tasks        | Intervals and cron expressions, started and stopped with the server                                           | [scheduling](doc/scheduling.md)                                                               |
+| Testing                | The whole pipeline in memory, without ports                                                                   | [testing](doc/testing.md)                                                                     |
+| Deployment             | Native executables, Docker, graceful shutdown, health checks                                                  | [deployment](doc/deployment.md)                                                               |
 
 How it fits together: [architecture](doc/architecture.md). Every guide: [`doc/`](doc/README.md).
 
@@ -245,11 +245,28 @@ case with its test, and complete apps.
 
 The projects that run on Winter:
 
-| Project | What it is |
-|---------|------------|
-| *Yours?* | No project uses Winter yet: if yours does, open a pull request to add it here. |
+<table>
+  <tr>
+    <td align="center" width="160">
+      <a href="https://github.com/Root-101/winter/pulls">
+        <b>➕</b><br>
+        <sub>Your project?<br>Open a pull request</sub>
+      </a>
+    </td>
+  </tr>
+</table>
 
-<!-- One row per project: | [name](link) | What it is, in one line | -->
+<!--
+A cell per project, at most 4 per <tr> (start a new <tr> for more). The icon by an absolute URL, so
+it shows on pub.dev too:
+
+    <td align="center" width="160">
+      <a href="https://link-of-the-project">
+        <img src="https://url-of-the-icon.png" width="64" height="64" alt="name"><br>
+        <sub><b>name</b></sub>
+      </a>
+    </td>
+-->
 
 ## More
 
