@@ -387,6 +387,112 @@ Route.get(
 )
 ```
 
+A big export (a CSV of a whole table) goes as a stream built row by row, so it's never whole in
+memory; `inline` instead of `attachment` lets the browser show it.
+[`api_patterns/file_download.dart`](../example/api_patterns/lib/file_download.dart) has both, and
+a file name with accents.
+
+### Pagination
+
+The page in the query, the total and the links to the other pages in headers (RFC 8288). A list of
+values of one header is a `List`:
+
+```dart
+Route.get(
+  path: '/articles',
+  handler: (request) {
+    final int page = request.queryParam<int>('page') ?? 1;
+    final int size = request.queryParam<int>('size') ?? 10;
+    if (page < 1 || size < 1 || size > 50) throw const BadRequestException();
+    return ResponseEntity.ok(
+      body: articles.skip((page - 1) * size).take(size).toList(),
+      headers: {
+        'X-Total-Count': '${articles.length}',
+        HttpHeader.link: [
+          '</articles?page=${page + 1}&size=$size>; rel="next"',
+          // first, prev, last...
+        ],
+      },
+    );
+  },
+)
+```
+
+A browser reads them only if CORS exposes them: `CorsConfig(exposedHeaders: ['X-Total-Count',
+'Link'])`. [`api_patterns/pagination.dart`](../example/api_patterns/lib/pagination.dart).
+
+### Conditional requests: `ETag`, 304 and optimistic locking
+
+An `ETag` (the version of the resource) lets a client skip a download it already has, and stops
+two users from overwriting each other:
+
+```dart
+// GET: a 304 without body when the client has this version
+if (request.headers[HttpHeader.ifNoneMatch] == document.etag) {
+  return ResponseEntity(304, headers: {HttpHeader.etag: document.etag});
+}
+
+// PUT: only over the version the client read
+final String? ifMatch = request.headers[HttpHeader.ifMatch];
+if (ifMatch == null) throw const ApiException(StatusCode.preconditionRequired);   // 428
+if (ifMatch != current.etag) throw const ApiException(StatusCode.preconditionFailed); // 412
+```
+
+[`api_patterns/conditional_requests.dart`](../example/api_patterns/lib/conditional_requests.dart)
+also reads lists of tags, `W/` and `*`.
+
+### Content negotiation
+
+One resource in several formats, chosen by `Accept`: answer the one the client prefers, add
+`Vary: Accept` so a cache keeps one copy per format, and throw
+`ApiException(StatusCode.notAcceptable)` (406) when there is none.
+[`api_patterns/content_negotiation.dart`](../example/api_patterns/lib/content_negotiation.dart)
+parses the `q` weights.
+
+### A long task: `202 Accepted`
+
+A task that takes minutes doesn't hold the request: start it, answer where to ask, and redirect to
+the result when it's done.
+
+```dart
+Route.post(
+  path: '/reports',
+  handler: (request) {
+    final Job job = jobs.start(); // not awaited
+    return ResponseEntity.accepted(
+      body: {'job': job.id},
+      headers: {HttpHeader.location: '/jobs/${job.id}', HttpHeader.retryAfter: '2'},
+    );
+  },
+),
+Route.get(
+  path: '/jobs/{id|[0-9]+}',
+  handler: (request) {
+    final Job job = jobs.find(request.pathParam<int>('id'));
+    return job.done
+        ? ResponseEntity.seeOther('/reports/${job.id}')
+        : ResponseEntity.ok(body: {'state': 'running'});
+  },
+),
+```
+
+[`api_patterns/async_jobs.dart`](../example/api_patterns/lib/async_jobs.dart).
+
+### Idempotency keys
+
+A client that didn't get the answer of a `POST` (a timeout) sends it again with the same
+`Idempotency-Key`, and must get the first answer instead of a second payment. A route filter does
+it without touching the handler: it reads the body with `bytes()` (cached, so the handler still
+reads it with `body<T>()`), keeps the response of the first request, and answers it again.
+[`api_patterns/idempotency_keys.dart`](../example/api_patterns/lib/idempotency_keys.dart).
+
+### Versions of an API
+
+Each version is a parent route (`/v1`, `/v2`) over the same services; a filter of the old one adds
+`Deprecation` and `Sunset` to every response, errors included. See
+[routing](routing.md#a-versioned-api) and
+[`api_patterns/api_versioning.dart`](../example/api_patterns/lib/api_versioning.dart).
+
 ### Testing with a request in memory
 
 ```dart
@@ -409,6 +515,5 @@ has every value of each header.
 - **Changing `request.headers` or `queryParams`**: they are read-only; pass
   `request.copyWith(...)` to the chain.
 - **A stream response without a first chunk**: the client waits for the headers until it comes.
-- **A `List<int>` as a body**: it's JSON (`[1,2]`); bytes are a `Uint8List`.
-- Forms (`application/x-www-form-urlencoded`), multipart and static files are not supported yet
-  (phase 4 of the roadmap).
+- **A `List<int>` as a body**: it's JSON (`[1,2]`), in a response and in `WinterTestClient`;
+  bytes are a `Uint8List` (`utf8.encode` and `File.readAsBytes` already give one).

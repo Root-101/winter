@@ -184,5 +184,5 @@ await http.get(url, headers: {HttpHeader.xRequestId: requestId!});
 - **Logging a body, a token or a password**: never. Log ids (`orderId`, `userId`) in `fields`.
 - **`JsonLogger` in development**: the lines are hard to read; use `ConsoleLogger` locally.
 - **The request id in a browser**: the client can read the `X-Request-Id` header only if CORS
-  exposes it (`Access-Control-Expose-Headers`, planned for the security review).
+  exposes it: `CorsFilter` always does (`Access-Control-Expose-Headers`).
 - **A log outside a request** (start-up, a `Timer`) has no request id.

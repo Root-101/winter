@@ -10,6 +10,11 @@ goes on:
 - A filter never receives an exception: anything thrown inside the chain becomes a response where
   it's thrown.
 
+The decisions behind it are in [`DECISIONS.md` §9](../DECISIONS.md#9-router-and-filters).
+Examples, one file per case: [`example/filters`](../example/filters) (before and after the
+handler, a tenant in the request context, maintenance mode, a response cache); an idempotency key
+as a route filter is in [`example/api_patterns`](../example/api_patterns).
+
 ## Minimal example
 
 ```dart

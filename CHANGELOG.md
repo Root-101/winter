@@ -19,7 +19,7 @@
     * **i18n** :globe_with_meridians: : The validation messages in the language of the request (`Accept-Language`, English and Spanish), `requestLocale` from any code, and `Vary: Accept-Language` added by itself.
     * **Request scope** :link: : Every request runs in its own `Zone`: `requestId`, `requestPrincipal`, `requestLocale` from any code, and `onComplete`.
     * **Testing** :test_tube: : `WinterTestClient` runs the whole pipeline in memory, without ports (`bodyBytes` for a binary response, `as<T>()` to read a body with the object mapper).
-    * **Examples** :books: : Many small examples by topic, one file per case with its test (routing, request bodies, validation, object mapper, OpenAPI, Server-Sent Events and WebSockets, i18n), and complete apps: authentication with JWT, an orders API, a photo gallery with uploads and a chat, and a production setup with Docker (`example/`).
+    * **Examples** :books: : Many small examples by topic, one file per case with its test (routing, request bodies, validation, object mapper, errors, filters, security (API keys, Basic auth, webhook signatures, login throttling), dependency injection, patterns of real APIs (pagination, ETag and `If-Match`, content negotiation, streamed downloads, `202` jobs, idempotency keys, versioning), OpenAPI, Server-Sent Events and WebSockets, scheduled tasks, i18n), and complete apps: authentication with JWT, an orders API, a photo gallery with uploads and a chat, and a production setup with Docker (`example/`).
 
 * 0.0.7:
     * **DATE** :date: : 2024-10-29.

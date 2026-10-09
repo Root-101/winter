@@ -215,6 +215,10 @@ final router = MultiRouter([
 ]);
 ```
 
+Or one router with a parent route per version, whose filters apply to that version only (the
+old one announcing its end with `Deprecation` and `Sunset`):
+[`api_patterns/api_versioning.dart`](../example/api_patterns/lib/api_versioning.dart).
+
 ### Static files
 
 ```dart

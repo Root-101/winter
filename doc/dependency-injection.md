@@ -10,6 +10,9 @@ at start-up, and find them by their type anywhere.
 
 The decisions behind it are in [`DECISIONS.md` §5](../DECISIONS.md#5-dependency-injection).
 
+Examples, one file per case: [`example/di`](../example/di) (layered services and fakes, one
+instance per request, async startup).
+
 ## Minimal example
 
 ```dart
@@ -152,9 +155,7 @@ await Winter.start(); // creates the async ones (di.ready()) before opening the 
 instance exists. Log it at start-up, or look at it when a `find` says a dependency is missing:
 
 ```dart
-logger.info('Dependencies:
-${di.registrations.join('
-')}');
+logger.info('Dependencies:\n${di.registrations.join('\n')}');
 // UserService (instance, created)
 // Database [main] (lazy, not created)
 // Clock (factory)
