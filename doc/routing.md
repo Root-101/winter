@@ -12,6 +12,8 @@ method, a path (with params and regex) and its filters:
 
 The decisions behind it are in [`DECISIONS.md` §9](../DECISIONS.md#9-router-and-filters).
 
+Examples, one file per case: [`example/routing`](../example/routing).
+
 ## Minimal example
 
 ```dart
@@ -292,7 +294,7 @@ socket.send('Hello');
 - The socket is the `WebSocket` of `dart:io`: a stream of the messages of the client (`String`
   or bytes), `add` to send one, `close(code, reason)` to end it, and `sendJson(value)` to send a
   value as JSON with the object mapper. It stays open when the handler returns: keep it in a list
-  to send to it later (a broadcast, see `example/06_files`).
+  to send to it later (a broadcast, see `example/apps/files_gallery`).
 - **A request that isn't a WebSocket handshake** (a plain `GET`) is a **426 Upgrade Required**.
 - **`allowedOrigins`**: browsers don't apply CORS to WebSockets and send the cookies of the user to
   a socket of any website. With a session in a cookie, list the origins of your pages, or any

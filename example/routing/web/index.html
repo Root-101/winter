@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Winter static files</title><link rel="stylesheet" href="style.css"></head>
+<body><h1>Served by Route.static</h1><p>The time: <span id="time"></span></p>
+<script>fetch('/api/time').then((r) => r.json()).then((t) => document.getElementById('time').textContent = t.now);</script>
+</body>
+</html>

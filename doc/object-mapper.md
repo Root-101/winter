@@ -12,6 +12,8 @@ your objects (`request.body<T>()`). The global one is `om` (`Winter.context.obje
 
 The decisions behind it (and why) are in [`DECISIONS.md` §2](../DECISIONS.md#2-object-mapper).
 
+Examples, one file per case: [`example/object_mapper`](../example/object_mapper).
+
 ## Minimal example
 
 ```dart
@@ -385,7 +387,8 @@ Route.patch(
     ..field('name', name.valueOrNull).size(min: 2);
   ```
 
-`example/02_routing` has a `PATCH /users/{id}` built this way.
+[`example/object_mapper/lib/partial_update.dart`](../example/object_mapper/lib/partial_update.dart)
+has a `PATCH` built this way.
 
 ### Rejecting unknown fields
 

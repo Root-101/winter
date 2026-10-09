@@ -94,8 +94,9 @@ test('an invalid email is a 422', () async {
 
 ## Examples
 
-[`example/`](example) has standalone apps: a basic server, routing with services, authentication
-with JWT, i18n, nested DTOs with validation, and a production setup with Docker.
+[`example/`](example) has many small examples by topic, one file per case (routing, request bodies,
+validation, object mapper, OpenAPI, real time, i18n), and complete apps: authentication with JWT,
+an orders API, a photo gallery with uploads and a chat, and a production setup with Docker.
 
 ## More
 
