@@ -5,8 +5,8 @@ REST API. Not at the level of Spring, but with the basics complete, stable and d
 
 **Legend:** 🔴 blocks 1.0 · 🟡 should be in 1.0 · 🟢 after 1.0 (1.x) · ✅ done · ⏸️ on hold
 
-> **Now: the release of `1.0.0-rc.1` (6.4).** Phases 1 to 7 are done (the last one, a second full
-> review, on 2026-10-09). The CI (6.1) comes after 1.0.
+> **Now: `1.0.0-rc.1` is on pub.dev (2026-10-09)**, to be used in a real project before 1.0.0
+> (6.4). Phases 1 to 7 are done. The CI (6.1) comes after 1.0.
 
 The decisions behind each point are in `DECISIONS.md` (§ numbers below), the behavior in the
 tests, and the usage in `doc/`.
@@ -210,10 +210,12 @@ Every release (the rc included) goes through the
 [release review](#release-review-before-every-release) first. The package `winter` already
 exists on pub.dev (0.0.7, the same repository), so each release is a new version of it.
 
-1. [ ] `1.0.0-rc.1` (decided 2026-10-09; `pubspec.yaml`, CHANGELOG and the install commands, which
-   name the version: pub only picks a prerelease when asked). Then: `pana`, publish, tag
-   `v1.0.0-rc.1`, and use it in a real project for a few weeks.
-2. [ ] Fix what comes up and publish `1.0.0`: tag `v1.0.0`, CHANGELOG with the date, announcement
+1. [x] **`1.0.0-rc.1` published on pub.dev on 2026-10-09**: `pana` 160/160, merged into `main`
+   (`release/1.0.0-rc.1`), tag `v1.0.0-rc.1`. pub.dev keeps 0.0.7 as the latest stable until
+   1.0.0, and the install commands name the version (pub only picks a prerelease when asked).
+2. [ ] Use it in a real project for a few weeks (feather-io), and add it to *Powered by Winter*
+   in the README.
+3. [ ] Fix what comes up and publish `1.0.0`: tag `v1.0.0`, CHANGELOG with the date, announcement
    (r/dartlang, Dart Discord, X).
 
 ### 6.1 CI 🟢 (after 1.0)
