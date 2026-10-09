@@ -48,6 +48,8 @@ tests.
 | Configuration                          | Typed environment variables, `.env` files and profiles              | [configuration](doc/configuration.md) |
 | Logging                                | Console and JSON loggers, a request id in every log                 | [logging](doc/logging.md) |
 | i18n                                   | Messages in the language of the request                             | [i18n](doc/i18n.md) |
+| WebSockets                             | Routes that go through the filters before the upgrade, closed on shutdown | [routing](doc/routing.md#websockets) |
+| OpenAPI                                | The document of the routes and Swagger UI, schemas from an example and its `validate()` | [openapi](doc/openapi.md) |
 | Testing                                | The whole pipeline in memory, without ports                         | [testing](doc/testing.md) |
 | Deployment                             | Native executables, Docker, graceful shutdown, health checks        | [deployment](doc/deployment.md) |
 

@@ -364,3 +364,22 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
   `isError`...), `resolve` (null for a code it doesn't know) and `valueOf` (`ArgumentError`). One
   constant per code.
 - `HttpHeader` names are `const`, so they work in `const` maps and in a `switch`.
+
+## 12. OpenAPI
+
+Guide: [`doc/openapi.md`](doc/openapi.md).
+
+- **What Winter knows, it writes by itself**: the paths and methods, the path params (an integer
+  from `[0-9]+`/`\d+`, a `pattern` from another regex), the security of the `AuthFilter`s that run
+  for each route (found by running their `shouldFilter` with a request to it, the way the server
+  does), and the errors as Problem Details (400, 401/403, 404, 415, 422, 429).
+- **The bodies come from examples**, not from annotations nor code generation (the project avoids
+  both): an example is written by the object mapper, so its schema is what the API really sends,
+  and the rules of its `validate()` become the constraints. Those rules are recorded without being
+  evaluated (a `Zone` flag in `addRule`), so describing has no side effects and the async rules
+  never run. Nothing is written twice.
+- **A schema by hand wins** where an example isn't enough (`JsonSchema`, or both in `BodyDocs`):
+  the four ways (example, schema, both, nothing) share one field per body.
+- **OpenAPI 3.1** (JSON Schema 2020-12: `nullable` is a type list). `Route.static` and
+  `Route.websocket` are hidden by default (not operations of an API), `Route.health` documents
+  itself. Swagger UI comes from a CDN at a pinned version, allowed by the CSP of its page.

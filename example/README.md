@@ -15,6 +15,7 @@ This directory contains independent examples demonstrating the core features and
     - b) **Dependency Injection**: Decoupling logic using `di.put()` and `di.find()`.
     - c) **ObjectMapper**: Automatic JSON serialization with `toJson()` and deserialization with a registered `Deserializer`.
     - d) **Exception Handling**: Using `ApiException` (like `NotFoundException`) to handle business errors cleanly.
+    - e) **OpenAPI**: `RouteDocs` on every route, the document at `/api/v1/openapi.json` and Swagger UI at `/api/v1/docs`.
 
 3.  **[03_auth_security](./03_auth_security)**: Complete Authentication and Authorization flow.
     - a) **JWT Integration**: Industry-standard token handling with `dart_jsonwebtoken`.

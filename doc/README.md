@@ -27,6 +27,7 @@ then, this index says which ones exist.
 | [Configuration](configuration.md)                    | ✅    | `Env` (`find`, `require`, types, `.env` and profiles), `ServerConfig`, `WinterContext` |
 | [Logging](logging.md)                                | ✅    | `ConsoleLogger`, `JsonLogger`, fields, the request id, what Winter logs      |
 | [Testing](testing.md)                               | ✅    | `WinterTestClient`, tests without ports, `RequestScope.run`, fake clocks     |
+| [OpenAPI](openapi.md)                               | ✅    | The document of the routes, Swagger UI, schemas from examples and `validate()` |
 | [Deployment](deployment.md)                         | ✅    | `dart compile exe`, Docker, graceful shutdown, isolates, reverse proxy       |
 
 ## Other references

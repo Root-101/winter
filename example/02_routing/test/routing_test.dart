@@ -113,6 +113,40 @@ void main() {
       );
     });
 
+    test(
+      'GET /openapi.json documents the API, /docs shows Swagger UI',
+      () async {
+        final response = await http.get(Uri.parse('$baseUrl/openapi.json'));
+        final document = jsonDecode(response.body) as Map<String, dynamic>;
+        final paths = document['paths'] as Map<String, dynamic>;
+        final getUser = (paths['/api/v1/users/{id}'] as Map)['get'] as Map;
+
+        expect(document['info']['title'], 'Users API');
+        expect(
+          paths.keys,
+          containsAll(['/api/v1/users', '/api/v1/users/{id}']),
+        );
+        expect(getUser['tags'], ['users']);
+        expect(getUser['parameters'][0]['schema'], {'type': 'integer'});
+        expect(
+          (((getUser['responses'] as Map)['200'] as Map)['content']
+              as Map)['application/json']['schema'],
+          {
+            'type': 'object',
+            'properties': {
+              'id': {'type': 'integer'},
+              'name': {'type': 'string'},
+              'nickname': {'type': 'string'},
+            },
+          },
+        );
+
+        final docs = await http.get(Uri.parse('$baseUrl/docs'));
+        expect(docs.statusCode, 200);
+        expect(docs.body, contains('/api/v1/openapi.json'));
+      },
+    );
+
     test('DELETE /users/{id} removes user via service', () async {
       final response = await http.delete(Uri.parse('$baseUrl/users/1'));
       expect(response.statusCode, equals(200));

@@ -7,6 +7,7 @@ export 'src/handler.dart';
 export 'src/http/http.dart';
 export 'src/i18n/i18n.dart';
 export 'src/logging/logger.dart';
+export 'src/openapi/openapi.dart';
 export 'src/multipart.dart' hide multipartBoundary, parseMultipart;
 export 'src/request_entity.dart'
     hide attachRoute, limitBodySize, limitRequestBody, requestFromHttpRequest;
