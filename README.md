@@ -241,6 +241,16 @@ case with its test, and complete apps.
 | [openapi](example/openapi), [realtime](example/realtime), [scheduling](example/scheduling), [i18n](example/i18n) | Swagger UI, Server-Sent Events, a WebSocket chat, cron tasks, translated messages |
 | [apps](example/apps) | Authentication with JWT, an orders API, a photo gallery with uploads and a chat, a production setup with Docker |
 
+## Powered by Winter
+
+The projects that run on Winter:
+
+| Project | What it is |
+|---------|------------|
+| *Yours?* | No project uses Winter yet: if yours does, open a pull request to add it here. |
+
+<!-- One row per project: | [name](link) | What it is, in one line | -->
+
 ## More
 
 - [`DECISIONS.md`](DECISIONS.md): why Winter works the way it does.
