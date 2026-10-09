@@ -16,6 +16,9 @@ Every error of a Winter app is answered the same way: a **Problem Details** (RFC
 
 The decisions behind it are in [`DECISIONS.md` §4](../DECISIONS.md#4-errors).
 
+Examples, one file per case: [`example/errors`](../example/errors) (exceptions of the domain,
+a handler of your own).
+
 ## Minimal example
 
 ```dart
@@ -260,4 +263,6 @@ Compare the decoded JSON, never the text: the responses are indented by default
   `detail` (`$.items[1].price`, the JSON doesn't have the shape of the type: a bug of the client),
   the 422 a field name in each violation (`items[1].price`, the user typed an invalid value in a
   form).
-- **The 401 has no `WWW-Authenticate`** unless you add it (planned for the security review).
+- **A 401 thrown by hand has no `WWW-Authenticate`**, which RFC 9110 requires: the one of
+  `AuthFilter` and `requestPrincipal` has it; yours needs
+  `UnauthorizedException(headers: {'WWW-Authenticate': 'Bearer'})`.

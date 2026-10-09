@@ -10,6 +10,9 @@ session cookie, an API key) and saves who made the request. From there the frame
 
 The decisions behind it are in [`DECISIONS.md` §8](../DECISIONS.md#8-security).
 
+Examples, one file per case: [`example/security`](../example/security) (API keys, Basic auth,
+webhook signatures, CORS with cookies, login throttling, resource ownership).
+
 ## Minimal example
 
 ```dart

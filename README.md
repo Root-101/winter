@@ -96,8 +96,10 @@ test('an invalid email is a 422', () async {
 ## Examples
 
 [`example/`](example) has many small examples by topic, one file per case (routing, request bodies,
-validation, object mapper, OpenAPI, real time, i18n), and complete apps: authentication with JWT,
-an orders API, a photo gallery with uploads and a chat, and a production setup with Docker.
+validation, object mapper, errors, filters, security, dependency injection, patterns of real APIs
+like pagination, ETags and idempotency keys, OpenAPI, real time, scheduled tasks, i18n), and
+complete apps: authentication with JWT, an orders API, a photo gallery with uploads and a chat, and
+a production setup with Docker.
 
 ## More
 

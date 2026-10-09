@@ -43,6 +43,8 @@ Every topic of `example/` (and every app of `example/apps/`) is a package of its
   a real one, on a port no other test file uses.
 - Never wait on the real clock: inject one (`clock:`).
 - Keep the coverage: every behavior has a test, and every bug a test that failed before the fix.
+- One behavior, one test: before adding a test, look for one that already checks it, and name
+  the test after what it checks (never `Test #1`).
 
 ## Translations
 
@@ -61,3 +63,7 @@ Winter's validation messages live in `lib/src/i18n/*.i18n.yaml`. To add a langua
 
 `.pubignore` decides what goes into the package; pub ignores `.gitignore` when it exists, so a new
 entry of `.gitignore` goes there too. Check it with `fvm dart pub publish --dry-run`.
+
+Before every release, run the whole
+[release review of the roadmap](ROADMAP.md#release-review-before-every-release): the roadmap,
+the API, security, the tests, the examples, the docs and the checks.
