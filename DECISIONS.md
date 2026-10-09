@@ -389,7 +389,9 @@ Guide: [`doc/openapi.md`](doc/openapi.md).
   the four ways (example, schema, both, nothing) share one field per body.
 - **OpenAPI 3.1** (JSON Schema 2020-12: `nullable` is a type list). `Route.static` and
   `Route.websocket` are hidden by default (not operations of an API), `Route.health` documents
-  itself. Swagger UI comes from a CDN at a pinned version, allowed by the CSP of its page.
+  itself. Swagger UI comes from a CDN at a pinned version (`swagger-ui-dist` 5.17.14, written in
+  `doc/openapi.md`), allowed by the CSP of its page: not configurable, so the page never changes
+  by itself.
 
 ## 13. Scheduled tasks
 

@@ -206,9 +206,11 @@ router
   (or in a test). It's built by the first request to `/openapi.json`.
 - With a `basePath`, the routes added with `addRoute` take it too: give Swagger the full URL
   (`Route.swaggerUi(specUrl: '/api/v1/openapi.json')`).
-- Swagger UI is loaded by the browser from a CDN (unpkg), at a fixed version; its page allows it in
-  its `Content-Security-Policy`. Protect both routes with `filterConfig:` if the document is not
-  public.
+- Swagger UI is loaded by the browser from a CDN: `swagger-ui-dist` **5.17.14** from unpkg. The
+  version is fixed on purpose, so the page never changes by itself (a new release, or a
+  compromised package, never reaches your app without a new version of Winter), and it is not
+  configurable; its page allows that CDN in its `Content-Security-Policy`. Protect both routes
+  with `filterConfig:` if the document is not public.
 - `OpenApi(...).toJson()` gives the document as a `Map`: write it to a file for a client generator.
 
 ## Common cases

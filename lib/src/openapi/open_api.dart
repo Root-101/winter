@@ -490,7 +490,8 @@ RequestHandler swaggerUiHandler({
   );
 }
 
-/// The version of Swagger UI of the page (pinned, so the page never changes by itself)
+/// The version of Swagger UI of the page (pinned, so the page never changes by itself). Keep it
+/// equal to the one named in `doc/openapi.md` and in the dartdoc of `Route.swaggerUi`
 const String _swaggerUiVersion = '5.17.14';
 
 String _swaggerPage(String specUrl, String title) =>
