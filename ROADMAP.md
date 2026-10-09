@@ -194,7 +194,17 @@ The [release review](#release-review-before-every-release), the first time.
   `Winter.timestamp` → `Winter.startedAt`; `WinterContext.timestamp` removed (unused). Kept: the
   seconds of a header as an `int` everywhere (`maxAge`, `retryAfter`, `hstsMaxAge`), and
   `Scheduler.isStarted` vs `ScheduledTask.isRunning` (two different things).
-- [ ] Security.
+- [x] **Security:** probed against a real server with raw requests over a socket (path traversal
+  also encoded, `.env`, `CON`, absolute URIs, CRLF and non-ASCII in response headers, a 500,
+  bodies over the limit with `Content-Length` and chunked, deep and invalid JSON, malformed forms
+  and multipart, a 100 KB part header, 50 000 parts, huge and many headers, CORS, WebSocket
+  origins, the logs). Found and fixed: **a body rejected half read** (a chunked body over
+  `maxBodySize`, a part header over its limit) **closed the connection without the 413/400**,
+  and nothing was logged: cancelling the body of `dart:io` drops the connection. Now the rest is
+  read and discarded, as `dart:io` does with a body nobody reads; a test on the real server.
+  Documented (the job of the app or of a proxy): open redirects, `%2F` decoded inside a path
+  param, a request with both `Content-Length` and `Transfer-Encoding`, 20 000 headers accepted, a
+  body that never ends. The runtime dependencies are current, without advisories.
 - [x] **Tests:** from 1325 tests in 94 files to 1154 in 76, and the coverage from 98.4 % to
   99.7 % (it had dropped with OpenAPI). Merged or removed the overlapping ones: the old
   `object_mapper_test` (stale names: `Serializable`, `StateError`), five validation files, three
