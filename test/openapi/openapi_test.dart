@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:test/test.dart';
+import 'package:winter/src/context/validation/validation.dart'
+    show validationRulesOf;
 import 'package:winter/winter.dart';
 
 enum _Plan { free, pro }
@@ -136,6 +138,164 @@ void main() {
       expect(JsonSchema.boolean().toJson(), {'type': 'boolean'});
     });
 
+    test('every option of every constructor is written', () {
+      expect(
+        JsonSchema.string(
+          minLength: 1,
+          maxLength: 9,
+          pattern: '^a',
+          format: 'email',
+          description: 'd',
+          example: 'a@b.co',
+        ).toJson(),
+        {
+          'type': 'string',
+          'minLength': 1,
+          'maxLength': 9,
+          'pattern': '^a',
+          'format': 'email',
+          'description': 'd',
+          'example': 'a@b.co',
+        },
+      );
+      expect(
+        JsonSchema.integer(
+          minimum: 1,
+          maximum: 9,
+          exclusiveMinimum: 0,
+          exclusiveMaximum: 10,
+          enumValues: [1, 9],
+          description: 'd',
+          example: 5,
+          nullable: true,
+        ).toJson(),
+        {
+          'type': ['integer', 'null'],
+          'minimum': 1,
+          'maximum': 9,
+          'exclusiveMinimum': 0,
+          'exclusiveMaximum': 10,
+          'enum': [1, 9],
+          'description': 'd',
+          'example': 5,
+        },
+      );
+      expect(
+        JsonSchema.number(
+          maximum: 9,
+          exclusiveMinimum: 0,
+          exclusiveMaximum: 10,
+          description: 'd',
+          example: 1.5,
+        ).toJson(),
+        {
+          'type': 'number',
+          'maximum': 9,
+          'exclusiveMinimum': 0,
+          'exclusiveMaximum': 10,
+          'description': 'd',
+          'example': 1.5,
+        },
+      );
+      expect(JsonSchema.boolean(description: 'd', nullable: true).toJson(), {
+        'type': ['boolean', 'null'],
+        'description': 'd',
+      });
+      expect(
+        JsonSchema.array(
+          JsonSchema.any(),
+          minItems: 1,
+          maxItems: 3,
+          description: 'd',
+        ).toJson(),
+        {
+          'type': 'array',
+          'items': <String, Object?>{},
+          'minItems': 1,
+          'maxItems': 3,
+          'description': 'd',
+        },
+      );
+      expect(
+        JsonSchema.object(
+          {},
+          additionalProperties: false,
+          description: 'd',
+        ).toJson(),
+        {
+          'type': 'object',
+          'properties': <String, Object?>{},
+          'additionalProperties': false,
+          'description': 'd',
+        },
+      );
+      expect(JsonSchema.map(JsonSchema.any(), description: 'd').toJson(), {
+        'type': 'object',
+        'additionalProperties': <String, Object?>{},
+        'description': 'd',
+      });
+    });
+
+    test('withRules turns every rule into its keyword', () {
+      final JsonSchema schema = JsonSchema.object({
+        'website': JsonSchema.string(),
+        'id': JsonSchema.string(),
+        'above': JsonSchema.number(),
+        'below': JsonSchema.number(),
+        'positive': JsonSchema.number(),
+        'zeroOrMore': JsonSchema.number(),
+        'negative': JsonSchema.number(),
+        'zeroOrLess': JsonSchema.number(),
+        'tags': JsonSchema.array(JsonSchema.string()),
+        'prices': JsonSchema.map(JsonSchema.integer()),
+        'code': JsonSchema.string(),
+        'upTo': JsonSchema.number(),
+        'rates': JsonSchema.map(
+          JsonSchema.object({'cents': JsonSchema.integer()}),
+        ),
+      });
+      final Map<String, Object?> properties =
+          schema
+                  .withRules(validationRulesOf(_EveryRule()), ObjectMapper())
+                  .toJson()['properties']
+              as Map<String, Object?>;
+
+      expect(properties, {
+        'website': {'type': 'string', 'format': 'uri'},
+        'id': {'type': 'string', 'format': 'uuid'},
+        'above': {'type': 'number', 'exclusiveMinimum': 0},
+        'below': {'type': 'number', 'exclusiveMaximum': 10},
+        'positive': {'type': 'number', 'exclusiveMinimum': 0},
+        'zeroOrMore': {'type': 'number', 'minimum': 0},
+        'negative': {'type': 'number', 'exclusiveMaximum': 0},
+        'zeroOrLess': {'type': 'number', 'maximum': 0},
+        'tags': {
+          'type': 'array',
+          'items': {'type': 'string'},
+          'minItems': 1,
+          'maxItems': 5,
+        },
+        'prices': {
+          'type': 'object',
+          'additionalProperties': {'type': 'integer'},
+          'minProperties': 1,
+        },
+        'code': {'type': 'string', 'minLength': 2},
+        'upTo': {'type': 'number', 'maximum': 10},
+        // rates["eur"].cents: the rule of a value of the map
+        'rates': {
+          'type': 'object',
+          'additionalProperties': {
+            'type': 'object',
+            'properties': {
+              'cents': {'type': 'integer', 'minimum': 1},
+            },
+          },
+        },
+      });
+      expect(schema.toString(), startsWith('JsonSchema{type: object'));
+    });
+
     test('fromExample infers types, objects, arrays and date-times', () {
       expect(
         JsonSchema.fromExample({
@@ -163,6 +323,8 @@ void main() {
           },
         },
       );
+      // A value that isn't JSON says nothing of its type
+      expect(JsonSchema.fromExample(Object()).toJson(), isEmpty);
     });
   });
 
@@ -488,6 +650,40 @@ void main() {
       expect((document['paths'] as Map), isNot(contains('/hidden')));
     });
 
+    test('an API key, another HTTP scheme, and a param without a regex', () {
+      Route protected(String path, String challenge) => Route.get(
+        path: path,
+        filterConfig: FilterConfig([AuthFilter(challenge: challenge)]),
+        handler: (request) => ResponseEntity.ok(),
+      );
+      final Map<String, Object?> json = OpenApi(
+        title: 'Keys',
+        version: '1',
+        router: WinterRouter(
+          routes: [
+            protected('/header/{name}', 'ApiKey header="X-Key"'),
+            protected('/digest', 'Digest realm="api"'),
+          ],
+        ),
+      ).toJson();
+      final Map schemes = (json['components'] as Map)['securitySchemes'] as Map;
+      final Map operation =
+          ((json['paths'] as Map)['/header/{name}'] as Map)['get'] as Map;
+
+      expect(schemes['apiKeyAuth'], {
+        'type': 'apiKey',
+        'in': 'header',
+        'name': 'X-Key',
+      });
+      expect(schemes['digestAuth'], {'type': 'http', 'scheme': 'digest'});
+      expect((operation['parameters'] as List).single, {
+        'name': 'name',
+        'in': 'path',
+        'required': true,
+        'schema': {'type': 'string'},
+      });
+    });
+
     test('a RateLimiterFilter adds a 429', () {
       expect((operation('/limited', 'get')['responses'] as Map)['429'], {
         r'$ref': '#/components/responses/TooManyRequests',
@@ -607,4 +803,29 @@ void main() {
       );
     });
   });
+}
+
+/// A rule of each kind that withRules turns into a keyword
+class _EveryRule implements Validatable {
+  @override
+  ConstraintValidatorContext validate() => ConstraintValidatorContext()
+    ..field<String?>('website', null).url()
+    ..field<String?>('id', null).uuid()
+    ..field<num?>('above', null).min(0, inclusive: false)
+    ..field<num?>('below', null).max(10, inclusive: false)
+    ..field<num?>('positive', null).positive()
+    ..field<num?>('zeroOrMore', null).positiveOrZero()
+    ..field<num?>('negative', null).negative()
+    ..field<num?>('zeroOrLess', null).negativeOrZero()
+    ..field<List<String>?>('tags', null).notEmpty().size(max: 5)
+    ..field<Map<String, int>?>('prices', null).notEmpty()
+    ..field<String?>('code', null).size(min: 2)
+    ..field<num?>('upTo', null).max(10)
+    ..field('rates', {'eur': _Price()}).validEach();
+}
+
+class _Price implements Validatable {
+  @override
+  ConstraintValidatorContext validate() =>
+      ConstraintValidatorContext()..field<int?>('cents', null).min(1);
 }

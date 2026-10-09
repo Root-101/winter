@@ -142,6 +142,9 @@ class _OpenApiBuilder {
   static final RegExp _param = RegExp(r'{([^}|]+)(?:\|([^}]*))?}');
   static final RegExp _regexChars = RegExp(r'[*+?()\[\]|\\^$]');
 
+  /// `ApiKey header="X-API-Key"` (or `query="key"`, `cookie="key"`): where the key goes
+  static final RegExp _apiKeyIn = RegExp(r'(header|query|cookie)="([^"]*)"');
+
   /// `/users/{id|[0-9]+}` → `/users/{id}`; null when a regex is outside a param (`/files/.*`)
   static String? _openApiPath(String path) {
     final String openApiPath = path.replaceAllMapped(
@@ -330,7 +333,8 @@ class _OpenApiBuilder {
   }
 
   /// The security scheme of a `WWW-Authenticate` challenge (`Bearer`, `Basic realm="api"`,
-  /// `Cookie name="session"`), added to the components; its name
+  /// `Cookie name="session"`, `ApiKey header="X-API-Key"`, any other HTTP scheme), added to the
+  /// components; its name
   String _scheme(String challenge) {
     final String type = challenge.split(' ').first.toLowerCase();
     final (String name, Map<String, Object?> scheme) = switch (type) {
@@ -343,6 +347,14 @@ class _OpenApiBuilder {
           'in': 'cookie',
           'name':
               RegExp(r'name="([^"]*)"').firstMatch(challenge)?[1] ?? 'session',
+        },
+      ),
+      'apikey' => (
+        'apiKeyAuth',
+        {
+          'type': 'apiKey',
+          'in': _apiKeyIn.firstMatch(challenge)?[1] ?? 'header',
+          'name': _apiKeyIn.firstMatch(challenge)?[2] ?? 'X-API-Key',
         },
       ),
       _ => ('${type}Auth', {'type': 'http', 'scheme': type}),
