@@ -5,9 +5,8 @@ REST API. Not at the level of Spring, but with the basics complete, stable and d
 
 **Legend:** 🔴 blocks 1.0 · 🟡 should be in 1.0 · 🟢 after 1.0 (1.x) · ✅ done · ⏸️ on hold
 
-> **Decision (2026-10-08): no release for now.** Everything still pending is finished first (4.3
-> and the reorganization of `example/`, both done), then a second full review (phase 7), and only
-> then the release (6.4). The CI (6.1) stays postponed.
+> **Now: the release of `1.0.0-rc.1` (6.4).** Phases 1 to 7 are done (the last one, a second full
+> review, on 2026-10-09). The CI (6.1) comes after 1.0.
 
 The decisions behind each point are in `DECISIONS.md` (§ numbers below), the behavior in the
 tests, and the usage in `doc/`.
@@ -143,13 +142,35 @@ documented. The behavior of each one is in its `*_behavior_test.dart`.
   415 no longer echoes a long `Content-Type`; slow clients and header sizes are a proxy's job,
   `doc/security.md`); benchmarks published (`doc/benchmarks.md`); coverage 99.6 %.
 
+### Phase 7: second full review ✅
+
+The [release review](#release-review-before-every-release), the first time (2026-10-09).
+
+- **Roadmap:** condensed, the pending points at the end.
+- **Code and API:** the 971 public elements of `dart doc` read by class. `RateLimiter` takes
+  `maxRequests:` and `window:` like its filter; `Winter.timestamp` → `startedAt`;
+  `WinterContext.timestamp` removed.
+- **Security:** a real server probed with raw requests. Fixed: a body rejected half read (a
+  chunked body over `maxBodySize`, a part header over its limit) closed the connection without
+  the 413/400; now the rest is read and discarded. Documented: open redirects, `%2F` in a path
+  param, `Content-Length` with `Transfer-Encoding`.
+- **Tests:** from 1325 tests in 94 files to 1155 in 76, without overlaps; coverage from 98.4 % to
+  99.7 %. Fixed: OpenAPI wrote an `ApiKey` challenge as an HTTP scheme that doesn't exist, and
+  `WinterTestClient` sent a `List<int>` body as bytes (only a `Uint8List` is bytes now).
+- **Examples:** five new topics, 23 cases (`api_patterns`, `security`, `filters`, `errors`, `di`).
+- **Documentation:** every snippet analyzed against the API, outdated sentences fixed, each guide
+  linked to its examples, `doc/comparison.md`, the README rewritten as a walk-through.
+- **Checks:** format, analyze, tests, examples, `dart doc`, the publish dry run, and `pana`
+  **160/160** on Linux (Docker). The benchmarks showed no regression; refreshing
+  `doc/benchmarks.md` needs a quiet machine.
+
 ---
 
 ## Release review (before every release)
 
-A review of the whole project from zero, run before each release (and as phase 7 before the
-first one). Each step is done on the code as it is, not from memory: read it, run it, fix what
-fails, and write down here what was found.
+A review of the whole project from zero, run before each release (the first time as phase 7).
+Each step is done on the code as it is, not from memory: read it, run it, fix what fails, and
+write down here what was found.
 
 1. **Roadmap.** Short and current: what is done in one line each, what is pending at the end.
    Move anything finished out of *Pending*; nothing in it that nobody plans to do.
@@ -182,60 +203,6 @@ fails, and write down here what was found.
 ---
 
 ## Pending
-
-### Phase 7: second full review 🔴
-
-The [release review](#release-review-before-every-release), the first time.
-
-- [x] Roadmap: condensed, the pending points at the end.
-- [x] **Code and API:** the 971 public elements of the `dart doc` output read by class. Everything
-  exported is meant to be (`internalServerErrorResponse` and `QueryParam` on purpose). Changed:
-  `RateLimiter(5, window)` → `RateLimiter(maxRequests: 5, window: ...)`, like its filter;
-  `Winter.timestamp` → `Winter.startedAt`; `WinterContext.timestamp` removed (unused). Kept: the
-  seconds of a header as an `int` everywhere (`maxAge`, `retryAfter`, `hstsMaxAge`), and
-  `Scheduler.isStarted` vs `ScheduledTask.isRunning` (two different things).
-- [x] **Security:** probed against a real server with raw requests over a socket (path traversal
-  also encoded, `.env`, `CON`, absolute URIs, CRLF and non-ASCII in response headers, a 500,
-  bodies over the limit with `Content-Length` and chunked, deep and invalid JSON, malformed forms
-  and multipart, a 100 KB part header, 50 000 parts, huge and many headers, CORS, WebSocket
-  origins, the logs). Found and fixed: **a body rejected half read** (a chunked body over
-  `maxBodySize`, a part header over its limit) **closed the connection without the 413/400**,
-  and nothing was logged: cancelling the body of `dart:io` drops the connection. Now the rest is
-  read and discarded, as `dart:io` does with a body nobody reads; a test on the real server.
-  Documented (the job of the app or of a proxy): open redirects, `%2F` decoded inside a path
-  param, a request with both `Content-Length` and `Transfer-Encoding`, 20 000 headers accepted, a
-  body that never ends. The runtime dependencies are current, without advisories.
-- [x] **Tests:** from 1325 tests in 94 files to 1154 in 76, and the coverage from 98.4 % to
-  99.7 % (it had dropped with OpenAPI). Merged or removed the overlapping ones: the old
-  `object_mapper_test` (stale names: `Serializable`, `StateError`), five validation files, three
-  of `AuthFilter`, six of the filter chain into `filters_pipeline_test`, `copy_with`, `body_cache`,
-  `bad_path` (a real server for what `router_config` checks in memory), `params`, `route_key`,
-  the two identical basic routing files, `authorization_rules` (stale "authority", `andd()`),
-  `env`, and the CORS cases of the behavior tests. New tests for every option of `JsonSchema`
-  and `withRules`, `json.object()` with the global mapper, `PatchValue` equality, a `fromJson`
-  that changes its map, `ResponseEntity.sse(headers:)`. Found and fixed:
-  - OpenAPI wrote `AuthFilter(challenge: 'ApiKey header="X-API-Key"')` as an HTTP scheme
-    `apikey` (it doesn't exist); now `{type: apiKey, in: header, name: X-API-Key}`.
-  - `WinterTestClient` sent a `List<int>` body as raw bytes, while `ResponseEntity` writes it as
-    JSON; now only a `Uint8List` is bytes, in both.
-  - Not covered on purpose: defensive code, races, other platforms, the `onPause` of an SSE
-    stream and a local time skipped by daylight saving.
-- [x] **Examples:** five new topics with 23 cases: `api_patterns` (pagination, ETag/`If-Match`,
-  content negotiation, streamed downloads, `202` jobs, idempotency keys, versioning), `security`
-  (API keys, Basic auth, webhook signatures, CORS with cookies, login throttling, ownership),
-  `filters`, `errors` and `di`. Every example package passes.
-- [x] **Documentation:** every Dart snippet of `doc/` and the README extracted and analyzed
-  against the API (no wrong name; one snippet with a broken string fixed in
-  `dependency-injection.md`); outdated sentences fixed (forms "not supported yet", the 401
-  without `WWW-Authenticate`, `X-Request-Id` "planned"); `doc/README.md` without the "planned"
-  column and with the examples of each guide; each guide links its new example topic, and
-  `requests-and-responses.md` has the patterns of `api_patterns` with snippets.
-- [x] **Checks:** format, analyze, tests, every example, `dart doc` and the publish dry run pass.
-  The HTTP benchmark, before and after the change of the body (5 runs each, AOT): the same
-  throughput within the noise (~4 930 vs ~4 860 req/s); that day `dart:io` itself gave half of
-  `doc/benchmarks.md`, so the absolute numbers aren't comparable. `pana` 0.23.19 on Linux (the
-  `dart:stable` image, Dart 3.13.5, a clone of the repository): **160/160**, 5 of 6 platforms
-  (not the web: `dart:io`). Left: the benchmarks on a quiet machine, to refresh `doc/benchmarks.md`.
 
 ### 6.4 Release
 
