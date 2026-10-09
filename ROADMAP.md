@@ -176,7 +176,7 @@ fails, and write down here what was found.
    every feature.
 7. **Checks** (the ones of 6.1, by hand): `dart format --set-exit-if-changed .`, `dart analyze`,
    `dart test`, the tests of every example, `dart doc --dry-run` without warnings,
-   `dart pub publish --dry-run`, `pana` (on Linux), the generated `messages*.g.dart` up to date,
+   `dart pub publish --dry-run`, `pana` (on Linux: in Docker, `dart:stable`, from a clone of the repository; Windows fails), the generated `messages*.g.dart` up to date,
    the benchmarks without a regression (`doc/benchmarks.md`).
 
 ---
@@ -230,11 +230,12 @@ The [release review](#release-review-before-every-release), the first time.
   without `WWW-Authenticate`, `X-Request-Id` "planned"); `doc/README.md` without the "planned"
   column and with the examples of each guide; each guide links its new example topic, and
   `requests-and-responses.md` has the patterns of `api_patterns` with snippets.
-- [ ] **Checks:** format, analyze, tests, every example, `dart doc` and the publish dry run pass.
+- [x] **Checks:** format, analyze, tests, every example, `dart doc` and the publish dry run pass.
   The HTTP benchmark, before and after the change of the body (5 runs each, AOT): the same
   throughput within the noise (~4 930 vs ~4 860 req/s); that day `dart:io` itself gave half of
-  `doc/benchmarks.md`, so the absolute numbers aren't comparable. Left for the release: `pana`
-  (it needs Linux: only a Docker distro here) and the benchmarks on a quiet machine.
+  `doc/benchmarks.md`, so the absolute numbers aren't comparable. `pana` 0.23.19 on Linux (the
+  `dart:stable` image, Dart 3.13.5, a clone of the repository): **160/160**, 5 of 6 platforms
+  (not the web: `dart:io`). Left: the benchmarks on a quiet machine, to refresh `doc/benchmarks.md`.
 
 ### 6.4 Release
 
