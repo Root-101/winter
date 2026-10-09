@@ -86,6 +86,9 @@ class Winter {
   /// CORS and the security headers of the server
   final SecurityConfig securityConfig;
 
+  /// The scheduled tasks that run with the server (stopped when it closes), if any
+  final Scheduler? scheduler;
+
   final HttpServer _rawServer;
 
   ///Requests being handled right now, to wait for them on a graceful close
@@ -115,6 +118,7 @@ class Winter {
     required this.router,
     required this.globalFilterConfig,
     required this.securityConfig,
+    required this.scheduler,
     required this._rawServer,
     required this._inFlightRequests,
     required this._webSockets,
@@ -145,12 +149,17 @@ class Winter {
   /// [globalFilterConfig] runs on every request, sorted by `order`, before the filters of the
   /// route. The asynchronous dependencies (`di.putLazyAsync`) are created before the port is
   /// opened (`di.ready()`): if one fails, the server doesn't start.
+  ///
+  /// [scheduler] (or the one registered in `di`; none by default) is started once the port is
+  /// open, and stopped when the server closes: a graceful close waits for its tasks in progress
+  /// like for the requests.
   static Future<Winter> start({
     WinterContext? context,
     ServerConfig? config,
     BaseRouter? router,
     FilterConfig? globalFilterConfig,
     SecurityConfig? securityConfig,
+    Scheduler? scheduler,
   }) async {
     if (isRunning) {
       throw StateError('Server already started');
@@ -194,6 +203,12 @@ class Winter {
     restores.add(
       _putRestorable<SecurityConfig>(injection, nonNullSecurityConfig),
     );
+
+    final Scheduler? nullableScheduler =
+        scheduler ?? injection.tryFind<Scheduler>();
+    if (nullableScheduler != null) {
+      restores.add(_putRestorable<Scheduler>(injection, nullableScheduler));
+    }
 
     FilterConfig nonNullGlobalFilterConfig = _globalFilters(
       nonNullSecurityConfig,
@@ -269,6 +284,7 @@ class Winter {
       router: nonNullRouter,
       globalFilterConfig: nonNullGlobalFilterConfig,
       securityConfig: nonNullSecurityConfig,
+      scheduler: nullableScheduler,
       rawServer: rawServer,
       inFlightRequests: inFlightRequests,
       webSockets: webSockets,
@@ -282,6 +298,9 @@ class Winter {
     }
 
     warnLocalesWithoutWinterMessages(_context.localeConfig);
+
+    ///After the port is open: a task never runs for a server that failed to start
+    nullableScheduler?.start();
 
     final endTime = DateTime.now();
     double timeDiff = endTime.difference(startTime).inMilliseconds / 1000;
@@ -306,6 +325,11 @@ class Winter {
       ///An upgraded connection is not the server's any more: close the WebSockets ourselves
       current._webSockets.closeAll();
 
+      ///No new runs from now on; the ones in progress are waited for like the requests
+      final Future<void>? tasksDone = current.scheduler?.stop(
+        timeout: force ? Duration.zero : timeout,
+      );
+
       if (force) {
         ///Not awaited: if the server is already closing, this future never completes
         ///(the active connections are destroyed synchronously anyway)
@@ -329,6 +353,7 @@ class Winter {
             },
           );
         }
+        await tasksDone;
       }
       for (final subscription in current._signalSubscriptions) {
         await subscription.cancel();
@@ -347,7 +372,7 @@ class Winter {
   }
 
   ///Graceful shutdown, called on SIGINT/SIGTERM (see [ServerConfig.handleSignals]):
-  ///waits for the requests in progress (up to [ServerConfig.shutdownTimeout]),
+  ///waits for the requests and the scheduled tasks in progress (up to [ServerConfig.shutdownTimeout]),
   ///then calls [ServerConfig.onShutdown], and then disposes the dependencies
   ///(`di.disposeAll()`, their `onDispose` in reverse order of registration).
   ///

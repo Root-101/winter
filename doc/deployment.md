@@ -70,8 +70,9 @@ an error report leads to its logs. See [logging](logging.md).
 
 On `SIGTERM` (`docker stop`, a new deploy, Kubernetes scaling down) Winter:
 
-1. Stops accepting connections.
-2. Waits for the requests in progress, up to `ServerConfig.shutdownTimeout` (10 s by default).
+1. Stops accepting connections, and stops the [scheduled tasks](scheduling.md).
+2. Waits for the requests and the runs of scheduled tasks in progress, up to
+   `ServerConfig.shutdownTimeout` (10 s by default).
 3. Calls `onShutdown`.
 4. Runs the `onDispose` of the dependencies (`di.disposeAll()`), in reverse order: the database
    pool closes after everything that uses it.
