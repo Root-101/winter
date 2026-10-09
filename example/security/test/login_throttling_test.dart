@@ -13,10 +13,14 @@ void main() {
     now = DateTime.utc(2026, 10, 9, 12);
     client = WinterTestClient.build(
       router: router(
-        perIp: RateLimiter(20, const Duration(minutes: 1), clock: () => now),
+        perIp: RateLimiter(
+          maxRequests: 20,
+          window: const Duration(minutes: 1),
+          clock: () => now,
+        ),
         perAccount: RateLimiter(
-          3,
-          const Duration(minutes: 15),
+          maxRequests: 3,
+          window: const Duration(minutes: 15),
           clock: () => now,
         ),
         checkPassword: (login) => login.password == 'right',

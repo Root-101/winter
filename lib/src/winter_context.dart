@@ -15,9 +15,6 @@ import 'package:winter/winter.dart';
 ///
 /// {@category Server}
 class WinterContext {
-  ///When was this context created
-  final DateTime timestamp;
-
   ObjectMapper _objectMapper;
 
   /// The object mapper (`om`)
@@ -56,8 +53,7 @@ class WinterContext {
     Env? env,
     WinterLogger? logger,
     LocaleConfig? localeConfig,
-  }) : timestamp = DateTime.now(),
-       _logger = logger ?? const ConsoleLogger(),
+  }) : _logger = logger ?? const ConsoleLogger(),
        _objectMapper = objectMapper ?? ObjectMapper(),
        _exceptionHandler = exceptionHandler ?? SimpleExceptionHandler(),
        _dependencyInjection = dependencyInjection ?? DependencyInjection(),

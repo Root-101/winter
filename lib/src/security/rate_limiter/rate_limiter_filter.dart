@@ -25,7 +25,7 @@ class RateLimiterFilter extends Filter {
     required Duration window,
     this.clientId = defaultClientId,
     this.onLimited = defaultLogRateLimiter,
-  }) : rateLimiter = RateLimiter(maxRequests, window);
+  }) : rateLimiter = RateLimiter(maxRequests: maxRequests, window: window);
 
   /// A filter over [rateLimiter]: a [RateLimiter] with another store (shared by several
   /// instances) or clock

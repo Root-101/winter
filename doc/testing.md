@@ -150,7 +150,11 @@ Code that depends on the time takes a clock, so a test moves it instead of waiti
 
 ```dart
 var now = DateTime.utc(2026);
-final limiter = RateLimiter(1, const Duration(minutes: 1), clock: () => now);
+final limiter = RateLimiter(
+  maxRequests: 1,
+  window: const Duration(minutes: 1),
+  clock: () => now,
+);
 
 await limiter.check('ann');
 expect((await limiter.check('ann')).allowed, isFalse);
