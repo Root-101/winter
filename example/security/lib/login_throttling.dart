@@ -66,8 +66,11 @@ Future<void> main() async {
   Winter.context.setUp(objectMapper: objectMapper);
   await Winter.start(
     router: router(
-      perIp: RateLimiter(20, const Duration(minutes: 1)),
-      perAccount: RateLimiter(5, const Duration(minutes: 15)),
+      perIp: RateLimiter(maxRequests: 20, window: const Duration(minutes: 1)),
+      perAccount: RateLimiter(
+        maxRequests: 5,
+        window: const Duration(minutes: 15),
+      ),
       checkPassword: (login) => login.password == 'correct horse',
     ),
   );

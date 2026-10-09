@@ -188,7 +188,12 @@ fails, and write down here what was found.
 The [release review](#release-review-before-every-release), the first time.
 
 - [x] Roadmap: condensed, the pending points at the end.
-- [ ] Code and API.
+- [x] **Code and API:** the 971 public elements of the `dart doc` output read by class. Everything
+  exported is meant to be (`internalServerErrorResponse` and `QueryParam` on purpose). Changed:
+  `RateLimiter(5, window)` → `RateLimiter(maxRequests: 5, window: ...)`, like its filter;
+  `Winter.timestamp` → `Winter.startedAt`; `WinterContext.timestamp` removed (unused). Kept: the
+  seconds of a header as an `int` everywhere (`maxAge`, `retryAfter`, `hstsMaxAge`), and
+  `Scheduler.isStarted` vs `ScheduledTask.isRunning` (two different things).
 - [ ] Security.
 - [x] **Tests:** from 1325 tests in 94 files to 1154 in 76, and the coverage from 98.4 % to
   99.7 % (it had dropped with OpenAPI). Merged or removed the overlapping ones: the old

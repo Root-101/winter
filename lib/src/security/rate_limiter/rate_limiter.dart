@@ -4,7 +4,10 @@ import 'dart:collection';
 /// [maxRequests] requests of the same id within any rolling [window].
 ///
 /// ```dart
-/// final limiter = RateLimiter(100, const Duration(minutes: 1));
+/// final limiter = RateLimiter(
+///   maxRequests: 100,
+///   window: const Duration(minutes: 1),
+/// );
 /// final result = await limiter.check(clientIp);
 /// if (!result.allowed) throw TooManyRequestsException(retryAfter: result.retryAfter.inSeconds);
 /// ```
@@ -30,9 +33,9 @@ class RateLimiter {
 
   /// A limiter of [maxRequests] (1 or more) per [window] (positive): an [ArgumentError] otherwise.
   /// Without [store], an [InMemoryRateLimiterStore].
-  RateLimiter(
-    this.maxRequests,
-    this.window, {
+  RateLimiter({
+    required this.maxRequests,
+    required this.window,
     RateLimiterStore? store,
     DateTime Function()? clock,
   }) : store = store ?? InMemoryRateLimiterStore(),

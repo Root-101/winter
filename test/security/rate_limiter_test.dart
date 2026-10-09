@@ -16,7 +16,7 @@ void main() {
   setUp(() => clock = _FakeClock());
 
   RateLimiter limiter(int maxRequests, Duration window) =>
-      RateLimiter(maxRequests, window, clock: clock.call);
+      RateLimiter(maxRequests: maxRequests, window: window, clock: clock.call);
 
   group('RateLimiter (Class)', () {
     Future<bool> allowed(RateLimiter limiter, String id) async =>
@@ -119,8 +119,8 @@ void main() {
     test('reset forgets one id, clear forgets all of them', () async {
       final store = InMemoryRateLimiterStore();
       final rateLimiter = RateLimiter(
-        1,
-        const Duration(minutes: 1),
+        maxRequests: 1,
+        window: const Duration(minutes: 1),
         store: store,
         clock: clock.call,
       );
@@ -140,12 +140,16 @@ void main() {
       'a limit or a window that would break every request is an ArgumentError',
       () {
         expect(
-          () => RateLimiter(0, const Duration(minutes: 1)),
+          () => RateLimiter(maxRequests: 0, window: const Duration(minutes: 1)),
           throwsArgumentError,
         );
-        expect(() => RateLimiter(5, Duration.zero), throwsArgumentError);
         expect(
-          () => RateLimiter(5, const Duration(minutes: -1)),
+          () => RateLimiter(maxRequests: 5, window: Duration.zero),
+          throwsArgumentError,
+        );
+        expect(
+          () =>
+              RateLimiter(maxRequests: 5, window: const Duration(minutes: -1)),
           throwsArgumentError,
         );
       },
@@ -156,8 +160,8 @@ void main() {
       () async {
         final store = _CountingStore();
         final rateLimiter = RateLimiter(
-          3,
-          const Duration(seconds: 1),
+          maxRequests: 3,
+          window: const Duration(seconds: 1),
           store: store,
         );
 
@@ -322,7 +326,12 @@ void main() {
     late InMemoryRateLimiterStore store;
 
     RateLimiter limiterWithStore(int maxRequests, Duration window) =>
-        RateLimiter(maxRequests, window, store: store, clock: clock.call);
+        RateLimiter(
+          maxRequests: maxRequests,
+          window: window,
+          store: store,
+          clock: clock.call,
+        );
 
     setUp(() => store = InMemoryRateLimiterStore());
 

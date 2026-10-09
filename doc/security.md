@@ -278,7 +278,7 @@ own (Redis, a database), see [below](#a-shared-rate-limit).
 `RateLimiter` can be used without the filter, for example to limit the logins of an account:
 
 ```dart
-final loginLimiter = RateLimiter(5, const Duration(minutes: 15));
+final loginLimiter = RateLimiter(maxRequests: 5, window: const Duration(minutes: 15));
 
 final RateLimitResult result = await loginLimiter.check(email);
 if (!result.allowed) {
@@ -364,7 +364,11 @@ class RedisRateLimiterStore implements RateLimiterStore {
 }
 
 RateLimiterFilter.fromRateLimiter(
-  rateLimiter: RateLimiter(100, const Duration(minutes: 1), store: RedisRateLimiterStore()),
+  rateLimiter: RateLimiter(
+    maxRequests: 100,
+    window: const Duration(minutes: 1),
+    store: RedisRateLimiterStore(),
+  ),
 )
 ```
 

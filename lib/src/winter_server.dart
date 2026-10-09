@@ -60,7 +60,7 @@ class Winter {
 
   static Winter? _server;
 
-  /// Access to the global server, It needs to be started in order to access it
+  /// The running server; a [StateError] when none is running (see [isRunning])
   static Winter get server {
     if (_server == null) {
       throw StateError('Server hasn\'t started yet. Try starting one first.');
@@ -100,8 +100,8 @@ class Winter {
   ///Restore the dependencies registered by [start] to its previous state
   final void Function() _restoreDependencies;
 
-  ///When was this server started
-  final DateTime timestamp;
+  /// When this server started
+  final DateTime startedAt;
 
   ///Subscriptions to SIGINT/SIGTERM (see [ServerConfig.handleSignals])
   List<StreamSubscription<ProcessSignal>> _signalSubscriptions = [];
@@ -123,7 +123,7 @@ class Winter {
     required this._inFlightRequests,
     required this._webSockets,
     required this._restoreDependencies,
-  }) : timestamp = DateTime.now();
+  }) : startedAt = DateTime.now();
 
   ///Register [value] in [injection] and return a function that restores the previous value (or deletes it if there was none)
   static void Function() _putRestorable<S>(
