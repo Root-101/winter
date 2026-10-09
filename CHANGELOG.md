@@ -1,4 +1,4 @@
-* 0.1.0:
+* 1.0.0-rc.1:
     * **DATE** :date: : Unreleased.
     * The first version of Winter as a complete framework, built directly on `dart:io`. The guides are in `doc/`, and the reasons behind every design choice in `DECISIONS.md`.
     * **Server** :rocket: : `Winter.start` with `ServerConfig` (`host`, `port`, `shared` isolates, `maxBodySize`, `autoCompress`, `idleTimeout`, HTTPS with `securityContext`, a 503 after `requestTimeout`, `ServerConfig.fromEnv`). Graceful shutdown on SIGINT/SIGTERM (`shutdownTimeout`, `onShutdown`, the `onDispose` of the dependencies). Every response has an `X-Request-Id`, a `Date`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and the reason phrase of its status.

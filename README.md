@@ -27,8 +27,11 @@ void main() async {
 Requires the Dart SDK 3.13 or newer.
 
 ```bash
-dart pub add winter
+dart pub add winter:^1.0.0-rc.1
 ```
+
+The version is needed while 1.0.0 is a release candidate: `dart pub add winter` alone only picks
+stable versions.
 
 Then follow [getting started](doc/getting-started.md): from zero to a JSON API with validation and
 tests.

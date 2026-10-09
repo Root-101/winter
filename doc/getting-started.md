@@ -10,7 +10,7 @@ From zero to a JSON API with validation and tests.
 ## Installation
 
 ```bash
-dart pub add winter
+dart pub add winter:^1.0.0-rc.1   # a release candidate: pub only picks it when asked
 dart pub add dev:test
 ```
 
