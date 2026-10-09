@@ -245,8 +245,8 @@ case with its test, and complete apps.
 
 The projects that run on Winter:
 
-| [➕](https://github.com/Root-101/winter/pulls) |
-|:---------------------------------------------:|
+|       [➕](https://github.com/Root-101/winter/pulls)       |
+|:---------------------------------------------------------:|
 | [Your project?](https://github.com/Root-101/winter/pulls) |
 
 <!--
