@@ -54,6 +54,10 @@ void main() {
       );
     });
 
+    test('toString is the event as it is sent', () {
+      expect(ServerSentEvent(data: 'x').toString(), 'data: x\n\n');
+    });
+
     test('an event or an id with a line break is an ArgumentError', () {
       expect(() => ServerSentEvent(event: 'a\ndata: x'), throwsArgumentError);
       expect(() => ServerSentEvent(id: '1\r2'), throwsArgumentError);
@@ -89,6 +93,26 @@ void main() {
           await response.readAsString(),
           ':\n\ndata: one\n\nevent: two\ndata: 2\n\n',
         );
+      },
+    );
+
+    test(
+      'headers of the app are added, and can replace the defaults',
+      () async {
+        final ResponseEntity response = await _get(
+          Route.get(
+            path: '/events',
+            handler: (request) => ResponseEntity.sse(
+              const Stream<ServerSentEvent>.empty(),
+              keepAlive: null,
+              headers: {'x-stream': 'orders', 'cache-control': 'no-store'},
+            ),
+          ),
+        );
+
+        expect(response.headers['x-stream'], 'orders');
+        expect(response.headers['cache-control'], 'no-store');
+        expect(await response.readAsString(), ':\n\n');
       },
     );
 

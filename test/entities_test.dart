@@ -43,7 +43,7 @@ void main() {
       expect(copy.httpMethod.name, equals(original.httpMethod.name));
     });
 
-    test('should copy routing context and recalculate path params', () async {
+    test('keeps the route (and its path params) and the security context', () {
       final original = RequestEntity(
         'GET',
         Uri.parse('http://localhost/users/123'),
@@ -57,13 +57,17 @@ void main() {
           handler: (r) => ResponseEntity.ok(),
         ),
       );
+      original.securityContext.setAuthentication(
+        Authentication(principal: 'adam'),
+      );
       expect(original.pathParams, equals({'id': '123'}));
 
-      final copy = original.copyWith();
+      final copy = original.copyWith(headers: {'x-new': '1'});
 
       expect(copy.route, isNotNull);
       expect(copy.route!.key, equals('user_detail'));
       expect(copy.pathParams, equals({'id': '123'}));
+      expect(copy.securityContext, same(original.securityContext));
     });
 
     test('adds headers, null removes a header', () async {

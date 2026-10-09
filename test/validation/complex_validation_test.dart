@@ -1,278 +1,84 @@
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
+/// merge() by hand, and paths through several levels of objects and lists. One level of
+/// valid()/validEach() is in validation_behavior_test.dart.
 void main() {
-  group('ConstraintValidatorContext Merge Tests', () {
-    test('Should merge violations from two contexts', () {
-      final cvc1 = ConstraintValidatorContext();
-      cvc1.addViolation(
-        const ConstraintViolation(
-          value: null,
-          fieldName: 'field1',
-          message: 'error1',
-        ),
-      );
+  test('merge() keeps the order, and a prefix names the path', () {
+    ConstraintValidatorContext withViolation(String field) =>
+        ConstraintValidatorContext()..addViolation(
+          ConstraintViolation(value: null, fieldName: field, message: 'm'),
+        );
 
-      final cvc2 = ConstraintValidatorContext();
-      cvc2.addViolation(
-        const ConstraintViolation(
-          value: null,
-          fieldName: 'field2',
-          message: 'error2',
-        ),
-      );
+    final cvc = withViolation('field1')
+      ..merge(withViolation('field2'))
+      ..merge(withViolation('field'), prefix: 'parent')
+      ..merge(withViolation('field'), prefix: '[0]')
+      ..merge(withViolation(''), prefix: 'items');
 
-      cvc1.merge(cvc2);
-
-      expect(cvc1.violations.length, equals(2));
-      expect(cvc1.violations[0].fieldName, equals('field1'));
-      expect(cvc1.violations[1].fieldName, equals('field2'));
-    });
+    expect(cvc.violations.map((v) => v.fieldName), [
+      'field1',
+      'field2',
+      'parent.field',
+      '[0].field',
+      'items',
+    ]);
   });
 
-  group('ConstraintValidatorContext Merge with Prefix Tests', () {
-    test('Should merge violations with prefix', () {
-      final cvc1 = ConstraintValidatorContext();
-      final cvc2 = ConstraintValidatorContext();
-      cvc2.addViolation(
-        const ConstraintViolation(
-          value: 'val',
-          fieldName: 'field',
-          message: 'error',
-        ),
-      );
+  test('three levels of objects', () {
+    final root = _Root(
+      child: _Child(grandChild: _GrandChild(name: '')),
+    );
 
-      cvc1.merge(cvc2, prefix: 'parent');
-
-      expect(cvc1.violations.first.fieldName, equals('parent.field'));
-    });
-
-    test('Should merge violations with index prefix', () {
-      final cvc1 = ConstraintValidatorContext();
-      final cvc2 = ConstraintValidatorContext();
-      cvc2.addViolation(
-        const ConstraintViolation(
-          value: 'val',
-          fieldName: 'field',
-          message: 'error',
-        ),
-      );
-
-      cvc1.merge(cvc2, prefix: '[0]');
-
-      expect(cvc1.violations.first.fieldName, equals('[0].field'));
-    });
+    expect(
+      root.validate().violations.single.fieldName,
+      'child.grandChild.name',
+    );
   });
 
-  group('List Validation Tests', () {
-    test('Should pass when all models are valid', () {
-      final request = [
-        _SimpleValidatable(name: 'test1'),
-        _SimpleValidatable(name: 'test2'),
-      ];
+  test('lists inside lists', () {
+    final catalog = _Catalog(
+      categories: [
+        _Category(
+          name: 'Electronics',
+          products: [
+            _Product(name: 'Phone', price: 500),
+            _Product(name: '', price: -1),
+          ],
+        ),
+        _Category(name: '', products: []),
+      ],
+    );
 
-      final cvc = ConstraintValidatorContext()..field('', request).validEach();
-
-      expect(cvc.isValid, isTrue);
-      expect(cvc.violations, isEmpty);
-    });
-
-    test('Should fail when an element in the list is invalid', () {
-      final request = [
-        _SimpleValidatable(name: 'valid'),
-        _SimpleValidatable(name: null),
-        _SimpleValidatable(name: ''),
-      ];
-
-      final cvc = ConstraintValidatorContext()
-        ..field('items', request).validEach();
-
-      expect(cvc.isValid, isFalse);
-      // items[1].name -> null -> notNull failure
-      expect(cvc.violations.any((v) => v.fieldName == 'items[1].name'), isTrue);
-      // items[2].name -> '' -> notBlank failure
-      expect(cvc.violations.any((v) => v.fieldName == 'items[2].name'), isTrue);
-    });
+    expect(catalog.validate().violations.map((v) => v.fieldName), [
+      'categories[0].products[1].name',
+      'categories[0].products[1].price',
+      'categories[1].name',
+    ]);
   });
 
-  group('Complex Object Validation (Nested & Manual Merge)', () {
-    test('Should validate nested object and manual merge with path', () {
-      final user = _User(
-        username: 'john_doe',
-        profile: _Profile(email: 'invalid-email'),
-        addresses: [
-          _Address(street: 'Main St', city: ''),
-          _Address(street: null, city: 'New York'),
-        ],
-      );
-
-      final cvc = user.validate();
-
-      expect(cvc.isValid, isFalse);
-
-      // Check profile error
-      expect(cvc.violations.any((v) => v.fieldName == 'profile.email'), isTrue);
-
-      // Check address errors with indices
-      // addresses[0].city -> '' -> notBlank
-      expect(
-        cvc.violations.any((v) => v.fieldName == 'addresses[0].city'),
-        isTrue,
-      );
-      // addresses[1].street -> null -> notNull
-      expect(
-        cvc.violations.any((v) => v.fieldName == 'addresses[1].street'),
-        isTrue,
-      );
-    });
-
-    test('Should pass complex validation when everything is correct', () {
-      final user = _User(
-        username: 'john_doe',
-        profile: _Profile(email: 'john@example.com'),
-        addresses: [_Address(street: '123 Main St', city: 'Miami')],
-      );
-
-      final cvc = user.validate();
-      expect(cvc.isValid, isTrue);
-    });
-
-    test('Deeply nested validation with 3 levels', () {
-      final root = _Root(
-        child: _Child(grandChild: _GrandChild(name: '')),
-      );
-
-      final cvc = root.validate();
-
-      expect(cvc.isValid, isFalse);
-      expect(
-        cvc.violations.any((v) => v.fieldName == 'child.grandChild.name'),
-        isTrue,
-      );
-    });
-
-    test('Multiple nested lists validation', () {
-      final catalog = _Catalog(
-        categories: [
-          _Category(
-            name: 'Electronics',
-            products: [
-              _Product(name: 'Phone', price: 500),
-              _Product(name: '', price: -1),
-            ],
-          ),
-          _Category(name: '', products: []),
-        ],
-      );
-
-      final cvc = catalog.validate();
-
-      expect(cvc.isValid, isFalse);
-
-      // Category 0, Product 1 errors
-      expect(
-        cvc.violations.any(
-          (v) => v.fieldName == 'categories[0].products[1].name',
+  test('a valid tree has no violations', () {
+    final catalog = _Catalog(
+      categories: [
+        _Category(
+          name: 'Books',
+          products: [_Product(name: 'Dune', price: 9)],
         ),
-        isTrue,
-      );
-      expect(
-        cvc.violations.any(
-          (v) => v.fieldName == 'categories[0].products[1].price',
-        ),
-        isTrue,
-      );
+      ],
+    );
 
-      // Category 1 errors
-      expect(
-        cvc.violations.any((v) => v.fieldName == 'categories[1].name'),
-        isTrue,
-      );
-    });
+    expect(catalog.validate().isValid, isTrue);
   });
 }
 
-class _SimpleValidatable implements Validatable {
-  final String? name;
-
-  _SimpleValidatable({required this.name});
-
-  @override
-  ConstraintValidatorContext validate() {
-    final cvc = ConstraintValidatorContext();
-    cvc.field('name', name).notNull().notBlank();
-    return cvc;
-  }
-}
-
-class _Profile implements Validatable {
-  final String? email;
-
-  _Profile({required this.email});
-
-  @override
-  ConstraintValidatorContext validate() {
-    final cvc = ConstraintValidatorContext();
-    cvc.field('email', email).notNull().email();
-    return cvc;
-  }
-}
-
-class _Address implements Validatable {
-  final String? street;
-  final String? city;
-
-  _Address({required this.street, required this.city});
-
-  @override
-  ConstraintValidatorContext validate() {
-    final cvc = ConstraintValidatorContext();
-    cvc.field('street', street).notNull().notBlank();
-    cvc.field('city', city).notNull().notBlank();
-    return cvc;
-  }
-}
-
-class _User implements Validatable {
-  final String? username;
-  final _Profile profile;
-  final List<_Address> addresses;
-
-  _User({
-    required this.username,
-    required this.profile,
-    required this.addresses,
-  });
-
-  @override
-  ConstraintValidatorContext validate() {
-    final cvc = ConstraintValidatorContext();
-
-    // 1. Validate self
-    cvc.field('username', username).notNull().notBlank();
-
-    // 2. A nested object
-    cvc.field('profile', profile).valid();
-
-    // 3. A list of objects
-    cvc.field('addresses', addresses).validEach();
-
-    return cvc;
-  }
-}
-
-// Deep nesting models
 class _GrandChild implements Validatable {
   final String name;
 
   _GrandChild({required this.name});
 
   @override
-  ConstraintValidatorContext validate() {
-    final cvc = ConstraintValidatorContext();
-    cvc.field('name', name).notBlank();
-    return cvc;
-  }
+  ConstraintValidatorContext validate() =>
+      ConstraintValidatorContext()..field('name', name).notBlank();
 }
 
 class _Child implements Validatable {
@@ -281,11 +87,8 @@ class _Child implements Validatable {
   _Child({required this.grandChild});
 
   @override
-  ConstraintValidatorContext validate() {
-    final cvc = ConstraintValidatorContext();
-    cvc.field('grandChild', grandChild).valid();
-    return cvc;
-  }
+  ConstraintValidatorContext validate() =>
+      ConstraintValidatorContext()..field('grandChild', grandChild).valid();
 }
 
 class _Root implements Validatable {
@@ -294,14 +97,10 @@ class _Root implements Validatable {
   _Root({required this.child});
 
   @override
-  ConstraintValidatorContext validate() {
-    final cvc = ConstraintValidatorContext();
-    cvc.field('child', child).valid();
-    return cvc;
-  }
+  ConstraintValidatorContext validate() =>
+      ConstraintValidatorContext()..field('child', child).valid();
 }
 
-// Multiple nested lists models
 class _Product implements Validatable {
   final String name;
   final double price;
@@ -309,12 +108,9 @@ class _Product implements Validatable {
   _Product({required this.name, required this.price});
 
   @override
-  ConstraintValidatorContext validate() {
-    final cvc = ConstraintValidatorContext();
-    cvc.field('name', name).notBlank();
-    cvc.field('price', price).min(0);
-    return cvc;
-  }
+  ConstraintValidatorContext validate() => ConstraintValidatorContext()
+    ..field('name', name).notBlank()
+    ..field('price', price).min(0);
 }
 
 class _Category implements Validatable {
@@ -324,12 +120,9 @@ class _Category implements Validatable {
   _Category({required this.name, required this.products});
 
   @override
-  ConstraintValidatorContext validate() {
-    final cvc = ConstraintValidatorContext();
-    cvc.field('name', name).notBlank();
-    cvc.field('products', products).validEach();
-    return cvc;
-  }
+  ConstraintValidatorContext validate() => ConstraintValidatorContext()
+    ..field('name', name).notBlank()
+    ..field('products', products).validEach();
 }
 
 class _Catalog implements Validatable {
@@ -338,9 +131,6 @@ class _Catalog implements Validatable {
   _Catalog({required this.categories});
 
   @override
-  ConstraintValidatorContext validate() {
-    final cvc = ConstraintValidatorContext();
-    cvc.field('categories', categories).validEach();
-    return cvc;
-  }
+  ConstraintValidatorContext validate() =>
+      ConstraintValidatorContext()..field('categories', categories).validEach();
 }

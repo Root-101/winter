@@ -3,39 +3,11 @@ import 'package:winter/winter.dart';
 
 enum _Color { red }
 
+/// throwOnFailure and the rule that every validator but notNull passes on null. Equality and
+/// copyWith of ConstraintViolation are in validation_behavior_test.dart.
 void main() {
-  group('ConstraintViolation', () {
-    const violation = ConstraintViolation(
-      value: 'x',
-      fieldName: 'name',
-      message: 'too short',
-    );
-
-    test('equality & hashCode', () {
-      const same = ConstraintViolation(
-        value: 'x',
-        fieldName: 'name',
-        message: 'too short',
-      );
-
-      expect(violation, same);
-      expect(violation.hashCode, same.hashCode);
-      expect(violation, isNot(violation.copyWith(message: 'other')));
-      expect(violation, isNot(violation.copyWith(sensitive: true)));
-    });
-
-    test('copyWith changes only the given fields', () {
-      final copy = violation.copyWith(fieldName: 'user.name');
-
-      expect(copy.fieldName, 'user.name');
-      expect(copy.value, 'x');
-      expect(copy.message, 'too short');
-      expect(copy.sensitive, isFalse);
-    });
-  });
-
-  group('Validatable', () {
-    test('throwOnFailure throws a ValidationException with the violations', () {
+  group('throwOnFailure', () {
+    test('throws a ValidationException with the violations', () {
       final cvc = ConstraintValidatorContext();
       cvc.field('tags', ['only-one']).size(min: 2);
 
@@ -54,7 +26,7 @@ void main() {
       );
     });
 
-    test('throwOnFailure does nothing when valid', () {
+    test('does nothing when valid', () {
       expect(ConstraintValidatorContext().throwOnFailure, returnsNormally);
     });
   });
@@ -92,16 +64,5 @@ void main() {
 
     cvc.field('required', null).notNull();
     expect(cvc.violations.single.fieldName, 'required');
-  });
-
-  test('merge with a prefix names a violation without field name', () {
-    final inner = ConstraintValidatorContext()
-      ..addViolation(
-        const ConstraintViolation(value: 1, fieldName: '', message: 'm'),
-      );
-
-    final outer = ConstraintValidatorContext()..merge(inner, prefix: 'items');
-
-    expect(outer.violations.single.fieldName, 'items');
   });
 }

@@ -4,84 +4,45 @@ library;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
+/// The same routes, declared in the constructor or added later with addRoute
 void main() {
-  late WinterTestClient client;
+  Route testRoute = Route.get(
+    path: '/test',
+    handler: (request) => ResponseEntity.ok(body: 'Response from /test'),
+  );
+  Route custom = Route.post(
+    path: '/custom',
+    handler: (request) => ResponseEntity.ok(body: 'Response from /custom'),
+  );
+  Route any = Route.post(
+    path: '/.*',
+    handler: (request) => ResponseEntity.ok(body: 'Any other path'),
+  );
 
-  setUpAll(() async {
-    client = WinterTestClient.build(
-      router: WinterRouter(
-        routes: [
-          Route(
-            path: '/test',
-            method: HttpMethod.get,
-            handler: (request) async {
-              return ResponseEntity.ok(body: 'Response from /test');
-            },
-          ),
-          Route(
-            path: '/custom',
-            method: HttpMethod.post,
-            handler: (request) async {
-              return ResponseEntity.ok(body: 'Response from /custom');
-            },
-          ),
-          Route(
-            path: '/.*',
-            method: HttpMethod.post,
-            handler: (request) async {
-              return ResponseEntity.ok(body: 'Response from any other source');
-            },
-          ),
-        ],
-      ),
-    );
-  });
+  final Map<String, WinterRouter Function()> routers = {
+    'constructor': () => WinterRouter(routes: [testRoute, custom, any]),
+    'addRoute': () => WinterRouter(routes: [testRoute])
+      ..addRoute(custom)
+      ..addRoute(any),
+  };
 
-  test('Test /test', () async {
-    String urlToTest = '/test';
-    TestResponse response = await client.get(urlToTest);
+  for (final MapEntry(key: how, value: router) in routers.entries) {
+    group('Routes from the $how', () {
+      final client = WinterTestClient.build(router: router());
 
-    expect(response.statusCode, 200);
-    expect(response.body, 'Response from /test');
-  });
+      test('a GET and a POST route', () async {
+        expect((await client.get('/test')).body, 'Response from /test');
+        expect((await client.post('/custom')).body, 'Response from /custom');
+      });
 
-  test('Test /custom', () async {
-    String urlToTest = '/custom';
-    TestResponse response = await client.post(urlToTest);
+      test('a regex route takes every other POST', () async {
+        for (final path in ['/abc', '/123', '/some-other', '/f-r-i-e-n-d-s']) {
+          final response = await client.post(path);
 
-    expect(response.statusCode, 200);
-    expect(response.body, 'Response from /custom');
-  });
-
-  test('Test other sources #1', () async {
-    String urlToTest = '/abc';
-    TestResponse response = await client.post(urlToTest);
-
-    expect(response.statusCode, 200);
-    expect(response.body, 'Response from any other source');
-  });
-
-  test('Test other sources #2', () async {
-    String urlToTest = '/123';
-    TestResponse response = await client.post(urlToTest);
-
-    expect(response.statusCode, 200);
-    expect(response.body, 'Response from any other source');
-  });
-
-  test('Test other sources #3', () async {
-    String urlToTest = '/some-other';
-    TestResponse response = await client.post(urlToTest);
-
-    expect(response.statusCode, 200);
-    expect(response.body, 'Response from any other source');
-  });
-
-  test('Test other sources #4', () async {
-    String urlToTest = '/f-r-i-e-n-d-s';
-    TestResponse response = await client.post(urlToTest);
-
-    expect(response.statusCode, 200);
-    expect(response.body, 'Response from any other source');
-  });
+          expect(response.statusCode, 200, reason: path);
+          expect(response.body, 'Any other path', reason: path);
+        }
+      });
+    });
+  }
 }

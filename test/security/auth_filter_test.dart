@@ -4,305 +4,239 @@ library;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
+/// AuthFilter through the whole pipeline: who gets a 200, a 401 or a 403. The challenge of the
+/// 401 is in security_behavior_test.dart, the logic of the rules in authorization_rules_test.dart.
 void main() {
-  late WinterTestClient client;
+  /// `x-user: admin` (role admin, permissions user.create and user.delete), `x-user: user`
+  /// (role user); anything else is nobody
+  final Map<String, Map<String, String>> as = {
+    'admin': {'x-user': 'admin'},
+    'user': {'x-user': 'user'},
+    'nobody': {},
+    'wrong credentials': {'x-user': 'intruder'},
+  };
 
-  Map<String, String> headers = {'SECRET': 'Secret', 'ACCESS': 'Access'};
+  group('AuthFilter on a route', () {
+    Route protected(String path, AuthFilter filter) => Route.get(
+      path: path,
+      filterConfig: FilterConfig([filter]),
+      handler: (request) => ResponseEntity.ok(),
+    );
 
-  setUpAll(() async {
-    client = WinterTestClient.build(
-      globalFilterConfig: FilterConfig([SecurityAccessFilter()]),
+    final client = WinterTestClient.build(
+      globalFilterConfig: FilterConfig([_UserHeaderFilter()]),
       router: WinterRouter(
         routes: [
-          Route(
-            path: '/with-auth',
-            key: 'with-auth-key',
-            method: HttpMethod.get,
-            filterConfig: FilterConfig([AuthFilter()]),
-            handler: (request) async => ResponseEntity.ok(),
+          protected('/authenticated', AuthFilter()),
+          protected('/role', AuthFilter(rules: hasRole('admin'))),
+          protected('/role-upper-case', AuthFilter(rules: hasRole('ADMIN'))),
+          protected(
+            '/permission',
+            AuthFilter(rules: hasPermission('user.create')),
           ),
-          Route(
-            path: '/without-auth',
-            key: 'without-auth-key',
-            method: HttpMethod.get,
-            handler: (request) async => ResponseEntity.ok(),
+          protected(
+            '/and',
+            AuthFilter(rules: hasRole('admin') & hasPermission('user.update')),
           ),
-          Route(
-            path: '/with-authorities',
-            key: 'with-authorities-key',
-            method: HttpMethod.get,
-            filterConfig: FilterConfig([AuthFilter(rules: hasRole('User'))]),
-            handler: (request) async => ResponseEntity.ok(),
+          protected(
+            '/or',
+            AuthFilter(rules: hasRole('guest') | hasRole('user')),
           ),
-          Route(
-            path: '/with-admin',
-            key: 'with-admin-key',
-            method: HttpMethod.get,
-            filterConfig: FilterConfig([AuthFilter(rules: hasRole('admin'))]),
-            handler: (request) async => ResponseEntity.ok(),
-          ),
-          Route(
-            path: '/with-permission',
-            key: 'with-permission-key',
-            method: HttpMethod.get,
-            filterConfig: FilterConfig([
-              AuthFilter(rules: hasPermission('user.create')),
-            ]),
-            handler: (request) async => ResponseEntity.ok(),
-          ),
-          Route(
-            path: '/with-combined-rules',
-            key: 'with-combined-rules-key',
-            method: HttpMethod.get,
-            filterConfig: FilterConfig([
-              AuthFilter(
-                rules: hasRole('admin') & hasPermission('user.delete'),
-              ),
-            ]),
-            handler: (request) async => ResponseEntity.ok(),
-          ),
-          Route(
-            path: '/with-or-rules',
-            key: 'with-or-rules-key',
-            method: HttpMethod.get,
-            filterConfig: FilterConfig([
-              AuthFilter(rules: hasRole('guest') | hasRole('admin')),
-            ]),
-            handler: (request) async => ResponseEntity.ok(),
-          ),
-          Route(
-            path: '/with-failed-combined',
-            key: 'with-failed-combined-key',
-            method: HttpMethod.get,
-            filterConfig: FilterConfig([
-              AuthFilter(
-                rules: hasRole('admin') & hasPermission('user.update'),
-              ),
-            ]),
-            handler: (request) async => ResponseEntity.ok(),
-          ),
-          Route(
-            path: '/with-case-sensitive-role',
-            key: 'with-case-sensitive-role-key',
-            method: HttpMethod.get,
-            filterConfig: FilterConfig([AuthFilter(rules: hasRole('ADMIN'))]),
-            handler: (request) async => ResponseEntity.ok(),
-          ),
-          Route(
-            path: '/with-authority',
-            key: 'with-authority-key',
-            method: HttpMethod.get,
-            filterConfig: FilterConfig([
-              AuthFilter(rules: (hasRole('admin') | hasPermission('admin'))),
-            ]),
-            handler: (request) async => ResponseEntity.ok(),
-          ),
-          Route(
-            path: '/with-multiple-filters',
-            key: 'with-multiple-filters-key',
-            method: HttpMethod.get,
+          protected('/anonymous-allowed', AuthFilter(authenticated: false)),
+          Route.get(
+            path: '/two-filters',
             filterConfig: FilterConfig([
               AuthFilter(rules: hasRole('admin')),
               AuthFilter(rules: hasPermission('user.create')),
             ]),
-            handler: (request) async => ResponseEntity.ok(),
+            handler: (request) => ResponseEntity.ok(),
           ),
-          Route(
-            path: '/check-principal',
-            key: 'check-principal-key',
-            method: HttpMethod.get,
-            handler: (request) async => ResponseEntity.ok(
+          Route.get(
+            path: '/public',
+            handler: (request) => ResponseEntity.ok(
               body: request.securityContext.authentication?.principal,
             ),
-          ),
-          Route(
-            path: '/authenticated-false',
-            key: 'authenticated-false-key',
-            method: HttpMethod.get,
-            filterConfig: FilterConfig([AuthFilter(authenticated: false)]),
-            handler: (request) async => ResponseEntity.ok(),
           ),
         ],
       ),
     );
+
+    // path → the status for admin, user, nobody and wrong credentials
+    const Map<String, List<int>> expected = {
+      '/authenticated': [200, 200, 401, 401],
+      '/role': [200, 403, 401, 401],
+      '/role-upper-case': [403, 403, 401, 401],
+      '/permission': [200, 403, 401, 401],
+      '/and': [403, 403, 401, 401],
+      '/or': [403, 200, 401, 401],
+      '/anonymous-allowed': [200, 200, 200, 200],
+      '/two-filters': [200, 403, 401, 401],
+      '/public': [200, 200, 200, 200],
+    };
+
+    for (final MapEntry(key: path, value: statuses) in expected.entries) {
+      test(path, () async {
+        final List<int> actual = [
+          for (final Map<String, String> headers in as.values)
+            (await client.get(path, headers: headers)).statusCode,
+        ];
+
+        expect(actual, statuses, reason: 'for ${as.keys.join(', ')}');
+      });
+    }
+
+    test('the handler sees the principal, or none', () async {
+      expect((await client.get('/public', headers: as['admin'])).body, 'admin');
+      expect((await client.get('/public')).body, '');
+    });
   });
 
-  test('Test with auth success', () async {
-    String urlToTest = '/with-auth';
+  test(
+    'an Authentication with authenticated: false is nobody: a 401',
+    () async {
+      final client = WinterTestClient.build(
+        router: WinterRouter(
+          routes: [
+            Route.get(
+              path: '/',
+              filterConfig: FilterConfig([
+                _UserHeaderFilter(authenticated: false),
+                AuthFilter(),
+              ]),
+              handler: (request) => ResponseEntity.ok(),
+            ),
+          ],
+        ),
+      );
 
-    TestResponse response = await client.get(urlToTest, headers: headers);
+      expect((await client.get('/', headers: as['admin'])).statusCode, 401);
+    },
+  );
 
-    expect(response.statusCode, 200);
-  });
-
-  test('Test with auth fail', () async {
-    String urlToTest = '/with-auth';
-
-    TestResponse response = await client.get(urlToTest);
-
-    expect(response.statusCode, 401);
-  });
-
-  test('Test without auth success', () async {
-    String urlToTest = '/without-auth';
-
-    TestResponse response = await client.get(urlToTest);
-
-    expect(response.statusCode, 200);
-  });
-
-  test('Test with authorities fail (Forbidden)', () async {
-    String urlToTest = '/with-authorities';
-
-    TestResponse response = await client.get(urlToTest, headers: headers);
-
-    expect(response.statusCode, 403);
-  });
-
-  test('Test with authorities fail (Unauthorized)', () async {
-    String urlToTest = '/with-authorities';
-
-    TestResponse response = await client.get(urlToTest);
-
-    expect(response.statusCode, 401);
-  });
-
-  test('Test with admin success', () async {
-    String urlToTest = '/with-admin';
-
-    TestResponse response = await client.get(urlToTest, headers: headers);
-
-    expect(response.statusCode, 200);
-  });
-
-  test('Test with permission success', () async {
-    String urlToTest = '/with-permission';
-
-    TestResponse response = await client.get(urlToTest, headers: headers);
-
-    expect(response.statusCode, 200);
-  });
-
-  test('Test combined rules success', () async {
-    String urlToTest = '/with-combined-rules';
-
-    TestResponse response = await client.get(urlToTest, headers: headers);
-
-    expect(response.statusCode, 200);
-  });
-
-  test('Test OR rules success', () async {
-    String urlToTest = '/with-or-rules';
-
-    TestResponse response = await client.get(urlToTest, headers: headers);
-
-    expect(response.statusCode, 200);
-  });
-
-  test('Test combined rules fail (Forbidden)', () async {
-    String urlToTest = '/with-failed-combined';
-
-    TestResponse response = await client.get(urlToTest, headers: headers);
-
-    expect(response.statusCode, 403);
-  });
-
-  test('Test case sensitive role fail (Forbidden)', () async {
-    String urlToTest = '/with-case-sensitive-role';
-
-    TestResponse response = await client.get(urlToTest, headers: headers);
-
-    expect(response.statusCode, 403);
-  });
-
-  test('Test with wrong security headers (Unauthorized)', () async {
-    String urlToTest = '/with-auth';
-
-    TestResponse response = await client.get(
-      urlToTest,
-      headers: {'SECRET': 'Wrong', 'ACCESS': 'Wrong'},
+  group('A global AuthFilter with exceptions by route key', () {
+    final client = WinterTestClient.build(
+      globalFilterConfig: FilterConfig([
+        _UserHeaderFilter(),
+        AuthFilter(shouldFilter: (request) => request.route?.key != 'public'),
+      ]),
+      router: WinterRouter(
+        routes: [
+          Route.get(path: '/private', handler: (r) => ResponseEntity.ok()),
+          Route.get(
+            path: '/public',
+            key: 'public',
+            handler: (r) => ResponseEntity.ok(),
+          ),
+          Route.get(
+            path: '/admin',
+            filterConfig: FilterConfig([AuthFilter(rules: hasRole('admin'))]),
+            handler: (r) => ResponseEntity.ok(),
+          ),
+        ],
+      ),
     );
 
-    expect(response.statusCode, 401);
+    Future<int> status(String path, String user) async =>
+        (await client.get(path, headers: as[user])).statusCode;
+
+    test('the public route needs nobody, the rest needs a user', () async {
+      expect(await status('/public', 'nobody'), 200);
+      expect(await status('/private', 'nobody'), 401);
+      expect(await status('/private', 'user'), 200);
+    });
+
+    test(
+      'the global one runs first: nobody is a 401 before the role',
+      () async {
+        expect(await status('/admin', 'nobody'), 401);
+        expect(await status('/admin', 'user'), 403);
+        expect(await status('/admin', 'admin'), 200);
+      },
+    );
   });
 
-  test('Test with authority success', () async {
-    String urlToTest = '/with-authority';
+  group('on<T>() changes the 401 and the 403', () {
+    setUpAll(
+      () => Winter.context.setUp(
+        exceptionHandler: SimpleExceptionHandler()
+          ..on<UnauthorizedException>(
+            (request, e) => const UnauthorizedException(detail: 'Log in first'),
+          )
+          ..on<ForbiddenException>(
+            (request, e) => const ForbiddenException(detail: 'Admins only'),
+          ),
+      ),
+    );
 
-    TestResponse response = await client.get(urlToTest, headers: headers);
+    tearDownAll(
+      () => Winter.context.setUp(exceptionHandler: SimpleExceptionHandler()),
+    );
 
-    expect(response.statusCode, 200);
+    test('a Problem Details with the detail of the app', () async {
+      final client = WinterTestClient.build(
+        globalFilterConfig: FilterConfig([_UserHeaderFilter()]),
+        router: WinterRouter(
+          routes: [
+            Route.get(
+              path: '/',
+              filterConfig: FilterConfig([AuthFilter(rules: hasRole('admin'))]),
+              handler: (r) => ResponseEntity.ok(),
+            ),
+          ],
+        ),
+      );
+
+      final unauthorized = await client.get('/');
+      final forbidden = await client.get('/', headers: as['user']);
+
+      expect(unauthorized.statusCode, 401);
+      expect((unauthorized.json as Map)['detail'], 'Log in first');
+      expect(forbidden.statusCode, 403);
+      expect((forbidden.json as Map)['detail'], 'Admins only');
+      expect(forbidden.headers['content-type'], contains('problem+json'));
+    });
   });
 
-  test('Test with multiple filters success', () async {
-    String urlToTest = '/with-multiple-filters';
-
-    TestResponse response = await client.get(urlToTest, headers: headers);
-
-    expect(response.statusCode, 200);
-  });
-
-  test('Test principal is set correctly', () async {
-    String urlToTest = '/check-principal';
-
-    TestResponse response = await client.get(urlToTest, headers: headers);
-
-    expect(response.statusCode, 200);
-    expect(response.body, 'Admin');
-  });
-
-  test('Test principal is null when no headers', () async {
-    String urlToTest = '/check-principal';
-
-    TestResponse response = await client.get(urlToTest);
-
-    expect(response.statusCode, 200);
-    expect(response.body, '');
-  });
-
-  test('Test authenticated false allows anonymous', () async {
-    String urlToTest = '/authenticated-false';
-
-    TestResponse response = await client.get(urlToTest);
-
-    expect(response.statusCode, 200);
+  test('toString shows its configuration', () {
+    expect(
+      AuthFilter(rules: hasRole('admin')).toString(),
+      'AuthFilter{authenticated: true, rules: hasRole(admin), shouldFilter: all}',
+    );
+    expect(
+      AuthFilter(shouldFilter: (request) => false).toString(),
+      contains('shouldFilter: custom'),
+    );
   });
 }
 
-class SecurityAccessFilter extends Filter {
-  final String secretHeader = 'SECRET';
-  final String accessHeader = 'ACCESS';
+/// Authenticates `x-user: admin` and `x-user: user`
+class _UserHeaderFilter extends Filter {
+  final bool authenticated;
 
-  late final String _envSecret;
-  late final String _envAccess;
-
-  SecurityAccessFilter() {
-    _envSecret = 'Secret';
-    _envAccess = 'Access';
-  }
+  _UserHeaderFilter({this.authenticated = true});
 
   @override
   Future<ResponseEntity> doFilter(
     RequestEntity request,
     FilterChain chain,
   ) async {
-    String? secret = request.headers[secretHeader];
-    String? access = request.headers[accessHeader];
-    if (secret != null &&
-        access != null &&
-        secret == _envSecret &&
-        access == _envAccess) {
-      request.securityContext.setAuthentication(
-        Authentication(
-          principal: 'Admin',
-          roles: {'admin'},
-          permissions: {'user.create', 'user.delete', 'user.list'},
-        ),
-      );
-    } else {
-      request.securityContext.clear();
+    final Authentication? authentication = switch (request.headers['x-user']) {
+      'admin' => Authentication(
+        principal: 'admin',
+        authenticated: authenticated,
+        roles: {'admin'},
+        permissions: {'user.create', 'user.delete'},
+      ),
+      'user' => Authentication(
+        principal: 'user',
+        authenticated: authenticated,
+        roles: {'user'},
+      ),
+      _ => null,
+    };
+    if (authentication != null) {
+      request.securityContext.setAuthentication(authentication);
     }
-
-    return await chain.doFilter(request);
+    return chain.doFilter(request);
   }
 }
