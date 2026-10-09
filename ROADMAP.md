@@ -230,8 +230,11 @@ The [release review](#release-review-before-every-release), the first time.
   without `WWW-Authenticate`, `X-Request-Id` "planned"); `doc/README.md` without the "planned"
   column and with the examples of each guide; each guide links its new example topic, and
   `requests-and-responses.md` has the patterns of `api_patterns` with snippets.
-- [ ] Checks: format, analyze, tests, every example, `dart doc` and the publish dry run pass;
-  `pana` (on Linux) and the benchmarks are left for the release.
+- [ ] **Checks:** format, analyze, tests, every example, `dart doc` and the publish dry run pass.
+  The HTTP benchmark, before and after the change of the body (5 runs each, AOT): the same
+  throughput within the noise (~4 930 vs ~4 860 req/s); that day `dart:io` itself gave half of
+  `doc/benchmarks.md`, so the absolute numbers aren't comparable. Left for the release: `pana`
+  (it needs Linux: only a Docker distro here) and the benchmarks on a quiet machine.
 
 ### 6.4 Release ⏸️
 
