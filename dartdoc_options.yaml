@@ -4,6 +4,7 @@ dartdoc:
   categoryOrder:
     - Server
     - Routing
+    - OpenAPI
     - Filters
     - Requests and responses
     - HTTP

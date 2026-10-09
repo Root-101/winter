@@ -178,10 +178,17 @@ extension StringValidators<T extends String?> on FieldValidator<T> {
       String() => _compiledPattern(pattern).hasMatch,
       _ => (value) => pattern.allMatches(value).isNotEmpty,
     };
+    final String? source = switch (pattern) {
+      RegExp() => pattern.pattern,
+      String() => pattern,
+      _ => null,
+    };
     return addRule(
       (value) => value == null || matches(value),
       message: () => message ?? _intl.errors.validations.pattern,
       code: 'pattern',
+      // The regular expression, for a client (and an OpenAPI schema) that checks it before sending
+      params: {'pattern': ?source},
       stopOnFailure: stopOnFailure,
     );
   }

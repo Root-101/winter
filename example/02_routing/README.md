@@ -19,11 +19,17 @@ A `WinterRouter` is defined with support for path parameters and multiple HTTP m
 *   **Deserialization**: Registration of a `Deserializer<User>` to automatically process request bodies (`request.body<User>()`), with typed fields (`json.field<String>('name')`).
 *   **Partial updates**: `json.patch<String?>('nickname')` gives a `PatchValue`, absent or a value (`null` included), and `orElse(current)` gives the value after the update.
 
-### 3. Dependency Injection (DI)
+### 3. OpenAPI and Swagger UI
+*   Every route has `RouteDocs` (a summary, an example of `User` as its body), and the children of `/users` take the tag `users` of their parent.
+*   `{id|[0-9]+}`: the id is an integer in the document (and `/users/abc` is a 404).
+*   The PATCH documents its body with a `JsonSchema` by hand and a JSON example (`UserUpdate` has no `toJson()`).
+*   `Route.openApi` serves `GET /api/v1/openapi.json` and `Route.swaggerUi` the page at `http://localhost:8080/api/v1/docs`.
+
+### 4. Dependency Injection (DI)
 *   Use of `di.put()` to register the `UserService`.
 *   Total decoupling between the controller (router) and business logic (service) using `di.find()`.
 
-### 4. Exception Handling
+### 5. Exception Handling
 *   Use of global exceptions such as `NotFoundException` and `BadRequestException`.
 *   The framework captures these exceptions in the business logic and automatically translates them into appropriate HTTP responses with descriptive JSON bodies.
 

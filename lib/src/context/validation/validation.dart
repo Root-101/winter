@@ -241,6 +241,18 @@ class FieldValidator<T> {
     Map<String, Object?> params = const {},
     bool stopOnFailure = false,
   }) {
+    if (Zone.current[_describingKey] == true) {
+      // Describing the rules (OpenAPI): every rule is recorded, none is evaluated
+      context.addViolation(
+        ConstraintViolation(
+          fieldName: name,
+          message: '',
+          code: code,
+          params: params,
+        ),
+      );
+      return this;
+    }
     if (_stopped || isValid(value)) return this;
     context.addViolation(
       ConstraintViolation(
@@ -323,6 +335,17 @@ extension NestedMapValidator<T extends Map<String, Validatable?>?>
     return _mergeNested(cvc, prefix: name);
   }
 }
+
+final Object _describingKey = Object();
+
+/// Every rule of the `validate()` of [model], evaluated or not: its field (a path with the Dart
+/// names, `address.zip`, `items[0].quantity`), its `code` and its `params`. The rules are only
+/// recorded, so it has no side effects; the asynchronous ones are never run. Internal: OpenAPI
+/// builds the constraints of a schema from them.
+List<ConstraintViolation> validationRulesOf(Validatable model) => runZoned(
+  () => model.validate().violations,
+  zoneValues: {_describingKey: true},
+);
 
 /// The step of a path for the value of [key] in a map: `["eur"]` (the key quoted as in JSON, so a
 /// key with a dot or a bracket stays one step). Internal.

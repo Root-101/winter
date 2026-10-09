@@ -620,7 +620,10 @@ first, small and independent; then the new features, from the most used to the l
   `ServerSentEvent`; the streams end when the server starts closing (`DECISIONS.md` §10).
   `example/06_files` sends the new photos.
 - [ ] Scheduled tasks (cron), it was in `todo.md`.
-- [ ] OpenAPI generation from the routes.
+- [x] OpenAPI generation from the routes. → `Route.openApi`, `Route.swaggerUi`, `RouteDocs`,
+  `JsonSchema`, `BodyDocs` (`doc/openapi.md`, `DECISIONS.md` §12): the four ways of describing a
+  body at once (an example inferred with the rules of its `validate()`, a schema by hand, both,
+  nothing). Example 02 documents its CRUD.
 - [x] Async validations: an `AsyncValidatable` interface with a `Future` `validate()`, also run by
   `body<T>()` (`DECISIONS.md` §3). → `validateAsync()` and `cvc.check(...)`, run after
   `validate()` passed; example 03 checks the email of a registration.

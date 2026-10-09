@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
+import 'package:winter/src/openapi/open_api.dart'
+    show openApiHandler, swaggerUiHandler;
 import 'package:winter/src/router/health.dart' show healthHandler;
 import 'package:winter/src/router/path_template.dart';
 import 'package:winter/src/websocket.dart' show webSocketRouteHandler;
@@ -152,9 +154,12 @@ class WinterRouter extends BaseRouter {
     void flattenRoutes(
       String parentPath,
       FilterConfig? parentFilterConfig,
-      List<Route> routes,
-    ) {
+      List<Route> routes, [
+      RouteDocs? parentDocs,
+    ]) {
       for (var route in routes) {
+        final RouteDocs? docs =
+            route.docs?.inheriting(parentDocs) ?? parentDocs;
         String fullPath = normalizePath(
           (parentPath + route.path).replaceAll(RegExp(r'/+'), '/'),
         );
@@ -175,6 +180,10 @@ class WinterRouter extends BaseRouter {
             method: route.method!,
             handler: route.handler!,
             filterConfig: newParentFilterConfig,
+            // A route without docs of its own takes the tags of its parent, not its body
+            docs: route.docs == null && parentDocs != null
+                ? RouteDocs(tags: parentDocs.tags, hidden: parentDocs.hidden)
+                : docs,
           );
           if (isValidUri(fullPath)) {
             rawResult.add(currentRoute);
@@ -183,7 +192,7 @@ class WinterRouter extends BaseRouter {
           }
         }
         if (route.routes.isNotEmpty) {
-          flattenRoutes(fullPath, newParentFilterConfig, route.routes);
+          flattenRoutes(fullPath, newParentFilterConfig, route.routes, docs);
         }
       }
     }
@@ -329,6 +338,10 @@ class Route {
   /// The children of a parent route: their paths are joined to [path]
   final List<Route> routes;
 
+  /// What OpenAPI says about the route (see [RouteDocs]); the children of a parent inherit its
+  /// tags
+  final RouteDocs? docs;
+
   /// Recognizes the route (`request.route?.key`): the one given, or its method and path
   /// (`GET /users/{id}`)
   final String key;
@@ -337,6 +350,7 @@ class Route {
   final bool _hasCustomKey;
 
   Route._({
+    required this.docs,
     required this.path,
     required this.key,
     required this.method,
@@ -355,6 +369,7 @@ class Route {
     RequestHandler? handler,
     FilterConfig? filterConfig,
     List<Route> routes = const [],
+    RouteDocs? docs,
   }) {
     if (!path.startsWith('/')) {
       throw ArgumentError.value(
@@ -379,6 +394,7 @@ class Route {
     }
 
     return Route._(
+      docs: docs,
       path: path,
       key: key ?? _generateRouteKey(path, method),
       hasCustomKey: key != null,
@@ -395,6 +411,7 @@ class Route {
     required String path,
     String? key,
     FilterConfig? filterConfig,
+    RouteDocs? docs,
     List<Route> routes = const [],
   }) {
     return Route(
@@ -403,6 +420,7 @@ class Route {
       method: null,
       handler: null,
       filterConfig: filterConfig,
+      docs: docs,
       routes: routes,
     );
   }
@@ -413,6 +431,7 @@ class Route {
     required RequestHandler handler,
     String? key,
     FilterConfig? filterConfig,
+    RouteDocs? docs,
     List<Route> routes = const [],
   }) {
     return Route(
@@ -421,6 +440,7 @@ class Route {
       method: HttpMethod.get,
       handler: handler,
       filterConfig: filterConfig,
+      docs: docs,
       routes: routes,
     );
   }
@@ -431,6 +451,7 @@ class Route {
     required RequestHandler handler,
     String? key,
     FilterConfig? filterConfig,
+    RouteDocs? docs,
     List<Route> routes = const [],
   }) {
     return Route(
@@ -439,6 +460,7 @@ class Route {
       method: HttpMethod.query,
       handler: handler,
       filterConfig: filterConfig,
+      docs: docs,
       routes: routes,
     );
   }
@@ -449,6 +471,7 @@ class Route {
     required RequestHandler handler,
     String? key,
     FilterConfig? filterConfig,
+    RouteDocs? docs,
     List<Route> routes = const [],
   }) {
     return Route(
@@ -457,6 +480,7 @@ class Route {
       method: HttpMethod.post,
       handler: handler,
       filterConfig: filterConfig,
+      docs: docs,
       routes: routes,
     );
   }
@@ -467,6 +491,7 @@ class Route {
     required RequestHandler handler,
     String? key,
     FilterConfig? filterConfig,
+    RouteDocs? docs,
     List<Route> routes = const [],
   }) {
     return Route(
@@ -475,6 +500,7 @@ class Route {
       method: HttpMethod.put,
       handler: handler,
       filterConfig: filterConfig,
+      docs: docs,
       routes: routes,
     );
   }
@@ -485,6 +511,7 @@ class Route {
     required RequestHandler handler,
     String? key,
     FilterConfig? filterConfig,
+    RouteDocs? docs,
     List<Route> routes = const [],
   }) {
     return Route(
@@ -493,6 +520,7 @@ class Route {
       method: HttpMethod.patch,
       handler: handler,
       filterConfig: filterConfig,
+      docs: docs,
       routes: routes,
     );
   }
@@ -503,6 +531,7 @@ class Route {
     required RequestHandler handler,
     String? key,
     FilterConfig? filterConfig,
+    RouteDocs? docs,
     List<Route> routes = const [],
   }) {
     return Route(
@@ -511,6 +540,7 @@ class Route {
       method: HttpMethod.delete,
       handler: handler,
       filterConfig: filterConfig,
+      docs: docs,
       routes: routes,
     );
   }
@@ -529,6 +559,7 @@ class Route {
     Map<String, String> mimeTypes = const {},
     String? key,
     FilterConfig? filterConfig,
+    RouteDocs? docs,
   }) {
     final StaticFiles files = StaticFiles(
       directory,
@@ -545,10 +576,65 @@ class Route {
           files.serve(request, request.pathParams[_staticFileParam] ?? ''),
       key: key,
       filterConfig: filterConfig,
+      // A tree of files: not an API operation (give it docs to show it)
+      docs: docs ?? RouteDocs.none,
     );
   }
 
   static const String _staticFileParam = 'staticFile';
+
+  ///GET [path]: the OpenAPI document of the routes, as JSON (built by the first request).
+  ///
+  ///```dart
+  ///router.addRoute(Route.openApi(openApi: OpenApi(title: 'Users API', version: '1.0.0')));
+  ///```
+  ///
+  ///Add it with `addRoute` once the router exists: [OpenApi] documents the router of the running
+  ///server (or the one it's given). The route itself is not in the document.
+  factory Route.openApi({
+    required OpenApi openApi,
+    String path = '/openapi.json',
+    String? key,
+    FilterConfig? filterConfig,
+  }) => Route.get(
+    path: path,
+    handler: openApiHandler(openApi),
+    key: key,
+    filterConfig: filterConfig,
+    docs: RouteDocs.none,
+  );
+
+  ///GET [path]: Swagger UI, a page to read and try the API, with the document at [specUrl]
+  ///(`Route.openApi`). Swagger UI is loaded from a CDN (unpkg) by the browser; the page allows
+  ///it in its `Content-Security-Policy`.
+  factory Route.swaggerUi({
+    String path = '/docs',
+    String specUrl = '/openapi.json',
+    String title = 'API',
+    String? key,
+    FilterConfig? filterConfig,
+  }) => Route.get(
+    path: path,
+    handler: swaggerUiHandler(specUrl: specUrl, title: title),
+    key: key,
+    filterConfig: filterConfig,
+    docs: RouteDocs.none,
+  );
+
+  /// `{"status": "UP", "checks": {"database": "UP"}}`
+  static JsonSchema _healthSchema(Iterable<String> checks) {
+    JsonSchema state() => JsonSchema.string(enumValues: const ['UP', 'DOWN']);
+    return JsonSchema.object(
+      {
+        'status': state(),
+        if (checks.isNotEmpty)
+          'checks': JsonSchema.object({
+            for (final String name in checks) name: state(),
+          }),
+      },
+      required: const ['status'],
+    );
+  }
 
   ///A WebSocket at [path]: the handshake (a `GET`) goes through the filters like any request, and
   ///then [handler] gets the socket.
@@ -586,6 +672,7 @@ class Route {
     Duration? pingInterval = const Duration(seconds: 30),
     String? key,
     FilterConfig? filterConfig,
+    RouteDocs? docs,
   }) => Route.get(
     path: path,
     handler: webSocketRouteHandler(
@@ -596,6 +683,8 @@ class Route {
     ),
     key: key,
     filterConfig: filterConfig,
+    // OpenAPI doesn't describe WebSockets (give it docs to show its handshake)
+    docs: docs ?? RouteDocs.none,
   );
 
   ///GET (and HEAD) [path]: a health check for a load balancer, Docker or Kubernetes.
@@ -616,11 +705,28 @@ class Route {
     Duration timeout = const Duration(seconds: 5),
     String? key,
     FilterConfig? filterConfig,
+    RouteDocs? docs,
   }) => Route.get(
     path: path,
     handler: healthHandler(checks, timeout),
     key: key,
     filterConfig: filterConfig,
+    docs:
+        docs ??
+        RouteDocs(
+          summary: 'Health check',
+          tags: const ['health'],
+          response: BodyDocs(
+            description: 'Every check is up',
+            schema: _healthSchema(checks.keys),
+          ),
+          responses: {
+            503: BodyDocs(
+              description: 'A check is down',
+              schema: _healthSchema(checks.keys),
+            ),
+          },
+        ),
   );
 
   ///A static route has no path params nor regex, it only match an exact path
