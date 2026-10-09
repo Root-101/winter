@@ -80,7 +80,7 @@ For every route with a handler (not the hidden ones):
 | `{id\|[0-9]+}`, `{id\|\d+}`          | an integer param                                        |
 | `{code\|[A-Z][A-Z]}` (another regex) | a string with `pattern: ^[A-Z][A-Z]$`                   |
 | An `AuthFilter` that runs for it     | `security`, a 401 (and a 403 when it has `rules`)       |
-| Its `challenge` (`Bearer`, `Basic`, `Cookie name="sid"`) | the security scheme (`bearerAuth`, `basicAuth`, `cookieAuth`) |
+| Its `challenge` (`Bearer`, `Basic`, `Cookie name="sid"`, `ApiKey header="X-API-Key"`, another scheme like `Digest`) | the security scheme (`bearerAuth`, `basicAuth`, `cookieAuth`, `apiKeyAuth` with `in: header`/`query`/`cookie`, `digestAuth`); one per kind, so two `Cookie` or `ApiKey` challenges with different names share the last one |
 | A `RateLimiterFilter`                | a 429                                                   |
 | A request body                       | a 400 and a 415                                         |
 | A path param                         | a 400 and a 404                                         |

@@ -43,8 +43,9 @@ class WinterTestClient {
     ),
   );
 
-  /// Send a request with any method. [body] can be a String, bytes or any object
-  /// (serialized as JSON with the object mapper, with `Content-Type: application/json`).
+  /// Send a request with any method. [body] can be a String, bytes (a `Uint8List`) or any other
+  /// object, a `List<int>` included, serialized as JSON with the object mapper and
+  /// `Content-Type: application/json`.
   /// [headers] take a `String` or a `List<String>` per name.
   Future<TestResponse> request(
     String method,
@@ -55,7 +56,7 @@ class WinterTestClient {
   }) async {
     final Map<String, Object> requestHeaders = {...?headers};
     Object? requestBody = body;
-    if (body != null && body is! String && body is! List<int>) {
+    if (body != null && body is! String && body is! Uint8List) {
       requestBody = om.encode(body);
       requestHeaders.putIfAbsent(
         HttpHeader.contentType,

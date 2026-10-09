@@ -52,8 +52,8 @@ void main() {
 | `post`, `put`, `patch(path, headers:, body:)` | A request with a body                    |
 | `request(method, path, headers:, body:, connectionInfo:)` | Any method (`OPTIONS`...)    |
 
-- A `body` that is a `String` or bytes is sent as it is; anything else is JSON (with the object
-  mapper, and `Content-Type: application/json`).
+- A `body` that is a `String` or bytes (a `Uint8List`) is sent as it is; anything else, a
+  `List<int>` included, is JSON (with the object mapper, and `Content-Type: application/json`).
 - `headers` take a `String` or a `List<String>` per name.
 - `connectionInfo` gives the request a client IP (for `clientIp()` and the rate limiter).
 
