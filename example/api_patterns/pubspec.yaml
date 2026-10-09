@@ -1,0 +1,15 @@
+name: api_patterns_examples
+description: Patterns of real APIs with Winter, one file per case.
+publish_to: 'none'
+version: 1.0.0
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  winter:
+    path: ../../
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.24.0

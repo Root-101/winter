@@ -17,6 +17,11 @@ The smallest server is [`main.dart`](main.dart).
 | [bodies](bodies) | Every kind of request body: none, JSON, text/XML/CSV, urlencoded form, form-data, streamed upload, binary, GraphQL |
 | [validation](validation) | Basic rules, nested objects, lists and maps, custom rules, async rules ("the email is already registered") |
 | [object_mapper](object_mapper) | Field naming, typed fields and their errors, adapters, partial updates (PATCH), unknown fields, sealed classes, generic types |
+| [errors](errors) | Exceptions of the domain as Problem Details with `on<T>()`, a handler of your own (502/504 for other services, an error tracker) |
+| [filters](filters) | Writing filters (before/after, `order`, `shouldFilter`), a tenant in the request context, maintenance mode, a response cache |
+| [security](security) | API keys, Basic auth, webhook signatures (HMAC), CORS with cookies for a SPA, login throttling, "the author or an admin" |
+| [di](di) | Layered services with tags and fakes in a child container, one instance per request, async startup |
+| [api_patterns](api_patterns) | Pagination with `Link`, ETag and `If-Match` (304/412/428), content negotiation (406), streamed downloads, `202` jobs, idempotency keys, API versioning |
 | [openapi](openapi) | The document without any docs, bodies from examples, schemas by hand, `BodyDocs`, a whole documented API with Swagger UI, exporting the document |
 | [realtime](realtime) | Server-Sent Events, a WebSocket chat |
 | [scheduling](scheduling) | A task every few minutes, a nightly cron task with a health check |
