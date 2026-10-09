@@ -11,6 +11,7 @@ dartdoc:
     - Object mapper
     - Validation
     - Errors
+    - Scheduling
     - Security
     - Dependency injection
     - Configuration

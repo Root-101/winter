@@ -12,7 +12,8 @@ README: once adopted, delete `todo.md` and link this file from the README.
 > **Decision (2026-10-08): no release for now.** Phases 1 to 6.3 are done, but instead of
 > publishing a release candidate, everything still pending is finished first, starting with
 > **4.3** (in the order given there), and then `example/` is reorganized by topic (5.4). The
-> release (6.4) comes after that; the CI (6.1) stays postponed.
+> release (6.4) comes after that; the CI (6.1) stays postponed. → 4.3 and 5.4 are done; what was
+> left of 4.3 went to [Possible improvements](#possible-improvements).
 
 ---
 
@@ -595,7 +596,7 @@ cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `
   starts instead of in the first request that needs it. Proposed in the second review of 2.4.
   → Opt-in, every failure named in one `StateError` (`DECISIONS.md` §5).
 
-### 4.3 More features 🟢 (next, before the release)
+### 4.3 More features ✅ (done before the release)
 
 They were planned for 1.x (none of them breaks the API), but they are done before the first
 release (see the decision at the top). Order of work: what makes the existing modules complete
@@ -607,10 +608,12 @@ first, small and independent; then the new features, from the most used to the l
 3. **Async validations**.
 4. **WebSockets**: the biggest one, already designed in 3.1.
 5. **OpenAPI** generation from the routes.
-6. **Scheduled tasks**, a **Redis `RateLimiterStore`**, **more languages**.
-7. A **trie router**, only if a benchmark with hundreds of routes justifies it.
-8. **Annotations / package scanning** needs code generation, which the project avoids
-   (`DECISIONS.md`): decide whether it's done at all before starting it.
+6. **Scheduled tasks**: the last one before the release.
+
+The rest of what was planned here went to [Possible improvements](#possible-improvements) (decided
+2026-10-08): a Redis `RateLimiterStore`, more languages and a trie router. Annotations and package
+scanning are discarded: Winter has no code generation except the translations
+(`DECISIONS.md` §11).
 
 - [x] **WebSockets**, implemented by Winter on `WebSocketTransformer` of `dart:io` (no shelf):
   routes for WebSockets that go through the filters (auth, CORS) before the upgrade, as designed
@@ -619,7 +622,9 @@ first, small and independent; then the new features, from the most used to the l
 - [x] **Server-Sent Events** on the streaming responses of 3.1. → `ResponseEntity.sse` and
   `ServerSentEvent`; the streams end when the server starts closing (`DECISIONS.md` §10).
   `example/apps/files_gallery` sends the new photos.
-- [ ] Scheduled tasks (cron), it was in `todo.md`.
+- [x] Scheduled tasks (cron), it was in `todo.md`. → `Scheduler` with `every` and `cron` (its own
+  parser, local or UTC), each run in a `RequestScope`, no overlapping runs, started and stopped
+  by `Winter.start`/`close` (`doc/scheduling.md`, `DECISIONS.md` §13); `example/scheduling`.
 - [x] OpenAPI generation from the routes. → `Route.openApi`, `Route.swaggerUi`, `RouteDocs`,
   `JsonSchema`, `BodyDocs` (`doc/openapi.md`, `DECISIONS.md` §12): the four ways of describing a
   body at once (an example inferred with the rules of its `validate()`, a schema by hand, both,
@@ -627,11 +632,6 @@ first, small and independent; then the new features, from the most used to the l
 - [x] Async validations: an `AsyncValidatable` interface with a `Future` `validate()`, also run by
   `body<T>()` (`DECISIONS.md` §3). → `validateAsync()` and `cvc.check(...)`, run after
   `validate()` passed; `example/apps/auth_jwt` checks the email of a registration.
-- [ ] A Redis `RateLimiterStore`.
-- [ ] More languages for Winter's messages (fr, pt, de…).
-- [ ] Configuration with annotations / package scanning (with codegen).
-- [ ] A tree-based (trie) router if benchmarks with hundreds of routes justify it (today the lookup
-  is linear).
 
 **Dependency injection** (proposed in the second review of 2.4, none of them is breaking):
 
@@ -697,6 +697,20 @@ first, small and independent; then the new features, from the most used to the l
 - Not possible, on purpose: reading a class without registering it, or serializing records
   (`(id: 1, name: 'a')`); both need reflection, which AOT doesn't have, or codegen, which the
   project avoids.
+
+### Possible improvements
+
+Not planned for any version: ideas that are done only if a real use asks for them. None of them
+breaks the API.
+
+- [ ] **A Redis `RateLimiterStore`**, so several instances share the limit. It would add a Redis
+  client as a dependency: better a package of its own (`winter_redis`) than the core;
+  `RateLimiterStore` is already the interface for it.
+- [ ] **More languages for Winter's messages** (fr, pt, de…): translating the `*.i18n.yaml` of
+  `lib/src/i18n/` and running `dart run slang`; an app can already translate them itself.
+- [ ] **A tree-based (trie) router.** The lookup is linear, and Winter is not designed for
+  hundreds of routes: only if a benchmark of a real app shows the routing as a cost
+  (`benchmark/router_benchmark.dart`).
 
 ---
 

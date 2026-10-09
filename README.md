@@ -50,6 +50,7 @@ tests.
 | i18n                                   | Messages in the language of the request                             | [i18n](doc/i18n.md) |
 | WebSockets                             | Routes that go through the filters before the upgrade, closed on shutdown | [routing](doc/routing.md#websockets) |
 | OpenAPI                                | The document of the routes and Swagger UI, schemas from an example and its `validate()` | [openapi](doc/openapi.md) |
+| Scheduled tasks                        | Intervals and cron expressions, started and stopped with the server | [scheduling](doc/scheduling.md) |
 | Testing                                | The whole pipeline in memory, without ports                         | [testing](doc/testing.md) |
 | Deployment                             | Native executables, Docker, graceful shutdown, health checks        | [deployment](doc/deployment.md) |
 

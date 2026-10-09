@@ -14,6 +14,7 @@ export 'src/request_entity.dart'
 export 'src/request_scope.dart';
 export 'src/response_entity.dart' hide writeResponse;
 export 'src/router/router.dart';
+export 'src/scheduling/scheduling.dart';
 export 'src/security/security.dart';
 export 'src/server_config.dart';
 export 'src/testing/winter_test_client.dart';

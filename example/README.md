@@ -19,6 +19,7 @@ The smallest server is [`main.dart`](main.dart).
 | [object_mapper](object_mapper) | Field naming, typed fields and their errors, adapters, partial updates (PATCH), unknown fields, sealed classes, generic types |
 | [openapi](openapi) | The document without any docs, bodies from examples, schemas by hand, `BodyDocs`, a whole documented API with Swagger UI, exporting the document |
 | [realtime](realtime) | Server-Sent Events, a WebSocket chat |
+| [scheduling](scheduling) | A task every few minutes, a nightly cron task with a health check |
 | [i18n](i18n) | Responses and validation messages in the language of the request, with slang |
 
 ## Apps

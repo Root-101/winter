@@ -364,6 +364,10 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
   `isError`...), `resolve` (null for a code it doesn't know) and `valueOf` (`ArgumentError`). One
   constant per code.
 - `HttpHeader` names are `const`, so they work in `const` maps and in a `switch`.
+- **No code generation**, except the translations (slang, `DECISIONS.md` §1): no annotations, no
+  package scanning, no `build_runner` for routes, injection or JSON. What an app declares is plain
+  Dart that is read as it is written (routes in a list, `di.put`, a `fromJson`), and an app that
+  wants `json_serializable` or `freezed` uses them on its own.
 
 ## 12. OpenAPI
 
@@ -383,3 +387,28 @@ Guide: [`doc/openapi.md`](doc/openapi.md).
 - **OpenAPI 3.1** (JSON Schema 2020-12: `nullable` is a type list). `Route.static` and
   `Route.websocket` are hidden by default (not operations of an API), `Route.health` documents
   itself. Swagger UI comes from a CDN at a pinned version, allowed by the CSP of its page.
+
+## 13. Scheduled tasks
+
+Guide: [`doc/scheduling.md`](doc/scheduling.md).
+
+- **Its own cron parser, no dependency**: 5 fields with ranges, steps, lists, names and macros,
+  the day of the month and of the week matched as in cron (either one when both are restricted).
+  No seconds and no `L`/`W`/`#`: they cover rare cases, and a `Schedule` of your own (`next`)
+  covers anything else. An invalid expression fails when the task is added, naming the field.
+- **Local time by default**, as cron, and `utc: true`. The calendar is walked in UTC fields and
+  the result built in the zone of the schedule, so a daylight saving change never loops.
+- **A timer per task that waits one minute at most**, then checks the time: a change of the clock
+  or a suspended machine delays a run a minute, not hours. Missed runs are not repeated (one run,
+  and a warning with how many were missed): the scheduler is not a persistent job queue.
+- **`every` counts from the time it was due**, not from the end of the run, so it doesn't drift.
+- **A run never overlaps the previous one** by default (it's skipped with a warning):
+  `allowOverlap` opts in. A task that piles up runs is a bug that would get worse under load.
+- **Each run in a `RequestScope`**, like a request and a WebSocket: an id for its logs, and
+  `di.putScoped` dependencies that live for the run. An error is logged, never thrown: one task
+  never stops the server or the others.
+- **With the server, not inside it**: `Winter.start(scheduler:)` (or `di`) starts it after the
+  port is open and stops it when the server closes; a graceful close waits for the runs in
+  progress within the same timeout as the requests. A `Scheduler` also works without a server.
+- Every instance runs its tasks: a task that must run once in a cluster is chosen by
+  configuration or a lock of the app, not by Winter.
