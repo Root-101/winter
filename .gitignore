@@ -8,9 +8,9 @@ winter_framework.iml
 
 brag-output/
 
-CLAUDE.md
-
 # FVM Version Cache
 .fvm/
 # dart doc output
 doc/api/
+
+coverage/lcov.info
