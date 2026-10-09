@@ -4,6 +4,29 @@ A backend framework for Dart, inspired by Spring: routing, filters, dependency i
 mapping, validation, security and consistent errors, on top of `dart:io` and without code
 generation.
 
+> ⚠️ **Winter is an experimental project**, built in our spare time. `1.0.0-rc.1` is a release
+> candidate: the API is the one we intend to keep in 1.0, but it may still change before it, and
+> the framework has not yet been used by a real application in production. Try it, build with it,
+> and [tell us](https://github.com/Root-101/winter/issues) what breaks; use it in production at
+> your own discretion.
+
+**What Winter is:**
+
+- A framework for **REST APIs**: routes, filters, JSON in and out, validation, errors, security,
+  configuration, logs, scheduled tasks, OpenAPI, WebSockets and Server-Sent Events.
+- **Small and explicit**: no reflection, no annotations, no code generation; what you register is
+  what runs.
+- **Tested and documented**: about 1150 tests (99.7 % of the lines), a guide per module and an
+  example for every feature.
+
+**What Winter is not (yet):**
+
+- **Proven in production**: no app runs on it at scale yet, so expect rough edges.
+- **A full-stack framework**: no database access (bring your own driver), templates, sessions, CSRF
+  protection nor OAuth flows.
+- **A distributed system**: the rate limiter and the scheduled tasks live in one process; several
+  instances need a shared store of their own.
+
 ```dart
 import 'package:winter/winter.dart';
 
