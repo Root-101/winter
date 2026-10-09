@@ -605,8 +605,9 @@ class Route {
   );
 
   ///GET [path]: Swagger UI, a page to read and try the API, with the document at [specUrl]
-  ///(`Route.openApi`). Swagger UI is loaded from a CDN (unpkg) by the browser; the page allows
-  ///it in its `Content-Security-Policy`.
+  ///(`Route.openApi`). Swagger UI is loaded from a CDN by the browser: `swagger-ui-dist` 5.17.14
+  ///from unpkg, a fixed version (the page never changes by itself); the page allows it in its
+  ///`Content-Security-Policy`.
   factory Route.swaggerUi({
     String path = '/docs',
     String specUrl = '/openapi.json',
