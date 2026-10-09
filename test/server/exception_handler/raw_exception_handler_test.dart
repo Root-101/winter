@@ -1,81 +1,101 @@
 @TestOn('vm')
 library;
 
-import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
+/// An ExceptionHandler written from zero (not a SimpleExceptionHandler): it answers every
+/// exception its own way, Problem Details or not
 void main() {
-  int port = 9011;
-  String localUrl = 'http://localhost:$port';
+  late WinterTestClient client;
 
-  ExceptionHandler exc = TestExceptionHandler();
+  setUpAll(() {
+    Winter.context.setUp(exceptionHandler: _TextExceptionHandler());
+    client = WinterTestClient.build(
+      router: WinterRouter(
+        routes: [
+          Route.get(path: '/ok', handler: (request) => ResponseEntity.ok()),
+          Route.get(
+            path: '/app',
+            handler: (request) => throw _AppException('Error from GET'),
+          ),
+          Route.post(
+            path: '/app',
+            handler: (request) => throw _AppException('Error from POST'),
+          ),
+          Route.get(
+            path: '/generic',
+            handler: (request) => throw Exception('Generic exception'),
+          ),
+          Route.get(
+            path: '/teapot',
+            handler: (request) => throw _StatusException(418),
+          ),
+          Route.get(
+            path: '/path',
+            handler: (request) => throw _PathException(),
+          ),
+        ],
+      ),
+    );
+  });
 
-  setUpAll(
-    () async {
-      await Winter.run(
-        config: ServerConfig(port: port),
-        context: BuildContext(exceptionHandler: exc),
-        router: WinterRouter(
-          routes: [
-            Route(
-              path: '/exception/1',
-              method: HttpMethod.get,
-              handler: (request) =>
-                  throw TestException(message: 'Error from /exception'),
-            ),
-            Route(
-              path: '/exception/2',
-              method: HttpMethod.get,
-              handler: (request) => ResponseEntity.ok(
-                body: 'Hello world!!!',
-              ),
-            ),
-          ],
-        ),
-      );
-    },
+  tearDownAll(
+    () => Winter.context.setUp(exceptionHandler: SimpleExceptionHandler()),
   );
 
-  tearDownAll(() => Winter.close(force: true));
-
-  Uri url(String path) => Uri.parse(localUrl + path);
-
-  test('Test Exception #1', () async {
-    String urlToTest = '/exception/1';
-    http.Response response = await http.get(url(urlToTest));
-    expect(response.statusCode, 400);
-    expect(response.body, 'Error from /exception');
+  test('every exception gets its answer, whatever the method', () async {
+    expect((await client.get('/app')).body, 'Error from GET');
+    expect((await client.post('/app')).body, 'Error from POST');
+    expect((await client.get('/generic')).body, 'Exception: Generic exception');
+    expect((await client.get('/generic')).statusCode, 400);
   });
 
-  test('Test Exception #2', () async {
-    String urlToTest = '/exception/2';
-    http.Response response = await http.get(url(urlToTest));
-    expect(response.statusCode, 200);
-    expect(response.body, 'Hello world!!!');
+  test('any status, and the request is available', () async {
+    final teapot = await client.get('/teapot');
+
+    expect(teapot.statusCode, 418);
+    expect(teapot.body, 'Custom code: 418');
+    expect((await client.get('/path')).body, 'Path: /path');
+  });
+
+  test('a request without errors never reaches it', () async {
+    expect((await client.get('/ok')).statusCode, 200);
   });
 }
 
-class TestException implements Exception {
+class _AppException implements Exception {
   final String message;
 
-  TestException({
-    required this.message,
-  });
+  _AppException(this.message);
 
   @override
-  String toString() {
-    return message;
-  }
+  String toString() => message;
 }
 
-class TestExceptionHandler extends ExceptionHandler {
+class _StatusException implements Exception {
+  final int code;
+
+  _StatusException(this.code);
+}
+
+class _PathException implements Exception {}
+
+/// Text bodies instead of Problem Details
+class _TextExceptionHandler extends ExceptionHandler {
   @override
   Future<ResponseEntity> call(
     RequestEntity request,
-    Exception exception,
-    StackTrace stackTrac,
-  ) async {
-    return ResponseEntity.badRequest(body: exception.toString());
-  }
+    Object error,
+    StackTrace stackTrace,
+  ) async => switch (error) {
+    _StatusException(:final code) => ResponseEntity(
+      code,
+      body: 'Custom code: $code',
+    ),
+    _PathException() => ResponseEntity.ok(
+      body: 'Path: ${request.requestedUri.path}',
+    ),
+    _ => ResponseEntity.badRequest(body: error.toString()),
+  };
 }

@@ -1,0 +1,6 @@
+# The examples are apps, not a public API: the rules of the package without public_member_api_docs
+include: ../analysis_options.yaml
+
+linter:
+  rules:
+    public_member_api_docs: false

@@ -1,0 +1,9 @@
+# Base locale: the parameter types are declared here ({id: int}), the other locales only need the text.
+# Quote the texts: `{id: int}` has a `: ` that YAML would read as a map.
+greetings:
+  hello: 'Hello, {name}'
+orders:
+  created: 'Order {id: int} created'
+  notFound: 'Order {id: int} not found'
+  # Custom message of a built-in validator (notBlank)
+  productRequired: 'Choose a product'

@@ -1,0 +1,542 @@
+# Object mapper
+
+The `ObjectMapper` converts your objects to JSON (the bodies of the responses) and JSON back to
+your objects (`request.body<T>()`). The global one is `om` (`Winter.context.objectMapper`).
+
+- Objects with a `toJson()` method are serialized as they are: no interface to implement, so the
+  models of `json_serializable` and `freezed` work out of the box.
+- To read a type from a body, register a `Deserializer` once. `List<T>`, `Set<T>`,
+  `Map<String, T>` and `T?` come with it.
+- Deserialization is strict, and its errors are a 400 that says where the bad value is
+  (`$.items[1].price: expected a number, got a string`) without exposing any detail of the server.
+
+The decisions behind it (and why) are in [`DECISIONS.md` §2](../DECISIONS.md#2-object-mapper).
+
+Examples, one file per case: [`example/object_mapper`](../example/object_mapper).
+
+## Minimal example
+
+```dart
+import 'package:winter/winter.dart';
+
+class User {
+  final int id;
+  final String name;
+
+  User({required this.id, required this.name});
+
+  factory User.fromJson(Map<String, dynamic> json) =>
+      User(id: json['id'] as int, name: json['name'] as String);
+
+  Map<String, Object?> toJson() => {'id': id, 'name': name};
+}
+
+void main() async {
+  om.addDeserializer(Deserializer<User>.json(User.fromJson));
+
+  await Winter.start(
+    router: WinterRouter(
+      routes: [
+        Route.post(
+          path: '/users',
+          handler: (request) async {
+            final User user = await request.body<User>();
+            return ResponseEntity(201, body: user); // serialized with toJson()
+          },
+        ),
+        Route.post(
+          path: '/users/batch',
+          handler: (request) async {
+            final users = await request.body<List<User>>(); // no extra registration
+            return ResponseEntity.ok(body: users);
+          },
+        ),
+      ],
+    ),
+  );
+}
+```
+
+## How it works
+
+### Serialization (objects → JSON)
+
+`ResponseEntity(body: object)` calls `om.encode(object)`. Every value is converted with the first
+rule that applies:
+
+| Value                                   | JSON                                                        |
+|-----------------------------------------|-------------------------------------------------------------|
+| `null`, `String`, `num`, `bool`         | As it is                                                    |
+| `List`, any other `Iterable` (`Set`...) | An array, each element converted                            |
+| `Map`                                   | An object, keys converted to `String`, values converted     |
+| A type with a registered `Serializer`   | What the serializer returns, converted again                |
+| A subtype of a type with a `Serializer` | The same (the first registered one that matches)            |
+| An object with a `toJson()` method      | What `toJson()` returns, converted again                    |
+| An enum without `toJson()`              | Its `name`                                                  |
+| `DateTime` (default serializer)         | ISO-8601 **in UTC**: `2026-01-01T16:30:00.000Z`             |
+| `Duration` (default serializer)         | Milliseconds (`5400000`), or ISO-8601, see `durationFormat` |
+| Anything else                           | `MissingSerializerError` (500)                              |
+
+Because the result of a `toJson()` or a serializer is converted again, a `toJson()` can return
+`DateTime`s, enums and other objects without converting them itself:
+
+```dart
+Map<String, Object?> toJson() => {
+  'id': id,
+  'createdAt': createdAt, // DateTime → "2026-01-01T00:00:00.000Z"
+  'status': status, // enum → "paid"
+  'customer': customer, // another object → its toJson()
+  'lines': lines, // List<Line> → [ ... ]
+};
+```
+
+- `toJson()` is found dynamically, so it must be a method that takes no arguments. Which rule a
+  class uses is decided the first time it's serialized and cached per `runtimeType`.
+- `encode` works in a single pass: the `JsonEncoder` writes maps, lists and primitives itself and
+  only asks the mapper for the objects. `om.serialize(object)` gives the JSON value (maps and
+  lists) instead of the text.
+
+### Deserialization (JSON → objects)
+
+`request.body<T>()` calls `om.decode<T>(body)`: it decodes the JSON text and then converts the
+value with the deserializer of `T`. `om.deserialize<T>(value)` does the second step only, for a
+value that is already decoded.
+
+Deserializers are found by the exact `Type` you ask for. These are registered by default:
+
+| Type                         | Accepts                                                       |
+|------------------------------|---------------------------------------------------------------|
+| `String`                     | A JSON string                                                 |
+| `int`                        | A number without decimals: `12` or `12.0`, never `12.5`       |
+| `double`, `num`              | Any number                                                    |
+| `bool`                       | `true` or `false`                                             |
+| `DateTime`                   | Anything `DateTime.parse` accepts (with `Z`, an offset, or none) |
+| `Duration`                   | Milliseconds, or ISO-8601, see `durationFormat`               |
+| `Object`                     | Any value except `null`                                       |
+| `dynamic`, `Object?`         | Any value, as it is                                           |
+| `Map`, `Map<String, dynamic>` | A JSON object, as it is                                      |
+| `List<dynamic>`              | A JSON array, as it is                                        |
+
+Types are **strict**: `"12"` is not an `int` and `"true"` is not a `bool` (400). JSON has a single
+number type, so `12.0` is a valid `int` and `1` a valid `double`.
+
+#### Registering a deserializer
+
+| Written in JSON as | Constructor                          | Example                                                       |
+|--------------------|--------------------------------------|---------------------------------------------------------------|
+| An object          | `Deserializer<T>.json(fromJson)`     | `Deserializer<User>.json(User.fromJson)`                      |
+| A string           | `Deserializer<T>.string(fromString)` | `Deserializer<Uri>.string(Uri.parse)`                         |
+| An integer         | `Deserializer<T>.integer(fromInt)`   | `Deserializer<Cents>.integer(Cents.new)`                      |
+| A number           | `Deserializer<T>.number(fromNumber)` | `Deserializer<Ratio>.number(Ratio.new)`                       |
+| A boolean          | `Deserializer<T>.boolean(fromBool)`  | `Deserializer<Flag>.boolean(Flag.new)`                        |
+| An enum `name`     | `Deserializer<T>.enumByName(values)` | `Deserializer<Status>.enumByName(Status.values)`                      |
+| Anything else      | `Deserializer<T>(fromAnyValue)`      | `Deserializer<Point>((data) => Point.fromList(data as List))` |
+
+The typed constructors check the JSON type before calling your function, so a wrong one is a 400
+that says what was expected (`$.url: expected a string, got an integer`). If your function throws
+(`Uri.parse` with an invalid URI), the 400 is `invalid value` at the path of the value. With the
+plain `Deserializer<T>(...)` constructor every failure is `invalid value`.
+
+**Enums** are serialized by their `name` without registering anything, but reading one needs its
+deserializer, since Dart can't list the values of an enum from its type:
+
+```dart
+om.addDeserializer(Deserializer<Status>.enumByName(Status.values));
+// body<Status>(), List<Status>, Map<String, Status>...
+// "refunded" → 400 $.status: expected one of pending, paid, got another string
+```
+
+The names are case sensitive, and the value sent by the client is never echoed in the message.
+An enum with its own `toJson()` is written differently, so it needs its own deserializer.
+
+#### Generic types
+
+Registering `Deserializer<T>` also registers, derived from it:
+
+- `T?`
+- `List<T>`, `List<T>?` and `List<T?>`
+- `Set<T>` and `Set<T>?`
+- `Map<String, T>`, `Map<String, T>?` and `Map<String, T?>`
+
+The default types have them too, so `body<List<int>>()` or `body<Map<String, DateTime>>()` need
+nothing. Deeper types are registered explicitly, by building them from the deserializer of the
+inner type with `list()`, `set()`, `map()` and `nullable()`. Their derived types come with them:
+
+```dart
+// List<List<User>>, Map<String, List<User>>, List<User>?... from List<User>
+om.addDeserializer(Deserializer<User>.json(User.fromJson).list());
+
+// The default deserializers are reached with deserializerOf<T>()
+om.addDeserializer(om.deserializerOf<int>().list()); // Map<String, List<int>>...
+```
+
+An explicit registration wins over a derived one, and removing a deserializer
+(`om.removeDeserializer<User>()`) removes its derived types.
+
+A map with keys that are not strings is registered with `mapWithKeys<K>()`. JSON keys are always
+text: `int`, `double`, `num` and `bool` are parsed from it, and any other key type goes through its
+own deserializer with the key as a string (an enum with `enumByName`, `DateTime`, a
+`Deserializer.string`). It reads back what the mapper writes:
+
+```dart
+om.addDeserializer(om.deserializerOf<Price>().mapWithKeys<int>());  // {"7": {...}} → Map<int, Price>
+om.addDeserializer(om.deserializerOf<int>().mapWithKeys<Status>()); // {"paid": 3} → Map<Status, int>
+```
+
+A key that isn't a `K` is a 400 at its path (`$.abc: expected an integer as the key`).
+
+### Errors
+
+| Problem                                              | Exception                        | Response |
+|------------------------------------------------------|----------------------------------|----------|
+| The body is not valid JSON, or it's empty            | `DeserializationFormatException` | 400      |
+| A value has the wrong type, a `fromJson` throws      | `DeserializationException`       | 400      |
+| `Content-Type` that is not JSON (see below)          | `UnsupportedMediaTypeException`  | 415      |
+| No deserializer for the type                         | `MissingDeserializerError`       | 500      |
+| No serializer, `toJson()` nor enum for an object     | `MissingSerializerError`         | 500      |
+| A serializer or a `toJson()` throws                  | `SerializationException`         | 500      |
+
+The 400 is a Problem Details (see [error handling](error-handling.md)) whose `detail` is
+`path: reason`, and it never contains a Dart type, a stack trace or a file path:
+
+| Body                   | Asked for          | Message                                               |
+|------------------------|--------------------|-------------------------------------------------------|
+| `{"a":1,"b":"x"}`      | `Map<String, int>` | `$.b: expected an integer, got a string`              |
+| `[{"name":"A"}, 1]`    | `List<User>`       | `$[1]: expected an object, got an integer`            |
+| `[{"name":"A"}, {}]`   | `List<User>`       | `$[1]: invalid value`                                 |
+| `{"first name": true}` | `Map<String, int>` | `$["first name"]: expected an integer, got a boolean` |
+| `{"name": `            | `User`             | `The body is not valid JSON`                          |
+
+The path goes as deep as the mapper walks the data itself (lists, maps, primitives). Inside a
+`fromJson` that casts (`json['name'] as String`) it can't know which field failed, so the message
+is `invalid value` at the path of the object; read the fields with `json.field<T>()` and the path
+goes down to the field (see [typed fields](#a-hand-written-fromjson-typed-fields)). The original
+error is in `DeserializationException.cause` and is logged at `debug`.
+
+A missing serializer or deserializer is a 500 on purpose: it's a bug of the server, not something
+the client can fix. Its message (only in the logs) says how to register it.
+
+### The `Content-Type` of the request
+
+`body<T>()` reads the body as JSON when the `Content-Type` is `application/json`, any `*/*+json`
+(`application/merge-patch+json`), `text/plain` or missing. Any other one (a form, multipart,
+XML...) is a **415**.
+
+`text/plain` is accepted because `package:http` and the browser's `fetch()` send it for a String
+body when no header is given. `curl -d` sends `application/x-www-form-urlencoded`, so call it with
+`-H 'Content-Type: application/json'`.
+
+`body<String>()` is different: it decodes a JSON string (`"hello"` → `hello`) only when the
+`Content-Type` is JSON, and returns the text as it is otherwise. It never answers 415.
+
+## Configuration
+
+Replace the global mapper at start-up (before `Winter.start`), or pass one to a single call:
+
+```dart
+Winter.context.setUp(
+  objectMapper: ObjectMapper(
+    adapters: [
+      JsonAdapter<Money>.string(toJson: (money) => '$money', fromJson: Money.parse),
+    ],
+    deserializers: [Deserializer<User>.json(User.fromJson)],
+    fieldNaming: FieldNaming.snakeCase,
+    rejectUnknownFields: true,
+  ),
+);
+
+final user = await request.body<User>(objectMapper: anotherMapper);
+final response = ResponseEntity(200, body: user, objectMapper: anotherMapper);
+```
+
+| Option           | Default        | Effect                                                                      |
+|------------------|----------------|-----------------------------------------------------------------------------|
+| `includeNulls`   | `true`         | `false` drops the fields with a `null` value                                |
+| `fieldNaming`    | `none`         | `snakeCase` (`user_id`) or `kebabCase` (`user-id`)                          |
+| `durationFormat` | `milliseconds` | `iso8601`: `PT1H30M`, `-PT0.5S`, `P1DT2H` (hours are not grouped into days) |
+| `prettyPrint`    | `true`         | `false` writes compact JSON, for smaller responses                          |
+| `rejectUnknownFields` | `false`   | `true`: a key the `fromJson` never read is a 400 (below)                    |
+
+`includeNulls` and `fieldNaming` only apply to **objects**: the maps returned by a `toJson()` or a
+serializer, and the map given to `Deserializer.json`. A `Map` you serialize or ask for directly
+(`body<Map<String, int>>()`) holds data, so its keys are never renamed and its nulls are kept. The
+errors of Winter (`ProblemDetails`, `ConstraintViolation`) keep their names too (see
+[error handling](error-handling.md#problem-details)).
+
+A response with a text body says its charset: `application/json; charset=utf-8` (and
+`application/problem+json; charset=utf-8`, `text/plain; charset=utf-8`).
+
+The responses are indented by default (`prettyPrint`), which makes them easy to read in a browser
+or with curl. It has a cost: indenting a big response takes several times longer than writing it
+compact, so turn it off in production when the responses are big. In tests compare the decoded
+JSON (`response.json`) instead of the text.
+
+A response and a request are bytes, so Winter uses `om.encodeBytes(object)` (JSON straight to
+UTF-8) and `om.decodeBytes<T>(bytes)` (without the intermediate `String`): a fifth to a half faster
+than `utf8.encode(om.encode(...))` and `om.decode(utf8.decode(...))` (see
+[benchmarks](benchmarks.md#object-mapper)). `encode`/`decode` stay for JSON as text.
+
+## Common cases
+
+### A hand-written `fromJson`: typed fields
+
+With casts (`json['quantity'] as int`), a wrong field is a 400 that doesn't say which one:
+`$: invalid value`. Read the fields with `json.field<T>()` instead, and the 400 names the field,
+the way the client sent it:
+
+```dart
+class Order {
+  final String customerEmail;
+  final String? note;
+  final Status status;
+  final DateTime? deliverOn;
+  final Address shippingAddress;
+  final List<OrderItem> items;
+  final Map<String, int> discounts;
+
+  // ...constructor...
+
+  factory Order.fromJson(Map<String, dynamic> json) => Order(
+    customerEmail: json.field<String>('customerEmail'),     // required
+    note: json.field<String?>('note'),                      // nullable: may be missing or null
+    status: json.field<Status>('status'),                   // an enum with enumByName
+    deliverOn: json.field<DateTime?>('deliverOn'),          // DateTime, read by the mapper
+    shippingAddress: json.object('shippingAddress', Address.fromJson), // not registered
+    items: json.field<List<OrderItem>>('items'),            // OrderItem is registered
+    discounts: json.field<Map<String, int>?>('discounts') ?? const {},
+  );
+}
+```
+
+What the client gets for a wrong body (with `fieldNaming: FieldNaming.snakeCase`):
+
+| Body                                         | With casts         | With `json.field`                                       |
+|----------------------------------------------|--------------------|---------------------------------------------------------|
+| without `customer_email`                     | `$: invalid value` | `$.customer_email: missing`                             |
+| `"status": "lost"`                           | `$: invalid value` | `$.status: expected one of pending, paid, got another string` |
+| `"items": [{"quantity": "two", ...}]`        | `$: invalid value` | `$.items[0].quantity: expected an integer, got a string` |
+| `"shipping_address": {"zip_code": 28001}`    | `$: invalid value` | `$.shipping_address.zip_code: expected a string, got an integer` |
+
+- `field<T>(name)` reads with the mapper that is deserializing (the global `om` outside one), so
+  every type it reads works: primitives (strict: `"12"` is not an `int`), `DateTime`, `Duration`,
+  enums and classes with a deserializer, `List<T>`, `Map<String, T>`...
+- A missing field is `missing`; a nullable `T` (`field<String?>`) accepts it missing or `null`.
+- `object(name, fromJson)` reads a nested object with a `fromJson` that isn't registered; its own
+  `json.field` calls add their path (`$.shipping_address.zip_code`). A list of objects needs its
+  element registered (`Deserializer<OrderItem>.json(OrderItem.fromJson)`) to read it with
+  `field<List<OrderItem>>`.
+- The names are the Dart ones (`'customerEmail'`): the keys were already renamed by
+  `fieldNaming`. The errors show the JSON ones (`customer_email`).
+- It works in any code that has a `Map<String, dynamic>`, not only in a `fromJson` registered in
+  the mapper.
+
+The models of `json_serializable` and `freezed` (below) don't need it: their generated `fromJson`
+is used as it is.
+
+### Partial updates (PATCH): absent vs `null`
+
+In a PATCH, a missing field and a field sent as `null` mean different things: `{}` leaves the
+nickname as it is, `{"nickname": null}` clears it. With `json.field<String?>` both are `null`;
+`json.patch<T>()` keeps the difference in a `PatchValue<T>`:
+
+```dart
+class UserUpdate {
+  final PatchValue<String> name;      // absent, or a String (null is a 400)
+  final PatchValue<String?> nickname; // absent, null (clear it), or a String
+
+  UserUpdate({required this.name, required this.nickname});
+
+  factory UserUpdate.fromJson(Map<String, dynamic> json) => UserUpdate(
+    name: json.patch<String>('name'),
+    nickname: json.patch<String?>('nickname'),
+  );
+
+  /// The user after this update: what is absent keeps its value
+  User applyTo(User user) => user.copyWith(
+    name: name.orElse(user.name),
+    nickname: nickname.orElse(user.nickname),
+  );
+}
+
+Route.patch(
+  path: '/users/{id}',
+  handler: (request) async {
+    final update = await request.body<UserUpdate>();
+    final user = users.find(request.pathParam<int>('id'));
+    return ResponseEntity.ok(body: users.save(update.applyTo(user)));
+  },
+)
+```
+
+| Body                      | `name`                  | `nickname`                       | Result                     |
+|---------------------------|-------------------------|----------------------------------|----------------------------|
+| `{}`                      | absent                  | absent                           | nothing changes            |
+| `{"nickname": "annie"}`   | absent                  | `PatchValue.of('annie')`         | the nickname changes       |
+| `{"nickname": null}`      | absent                  | `PatchValue.of(null)`            | the nickname is cleared    |
+| `{"name": null}`          | 400 `$.name: expected a string, got null` | |                            |
+
+- `isPresent` tells whether the field came; `value` is its value (a `StateError` when absent);
+  `orElse(current)` is the value after the update; `valueOrNull` is for validating (below).
+- The value is read like `json.field<T>()`: any type of the mapper, with the path in the errors.
+- To validate only what came, validate `valueOrNull`: an absent field is `null`, and every
+  validator except `notNull()` passes on `null`:
+
+  ```dart
+  @override
+  ConstraintValidatorContext validate() => ConstraintValidatorContext()
+    ..field('name', name.valueOrNull).size(min: 2);
+  ```
+
+[`example/object_mapper/lib/partial_update.dart`](../example/object_mapper/lib/partial_update.dart)
+has a `PATCH` built this way.
+
+### Rejecting unknown fields
+
+By default a key the model doesn't know is ignored: `{"name": "Ann", "is_admin": true}` creates a
+user and drops `is_admin`. With `rejectUnknownFields: true` it's a 400, against mass assignment
+(a client trying fields it shouldn't send) and typos that would be lost silently (`"emial"`):
+
+```dart
+Winter.context.setUp(
+  objectMapper: ObjectMapper(
+    fieldNaming: FieldNaming.snakeCase,
+    rejectUnknownFields: true,
+    deserializers: [
+      Deserializer<CreateUser>.json(CreateUser.fromJson),
+      // This type keeps accepting anything (a webhook of another service)
+      Deserializer<StripeEvent>.json(StripeEvent.fromJson, rejectUnknownFields: false),
+    ],
+  ),
+);
+```
+
+```http
+POST /users
+{"name": "Ann", "email": "ann@example.com", "is_admin": true}
+
+HTTP/1.1 400 Bad Request
+{"type": "about:blank", "title": "Bad Request", "status": 400, "detail": "$.is_admin: unknown field"}
+```
+
+- A field is known when the `fromJson` **reads** it, whatever the way: `json['name']`,
+  `json.field<String>('name')`, `json.containsKey('name')`, or the code that `json_serializable`
+  and `freezed` generate. Nothing to declare: the fields of the model are the ones it reads.
+- A `fromJson` that looks at every key (`json.entries`, `json.forEach`, `json.keys`) reads all of
+  them.
+- A nested object is checked when it's read through the mapper (`json.object(...)`, a registered
+  type, `json.field<List<OrderItem>>(...)`), with its path: `$.items[1].discount: unknown field`.
+  One cast by hand (`Address.fromJson(json['address'] as Map<String, dynamic>)`) is not checked.
+- `Deserializer.json(..., rejectUnknownFields:)` overrides the option of the mapper for one type.
+- The error names the first unknown key, as the client sent it (`is_admin`, with `fieldNaming`).
+
+### `json_serializable` and `freezed`
+
+Their models have `toJson()` and `fromJson`, so they only need the deserializer:
+
+```dart
+om
+  ..addDeserializer(Deserializer<Order>.json(Order.fromJson))
+  ..addDeserializer(Deserializer<Customer>.json(Customer.fromJson));
+```
+
+Configure the names and the nulls in their annotations (`@JsonSerializable(fieldRename:
+FieldRename.snake, includeIfNull: false)`), not in the mapper: `fieldNaming` would rename the keys
+twice.
+
+A `freezed` class is implemented by a private subclass (`_$OrderImpl`), so a
+`Serializer<Order>`, if you register one, applies to it as a supertype.
+
+### A type you don't own
+
+Register both directions at once with a `JsonAdapter`:
+
+```dart
+ObjectMapper(adapters: [
+  JsonAdapter<Uri>.string(toJson: (uri) => uri.toString(), fromJson: Uri.parse),
+  JsonAdapter<Money>.json(toJson: (money) => money.toMap(), fromJson: Money.fromMap),
+])
+// or later: om.addAdapter(JsonAdapter<Uri>.string(...))
+```
+
+`JsonAdapter<T>.string`, `.integer`, `.number` and `.json` check the JSON type like the
+`Deserializer` of the same name; `.value` takes any JSON value. It's a `Serializer` and a
+`Deserializer` (`JsonAdapter(serializer, deserializer)` builds one from both), so `List<Uri>` and the
+other derived types come with it. It's not `JsonConverter`, so it doesn't clash with the one of
+`json_annotation` when both are imported.
+
+A value that is not a string is a 400 `expected a string, got ...`, and an invalid URI (`Uri.parse`
+throws) a 400 `invalid value`, both at the path of the value.
+
+### Sealed classes and subtypes
+
+A serializer of the base type applies to every subtype. For each class the mapper uses, in this
+order: the serializer of its exact type, the first registered serializer of a supertype, and its
+`toJson()`:
+
+```dart
+om.addSerializer(
+  Serializer<Shape>(
+    (shape) => switch (shape) {
+      Circle(:final radius) => {'type': 'circle', 'radius': radius},
+      Square(:final side) => {'type': 'square', 'side': side},
+    },
+  ),
+);
+```
+
+Deserializers are never matched by subtype: `body<Shape>()` uses the deserializer of `Shape`,
+which decides which subtype to build.
+
+### Validation
+
+A 400 means the body doesn't have the shape of the type. Rules about the values (a minimum, an
+email...) are a 422 of the validation, see [validation](validation.md).
+
+## Typical mistakes and limitations
+
+- **Forgetting the type argument**: inside a list (`deserializers: [...]`) Dart infers the type
+  from the list, not from the arguments: `Deserializer.json(User.fromJson)` is a
+  `Deserializer<dynamic>` and `Deserializer.enumByName(Status.values)` a `Deserializer<Enum>`. Both
+  are an `ArgumentError` when they are created, so it shows at start; always write the type:
+  `Deserializer<User>.json(...)`, `Deserializer<Status>.enumByName(...)`.
+- **Enums are not read automatically**: `body<Status>()` without
+  `Deserializer<Status>.enumByName(Status.values)` is a `MissingDeserializerError` (500), even though
+  writing them needs nothing.
+- **Asking for a type that is not registered**, like `List<List<User>>` without registering
+  `List<User>`, is a `MissingDeserializerError` (500), not a 400.
+- **Registering in `om` and then replacing it**: `Winter.context.setUp(objectMapper: ObjectMapper(...))`
+  starts from the defaults, so what was registered in the previous mapper is gone. Winter logs a
+  warning with the types it lost; set up the mapper first, or pass them in `deserializers:`,
+  `serializers:` or `adapters:`:
+
+  ```dart
+  om.addDeserializer(Deserializer<User>.json(User.fromJson));
+  Winter.context.setUp(objectMapper: ObjectMapper(fieldNaming: FieldNaming.snakeCase));
+  // WARNING The object mapper was replaced, and the new one has no serializer or
+  //         deserializer of User, registered in the previous one. ...
+
+  // Instead: the mapper first, with what it reads
+  Winter.context.setUp(
+    objectMapper: ObjectMapper(
+      fieldNaming: FieldNaming.snakeCase,
+      deserializers: [Deserializer<User>.json(User.fromJson)],
+    ),
+  );
+  ```
+- **`deserialize` with JSON text**: `om.deserialize<User>('{"id":1}')` receives a String, not an
+  object (400). Use `om.decode<User>(...)` for text.
+- **A `toJson` with parameters** (`toJson({bool full = true})` works, `toJson(bool full)` doesn't)
+  or a `toJson` getter is not used.
+- **`fieldNaming` and acronyms**: `userID` is written `user_id` and read back as `userId`. Use
+  camelCase names without acronyms.
+- **`fieldNaming` inside a model**: a parent `fromJson` reads its children itself, so the whole
+  object given to `Deserializer.json` is renamed, including the keys of a `Map` field inside it.
+- **Map keys** must be serializable to a `String`, `num`, `bool` or `null` (an enum becomes its
+  name). A `List` as a key is a `SerializationException`.
+- **A `Map<int, T>` (or another key type) is not derived**: register it with `mapWithKeys<K>()`;
+  `Map<String, T>` is the only map that comes with every deserializer.
+- **A serializer for `String`, `num`, `bool`, `List` or `Map`** is never used: they are written as
+  they are.
+- **Cost**: in the benchmark (`benchmark/object_mapper_benchmark.dart`, AOT) `om.encode` is
+  ~1.1–1.2x the time of a hand-written `jsonEncode` of JSON-only maps, and `om.decode` ~1.0x of
+  `jsonDecode` + `fromJson`.
