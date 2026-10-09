@@ -26,6 +26,7 @@ examples are runnable: one file per case, with its test.
 | [Scheduled tasks](scheduling.md)                    | `Scheduler`, `every` and cron expressions, each run in a scope, with the server's shutdown | [scheduling](../example/scheduling) |
 | [Deployment](deployment.md)                         | `dart compile exe`, Docker, graceful shutdown, isolates, reverse proxy       | [apps/production](../example/apps/production) |
 | [Benchmarks](benchmarks.md)                         | The results of [`benchmark/`](../benchmark) against `dart:io`, and how to run them | |
+| [Winter and other frameworks](comparison.md)      | Where each idea comes from (Spring, ASP.NET Core, Ktor...), the closest frameworks, the Dart ones, what Winter does its own way | |
 
 ## Other references
 
