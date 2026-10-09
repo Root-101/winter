@@ -231,41 +231,31 @@ From zero to this, step by step: [getting started](doc/getting-started.md).
 If you liked it, [`example/`](example) has much more: many small examples by topic, one file per
 case with its test, and complete apps.
 
-| Topic | Cases |
-|-------|-------|
-| [routing](example/routing), [bodies](example/bodies) | Params, nested routes, a CRUD, static files, health checks; every kind of request body |
-| [object_mapper](example/object_mapper), [validation](example/validation) | Field naming, adapters, `PATCH`, sealed classes; nested objects, custom and async rules |
-| [errors](example/errors), [filters](example/filters) | Exceptions of the domain, a handler of your own; tenants, maintenance mode, a response cache |
-| [security](example/security), [di](example/di) | API keys, Basic auth, webhook signatures, login throttling; scoped services, async startup |
-| [api_patterns](example/api_patterns) | Pagination, ETag and `If-Match`, content negotiation, downloads, `202` jobs, idempotency keys, versioning |
-| [openapi](example/openapi), [realtime](example/realtime), [scheduling](example/scheduling), [i18n](example/i18n) | Swagger UI, Server-Sent Events, a WebSocket chat, cron tasks, translated messages |
-| [apps](example/apps) | Authentication with JWT, an orders API, a photo gallery with uploads and a chat, a production setup with Docker |
+| Topic                                                                                                            | Cases                                                                                                           |
+|------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| [routing](example/routing), [bodies](example/bodies)                                                             | Params, nested routes, a CRUD, static files, health checks; every kind of request body                          |
+| [object_mapper](example/object_mapper), [validation](example/validation)                                         | Field naming, adapters, `PATCH`, sealed classes; nested objects, custom and async rules                         |
+| [errors](example/errors), [filters](example/filters)                                                             | Exceptions of the domain, a handler of your own; tenants, maintenance mode, a response cache                    |
+| [security](example/security), [di](example/di)                                                                   | API keys, Basic auth, webhook signatures, login throttling; scoped services, async startup                      |
+| [api_patterns](example/api_patterns)                                                                             | Pagination, ETag and `If-Match`, content negotiation, downloads, `202` jobs, idempotency keys, versioning       |
+| [openapi](example/openapi), [realtime](example/realtime), [scheduling](example/scheduling), [i18n](example/i18n) | Swagger UI, Server-Sent Events, a WebSocket chat, cron tasks, translated messages                               |
+| [apps](example/apps)                                                                                             | Authentication with JWT, an orders API, a photo gallery with uploads and a chat, a production setup with Docker |
 
 ## Powered by Winter
 
 The projects that run on Winter:
 
-<table>
-  <tr>
-    <td align="center" width="160">
-      <a href="https://github.com/Root-101/winter/pulls">
-        <b>➕</b><br>
-        <sub>Your project?<br>Open a pull request</sub>
-      </a>
-    </td>
-  </tr>
-</table>
+| [➕](https://github.com/Root-101/winter/pulls) |
+|:---------------------------------------------:|
+| [Your project?](https://github.com/Root-101/winter/pulls) |
 
 <!--
-A cell per project, at most 4 per <tr> (start a new <tr> for more). The icon by an absolute URL, so
-it shows on pub.dev too:
+A column per project, before the "Your project?" one: its icon in the first row, its name in the
+second. The icon by an absolute URL, so it shows on pub.dev too:
 
-    <td align="center" width="160">
-      <a href="https://link-of-the-project">
-        <img src="https://url-of-the-icon.png" width="64" height="64" alt="name"><br>
-        <sub><b>name</b></sub>
-      </a>
-    </td>
+| [<img src="https://url-of-the-icon.png" width="64" alt="name">](https://link-of-the-project) | [➕](https://github.com/Root-101/winter/pulls) |
+|:---:|:---:|
+| [name](https://link-of-the-project) | [Your project?](https://github.com/Root-101/winter/pulls) |
 -->
 
 ## More
