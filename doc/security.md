@@ -70,7 +70,7 @@ User? verifyToken(String token) => token == 'secret' ? const User('ann', {'admin
 | `DELETE /users/7` with a user without `admin`   | 403                                     |
 
 The full app, with login, hashed passwords and expiring JWTs, is
-[`example/03_auth_security`](../example/03_auth_security).
+[`example/apps/auth_jwt`](../example/apps/auth_jwt).
 
 ## How it works
 

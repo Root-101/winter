@@ -12,6 +12,8 @@ expected is a 400).
 
 The decisions behind it are in [`DECISIONS.md` §3](../DECISIONS.md#3-validation).
 
+Examples, one file per case: [`example/validation`](../example/validation).
+
 ## Minimal example
 
 ```dart
@@ -327,7 +329,8 @@ class RegisterRequest implements Validatable, AsyncValidatable {
 - Keep the check in the service too when two requests can race (two registrations of the same
   email at the same time): the validation gives the 422, the service the last word.
 
-`example/03_auth_security` validates its `RegisterRequest` this way.
+[`example/validation/lib/async_rules.dart`](../example/validation/lib/async_rules.dart) has this case alone, and
+`example/apps/auth_jwt` validates its `RegisterRequest` this way.
 
 ## Typical mistakes and limitations
 

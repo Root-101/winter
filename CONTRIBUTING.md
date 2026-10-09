@@ -21,8 +21,8 @@ fvm dart test --coverage-path=coverage/lcov.info --branch-coverage
 fvm dart run benchmark/http_benchmark.dart                   # compile it with `dart compile exe` to measure
 ```
 
-Every example in `example/` is a package of its own: run `fvm dart pub get` and `fvm dart test`
-inside it.
+Every topic of `example/` (and every app of `example/apps/`) is a package of its own: run
+`fvm dart pub get` and `fvm dart test` inside it.
 
 ## How the code is written
 

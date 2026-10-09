@@ -576,7 +576,7 @@ cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `
 - [x] **Every kind of body** (the tabs of Postman: none, raw, x-www-form-urlencoded, form-data,
   binary, GraphQL), checked one by one. → Added `request.bytes()` and `body<Uint8List>()` for a
   binary body (before only `read()`, a stream read once), and a body that isn't text read as
-  text is a 400 (it was a 500). `example/08_request_bodies` has an endpoint for each kind.
+  text is a 400 (it was a 500). `example/bodies` has a case for each kind.
 - [x] **HTTPS:** `ServerConfig(securityContext: ...)` with `HttpServer.bindSecure` (the server of
   3.1). → Done in 3.1.
 
@@ -589,7 +589,7 @@ cookies, one `copyWith`), `ServerConfig` has `autoCompress`, `idleTimeout` and `
   → Done in 3.1: `ServerConfig.autoCompress`.
 - [x] **Health check:** `Route.health('/health')` or a documented example (needed for Docker and
   Kubernetes). → `Route.health(path:, checks:, timeout:)` (`DECISIONS.md` §9), used by
-  `example/07_production`.
+  `example/apps/production`.
 - [x] **`di.createAll()`**: create every lazy dependency at start-up (opt-in), so a broken
   registration (a missing dependency, a cycle, a constructor that throws) fails when the server
   starts instead of in the first request that needs it. Proposed in the second review of 2.4.
@@ -615,18 +615,18 @@ first, small and independent; then the new features, from the most used to the l
 - [x] **WebSockets**, implemented by Winter on `WebSocketTransformer` of `dart:io` (no shelf):
   routes for WebSockets that go through the filters (auth, CORS) before the upgrade, as designed
   in 3.1. → `Route.websocket` (`DECISIONS.md` §10), with `allowedOrigins`
-  against cross-site WebSocket hijacking; `example/06_files` has a chat.
+  against cross-site WebSocket hijacking; `example/apps/files_gallery` has a chat.
 - [x] **Server-Sent Events** on the streaming responses of 3.1. → `ResponseEntity.sse` and
   `ServerSentEvent`; the streams end when the server starts closing (`DECISIONS.md` §10).
-  `example/06_files` sends the new photos.
+  `example/apps/files_gallery` sends the new photos.
 - [ ] Scheduled tasks (cron), it was in `todo.md`.
 - [x] OpenAPI generation from the routes. → `Route.openApi`, `Route.swaggerUi`, `RouteDocs`,
   `JsonSchema`, `BodyDocs` (`doc/openapi.md`, `DECISIONS.md` §12): the four ways of describing a
   body at once (an example inferred with the rules of its `validate()`, a schema by hand, both,
-  nothing). Example 02 documents its CRUD.
+  nothing). `example/openapi` has a case for each way.
 - [x] Async validations: an `AsyncValidatable` interface with a `Future` `validate()`, also run by
   `body<T>()` (`DECISIONS.md` §3). → `validateAsync()` and `cvc.check(...)`, run after
-  `validate()` passed; example 03 checks the email of a registration.
+  `validate()` passed; `example/apps/auth_jwt` checks the email of a registration.
 - [ ] A Redis `RateLimiterStore`.
 - [ ] More languages for Winter's messages (fr, pt, de…).
 - [ ] Configuration with annotations / package scanning (with codegen).
@@ -669,7 +669,7 @@ first, small and independent; then the new features, from the most used to the l
   `json.object('address', Address.fromJson)`): the 400 says which field failed
   (`$.address.zip: ...`) instead of `$: invalid value`, without tracking the keys behind the
   scenes. → `JsonObjectFields`: `json.field<T>()` (with the mapper that is
-  deserializing) and `json.object(name, fromJson)`; example 05 uses it.
+  deserializing) and `json.object(name, fromJson)`; `example/object_mapper` and `example/apps/orders` use it.
 - [x] **`TestResponse.as<T>()`**: deserialize a response of `WinterTestClient` with the mapper,
   instead of `json` (`dynamic`) and a manual `fromJson`.
 - [x] **Warn when the mapper is replaced after registering**: `Winter.context.setUp(objectMapper:
@@ -686,11 +686,11 @@ first, small and independent; then the new features, from the most used to the l
   reading the body.
 - [x] **Absent vs `null`** for partial updates (PATCH): today a missing field and a `null` one are
   the same; `body<Map<String, dynamic>>()` is the workaround. → `PatchValue<T>` from
-  `json.patch<T>()` (`isPresent`, `value`, `orElse`, `valueOrNull`); example 02 has a PATCH.
+  `json.patch<T>()` (`isPresent`, `value`, `orElse`, `valueOrNull`); `example/object_mapper/lib/partial_update.dart` has a PATCH.
 - [x] **Reject unknown fields** (optional, against mass assignment): needs to know which keys the
   `fromJson` read (see the typed field access above). → `ObjectMapper(rejectUnknownFields: true)`, and
   per type in `Deserializer.json`: the map given to the `fromJson` records the keys read, so it
-  works with any `fromJson` (also the generated ones). Example 05 turns it on.
+  works with any `fromJson` (also the generated ones). `example/apps/orders` turns it on.
 - [x] **Map keys that are not `String`** (`Map<int, T>`, `Map<Status, T>`): convert the key from
   its text. → `deserializer.mapWithKeys<K>()`: `int`, `double`, `num` and `bool`
   parsed, any other key through its own deserializer. Writing them already worked.
@@ -812,7 +812,7 @@ written twice. The rest can be written now.
     5. **Winter's messages:** which validators are translated, the included languages (en, es), the
        warning on start about languages without translations, and how to contribute a new language
        (`*.i18n.yaml` + `dart run slang`).
-    6. **Translating the texts of your app with slang**, step by step as in `example/04_i18n`:
+    6. **Translating the texts of your app with slang**, step by step as in `example/i18n`:
        `slang.yaml` with the same options as Winter (`locale_handling: false`,
        `string_interpolation: braces`, `fallback_strategy: none`), nested YAML, typed parameters,
        generating the code and the getter `t => appMessages(requestLocale)` (**a getter, never a
@@ -827,7 +827,7 @@ written twice. The rest can be written now.
        Winter doesn't have, and a link to `DECISIONS.md` §1 for why slang and YAML.
 - [x] **`security.md`** (after 2.7), its snippets checked by running them: how to authenticate with
   your own filter (Bearer/JWT, as in
-  `example/03_auth_security`), `Authentication` and `RequestSecurityContext`,
+  `example/apps/auth_jwt`), `Authentication` and `RequestSecurityContext`,
   `requestAuthentication` from services, `AuthFilter` (401 vs 403), rules (`hasRole`,
   `hasPermission`, `rule`, `&`, `|`), route vs global filters with `shouldFilter`, CORS
   (`SecurityConfig.cors()`, credentials, preflight), rate limiter (sliding window, `X-RateLimit-*`
@@ -891,7 +891,7 @@ The current 4 are fine. Missing:
   shutdown with `onShutdown` closing a "database". → Done in 3.2.
 - [x] `08_request_bodies`: one endpoint for each kind of body (the tabs of Postman), with its
   `curl`.
-- [ ] **Reorganize `example/` by topic** (decided 2026-10-08): many small examples, each about one
+- [x] **Reorganize `example/` by topic** (decided 2026-10-08): many small examples, each about one
   case, instead of a few that mix many features. Done after the features of 4.3, so the cases
   cover all of them.
   - **One package per topic, one file per case**: `example/<topic>/` with its `pubspec.yaml`, a
@@ -909,6 +909,12 @@ The current 4 are fine. Missing:
     05 and 08 move to the topics.
   - `example/README.md` stays the index (it's what pub.dev shows), and the guides of `doc/` link
     to the file of each case.
+  → Done: `routing` (6 cases), `bodies` (8), `validation` (4), `object_mapper` (7), `openapi`
+    (6: automatic, from examples, by hand, `BodyDocs`, a documented API, export), `realtime`
+    (SSE, a WebSocket chat) and `i18n`; the apps `auth_jwt`, `orders` (the old 05),
+    `files_gallery` and `production`. The cases live in `lib/<case>.dart` (not `bin/`), so the
+    tests import them. `security/`, `di/` and `testing/` are left for when they have cases of
+    their own beyond the apps.
 
 ---
 

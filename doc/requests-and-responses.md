@@ -11,6 +11,8 @@ top of `dart:io`:
 
 The decisions behind it are in [`DECISIONS.md` §10](../DECISIONS.md#10-the-http-layer).
 
+Examples, one file per case: [`example/bodies`](../example/bodies).
+
 ## Minimal example
 
 ```dart
@@ -108,7 +110,7 @@ final Uint8List image = await request.bytes();                 // binary, any Co
 - A body over `ServerConfig.maxBodySize` (10 MB) is a **413** when it's read; a body nobody reads
   is never rejected.
 
-`example/08_request_bodies` has an endpoint for each kind, with the `curl` of each one.
+[`example/bodies`](../example/bodies) has a case for each kind, with the `curl` of each one.
 
 ### A form
 
@@ -347,7 +349,8 @@ data: {"id":42,"status":"paid"}
   `request.headers[HttpHeader.lastEventId]` and send what it missed.
 - `event` and `id` can't have a line break (it would start another event): an `ArgumentError`.
 
-`example/06_files` sends every new photo to the open pages this way.
+[`example/realtime`](../example/realtime) has a countdown that resumes from `Last-Event-ID`, and
+`example/apps/files_gallery` sends every new photo to the open pages this way.
 
 ### Other streams
 

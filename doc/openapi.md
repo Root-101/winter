@@ -13,6 +13,8 @@ from a **schema written by hand** where you want more precision, or from both.
   API sends, and the rules of `validate()` become `required`, `format`, `minLength`, `minimum`,
   `enum`... nothing is written twice.
 
+Examples, one file per case: [`example/openapi`](../example/openapi).
+
 ## Minimal example
 
 ```dart

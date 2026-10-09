@@ -4,7 +4,7 @@ A Winter app compiles to a native executable: a small container image without th
 starts in milliseconds. This guide covers the build, the container, the shutdown, the health
 checks, several isolates and the proxy in front of the app.
 
-The whole setup is in [`example/07_production`](../example/07_production).
+The whole setup is in [`example/apps/production`](../example/apps/production).
 
 ## Minimal example
 
