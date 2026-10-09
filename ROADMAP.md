@@ -236,12 +236,15 @@ The [release review](#release-review-before-every-release), the first time.
   `doc/benchmarks.md`, so the absolute numbers aren't comparable. Left for the release: `pana`
   (it needs Linux: only a Docker distro here) and the benchmarks on a quiet machine.
 
-### 6.4 Release ⏸️
+### 6.4 Release
 
-After phase 7. Decide the version (`0.1.0` today, or the plan below); every release (the rc
-included) goes through the [release review](#release-review-before-every-release) first.
+Every release (the rc included) goes through the
+[release review](#release-review-before-every-release) first. The package `winter` already
+exists on pub.dev (0.0.7, the same repository), so each release is a new version of it.
 
-1. [ ] `1.0.0-rc.1`, used in a real project for a few weeks.
+1. [ ] `1.0.0-rc.1` (decided 2026-10-09; `pubspec.yaml`, CHANGELOG and the install commands, which
+   name the version: pub only picks a prerelease when asked). Then: `pana`, publish, tag
+   `v1.0.0-rc.1`, and use it in a real project for a few weeks.
 2. [ ] Fix what comes up and publish `1.0.0`: tag `v1.0.0`, CHANGELOG with the date, announcement
    (r/dartlang, Dart Discord, X).
 
