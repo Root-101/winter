@@ -6,4 +6,11 @@ pubspec.lock
 
 winter_framework.iml
 
-lib/example
+brag-output/
+
+CLAUDE.md
+
+# FVM Version Cache
+.fvm/
+# dart doc output
+doc/api/

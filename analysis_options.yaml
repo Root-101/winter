@@ -1,5 +1,10 @@
 include: package:lints/recommended.yaml
 
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+
 linter:
   rules:
     avoid_print: true
@@ -7,3 +12,5 @@ linter:
     require_trailing_commas: true
     prefer_const_constructors: true
     always_put_required_named_parameters_first: true
+    implementation_imports: true
+    public_member_api_docs: true

@@ -1,0 +1,34 @@
+import 'package:auth_security_example/auth_security_example.dart';
+
+class JwtFilter extends Filter {
+  final JwtService jwtService;
+
+  JwtFilter(this.jwtService);
+
+  @override
+  Future<ResponseEntity> doFilter(
+    RequestEntity request,
+    FilterChain chain,
+  ) async {
+    final authHeader = request.headers[HttpHeader.authorization];
+
+    if (authHeader != null && authHeader.startsWith('Bearer ')) {
+      final token = authHeader.substring(7);
+      final payload = jwtService.verifyToken(token);
+
+      if (payload != null) {
+        request.securityContext.setAuthentication(
+          Authentication(
+            principal: payload['sub'],
+            roles: Set.from(payload['roles'] as List? ?? []),
+            permissions: Set.from(payload['permissions'] as List? ?? []),
+          ),
+        );
+      }
+    } else {
+      request.securityContext.clear();
+    }
+
+    return chain.doFilter(request);
+  }
+}

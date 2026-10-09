@@ -1,6 +1,18 @@
 import 'package:winter/winter.dart';
 
-void main() => Winter.run(
-      router:
-          ServeRouter((request) => ResponseEntity.ok(body: 'Hello world!!!')),
-    );
+void main() async {
+  await Winter.start(
+    config: const ServerConfig(port: 8080),
+    router: WinterRouter(
+      config: RouterConfig(onLoadedRoutes: DefaultOnLoadedRoutes.log()),
+      routes: [
+        Route.get(
+          path: '/hello',
+          handler: (request) {
+            return ResponseEntity.ok(body: 'Hello World');
+          },
+        ),
+      ],
+    ),
+  );
+}

@@ -1,0 +1,1074 @@
+@TestOn('vm')
+library;
+
+import 'dart:async';
+
+import 'package:test/test.dart';
+import 'package:winter/winter.dart';
+
+/// The behavior decided in the review of the dependency injection (DECISIONS.md §5)
+void main() {
+  late DependencyInjection di;
+
+  setUp(() => di = DependencyInjection());
+
+  group('A dependency registered from a nullable variable (§5)', () {
+    test('is found by its non nullable type', () {
+      final maybe = _maybeService();
+      di.put(maybe); // registered as <_Service?>
+
+      expect(di.tryFind<_Service>(), same(maybe));
+      expect(di.find<_Service>(), same(maybe));
+    });
+
+    test('and the other way around', () {
+      di.put(_Service());
+
+      expect(di.find<_Service?>(), isNotNull);
+    });
+
+    test('delete finds it too', () {
+      final maybe = _maybeService();
+      di.put(maybe);
+
+      expect(di.delete<_Service>(), same(maybe));
+      expect(di.tryFind<_Service?>(), isNull);
+    });
+  });
+
+  group('Exact types (§5)', () {
+    test('an implementation is not found by its interface', () {
+      di.put(_SqlRepository());
+
+      expect(
+        () => di.find<_Repository>(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('<_Repository>'), contains('di.put<_Repository>')),
+          ),
+        ),
+      );
+    });
+
+    test('registered with the type it is looked up by', () {
+      di.put<_Repository>(_SqlRepository());
+
+      expect(di.find<_Repository>(), isA<_SqlRepository>());
+    });
+  });
+
+  group('putLazy (§5)', () {
+    test('creates the instance on the first find, once', () {
+      var created = 0;
+      di.putLazy<_Service>(() {
+        created++;
+        return _Service();
+      });
+
+      expect(created, 0);
+      final first = di.find<_Service>();
+      expect(di.find<_Service>(), same(first));
+      expect(created, 1);
+    });
+
+    test('dependencies can be registered in any order', () {
+      di
+        ..putLazy<_Controller>(() => _Controller(di.find()))
+        ..putLazy<_Repository>(_SqlRepository.new);
+
+      expect(di.find<_Controller>().repository, isA<_SqlRepository>());
+    });
+
+    test('a cycle is a StateError that shows the chain', () {
+      di
+        ..putLazy<_A>(() => _A(di.find()))
+        ..putLazy<_B>(() => _B(di.find()));
+
+      expect(
+        () => di.find<_A>(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'Circular dependency: _A -> _B -> _A',
+          ),
+        ),
+      );
+      // Nothing is left half created
+      di.put<_B>(_B(null));
+      expect(di.find<_A>().b, isNotNull);
+    });
+
+    test('tryFind creates it too, delete returns it only if created', () {
+      di.putLazy<_Service>(_Service.new, tag: 'unused');
+      di.putLazy<_Service>(_Service.new, tag: 'used');
+
+      final used = di.tryFind<_Service>(tag: 'used');
+
+      expect(di.delete<_Service>(tag: 'unused'), isNull);
+      expect(di.delete<_Service>(tag: 'used'), same(used));
+    });
+  });
+
+  group('putFactory (§5)', () {
+    test('creates a new instance on every find', () {
+      di.putFactory<_Service>(_Service.new);
+
+      expect(di.find<_Service>(), isNot(same(di.find<_Service>())));
+      expect(di.delete<_Service>(), isNull);
+    });
+  });
+
+  group('putScoped (§5, §5)', () {
+    test('one instance per request, disposed when it ends', () async {
+      final disposed = <_UnitOfWork>[];
+      Winter.context.setUp(dependencyInjection: di);
+      addTearDown(
+        () => Winter.context.setUp(dependencyInjection: DependencyInjection()),
+      );
+      di.putScoped<_UnitOfWork>(_UnitOfWork.new, onDispose: disposed.add);
+      final client = WinterTestClient.build(
+        router: WinterRouter(
+          routes: [
+            Route.get(
+              path: '/',
+              handler: (request) async {
+                final first = di.find<_UnitOfWork>();
+                await Future<void>.delayed(Duration.zero);
+                // The same instance after an await, in the same request
+                expect(di.find<_UnitOfWork>(), same(first));
+                return ResponseEntity.ok(body: first.id);
+              },
+            ),
+          ],
+        ),
+      );
+
+      final ids = await Future.wait([
+        for (var i = 0; i < 5; i++) client.get('/').then((r) => r.body),
+      ]);
+
+      // Concurrent requests never share it
+      expect(ids.toSet(), hasLength(5));
+      expect(disposed.map((uow) => '${uow.id}').toSet(), ids.toSet());
+    });
+
+    test('outside a request it is a StateError', () {
+      di.putScoped<_UnitOfWork>(_UnitOfWork.new);
+
+      expect(
+        () => di.find<_UnitOfWork>(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('scoped to a request'),
+          ),
+        ),
+      );
+    });
+
+    test(
+      'RequestScope.run gives it a request, complete() disposes it',
+      () async {
+        final events = <String>[];
+        di
+          ..putScoped<_UnitOfWork>(
+            _UnitOfWork.new,
+            onDispose: (_) => events.add('uow'),
+          )
+          ..putScoped<_Service>(
+            _Service.new,
+            onDispose: (_) => events.add('service'),
+          );
+        final scope = RequestScope();
+
+        RequestScope.run(scope, () {
+          di.find<_UnitOfWork>();
+          di.find<_Service>();
+        });
+        await scope.complete();
+        await scope.complete(); // only once
+
+        // In reverse order of creation
+        expect(events, ['service', 'uow']);
+      },
+    );
+  });
+
+  group('onDispose and disposeAll (§5)', () {
+    test('in reverse order of registration, only what was created', () async {
+      final events = <String>[];
+      di
+        ..put(_Service(), onDispose: (_) => events.add('service'))
+        ..putLazy<_Repository>(
+          _SqlRepository.new,
+          onDispose: (_) => events.add('repository'),
+        )
+        ..putLazy<_Controller>(
+          () => _Controller(di.find()),
+          onDispose: (_) => events.add('never created'),
+        )
+        ..put<String?>(null, tag: 'null', onDispose: (_) => events.add('null'));
+      di.find<_Repository>();
+
+      await di.disposeAll();
+
+      expect(events, ['null', 'repository', 'service']);
+      expect(di.isRegistered<_Service>(), isFalse);
+    });
+
+    test('a registration again moves it to the end', () async {
+      final events = <String>[];
+      di
+        ..put(_Service(), onDispose: (_) => events.add('first'))
+        ..put<_Repository>(
+          _SqlRepository(),
+          onDispose: (_) => events.add('repo'),
+        )
+        ..put(_Service(), onDispose: (_) => events.add('second'));
+
+      await di.disposeAll();
+
+      expect(events, ['second', 'repo']);
+    });
+
+    test('a failing onDispose is logged and the others still run', () async {
+      final logs = <String>[];
+      Winter.context.setUp(logger: _MemoryLogger(logs));
+      addTearDown(() => Winter.context.setUp(logger: const ConsoleLogger()));
+      final events = <String>[];
+      di
+        ..put(_Service(), onDispose: (_) => events.add('service'))
+        ..put<_Repository>(
+          _SqlRepository(),
+          onDispose: (_) => throw StateError('closed twice'),
+        );
+
+      await di.disposeAll();
+
+      expect(events, ['service']);
+      expect(logs.single, contains('<_Repository>'));
+    });
+
+    test('Winter.shutdown() disposes them after onShutdown', () async {
+      final events = <String>[];
+      final previous = Winter.context.dependencyInjection;
+      Winter.context.setUp(dependencyInjection: di);
+      addTearDown(() => Winter.context.setUp(dependencyInjection: previous));
+      di.put(_Service(), onDispose: (_) => events.add('dispose'));
+
+      await Winter.start(
+        config: ServerConfig(
+          port: 9088,
+          handleSignals: false,
+          onShutdown: () => events.add('onShutdown'),
+        ),
+        router: WinterRouter(routes: []),
+      );
+      await Winter.shutdown();
+
+      expect(events, ['onShutdown', 'dispose']);
+    });
+  });
+
+  group('null values and isRegistered (§5)', () {
+    test('a null value can be registered and found', () {
+      di.put<String?>(null, tag: 'optional');
+
+      expect(di.isRegistered<String>(tag: 'optional'), isTrue);
+      expect(di.find<String?>(tag: 'optional'), isNull);
+    });
+
+    test('a null value can be deleted', () {
+      di.put<String?>(null, tag: 'optional');
+
+      expect(di.delete<String?>(tag: 'optional'), isNull);
+      expect(di.isRegistered<String>(tag: 'optional'), isFalse);
+      expect(() => di.find<String?>(tag: 'optional'), throwsStateError);
+    });
+  });
+
+  group('Scoped dependencies and the lifetime of the request (§5)', () {
+    test('a lazy singleton that depends on a scoped one is a StateError', () {
+      di
+        ..putScoped<_UnitOfWork>(_UnitOfWork.new)
+        ..putLazy<_OrderService>(() => _OrderService(di.find()));
+
+      expect(
+        () => RequestScope.run(RequestScope(), () => di.find<_OrderService>()),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              contains('<_OrderService>'),
+              contains('<_UnitOfWork>'),
+              contains('putFactory'),
+            ),
+          ),
+        ),
+      );
+      // Nothing is left half created: as a factory it works
+      di.putFactory<_OrderService>(() => _OrderService(di.find()));
+      RequestScope.run(RequestScope(), () {
+        expect(
+          di.find<_OrderService>().unitOfWork,
+          same(di.find<_UnitOfWork>()),
+        );
+      });
+    });
+
+    test('a factory and the handler get the same scoped instance', () {
+      di
+        ..putScoped<_UnitOfWork>(_UnitOfWork.new)
+        ..putFactory<_OrderService>(() => _OrderService(di.find()));
+
+      RequestScope.run(RequestScope(), () {
+        expect(
+          di.find<_OrderService>().unitOfWork,
+          same(di.find<_UnitOfWork>()),
+        );
+      });
+    });
+
+    test('after the request ended it is a StateError', () async {
+      final scope = RequestScope();
+      di.putScoped<_UnitOfWork>(_UnitOfWork.new);
+      RequestScope.run(scope, () => di.find<_UnitOfWork>());
+
+      await scope.complete();
+
+      expect(scope.isCompleted, isTrue);
+      expect(
+        () => RequestScope.run(scope, () => di.find<_UnitOfWork>()),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('already ended'),
+          ),
+        ),
+      );
+      expect(() => scope.onComplete(() {}), throwsStateError);
+    });
+
+    test(
+      'tryFind of a scoped dependency outside a request is a StateError',
+      () {
+        di.putScoped<_UnitOfWork>(_UnitOfWork.new);
+
+        // It's registered, but there is no request to give it
+        expect(di.isRegistered<_UnitOfWork>(), isTrue);
+        expect(() => di.tryFind<_UnitOfWork>(), throwsStateError);
+      },
+    );
+
+    test('a failing onDispose of a scoped one is logged', () async {
+      final logs = <String>[];
+      Winter.context.setUp(logger: _MemoryLogger(logs));
+      addTearDown(() => Winter.context.setUp(logger: const ConsoleLogger()));
+      di.putScoped<_UnitOfWork>(
+        _UnitOfWork.new,
+        onDispose: (_) => throw StateError('x'),
+      );
+      final scope = RequestScope();
+      RequestScope.run(scope, () => di.find<_UnitOfWork>());
+
+      await scope.complete();
+
+      expect(logs.single, contains('<_UnitOfWork>'));
+    });
+  });
+
+  group('createAll (§5)', () {
+    late List<String> logs;
+
+    setUp(() {
+      logs = [];
+      Winter.context.setUp(logger: _MemoryLogger(logs));
+      addTearDown(() => Winter.context.setUp(logger: const ConsoleLogger()));
+    });
+
+    test('creates every lazy singleton once, in order of registration', () {
+      final List<String> created = [];
+      di
+        ..putLazy<String>(() {
+          created.add('a');
+          return 'a ${di.find<String>(tag: 'b')}';
+        }, tag: 'a')
+        ..putLazy<String>(() {
+          created.add('b');
+          return 'b';
+        }, tag: 'b')
+        ..putLazy<String>(() {
+          created.add('c');
+          return 'c';
+        }, tag: 'c');
+      di.find<String>(tag: 'c');
+
+      di.createAll();
+      di.createAll();
+
+      expect(created, ['c', 'a', 'b']);
+      expect(di.find<String>(tag: 'a'), 'a b');
+      expect(logs, isEmpty);
+    });
+
+    test('factories and scoped dependencies are not created', () {
+      final List<String> created = [];
+      di
+        ..putFactory<_Service>(() {
+          created.add('factory');
+          return _Service();
+        })
+        ..putScoped<_UnitOfWork>(() {
+          created.add('scoped');
+          return _UnitOfWork();
+        })
+        ..put<int>(1);
+
+      di.createAll();
+
+      expect(created, isEmpty);
+    });
+
+    test('every failure is logged and named in one StateError', () {
+      di
+        ..putLazy<_Service>(_Service.new)
+        ..putLazy<_OrderService>(() => _OrderService(di.find()))
+        ..putLazy<String>(() => throw StateError('bad url'), tag: 'db')
+        ..putLazy<int>(() => di.find<int>(tag: 'b'), tag: 'a')
+        ..putLazy<int>(() => di.find<int>(tag: 'a'), tag: 'b');
+
+      expect(
+        di.createAll,
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              startsWith('4 dependencies could not be created:\n'),
+              contains(
+                '- <_OrderService>: Bad state: Dependency of <_UnitOfWork>',
+              ),
+              contains('- <String>: Bad state: bad url'),
+              contains('Circular dependency: int -> int -> int'),
+            ),
+          ),
+        ),
+      );
+      expect(logs, [
+        'The dependency <_OrderService> could not be created',
+        'The dependency <String> could not be created',
+        'The dependency <int> could not be created',
+        'The dependency <int> could not be created',
+      ]);
+      expect(di.find<_Service>(), isA<_Service>());
+
+      // What failed stays registered and not created: once fixed, createAll works
+      expect(di.isRegistered<String>(tag: 'db'), isTrue);
+      di
+        ..putFactory<_OrderService>(() => _OrderService(_UnitOfWork()))
+        ..putLazy<String>(() => 'postgres://db', tag: 'db')
+        ..putLazy<int>(() => 1, tag: 'a');
+      logs.clear();
+
+      di.createAll();
+
+      expect(di.find<String>(tag: 'db'), 'postgres://db');
+      expect(di.find<int>(tag: 'b'), 1);
+      expect(logs, isEmpty);
+    });
+
+    test('one failure says so', () {
+      di.putLazy<String>(() => throw StateError('bad url'));
+
+      expect(
+        di.createAll,
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'A dependency could not be created:\n- <String>: Bad state: bad url',
+          ),
+        ),
+      );
+    });
+
+    test('a lazy one that depends on a scoped one is found at start', () {
+      di
+        ..putScoped<_UnitOfWork>(_UnitOfWork.new)
+        ..putLazy<_OrderService>(() => _OrderService(di.find()));
+
+      expect(
+        di.createAll,
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('is scoped to a request'), contains('putFactory')),
+          ),
+        ),
+      );
+    });
+  });
+
+  group('registrations (§5)', () {
+    test('lists every registration in order, with its kind and state', () {
+      di
+        ..put<_Service>(_Service())
+        ..putLazy<_Repository>(_SqlRepository.new, tag: 'main')
+        ..putLazy<String>(() => 'url')
+        ..putFactory<int>(() => 1)
+        ..putScoped<_UnitOfWork>(_UnitOfWork.new);
+      di.find<String>();
+
+      final List<DependencyRegistration> registrations = di.registrations;
+
+      expect(registrations.map((r) => r.toString()), [
+        '_Service (instance, created)',
+        '_Repository [main] (lazy, not created)',
+        'String (lazy, created)',
+        'int (factory)',
+        '_UnitOfWork (scoped)',
+      ]);
+      expect(registrations[1].type, _Repository);
+      expect(registrations[1].tag, 'main');
+      expect(registrations[1].kind, DependencyKind.lazy);
+      expect(registrations[1].created, isFalse);
+    });
+
+    test('is a read-only snapshot, and follows a registration again', () {
+      di
+        ..put<int>(1)
+        ..put<String>('a');
+      final List<DependencyRegistration> before = di.registrations;
+
+      di.put<int>(2);
+
+      expect(() => before.add(before.first), throwsUnsupportedError);
+      expect(before.map((r) => r.type), [int, String]);
+      expect(di.registrations.map((r) => r.type), [String, int]);
+      expect(DependencyInjection().registrations, isEmpty);
+    });
+
+    test('a nullable registration keeps the type it was registered with', () {
+      di.put(_maybeService());
+
+      expect(di.registrations.single.type, _typeOf<_Service?>());
+    });
+  });
+
+  group('child (§5)', () {
+    late DependencyInjection previous;
+
+    setUp(() => previous = Winter.context.dependencyInjection);
+
+    tearDown(() => Winter.context.setUp(dependencyInjection: previous));
+
+    test('what the child registers wins; the rest comes from the parent', () {
+      final _Service service = _Service();
+      di
+        ..put<_Service>(service)
+        ..put<String>('parent');
+      final DependencyInjection child = di.child()..put<String>('child');
+
+      expect(child.find<String>(), 'child');
+      expect(child.find<_Service>(), same(service));
+      expect(di.find<String>(), 'parent');
+      expect(child.parent, same(di));
+      expect(di.parent, isNull);
+    });
+
+    test('a lazy one of the parent uses the dependencies of the child', () {
+      // The real case: the global `di` of the test is a child with a fake
+      Winter.context.setUp(dependencyInjection: di);
+      di
+        ..putLazy<_Repository>(_SqlRepository.new)
+        ..putLazy<_OrderService>(
+          // `di` of an app is the global getter: the container of Winter.context
+          () => _OrderService(
+            _UnitOfWork(),
+            repository: Winter.context.dependencyInjection.find(),
+          ),
+        );
+      final DependencyInjection first = di.child()
+        ..put<_Repository>(_FakeRepository());
+      final DependencyInjection second = di.child();
+
+      Winter.context.setUp(dependencyInjection: first);
+      final _OrderService withFake = Winter.context.dependencyInjection
+          .find<_OrderService>();
+      Winter.context.setUp(dependencyInjection: second);
+      final _OrderService withReal = Winter.context.dependencyInjection
+          .find<_OrderService>();
+
+      expect(withFake.repository, isA<_FakeRepository>());
+      expect(withReal.repository, isA<_SqlRepository>());
+      expect(withFake, isNot(same(withReal)));
+      // The parent never changed: its lazy one is still not created
+      expect(di.registrations.map((r) => r.created), everyElement(isFalse));
+    });
+
+    test('a lazy one already created in the parent gets its own instance', () {
+      di.putLazy<_Service>(_Service.new);
+      final _Service parentInstance = di.find<_Service>();
+
+      final DependencyInjection child = di.child();
+
+      expect(child.find<_Service>(), isNot(same(parentInstance)));
+      expect(child.find<_Service>(), same(child.find<_Service>()));
+      expect(di.find<_Service>(), same(parentInstance));
+    });
+
+    test('isRegistered and tryFind see the parent; delete only the child', () {
+      di.put<String>('parent');
+      final DependencyInjection child = di.child();
+
+      expect(child.isRegistered<String>(), isTrue);
+      expect(child.tryFind<String>(), 'parent');
+      expect(child.tryFind<int>(), isNull);
+      expect(() => child.delete<String>(), throwsStateError);
+
+      child.put<String>('child');
+      expect(child.delete<String>(), 'child');
+      expect(child.find<String>(), 'parent');
+    });
+
+    test(
+      'disposeAll of the child only disposes what the child created',
+      () async {
+        final List<String> disposed = [];
+        di
+          ..put<_Service>(
+            _Service(),
+            onDispose: (_) => disposed.add('instance'),
+          )
+          ..putLazy<String>(
+            () => 'lazy',
+            onDispose: (_) => disposed.add('lazy'),
+          );
+        di.find<String>();
+        final DependencyInjection child = di.child()
+          ..put<int>(1, onDispose: (_) => disposed.add('child'));
+        child
+          ..find<String>()
+          ..find<_Service>();
+
+        expect(child.registrations.map((r) => r.toString()), [
+          'int (instance, created)',
+          'String (lazy, created)',
+        ]);
+        await child.disposeAll();
+
+        expect(disposed, ['lazy', 'child']);
+        expect(di.find<String>(), 'lazy');
+        expect(di.find<_Service>(), isA<_Service>());
+      },
+    );
+
+    test(
+      'factories and scoped ones of the parent are created in the child',
+      () {
+        Winter.context.setUp(dependencyInjection: di);
+        di
+          ..put<String>('parent')
+          ..putFactory<List<String>>(
+            () => [Winter.context.dependencyInjection.find<String>()],
+          )
+          ..putScoped<_UnitOfWork>(_UnitOfWork.new);
+        final DependencyInjection child = di.child()..put<String>('child');
+        Winter.context.setUp(dependencyInjection: child);
+
+        expect(child.find<List<String>>(), ['child']);
+        RequestScope.run(RequestScope(), () {
+          expect(child.find<_UnitOfWork>(), same(child.find<_UnitOfWork>()));
+          expect(
+            child.find<_UnitOfWork>(),
+            isNot(same(di.find<_UnitOfWork>())),
+          );
+        });
+      },
+    );
+
+    test('a grandchild falls back through every parent', () {
+      di.put<String>('root');
+      final DependencyInjection grandchild = di.child().child()..put<int>(1);
+
+      expect(grandchild.find<String>(), 'root');
+      expect(grandchild.find<int>(), 1);
+      expect(() => grandchild.find<bool>(), throwsStateError);
+    });
+
+    test('createAll of the child only creates its own lazy ones', () {
+      final List<String> created = [];
+      di.putLazy<String>(() {
+        created.add('parent');
+        return 'parent';
+      });
+      final DependencyInjection child = di.child()
+        ..putLazy<int>(() {
+          created.add('child');
+          return 1;
+        });
+
+      child.createAll();
+
+      expect(created, ['child']);
+    });
+  });
+
+  group('putLazyAsync, findAsync and ready (§5)', () {
+    late List<String> logs;
+
+    setUp(() {
+      logs = [];
+      Winter.context.setUp(logger: _MemoryLogger(logs));
+      addTearDown(() => Winter.context.setUp(logger: const ConsoleLogger()));
+    });
+
+    test('is created by ready; a find before that is a StateError', () async {
+      int created = 0;
+      di.putLazyAsync<String>(() async {
+        created++;
+        return 'connected';
+      });
+
+      expect(
+        () => di.find<String>(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('<String>'), contains('await di.ready()')),
+          ),
+        ),
+      );
+      expect(
+        di.registrations.single.toString(),
+        'String (lazyAsync, not created)',
+      );
+
+      await di.ready();
+      await di.ready();
+
+      expect(di.find<String>(), 'connected');
+      expect(created, 1);
+      expect(di.registrations.single.toString(), 'String (lazyAsync, created)');
+    });
+
+    test('findAsync creates it once, also for concurrent calls', () async {
+      int created = 0;
+      di
+        ..putLazyAsync<String>(() async {
+          created++;
+          await Future<void>.delayed(Duration.zero);
+          return 'connected';
+        })
+        ..put<int>(1);
+
+      final List<String> results = await Future.wait([
+        di.findAsync<String>(),
+        di.findAsync<String>(),
+      ]);
+
+      expect(results, ['connected', 'connected']);
+      expect(created, 1);
+      expect(await di.findAsync<int>(), 1);
+      await expectLater(di.findAsync<bool>(), throwsStateError);
+    });
+
+    test(
+      'ready creates them in order: one can use the ones before it',
+      () async {
+        final List<String> order = [];
+        di
+          ..putLazyAsync<String>(() async {
+            order.add('url');
+            return 'postgres://db';
+          })
+          ..putLazyAsync<int>(() async {
+            order.add('pool');
+            return (await di.findAsync<String>()).length;
+          });
+
+        await di.ready();
+
+        expect(order, ['url', 'pool']);
+        expect(di.find<int>(), 'postgres://db'.length);
+      },
+    );
+
+    test('every failure is named; a failed one is created again', () async {
+      bool fail = true;
+      di
+        ..putLazyAsync<String>(() async {
+          if (fail) throw StateError('no database');
+          return 'connected';
+        })
+        ..putLazyAsync<int>(() async => throw StateError('no queue'))
+        ..putLazyAsync<bool>(() async => true);
+
+      await expectLater(
+        di.ready(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              startsWith('2 dependencies could not be created:\n'),
+              contains('- <String>: Bad state: no database'),
+              contains('- <int>: Bad state: no queue'),
+            ),
+          ),
+        ),
+      );
+      expect(logs, [
+        'The dependency <String> could not be created',
+        'The dependency <int> could not be created',
+      ]);
+      expect(di.find<bool>(), isTrue);
+
+      fail = false;
+      expect(await di.findAsync<String>(), 'connected');
+    });
+
+    test('a cycle is a StateError, never a wait forever', () async {
+      di
+        ..putLazyAsync<String>(() async => '${await di.findAsync<int>()}')
+        ..putLazyAsync<int>(() async => (await di.findAsync<String>()).length);
+
+      await expectLater(
+        di.findAsync<String>().timeout(const Duration(seconds: 5)),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'Circular dependency: String -> int -> String',
+          ),
+        ),
+      );
+    });
+
+    test('it can be disposed, and a child creates its own', () async {
+      final List<String> disposed = [];
+      di.putLazyAsync<String>(
+        () async => 'parent',
+        onDispose: (value) => disposed.add(value),
+      );
+      final DependencyInjection child = di.child();
+
+      await child.ready();
+
+      expect(child.find<String>(), 'parent');
+      expect(() => di.find<String>(), throwsStateError);
+      await child.disposeAll();
+      expect(disposed, ['parent']);
+    });
+
+    test('it can\'t depend on a scoped one', () async {
+      di
+        ..putScoped<_UnitOfWork>(_UnitOfWork.new)
+        ..putLazyAsync<_OrderService>(
+          () async => _OrderService(di.find<_UnitOfWork>()),
+        );
+
+      await RequestScope.run(RequestScope(), () async {
+        await expectLater(
+          di.findAsync<_OrderService>(),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              allOf(
+                contains(
+                  'The lazy singleton <_OrderService> depends on <_UnitOfWork>',
+                ),
+                contains('putFactory'),
+              ),
+            ),
+          ),
+        );
+      });
+    });
+  });
+
+  group('Use cases (§5, §5)', () {
+    test('tags with every kind of registration', () {
+      di
+        ..putLazy<_Service>(_Service.new, tag: 'lazy')
+        ..putFactory<_Service>(_Service.new, tag: 'factory')
+        ..putScoped<_Service>(_Service.new, tag: 'scoped')
+        ..put(_Service(), tag: 'instance');
+
+      expect(
+        di.find<_Service>(tag: 'lazy'),
+        same(di.find<_Service>(tag: 'lazy')),
+      );
+      expect(
+        di.find<_Service>(tag: 'factory'),
+        isNot(same(di.find<_Service>(tag: 'factory'))),
+      );
+      RequestScope.run(RequestScope(), () {
+        expect(
+          di.find<_Service>(tag: 'scoped'),
+          same(di.find<_Service>(tag: 'scoped')),
+        );
+      });
+      expect(di.isRegistered<_Service>(), isFalse);
+    });
+
+    test('a lazy one that fails is created again by the next find', () {
+      var attempts = 0;
+      di.putLazy<_Service>(() {
+        if (++attempts == 1) throw StateError('database down');
+        return _Service();
+      });
+
+      expect(() => di.find<_Service>(), throwsStateError);
+      expect(di.find<_Service>(), isA<_Service>());
+      expect(attempts, 2);
+    });
+
+    test('a cycle between factories is a StateError too', () {
+      di
+        ..putFactory<_A>(() => _A(di.find()))
+        ..putFactory<_B>(() => _B(di.find()));
+
+      expect(
+        () => di.find<_B>(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'Circular dependency: _B -> _A -> _B',
+          ),
+        ),
+      );
+    });
+
+    test('registering a fake replaces a lazy one already created', () {
+      di.putLazy<_Repository>(_SqlRepository.new);
+      final real = di.find<_Repository>();
+
+      di.put<_Repository>(_FakeRepository());
+
+      expect(real, isA<_SqlRepository>());
+      expect(di.find<_Repository>(), isA<_FakeRepository>());
+    });
+
+    test('isRegistered of a lazy one does not create it', () {
+      var created = false;
+      di.putLazy<_Service>(() {
+        created = true;
+        return _Service();
+      });
+
+      expect(di.isRegistered<_Service>(), isTrue);
+      expect(created, isFalse);
+    });
+
+    test('an async onDispose is awaited before the next one', () async {
+      final events = <String>[];
+      di
+        ..put(
+          _Service(),
+          onDispose: (_) async {
+            await Future<void>.delayed(Duration.zero);
+            events.add('service');
+          },
+        )
+        ..put<_Repository>(
+          _SqlRepository(),
+          onDispose: (_) async {
+            await Future<void>.delayed(const Duration(milliseconds: 5));
+            events.add('repository');
+          },
+        );
+
+      await di.disposeAll();
+      await di.disposeAll(); // nothing left: nothing happens
+
+      expect(events, ['repository', 'service']);
+    });
+  });
+
+  group('RequestScope.onComplete', () {
+    test('a failing callback is logged and the others still run', () async {
+      final logs = <String>[];
+      Winter.context.setUp(logger: _MemoryLogger(logs));
+      addTearDown(() => Winter.context.setUp(logger: const ConsoleLogger()));
+      final events = <String>[];
+      final scope = RequestScope()
+        ..onComplete(() => events.add('first'))
+        ..onComplete(() => throw StateError('x'));
+
+      await scope.complete();
+
+      expect(events, ['first']);
+      expect(logs, hasLength(1));
+    });
+  });
+}
+
+class _Service {}
+
+/// A `_Service?`, as a variable of a nullable type would be
+_Service? _maybeService() => _Service();
+
+abstract class _Repository {}
+
+class _SqlRepository implements _Repository {}
+
+class _FakeRepository implements _Repository {}
+
+class _OrderService {
+  final _UnitOfWork unitOfWork;
+  final _Repository? repository;
+
+  _OrderService(this.unitOfWork, {this.repository});
+}
+
+class _Controller {
+  final _Repository repository;
+
+  _Controller(this.repository);
+}
+
+class _A {
+  final _B b;
+
+  _A(this.b);
+}
+
+class _B {
+  final _A? a;
+
+  _B(this.a);
+}
+
+var _nextId = 0;
+
+class _UnitOfWork {
+  final int id = _nextId++;
+}
+
+class _MemoryLogger extends WinterLogger {
+  final List<String> logs;
+
+  _MemoryLogger(this.logs);
+
+  @override
+  void log(
+    LogLevel level,
+    String message, {
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, Object?> fields = const {},
+  }) => logs.add(message);
+}
+
+Type _typeOf<T>() => T;

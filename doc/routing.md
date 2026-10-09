@@ -1,0 +1,342 @@
+# Routing
+
+A router decides which handler answers a request. `WinterRouter` holds a list of routes, each with a
+method, a path (with params and regex) and its filters:
+
+- A static route wins over one with params (`/users/me` before `/users/{id}`); between the others,
+  the first one declared.
+- No route for the method is a **405** with `Allow`, no route for the path a **404**, and an
+  `OPTIONS` is answered automatically.
+- The route table is checked when the router is built: an invalid or duplicated route fails at
+  start, not as a 404 in production.
+
+The decisions behind it are in [`DECISIONS.md` §9](../DECISIONS.md#9-router-and-filters).
+
+Examples, one file per case: [`example/routing`](../example/routing).
+
+## Minimal example
+
+```dart
+import 'package:winter/winter.dart';
+
+void main() async {
+  await Winter.start(
+    router: WinterRouter(
+      basePath: '/api',
+      routes: [
+        Route.get(path: '/users', handler: (request) => ResponseEntity.ok(body: ['ann', 'bob'])),
+        Route.get(
+          path: '/users/{id}',
+          handler: (request) => ResponseEntity.ok(body: {'id': request.pathParam<int>('id')}),
+        ),
+        Route.post(
+          path: '/users',
+          handler: (request) => ResponseEntity.created(location: '/api/users/3', body: {'id': 3}),
+        ),
+      ],
+    ),
+  );
+}
+```
+
+| Request                | Response                                                |
+|------------------------|---------------------------------------------------------|
+| `GET /api/users/7`     | 200 `{"id": 7}`                                         |
+| `GET /api/users/abc`   | 400 `The path param id must be an integer`              |
+| `DELETE /api/users`    | 405, `Allow: GET, POST, HEAD, OPTIONS`                  |
+| `OPTIONS /api/users`   | 204, `Allow: GET, POST, HEAD, OPTIONS`                  |
+| `GET /api/orders`      | 404                                                     |
+
+## How it works
+
+### Routes
+
+`Route.get`, `query`, `post`, `put`, `patch` and `delete` take a `path`, a `handler` (a function of
+the `RequestEntity` that returns a `ResponseEntity`, or a `Future` of one) and optionally a
+`filterConfig` and a `key`. `Route(path:, method: HttpMethod('...'), handler:)` takes any other
+method.
+
+Nest routes with `Route.parent`: the children join its path and inherit its filters (the ones of the
+parent run first).
+
+```dart
+WinterRouter(
+  routes: [
+    Route.parent(
+      path: '/admin',
+      filterConfig: hasRole('admin').toFilterConfig(),
+      routes: [
+        Route.get(path: '/stats', handler: stats),                // GET /admin/stats
+        Route.delete(path: '/users/{id}', handler: deleteUser),   // DELETE /admin/users/{id}
+      ],
+    ),
+  ],
+)
+```
+
+A route can have a handler and children at the same time: `Route.get(path: '/orders', handler:
+list, routes: [...])` answers `/orders` and its children inherit its filters. A child with
+`path: '/'` answers the path of its parent too. An empty path (`''`) is not a route.
+
+`basePath` is added to every route of the router.
+
+### Path params
+
+| Path                       | Matches                    | `pathParams`               |
+|----------------------------|----------------------------|----------------------------|
+| `/users/{id}`              | `/users/42`                | `{id: 42}`                 |
+| `/users/{id}/posts/{post}` | `/users/42/posts/7`        | `{id: 42, post: 7}`        |
+| `/numbers/{n\|[0-9]+}`     | `/numbers/12`, not `/numbers/ab` | `{n: 12}`            |
+| `/files/{path\|.*}`        | `/files/a/b.txt`           | `{path: a/b.txt}`          |
+
+A param matches one segment (no `/`) unless it has its own regex after `|`. The values are
+URL-decoded (`/users/John%20Doe` gives `John Doe`).
+
+Read them with their type:
+
+```dart
+final int id = request.pathParam<int>('id');               // 400 if it's not an integer
+final int page = request.queryParam<int>('page') ?? 1;      // null if missing or empty
+final Status? status = request.queryParam('status', values: Status.values);
+```
+
+- Types: `String`, `int`, `double`, `num`, `bool` (`true`/`false`, any case), `DateTime` (ISO 8601),
+  and one of `values` (an enum by name, any case; or a list like `['asc', 'desc']`).
+- A value of another type is a 400 (Problem Details) that names the param and never the value.
+- A name that isn't in the path of the route is a `StateError`, and an unsupported type an
+  `ArgumentError`: both are bugs of the app (a 500).
+- `pathParams`, `queryParams` and `queryParamsAll` (every value of a repeated param) are the raw
+  `Map`s.
+
+### Regex routes
+
+Outside a param, `.*`, `.+`, `.?` and `.{n}` act as regex, and the rest of the characters of a
+regex (`(a|b)`, `[a-z]`) too. A lone `.` is a literal dot: `/feed.json` doesn't match `/feedXjson`.
+
+```dart
+Route.get(path: '/files/.*', handler: listFiles)
+Route.get(path: '/tree{rest|(/.*)?}', handler: tree)   // /tree and /tree/a/b (rest: /a/b)
+```
+
+To serve the files of a folder, use `Route.static` (below).
+
+### Which route answers
+
+1. A static route (no params, no regex) wins: `/users/me` before `/users/{id}`, in any order.
+2. Between the rest, the first one declared.
+3. A trailing slash is ignored: `/users/` is `/users` (except the root, `/`).
+4. A `HEAD` without its own route uses the `GET` one (the body isn't sent).
+5. An `OPTIONS` without its own route is a 204 with `Allow`. The CORS preflights are answered
+   before, by `CorsFilter` (see [security](security.md#cors)).
+6. No route for the method: a 405 with `Allow` (which always lists `HEAD` with `GET`, and
+   `OPTIONS`). No route for the path: a 404. Both are Problem Details.
+
+The paths are compared as they are: `//users/1` and `/users//1` are a 404, never `/users/1` (behind
+a proxy, a rule for `/admin` doesn't block `//admin`).
+
+### The route table is checked at start
+
+When the router is built (and on `addRoute`):
+
+- **An invalid path** (`/in valid`, `/ñ`: the literal parts must be a valid URL path; encode them)
+  is a `StateError`.
+- **A duplicated route** is a `StateError`: the same `key`, or the same method and the same shape.
+  The names of the params don't count, so `GET /users/{id}` and `GET /users/{name}` are the same
+  route: the second one could never be reached.
+
+`RouterConfig` changes that:
+
+```dart
+WinterRouter(
+  config: RouterConfig(
+    onInvalidUrl: DefaultOnInvalidUrl.ignore(),          // drop it with a warning
+    onDuplicatedRoute: DefaultOnDuplicatedRoute.ignore(log: false),
+    onLoadedRoutes: DefaultOnLoadedRoutes.log(),         // log the table at start
+  ),
+  routes: routes,
+)
+```
+
+Each hook is a function, so it can do anything with the `Route` it receives.
+
+### Route keys
+
+Every route has a `key`: its method and full path (`GET /users/{id}`, `PARENT /users`), or the one
+given with `key:`. A filter uses a key of its own to recognize a route without depending on its
+path:
+
+```dart
+class MetricsFilter extends Filter {
+  @override
+  bool shouldFilter(RequestEntity request) => request.route?.key != 'health';
+
+  @override
+  Future<ResponseEntity> doFilter(RequestEntity request, FilterChain chain) async {
+    final response = await chain.doFilter(request);
+    // record the metrics of the response...
+    return response;
+  }
+}
+
+Route.get(path: '/health', key: 'health', handler: (r) => ResponseEntity.ok(body: 'up'))
+```
+
+### Adding routes later
+
+`router.routes` is read-only; `addRoute` adds a route (and its children) with the same rules as the
+constructor: the `basePath`, the validation and the duplicates.
+
+```dart
+router.addRoute(Route.get(path: '/version', handler: version));
+```
+
+### `MultiRouter` and `ServeRouter`
+
+`MultiRouter([routerA, routerB])` sends a request to the first of its `routers` that can handle it,
+with the route filters of that router. Its 405 and its `OPTIONS` merge the methods of all of them.
+
+`ServeRouter((request) => ...)` answers every request with one function, without routes.
+
+### Your own router
+
+Extend `BaseRouter` and implement `canHandle` and `handler`. A router that holds routes, or
+wraps other routers, must also override `resolveRoute`: the server uses the `Route` it returns for
+the route filters (`AuthFilter` included) and the path params. Without it, those filters are
+silently skipped.
+
+## Common cases
+
+### A versioned API
+
+```dart
+final router = MultiRouter([
+  WinterRouter(basePath: '/v1', routes: v1Routes),
+  WinterRouter(basePath: '/v2', routes: v2Routes),
+]);
+```
+
+Or one router with a parent route per version, whose filters apply to that version only (the
+old one announcing its end with `Deprecation` and `Sunset`):
+[`api_patterns/api_versioning.dart`](../example/api_patterns/lib/api_versioning.dart).
+
+### Static files
+
+```dart
+WinterRouter(
+  routes: [
+    ...apiRoutes,
+    Route.static(path: '/assets', directory: 'public'),   // /assets/css/site.css
+    Route.static(path: '/', directory: 'web/build', cacheControl: 'public, max-age=3600'),
+  ],
+)
+```
+
+- `GET` and `HEAD` of every file under the folder; `/assets` (or a subfolder) serves its
+  `index.html` (`index:`, `null` for none) after a 308 that adds the `/`, so its relative links work.
+- **Only that folder**: `..`, hidden files and folders (`.env`, `.git/`), `\`, `:` and links that
+  lead out of it are a 404.
+- `ETag` and `Last-Modified` on every file, and a **304** for `If-None-Match`/`If-Modified-Since`.
+- **`Range`** (video players, resumed downloads): one range is a **206**, a range out of the file a
+  **416**, and `If-Range` sends the whole file when it changed. Several ranges send the whole file.
+- The `Content-Type` comes from the extension (`mimeTypes:` adds or overrides some), and the file
+  is streamed, never read whole into memory. `cacheControl:` is sent with every file.
+- `StaticFiles(directory).serve(request, 'path/in/folder')` does the same from your own handler
+  (a download behind `AuthFilter`, a file chosen by id).
+
+It matches every path under its prefix: declare it **after** the routes that share that prefix
+(`/assets/api`), and a `Route.static` at `/` last of all.
+
+### Health checks
+
+```dart
+Route.health(path: '/livez'),                       // liveness: the process answers
+Route.health(
+  path: '/readyz',                                  // readiness: it can serve requests
+  checks: {
+    'database': () => di.find<Database>().ping(),   // FutureOr<bool>
+    'queue': () => queue.isConnected,
+  },
+  timeout: const Duration(seconds: 2),              // per check, 5 s by default
+),
+```
+
+- A 200 `{"status": "UP", "checks": {"database": "UP", "queue": "UP"}}` when every check passes.
+- A **503** `{"status": "DOWN", ...}` when one returns `false`, throws or takes longer than
+  `timeout`: the load balancer (or Kubernetes) takes the instance out. The reason is logged as a
+  warning, never sent, and the format is the same (not a Problem Details).
+- The checks run at once; the response is never cached (`Cache-Control: no-store`), and `HEAD`
+  works. Without checks it's a 200 while the server answers (path `/health` by default).
+- It's a normal route: add `filterConfig:` to protect it, or let `LoggingFilter.shouldFilter` skip
+  it (`request.route?.key`) so the probes don't fill the logs.
+
+### WebSockets
+
+`Route.websocket` opens a WebSocket at a path. The handshake is a `GET` that goes through the
+filters like any request (authentication, rate limit, logs), and then the handler gets the socket:
+
+```dart
+Route.websocket(
+  path: '/chat/{room}',
+  filterConfig: FilterConfig([AuthFilter()]),         // a 401 before the upgrade
+  allowedOrigins: ['https://app.example.com'],         // a 403 from another website
+  handler: (socket, request) async {
+    final User user = request.principal<User>();       // the user of the handshake
+    final String room = request.pathParam<String>('room');
+    await for (final Object? message in socket) {      // ends when the client leaves
+      socket.sendJson({'room': room, 'from': user.name, 'text': message});
+    }
+  },
+)
+```
+
+```js
+const socket = new WebSocket('wss://api.example.com/chat/lobby'); // the cookies go with it
+socket.onmessage = (event) => console.log(JSON.parse(event.data));
+socket.send('Hello');
+```
+
+- The socket is the `WebSocket` of `dart:io`: a stream of the messages of the client (`String`
+  or bytes), `add` to send one, `close(code, reason)` to end it, and `sendJson(value)` to send a
+  value as JSON with the object mapper. It stays open when the handler returns: keep it in a list
+  to send to it later (a broadcast, see `example/apps/files_gallery`).
+- **A request that isn't a WebSocket handshake** (a plain `GET`) is a **426 Upgrade Required**.
+- **`allowedOrigins`**: browsers don't apply CORS to WebSockets and send the cookies of the user to
+  a socket of any website. With a session in a cookie, list the origins of your pages, or any
+  website can open the socket as the user (cross-site WebSocket hijacking). A client without
+  `Origin` (not a browser) is let in; `'*'` allows any.
+- **`protocols`**: the subprotocols the route speaks (`['graphql-ws']`), in order of preference;
+  the first one the client asks for is chosen, and a client that asks only for others is refused.
+- **`pingInterval`**: a ping every 30 seconds by default, so a client that disappeared without
+  closing is found and closed; `null` for none.
+- **The handler runs in a request scope of its own**: `requestPrincipal()`, `requestId` and
+  `requestLocale` work, and the scoped dependencies live as long as the socket.
+- **An error of the handler** is logged and closes the socket with 1011.
+- **When the server shuts down**, every socket is closed with 1001 (going away): they never hold
+  the graceful shutdown, and a browser can reconnect to another instance.
+- A browser can't send an `Authorization` header with a WebSocket: authenticate it with the
+  cookie of the session, or with a token in the query (`?token=...`) read by your filter.
+
+Testing a WebSocket needs a real connection: start the server in the test and connect with
+`WebSocket.connect('ws://localhost:$port/chat')` of `dart:io` (see [testing](testing.md)).
+
+### Testing the routes
+
+```dart
+final client = WinterTestClient.build(router: router);
+
+test('an unknown user is a 404', () async {
+  expect((await client.get('/api/users/999')).statusCode, 404);
+});
+```
+
+## Typical mistakes and limitations
+
+- **`int.parse(request.pathParams['id']!)`**: `/users/abc` is a 500. Use `pathParam<int>('id')`.
+- **The same route with two param names** (`/users/{id}` and `/users/{userId}` for `GET`): it fails
+  at start. Use one name.
+- **A space or a non-ASCII character in a path**: encode it (`/caf%C3%A9`).
+- **A custom router without `resolveRoute`**: its route filters never run.
+- The regex of a param can't contain `{` or `}` (`{code|[A-Z]{3}}`): use `[A-Z][A-Z][A-Z]` or `+`.
+- Routes are matched one by one: fine for hundreds of routes, not for tens of thousands.
+- **`Route.static(path: '/')` before other routes**: it catches every `GET`, and the routes after
+  it with a param are never reached. Declare it last.

@@ -11,7 +11,7 @@ void main() {
 
   String body = 'Hello world!!!';
   setUpAll(() async {
-    await Winter.run(
+    await Winter.start(
       config: ServerConfig(port: port),
       router: ServeRouter((request) => ResponseEntity.ok(body: body)),
     );
@@ -21,7 +21,7 @@ void main() {
 
   Future<String> get(String path) => http.read(Uri.parse(url + path));
 
-  test('Test serve router', () async {
+  test('Test serve hierarchy', () async {
     expect(await get('/anything'), body);
     expect(await get('/anything-1'), body);
     expect(await get('/abc'), body);

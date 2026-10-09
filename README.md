@@ -1,192 +1,278 @@
-## Winter Framework: a backend for the Dart enthusiasts
+# Winter ❄️
 
-This project is designed to create server side apps the simplest way possible, and reduce the learning
-curve in backend development.
+### A backend framework for the Dart enthusiasts
 
-This project aims to be a lightweight backend framework to create BASICS services and APIs.
-Maybe in a feature, a more mature framework with a greater ecosystem to build all kind of backends.
+Winter is a backend framework for Dart, inspired by **Spring**, **ASP.NET Core** and **NestJS**.
+It gives you routing, filters, dependency injection, JSON mapping, validation, security and
+consistent errors, on top of `dart:io` and without code generation.
 
-It's greatly inspired by others frameworks such as **Spring** or **Nest.js**.
+> ⚠️ **Winter is an experimental project**, built in our spare time. `1.0.0-rc.1` is a release
+> candidate: the API is the one we intend to keep in 1.0, but it may still change before it, and
+> the framework has not yet been used by a real application in production. Try it, build with it,
+> and [tell us](https://github.com/Root-101/winter/issues) what breaks; use it in production at
+> your own discretion.
 
-This is an EXPERIMENTAL project, and it's by no means a ready production framework, use it at your own discretion.
+**What Winter is:**
 
-**This project is:**
+- A framework for **REST APIs**: routes, filters, JSON in and out, validation, errors, security,
+  configuration, logs, scheduled tasks, OpenAPI, WebSockets and Server-Sent Events.
+- **Small and explicit**: no reflection, no annotations, no code generation; what you register is
+  what runs.
+- **Tested and documented**: about 1150 tests (99.7 % of the lines), a guide per module and an
+  example for every feature.
 
-- An **experimental** framework.
-- A lightweight library for create APIs.
-- A *hobby* project in which we work when we have some spare time.
+**What Winter is not (yet):**
 
-**This project is NOT:**
+- **Proven in production**: no app runs on it at scale yet, so expect rough edges.
+- **A full-stack framework**: no database access (bring your own driver), templates, sessions, CSRF
+  protection nor OAuth flows.
+- **A distributed system**: the rate limiter and the scheduled tasks live in one process; several
+  instances need a shared store of their own.
 
-- A ready for production framework.
-- A fullstack framework to create all kind of webs (just simple APIs, for the moment at least).
-- A complete project (most of the features are extremely basics).
+Now that it's clear what Winter is, let's set it up.
 
-Now that we have made all this clear:
+## Getting started
 
-## Let's get started
+### Install it
 
-### Configure the package
+You need the Dart SDK 3.13 or newer ([get Dart](https://dart.dev/get-dart)) and a Dart project
+(`dart create my_api`). Then add Winter:
 
-At this point we assume that you have the basic knowledge of dart, and a fully configured environment (with sdk
-version `^3.4.0`).
-
-If not, please take a look at the [official dart guide](https://dart.dev/get-dart)
-
-Once you have a basic project running you need to:
-
-1 - Add `winter` to dependencies:
-
-```yaml
-dependencies:
-  winter: latest_version
+```bash
+dart pub add winter:^1.0.0-rc.1
 ```
 
-2 - Run `dart pub get`.
+The version is needed while 1.0.0 is a release candidate: `dart pub add winter` alone only picks
+stable versions. That's all the setup there is: no generator to run, no configuration file.
 
-3 - Go to your main file and import the package.
+### Your first server
 
-When this step are done, we can now learn:
-
-### How to start the server:
-
-To start the server we need to call the `Winter.run` method. (Remember to import the `package:winter/winter.dart`).
-
-A pretty basic example will be like this:
+With Winter installed, the smallest server is one route:
 
 ```dart
-void main() =>
-    Winter.run(
-      router: ServeRouter((request) => ResponseEntity.ok(body: 'Hello world!!!')),
-    );
+import 'package:winter/winter.dart';
+
+void main() async {
+  await Winter.start(
+    router: WinterRouter(
+      routes: [
+        Route.get(path: '/hello', handler: (request) => ResponseEntity.ok(body: 'Hello Winter!')),
+      ],
+    ),
+  );
+}
 ```
 
-Just with that we have running the server in port 8080 (default port if none is specified).
-We can now make a request to `http://localhost:8080` and we will receive a response with the *Hello world!!!*.
+Run it with `dart run`, and the server answers on port 8080 (the default):
 
-### ServeRouter
-
-In this example we use the `ServeRouter`, this router expose a
-function (`FutureOr<ResponseEntity> Function(RequestEntity request)`) that allow us to handle any incoming request to
-the server.
-In this case, any request made to the server, we will respond with an `ok` response with the body: *'Hello world!!!'*.
-
-### Custom port
-
-By default, the server will start in port `8080`, if another port needs to be used, we can use:
-`config: ServerConfig(port: 1234)`,
-
-this way the code will look like:
-
-```dart
-void main() =>
-    Winter.run(
-      config: ServerConfig(port: 1234),
-      router: ServeRouter((request) => ResponseEntity.ok(body: 'Hello world!!!')),
-    );
+```bash
+curl localhost:8080/hello    # Hello Winter!
 ```
 
-This way the server will start in port 1234.
+That's as simple as it gets, but Winter does a lot more.
 
-Tests and example for *ServeRouter* and *Custom Port* could be found at `/test/server/serve`.
+## Features
 
-### Configuring routes
+| Feature                | What you get                                                                                                  | Guide                                                                                         |
+|------------------------|---------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
+| Routing                | Nested routes, typed path and query params, regex, 404/405, `HEAD` and `OPTIONS`, static files, health checks | [routing](doc/routing.md)                                                                     |
+| Filters                | Global and route filters, ordered, that see every error                                                       | [filters](doc/filters.md)                                                                     |
+| Requests and responses | Headers, cookies, every kind of body (JSON, forms, uploads, binary), streams                                  | [requests and responses](doc/requests-and-responses.md)                                       |
+| JSON                   | `toJson()` without interfaces, your own serializers, generics, `snake_case`, clear errors                     | [object mapper](doc/object-mapper.md)                                                         |
+| Validation             | Typed validators, nested objects, async rules, a 422 with a code per field                                    | [validation](doc/validation.md)                                                               |
+| Errors                 | Every error is a Problem Details (RFC 9457); a 500 never leaks details                                        | [error handling](doc/error-handling.md)                                                       |
+| Security               | Authentication filters, roles and permissions, CORS, security headers, a rate limiter                         | [security](doc/security.md)                                                                   |
+| Dependency injection   | Singletons, lazy, factories, one instance per request, async startup, disposal on shutdown                    | [dependency injection](doc/dependency-injection.md)                                           |
+| Configuration          | Typed environment variables, `.env` files and profiles                                                        | [configuration](doc/configuration.md)                                                         |
+| Logging                | Console and JSON loggers, a request id in every log                                                           | [logging](doc/logging.md)                                                                     |
+| i18n                   | Messages in the language of the request                                                                       | [i18n](doc/i18n.md)                                                                           |
+| Real time              | WebSockets that go through the filters first, and Server-Sent Events                                          | [routing](doc/routing.md#websockets), [SSE](doc/requests-and-responses.md#server-sent-events) |
+| OpenAPI                | The document of the routes and Swagger UI, schemas from an example and its `validate()`                       | [openapi](doc/openapi.md)                                                                     |
+| Scheduled tasks        | Intervals and cron expressions, started and stopped with the server                                           | [scheduling](doc/scheduling.md)                                                               |
+| Testing                | The whole pipeline in memory, without ports                                                                   | [testing](doc/testing.md)                                                                     |
+| Deployment             | Native executables, Docker, graceful shutdown, health checks                                                  | [deployment](doc/deployment.md)                                                               |
 
-For a more fine-grained control over routes we can use other router provided by winter, like:
+How it fits together: [architecture](doc/architecture.md). Every guide: [`doc/`](doc/README.md).
 
-#### WinterRouter
+## A real API
 
-For a more easy work on routing we could use some of the router the framework already provide, like:
+Now something closer to what an API does every day: a JSON body turned into an object and
+validated, a service from dependency injection, a filter that every request goes through, and
+errors that the client can read.
 
 ```dart
-void main() =>
-    Winter.run(
-      router: WinterRouter(
-        routes: [
-          Route(
-            path: '/test',
-            method: HttpMethod.get,
-            handler: (request) async {
-              return ResponseEntity.ok(body: 'Response from /test');
-            },
-          ),
-          Route(
-            path: '/custom',
-            method: HttpMethod.post,
-            handler: (request) async {
-              return ResponseEntity.ok(body: 'Response from /custom');
-            },
-          ),
-          Route(
-            path: '/.*',
-            method: HttpMethod.post,
-            handler: (request) async {
-              return ResponseEntity.ok(
-                  body: 'Response from any other source');
-            },
-          )
-        ],
+import 'package:winter/winter.dart';
+
+/// The body of `POST /tasks`: read from JSON, then validated
+class NewTask implements Validatable {
+  final String title;
+  final int priority;
+
+  NewTask(this.title, this.priority);
+
+  factory NewTask.fromJson(Map<String, dynamic> json) =>
+      NewTask(json.field<String>('title'), json.field<int?>('priority') ?? 3);
+
+  @override
+  ConstraintValidatorContext validate() => ConstraintValidatorContext()
+    ..field('title', title).notBlank().size(max: 100)
+    ..field('priority', priority).min(1).max(5);
+}
+
+/// What the API answers: written as JSON with its toJson()
+class Task {
+  final int id;
+  final String title;
+  final int priority;
+
+  Task(this.id, this.title, this.priority);
+
+  Map<String, Object> toJson() => {'id': id, 'title': title, 'priority': priority};
+}
+
+class TaskService {
+  final Map<int, Task> _tasks = {};
+
+  List<Task> all() => _tasks.values.toList();
+
+  Task find(int id) => _tasks[id] ?? (throw NotFoundException(detail: 'Task $id not found'));
+
+  Task create(NewTask task) {
+    final int id = _tasks.length + 1;
+    return _tasks[id] = Task(id, task.title, task.priority);
+  }
+}
+
+/// A filter: every request must say which app sends it
+class ClientFilter extends Filter {
+  @override
+  Future<ResponseEntity> doFilter(RequestEntity request, FilterChain chain) async {
+    if (request.headers['x-client'] == null) {
+      throw const BadRequestException(detail: 'Send the X-Client header');
+    }
+    return chain.doFilter(request);
+  }
+}
+
+WinterRouter router() => WinterRouter(
+  basePath: '/tasks',
+  routes: [
+    Route.get(
+      path: '/',
+      handler: (request) => ResponseEntity.ok(body: di.find<TaskService>().all()),
+    ),
+    Route.get(
+      path: '/{id|[0-9]+}',
+      handler: (request) => ResponseEntity.ok(
+        body: di.find<TaskService>().find(request.pathParam<int>('id')),
       ),
-    );
+    ),
+    Route.post(
+      path: '/',
+      handler: (request) async {
+        final NewTask newTask = await request.body<NewTask>(); // 400 or 422 if it's wrong
+        final Task task = di.find<TaskService>().create(newTask);
+        return ResponseEntity.created(location: '/tasks/${task.id}', body: task);
+      },
+    ),
+  ],
+);
+
+void main() async {
+  di.put(TaskService());
+  Winter.context.setUp(
+    objectMapper: ObjectMapper(deserializers: [Deserializer<NewTask>.json(NewTask.fromJson)]),
+  );
+  await Winter.start(
+    globalFilterConfig: FilterConfig([LoggingFilter(), ClientFilter()]),
+    router: router(),
+  );
+}
 ```
 
-This way we provide a different handler for every route, now, by making a request to
-`http://localhost:8080/test` we will receive a `200:'Response from /test'`, and by making a different request to
-`http://localhost:8080/custom` we will receive a `200:'Response from /custom'`, finally if any other request is made (
-of `post` type in this case),
-it's handled by the `/.*` route, this means that if a request is made to another url,
-like `http://localhost:8080/abcdefg`, we will receive `200:'Response from any other source'`.
+What a client gets (every error is a Problem Details, `application/problem+json`):
 
-Note that in the route we can configure the `path`, the http `method` and the `handler`.
+| Request (with `X-Client: web`) | Response |
+|--------------------------------|----------|
+| `POST /tasks` `{"title": "Write the docs"}` | `201`, `Location: /tasks/1`, `{"id": 1, "title": "Write the docs", "priority": 3}` |
+| `POST /tasks` `{"title": " ", "priority": 9}` | `422` with a violation per field: `title` (`notBlank`) and `priority` (`max.inclusive`) |
+| `POST /tasks` `{"priority": 2}` | `400`, `"detail": "$.title: missing"` |
+| `GET /tasks/7` | `404`, `"detail": "Task 7 not found"` |
+| `GET /tasks` without `X-Client` | `400`, `"detail": "Send the X-Client header"` |
 
-The same way, we could create an instance of `WinterRouter` and add the routes with the `.get` (add a route with *get*
-method), `.post` (add a route with *post* method), and so on.
+And it's tested in memory, with the whole pipeline and without opening a port:
 
-Tests and example for *Routing* could be found at '/test/server/winter_router'.
+```dart
+import 'package:test/test.dart';
+import 'package:winter/winter.dart';
 
-#### There is more in routing:
+void main() {
+  final client = WinterTestClient.build(
+    globalFilterConfig: FilterConfig([ClientFilter()]),
+    router: router(),
+  );
 
-Routing is a complex and deep subject, because of that, we have created a separated docs just for routing,
-if you want to know all the details and more advanced routing, go to [route-docs](doc/routing/winter_router.md).
+  test('an invalid task is a 422', () async {
+    final response = await client.post(
+      '/tasks',
+      headers: {'x-client': 'test'},
+      body: {'title': ' '},
+    );
 
-### Other topics
+    expect(response.statusCode, 422);
+  });
+}
+```
 
-This is the more basic instruction to start the server, in the way that anyone could follow this guide in order to have
-an easy running server.
+From zero to this, step by step: [getting started](doc/getting-started.md).
 
-Of course, we also provide a wide range of functionalities like:
+## Examples
 
-- Object Mapping
-- [Validations](doc/vs/vs.md)
-- Filter Chain
-- Exception handler
-- Dependency injection
-- Annotation/Decoration pattern for config the server
-- And some utils like rate-limiter, basic constants
+If you liked it, [`example/`](example) has much more: many small examples by topic, one file per
+case with its test, and complete apps.
 
-Feel free to go to any of its respective docs to learn how to use it.
+| Topic                                                                                                            | Cases                                                                                                           |
+|------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| [routing](example/routing), [bodies](example/bodies)                                                             | Params, nested routes, a CRUD, static files, health checks; every kind of request body                          |
+| [object_mapper](example/object_mapper), [validation](example/validation)                                         | Field naming, adapters, `PATCH`, sealed classes; nested objects, custom and async rules                         |
+| [errors](example/errors), [filters](example/filters)                                                             | Exceptions of the domain, a handler of your own; tenants, maintenance mode, a response cache                    |
+| [security](example/security), [di](example/di)                                                                   | API keys, Basic auth, webhook signatures, login throttling; scoped services, async startup                      |
+| [api_patterns](example/api_patterns)                                                                             | Pagination, ETag and `If-Match`, content negotiation, downloads, `202` jobs, idempotency keys, versioning       |
+| [openapi](example/openapi), [realtime](example/realtime), [scheduling](example/scheduling), [i18n](example/i18n) | Swagger UI, Server-Sent Events, a WebSocket chat, cron tasks, translated messages                               |
+| [apps](example/apps)                                                                                             | Authentication with JWT, an orders API, a photo gallery with uploads and a chat, a production setup with Docker |
 
-### What's next
+## Powered by Winter
 
-In the future we intend to improve and make all current functionalities more robust, with more docs and more test,
-as well as add others such as:
+The projects that run on Winter:
 
-- Security
-- Cron tasks
-- Multipart request
-- Web sockets
-- Complete config of server via package-scan (completely optional and as an alternative to imperative config)
+|       [➕](https://github.com/Root-101/winter/pulls)       |
+|:---------------------------------------------------------:|
+| [Your project?](https://github.com/Root-101/winter/pulls) |
 
-For more details on *What's next*, go to [todo](todo.md).
+<!--
+A column per project, before the "Your project?" one: its icon in the first row, its name in the
+second. The icon by an absolute URL, so it shows on pub.dev too:
 
-### Contribute
+| [<img src="https://url-of-the-icon.png" width="64" alt="name">](https://link-of-the-project) | [➕](https://github.com/Root-101/winter/pulls) |
+|:---:|:---:|
+| [name](https://link-of-the-project) | [Your project?](https://github.com/Root-101/winter/pulls) |
+-->
 
-If you like the project, and want to contribute, you can create an issue or a pull request, and we will be pleased to
-look at it.
+## More
 
-### FAQ
+- [`DECISIONS.md`](DECISIONS.md): why Winter works the way it does.
+- [Winter and other frameworks](doc/comparison.md): where its ideas come from (Spring, ASP.NET Core,
+  Ktor, NestJS...) and how it compares with the Dart frameworks.
+- [`CHANGELOG.md`](CHANGELOG.md) and [`ROADMAP.md`](ROADMAP.md).
+- [Benchmarks](doc/benchmarks.md): Winter serves ~85 % of the requests per second of raw
+  `dart:io`, and the object mapper costs about a tenth more than JSON written by hand.
 
-##### 1 - How to change the port in which is running the server?:
+## Contributing
 
-If the app need to be running in a different port (different that *8080* as default), change config
-as `config: ServerConfig(port: 1234)`. This will make the server run in port `1234`
+Issues and pull requests are welcome. [`CONTRIBUTING.md`](CONTRIBUTING.md) explains how to set up
+the project (FVM), run the checks and the tests, add a language, and write the commits and the
+changelog.
+
+## License
+
+[Apache 2.0](LICENSE).
