@@ -10,6 +10,6 @@ each one in memory: `dart test`.
 | Nested routes | [`nested_routes.dart`](lib/nested_routes.dart) | `Route.parent`, filters inherited by the children, `basePath`, route keys, 405 with `Allow` |
 | CRUD | [`crud.dart`](lib/crud.dart) | A service in `di`, 201 with `Location`, 404, a PATCH with `PatchValue`, 204 |
 | Static files | [`static_files.dart`](lib/static_files.dart) | `Route.static` with the folder `web/`: index, `Cache-Control`, ETag and 304, `Range` |
-| Health check | [`health_check.dart`](lib/health_check.dart) | `Route.health` for liveness and readiness, a 503 when a check is down |
+| Health check | [`health_check.dart`](lib/health_check.dart) | `Route.health` for liveness and readiness (`application/health+json`), a 503 `fail` when a check fails |
 
 Guide: [routing](../../doc/routing.md).

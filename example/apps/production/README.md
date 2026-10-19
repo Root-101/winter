@@ -30,7 +30,8 @@ continues that trace. `GET /products/{sku}/stock` calls the stock service (`STOC
 ### 4. Health checks
 *   `GET /health` (liveness, `Route.health()`): the process answers.
 *   `GET /ready` (readiness, `Route.health(checks: {'database': ...})`): the database answers;
-    otherwise a 503 `{"status": "DOWN", "checks": {"database": "DOWN"}}`, which takes the instance
+    otherwise a 503 `{"status": "fail", "checks": {"database": [{"status": "fail"}]}}`
+    (`application/health+json`), which takes the instance
     out of the load balancer without restarting it.
 
 ### 5. Security behind a proxy

@@ -262,10 +262,25 @@ Route.health(
 ),
 ```
 
-- A 200 `{"status": "UP", "checks": {"database": "UP", "queue": "UP"}}` when every check passes.
-- A **503** `{"status": "DOWN", ...}` when one returns `false`, throws or takes longer than
-  `timeout`: the load balancer (or Kubernetes) takes the instance out. The reason is logged as a
-  warning, never sent, and the format is the same (not a Problem Details).
+- The format of the draft *Health Check Response Format for HTTP APIs*,
+  `application/health+json`, which Kubernetes tooling, gateways and monitors read:
+
+  ```json
+  {
+    "status": "pass",
+    "checks": {
+      "database": [{ "status": "pass" }],
+      "queue": [{ "status": "pass" }]
+    }
+  }
+  ```
+
+- A 200 `"status": "pass"` when every check passes. A **503** `"status": "fail"` (and `fail` in
+  the check) when one returns `false`, throws or takes longer than `timeout`: the load balancer
+  (or Kubernetes) takes the instance out. The reason is logged as a warning, never sent, and the
+  format is the same (not a Problem Details).
+- Each check is a list, as the draft says (a component may have several measurements); give a
+  name like `database:responseTime` to say what is measured.
 - The checks run at once; the response is never cached (`Cache-Control: no-store`), and `HEAD`
   works. Without checks it's a 200 while the server answers (path `/health` by default).
 - It's a normal route: add `filterConfig:` to protect it, or let `LoggingFilter.shouldFilter` skip

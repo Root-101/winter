@@ -46,20 +46,20 @@ void main() {
       jsonDecode(response.body) as Map<String, Object?>;
 
   group('Route.health', () {
-    test('without checks it is UP while the server answers', () async {
+    test('without checks it is pass while the server answers', () async {
       final TestResponse response = await client([Route.health()])
           .get('/health');
 
       expect(response.statusCode, 200);
-      expect(json(response), {'status': 'UP'});
+      expect(json(response), {'status': 'pass'});
       expect(
         response.headers['content-type'],
-        'application/json; charset=utf-8',
+        'application/health+json; charset=utf-8',
       );
       expect(response.headers['cache-control'], 'no-store');
     });
 
-    test('every check UP is a 200 with each one', () async {
+    test('every check passing is a 200 with each one', () async {
       final TestResponse response = await client([
         Route.health(
           path: '/readyz',
@@ -69,14 +69,21 @@ void main() {
 
       expect(response.statusCode, 200);
       expect(json(response), {
-        'status': 'UP',
-        'checks': {'database': 'UP', 'cache': 'UP'},
+        'status': 'pass',
+        'checks': {
+          'database': [
+            {'status': 'pass'},
+          ],
+          'cache': [
+            {'status': 'pass'},
+          ],
+        },
       });
       expect(memoryLogger.logs, isEmpty);
     });
 
     test(
-      'a check that is false or throws is a 503 DOWN, without the reason',
+      'a check that is false or throws is a 503 fail, without the reason',
       () async {
         final TestResponse response = await client([
           Route.health(
@@ -91,11 +98,21 @@ void main() {
         expect(response.statusCode, 503);
         expect(
           response.headers['content-type'],
-          'application/json; charset=utf-8',
+          'application/health+json; charset=utf-8',
         );
         expect(json(response), {
-          'status': 'DOWN',
-          'checks': {'database': 'DOWN', 'queue': 'DOWN', 'cache': 'UP'},
+          'status': 'fail',
+          'checks': {
+            'database': [
+              {'status': 'fail'},
+            ],
+            'queue': [
+              {'status': 'fail'},
+            ],
+            'cache': [
+              {'status': 'pass'},
+            ],
+          },
         });
         expect(response.body, isNot(contains('hunter2')));
         expect(memoryLogger.logs, [
@@ -105,7 +122,7 @@ void main() {
       },
     );
 
-    test('a check that takes longer than the timeout is DOWN', () async {
+    test('a check that takes longer than the timeout fails', () async {
       final List<Duration> timers = [];
       final TestResponse response = await _instantTimers(
         timers,
@@ -118,7 +135,11 @@ void main() {
       );
 
       expect(response.statusCode, 503);
-      expect(json(response)['checks'], {'slow': 'DOWN'});
+      expect(json(response)['checks'], {
+        'slow': [
+          {'status': 'fail'},
+        ],
+      });
       expect(timers, [const Duration(seconds: 2)]);
       expect(memoryLogger.logs, [
         'warning: The health check slow took more than 0:00:02.000000',
@@ -160,7 +181,11 @@ void main() {
 
       expect(head.statusCode, 200);
       expect(head.body, isEmpty);
-      expect(json(await health.get('/health'))['checks'], {'a': 'UP'});
+      expect(json(await health.get('/health'))['checks'], {
+        'a': [
+          {'status': 'pass'},
+        ],
+      });
     });
 
     test('a timeout that is not positive is an ArgumentError', () {

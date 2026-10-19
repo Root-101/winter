@@ -654,6 +654,9 @@ void main() {
         (operation('/health', 'get')['responses'] as Map).keys,
         containsAll(['200', '503']),
       );
+      final Map ok =
+          (operation('/health', 'get')['responses'] as Map)['200'] as Map;
+      expect((ok['content'] as Map).keys, ['application/health+json']);
       expect((document['paths'] as Map), isNot(contains('/ws')));
       expect((document['paths'] as Map), isNot(contains('/hidden')));
     });

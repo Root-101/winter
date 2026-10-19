@@ -9,9 +9,15 @@ void main() {
       final database = Database();
       final client = WinterTestClient.build(router: router(database));
 
-      expect((await client.get('/readyz')).json, {
-        'status': 'UP',
-        'checks': {'database': 'UP'},
+      final ok = await client.get('/readyz');
+      expect(ok.headers['content-type'], startsWith('application/health+json'));
+      expect(ok.json, {
+        'status': 'pass',
+        'checks': {
+          'database': [
+            {'status': 'pass'},
+          ],
+        },
       });
 
       database.up = false;
@@ -19,8 +25,12 @@ void main() {
 
       expect(ready.statusCode, 503);
       expect(ready.json, {
-        'status': 'DOWN',
-        'checks': {'database': 'DOWN'},
+        'status': 'fail',
+        'checks': {
+          'database': [
+            {'status': 'fail'},
+          ],
+        },
       });
       expect((await client.get('/livez')).statusCode, 200);
     },

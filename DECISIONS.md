@@ -305,8 +305,11 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
 - **Health checks** (`Route.health`): a route, not a server feature, so the app decides its paths
   (liveness and readiness are two of them) and its filters. Named checks (`FutureOr<bool>`) run at
   once, each with a timeout (a hung database must not hang the probe); a false, an error or a
-  timeout is a 503 `DOWN` with the state of each check, never the reason (it's logged). Its own
-  JSON (`status`/`checks`, as Spring Actuator), not a Problem Details, also for the 503.
+  timeout is a 503 `fail` with the state of each check, never the reason (it's logged). The
+  format is the draft *Health Check Response Format for HTTP APIs* (`application/health+json`,
+  `pass`/`fail`, a list of measurements per check), not a Problem Details, also for the 503: it
+  has expired, but it's the shared format of the monitors and gateways, where `UP`/`DOWN` was
+  only Spring's. A check is a `bool`, so there is no `warn`; probes only read the status code.
 - **A route path has no query**: a `?` in it belongs to a regex (`{id|\d?}`, `(/.*)?`).
 - **Immutable configuration**: `FilterConfig` (combined with `merge`) and the routes of a router
   (added with `addRoute`, validated like the constructor).
