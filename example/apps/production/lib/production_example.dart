@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:winter/winter.dart';
 
 /// A stand-in for a connection pool: it can be checked and must be closed on shutdown
@@ -13,6 +16,29 @@ class Database {
   Future<bool> ping() async => _open;
 
   Future<void> close() async => _open = false;
+}
+
+/// Another service of the platform. Every call carries the W3C trace of the request in progress
+/// (`traceparent`/`tracestate`), so OpenTelemetry, Datadog or Jaeger show both services in one
+/// trace, and their JSON logs share the `traceId`.
+class StockClient {
+  final Uri baseUrl;
+
+  StockClient(this.baseUrl);
+
+  Future<int> available(String sku) async {
+    final HttpClient client = HttpClient();
+    try {
+      final HttpClientRequest request = await client.getUrl(
+        baseUrl.resolve('/stock/${Uri.encodeComponent(sku)}'),
+      );
+      requestTrace?.headers.forEach(request.headers.set);
+      final HttpClientResponse response = await request.close();
+      return int.parse(await response.transform(utf8.decoder).join());
+    } finally {
+      client.close();
+    }
+  }
 }
 
 class ProductionApp {
@@ -49,6 +75,18 @@ class ProductionApp {
       Route.health(
         path: '/ready',
         checks: {'database': () => di.find<Database>().ping()},
+      ),
+      Route.get(
+        path: '/products/{sku}/stock',
+        handler: (request) async {
+          final String sku = request.pathParam<String>('sku');
+          return ResponseEntity.ok(
+            body: {
+              'sku': sku,
+              'available': await di.find<StockClient>().available(sku),
+            },
+          );
+        },
       ),
       Route.get(
         path: '/hello',
@@ -96,6 +134,11 @@ class ProductionApp {
     di.put<Database>(
       Database(config.require<String>('DATABASE_URL')),
       onDispose: (database) => database.close(),
+    );
+    di.put<StockClient>(
+      StockClient(
+        Uri.parse(config.find<String>('STOCK_URL') ?? 'http://localhost:8081'),
+      ),
     );
 
     await Winter.start(

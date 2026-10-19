@@ -267,6 +267,14 @@ class HttpHeader {
   /// See [Section 5.7.1 of RFC 7230](https://tools.ietf.org/html/rfc7230#section-5.7.1).
   static const String via = 'Via';
 
+  /// The `traceparent` header: the trace and the span of the caller (`00-<trace-id>-<parent-id>-01`).
+  /// See [W3C Trace Context](https://www.w3.org/TR/trace-context/#traceparent-header).
+  static const String traceparent = 'traceparent';
+
+  /// The `tracestate` header: the data of each tracing vendor, forwarded with `traceparent`.
+  /// See [W3C Trace Context](https://www.w3.org/TR/trace-context/#tracestate-header).
+  static const String tracestate = 'tracestate';
+
   /// The HTTP `Warning` header.
   /// See [Section 5.5 of RFC 7234](https://tools.ietf.org/html/rfc7234#section-5.5).
   static const String warning = 'Warning';

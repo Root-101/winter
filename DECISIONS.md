@@ -208,6 +208,15 @@ Guide: [`doc/logging.md`](doc/logging.md).
 - **Every request has an id**, always: its `X-Request-Id` when it's valid (1–128 safe characters,
   so a header can't inject lines into the logs), or a new UUID. It's in `requestId`, the response,
   every log of the request and a 500. It turns "it failed at 10:31" into the logs of that request.
+- **W3C Trace Context, not a tracer**: a valid `traceparent` (strict parsing: lowercase hex, no
+  ids of zeros, `ff` invalid, only one header) is continued with a new span id per request, and
+  its `tracestate` kept to forward (dropped if longer than 512 or not printable ASCII); otherwise
+  the request starts a trace (created lazily, so a request that never logs pays no random ids).
+  It's the standard every tracing tool speaks, without a dependency on OpenTelemetry. Without a
+  valid `X-Request-Id`, the request id is the trace id, one id across the services. `JsonLogger`
+  writes `traceId`/`spanId`; `ConsoleLogger` doesn't (noise for a person). No `traceresponse`
+  (a draft of Level 2, and it would expose the trace to the client). A WebSocket keeps the trace
+  of its handshake; a scheduled task starts its own.
 - Every level takes `error`, `stackTrace` and `fields`; `isEnabled(level)` skips building an
   expensive message (the framework's debug logs use it, so an attack doesn't cost a string per
   rejected request).

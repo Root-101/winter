@@ -229,8 +229,9 @@ Until then the same checks run by hand. Notes: run on a push to any branch and o
   1. [x] **RateLimit headers** (`draft-ietf-httpapi-ratelimit-headers`): `RateLimit-Policy` and
      `RateLimit` instead of `X-RateLimit-*`, a `policy` name per filter (§8). Impact high, effort
      low.
-  2. [ ] **W3C Trace Context** (`traceparent`/`tracestate`): read and propagate the trace, in the
-     logs and the request id (OpenTelemetry, Datadog, Jaeger). High, medium.
+  2. [x] **W3C Trace Context** (`traceparent`/`tracestate`): `TraceContext`, `requestTrace`, a
+     span per request, `traceId`/`spanId` in `JsonLogger`, the trace id as the request id (§7).
+     High, medium.
   3. [ ] **`Forwarded`** (RFC 7239) and `X-Forwarded-Proto`/`Host` behind trusted proxies:
      `clientIp` and `requestedUri` (so `Location`, `instance`, OpenAPI). Medium-high, low.
   4. [ ] **Conditional requests** (RFC 9110 §13) for any response: `ETag`/`If-None-Match` → 304,
