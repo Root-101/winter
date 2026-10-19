@@ -1,3 +1,6 @@
+* 1.0.0 (unreleased):
+    * **Errors** :rotating_light: : Problem Details (RFC 9457) complete: `instance` (the path of the request by default, never its query string, or your own with `ApiException(instance:)`), `ProblemDetails.fromJson` (registered in the object mapper, so `as<ProblemDetails>()` works; a member of the wrong type is ignored, as the RFC asks), and `application/problem+json` only for a `ProblemDetails` body (any other JSON is `application/json`).
+
 * 1.0.0-rc.1:
     * **DATE** :date: : 2026-10-09.
     * The first version of Winter as a complete framework, built directly on `dart:io`. The guides are in `doc/`, and the reasons behind every design choice in `DECISIONS.md`.
