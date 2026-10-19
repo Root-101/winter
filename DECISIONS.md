@@ -123,10 +123,17 @@ Guide: [`doc/error-handling.md`](doc/error-handling.md).
   client reads, the standard Spring uses too. `type` (`about:blank` by default), `title` (the
   reason phrase, never translated), `status`, `detail` (what the user reads, never in a 500) and
   extensions; the 422 adds `violations`, a 500 its `requestId`.
+- **`instance` is the path of the request** when the error doesn't give one, as Spring and
+  ASP.NET Core do: it tells which call failed without reading the logs. Never the query string
+  (it can carry tokens). `application/problem+json` is only for a `ProblemDetails` body: another
+  JSON body with an error status is `application/json`, because the media type promises the format.
+- **`ProblemDetails.fromJson`** is registered in the mapper by default (tests, clients of other
+  APIs). It follows RFC 9457 §3.1: a standard member of the wrong type is ignored, the rest are
+  extensions; only `status` is required, because a Winter problem always has one.
 - **The names of the format are fixed** (`requestId`, `fieldName`...) whatever the `fieldNaming` of
   the app, so every Winter app answers errors the same way (and kebab-case would break the member
   names RFC 9457 recommends). The extensions of the app keep the names it gives.
-- **`ApiException(status, detail:, type:, title:, extensions:, headers:)`** with shortcuts for the
+- **`ApiException(status, detail:, type:, title:, instance:, extensions:, headers:)`** with shortcuts for the
   common statuses; they are `const`. A response that is not a Problem Details (or a status that
   `StatusCode` doesn't have) is a `ResponseException`.
 - **The `ExceptionHandler` receives everything** (`Object`: Exceptions and Errors), and the chain

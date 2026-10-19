@@ -181,6 +181,13 @@ void main() {
       _expectProblem(await client.get('/limited'), 429);
     });
 
+    test('the instance is the path, without the query string', () async {
+      final response = await client.get('/not-found?token=secret');
+
+      expect((response.json as Map)['instance'], '/not-found');
+      expect(response.body, isNot(contains('secret')));
+    });
+
     test('500, without any detail of the error', () async {
       for (final path in ['/exception', '/error']) {
         final response = await client.get(path);
@@ -201,28 +208,33 @@ void main() {
       ),
     );
 
-    test('any status, with type, title, detail and extensions', () async {
-      client = clientThrowing(
-        const ApiException(
-          StatusCode.conflict,
-          detail: 'The email is already registered',
-          type: 'https://api.example.com/errors/email-taken',
-          title: 'Email taken',
-          extensions: {'email': 'a@b.co'},
-        ),
-      );
+    test(
+      'any status, with type, title, detail, instance and extensions',
+      () async {
+        client = clientThrowing(
+          const ApiException(
+            StatusCode.conflict,
+            detail: 'The email is already registered',
+            type: 'https://api.example.com/errors/email-taken',
+            title: 'Email taken',
+            instance: '/errors/7',
+            extensions: {'email': 'a@b.co'},
+          ),
+        );
 
-      final response = await client.get('/');
+        final response = await client.get('/');
 
-      expect(response.statusCode, 409);
-      expect(response.json, {
-        'email': 'a@b.co',
-        'type': 'https://api.example.com/errors/email-taken',
-        'title': 'Email taken',
-        'status': 409,
-        'detail': 'The email is already registered',
-      });
-    });
+        expect(response.statusCode, 409);
+        expect(response.json, {
+          'email': 'a@b.co',
+          'type': 'https://api.example.com/errors/email-taken',
+          'title': 'Email taken',
+          'status': 409,
+          'detail': 'The email is already registered',
+          'instance': '/errors/7',
+        });
+      },
+    );
 
     test('an extension never replaces a standard member', () async {
       client = clientThrowing(
@@ -482,6 +494,74 @@ void main() {
     });
   });
 
+  group('ProblemDetails.fromJson (§4)', () {
+    test('reads a response of Winter back, extensions included', () async {
+      final client = WinterTestClient.build(
+        router: WinterRouter(
+          routes: [
+            Route.get(
+              path: '/',
+              handler: (r) => throw const ConflictException(
+                detail: 'Taken',
+                extensions: {'email': 'a@b.co'},
+              ),
+            ),
+          ],
+        ),
+      );
+
+      final problem = (await client.get('/')).as<ProblemDetails>();
+
+      expect(problem.toJson(), {
+        'email': 'a@b.co',
+        'type': 'about:blank',
+        'title': 'Conflict',
+        'status': 409,
+        'detail': 'Taken',
+        'instance': '/',
+      });
+    });
+
+    test('a standard member of the wrong type is ignored', () {
+      final problem = ProblemDetails.fromJson({
+        'status': 404.0,
+        'type': 1,
+        'title': null,
+        'detail': ['x'],
+        'instance': true,
+      });
+
+      expect(problem.toJson(), {
+        'type': 'about:blank',
+        'title': 'Not Found',
+        'status': 404,
+      });
+    });
+
+    test('without an integer status it is a 400 naming the member', () {
+      expect(
+        () => om.deserialize<ProblemDetails>({'title': 'x'}),
+        throwsA(
+          isA<DeserializationException>().having(
+            (e) => e.message,
+            'message',
+            r'$.status: missing',
+          ),
+        ),
+      );
+      expect(
+        () => om.deserialize<ProblemDetails>({'status': '404'}),
+        throwsA(
+          isA<DeserializationException>().having(
+            (e) => e.message,
+            'message',
+            r'$.status: expected an integer',
+          ),
+        ),
+      );
+    });
+  });
+
   group('A broken ExceptionHandler', () {
     test('a handler that throws still gives a generic 500', () async {
       final logs = <String>[];
@@ -524,6 +604,7 @@ void _expectProblem(TestResponse response, int status, {String? detail}) {
     StatusCode.values.firstWhere((s) => s.value == status).reasonPhrase,
   );
   expect(body['status'], status);
+  expect(body['instance'], startsWith('/'));
   if (detail == null) {
     expect(body, isNot(contains('detail')));
   } else {

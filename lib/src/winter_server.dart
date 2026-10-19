@@ -477,7 +477,7 @@ class Winter {
           error: error,
           stackTrace: stackTrace,
         );
-        response = internalServerErrorResponse();
+        response = internalServerErrorResponse(instance: request.uri.path);
       }
       final WebSocketUpgrade? upgrade = response.context.get(
         webSocketUpgradeKey,
@@ -647,7 +647,7 @@ class Winter {
         '(a line break, a control character or a character that is not ASCII): '
         'answered with a 500',
       );
-      return internalServerErrorResponse();
+      return internalServerErrorResponse(instance: request.requestedUri.path);
     }
     return response;
   }
@@ -720,7 +720,7 @@ class Winter {
     } catch (handlerError, handlerStackTrace) {
       defaultLogUnhandledError(request, error, stackTrace);
       defaultLogUnhandledError(request, handlerError, handlerStackTrace);
-      return internalServerErrorResponse();
+      return internalServerErrorResponse(instance: request.requestedUri.path);
     }
   }
 }
