@@ -424,23 +424,65 @@ A browser reads them only if CORS exposes them: `CorsConfig(exposedHeaders: ['X-
 
 ### Conditional requests: `ETag`, 304 and optimistic locking
 
-An `ETag` (the version of the resource) lets a client skip a download it already has, and stops
-two users from overwriting each other:
+An `ETag` (the version of the resource, a quoted value: `"7"`, or `W/"7"` when it's only
+equivalent) or a `Last-Modified` lets a client skip a download it already has, and stops two users
+from overwriting each other (RFC 9110 §13).
+
+**A `GET` only sets the validator**: the server compares it with `If-None-Match` (or, without
+it, `If-Modified-Since`) and answers a **304** without body by itself, keeping the other headers
+(`Cache-Control`, `Vary`, CORS). Only a 200 or a 206 of a `GET` or `HEAD` changes; static files
+work the same way.
 
 ```dart
-// GET: a 304 without body when the client has this version
-if (request.headers[HttpHeader.ifNoneMatch] == document.etag) {
-  return ResponseEntity(304, headers: {HttpHeader.etag: document.etag});
-}
-
-// PUT: only over the version the client read
-final String? ifMatch = request.headers[HttpHeader.ifMatch];
-if (ifMatch == null) throw const ApiException(StatusCode.preconditionRequired);   // 428
-if (ifMatch != current.etag) throw const ApiException(StatusCode.preconditionFailed); // 412
+Route.get(
+  path: '/documents/{id}',
+  handler: (request) {
+    final Document document = store.find(request.pathParam<int>('id'));
+    return ResponseEntity.ok(
+      body: document,
+      headers: {HttpHeader.etag: '"${document.version}"', HttpHeader.cacheControl: 'no-cache'},
+    );
+  },
+),
 ```
 
-[`api_patterns/conditional_requests.dart`](../example/api_patterns/lib/conditional_requests.dart)
-also reads lists of tags, `W/` and `*`.
+```http
+GET /documents/1
+If-None-Match: "1"
+
+HTTP/1.1 304 Not Modified
+ETag: "1"
+Cache-Control: no-cache
+```
+
+**A change checks its preconditions before it's made**, against the version stored now, with
+`request.checkPreconditions(etag:, lastModified:)`:
+
+```dart
+Route.put(
+  path: '/documents/{id}',
+  handler: (request) async {
+    final int id = request.pathParam<int>('id');
+    request.checkPreconditions(etag: store.find(id).etag, required: true);
+    final Document saved = store.save(id, await request.body<DocumentChanges>());
+    return ResponseEntity.ok(body: saved, headers: {HttpHeader.etag: saved.etag});
+  },
+),
+```
+
+| The request                                          | The answer                                           |
+|------------------------------------------------------|------------------------------------------------------|
+| `If-Match` with the current ETag (or `*`)            | Goes on                                              |
+| `If-Match` with another one, or a weak one           | **412** `PreconditionFailedException`                |
+| `If-Unmodified-Since` before `lastModified`          | **412** (only without `If-Match`)                    |
+| `If-None-Match: *` and the resource exists           | **412** (`exists: false` for a `PUT` that creates it)|
+| No `If-Match` nor `If-Unmodified-Since`, `required`  | **428** `PreconditionRequiredException` (RFC 6585)   |
+| In a `GET`: `If-None-Match` with the current ETag    | 304                                                  |
+
+`If-Match` compares strongly (a `W/` tag never matches) and `If-None-Match` weakly, as the RFC
+says; both take lists (`"1", "2"`) and `*`. The 412 and the 428 are Problem Details like any
+other error. Example:
+[`api_patterns/conditional_requests.dart`](../example/api_patterns/lib/conditional_requests.dart).
 
 ### Content negotiation
 

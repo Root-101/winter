@@ -235,7 +235,8 @@ WinterRouter(
   `index.html` (`index:`, `null` for none) after a 308 that adds the `/`, so its relative links work.
 - **Only that folder**: `..`, hidden files and folders (`.env`, `.git/`), `\`, `:` and links that
   lead out of it are a 404.
-- `ETag` and `Last-Modified` on every file, and a **304** for `If-None-Match`/`If-Modified-Since`.
+- `ETag` and `Last-Modified` on every file, and a **304** for `If-None-Match`/`If-Modified-Since`
+  (the server's conditional requests, as for any `GET`).
 - **`Range`** (video players, resumed downloads): one range is a **206**, a range out of the file a
   **416**, and `If-Range` sends the whole file when it changed. Several ranges send the whole file.
 - The `Content-Type` comes from the extension (`mimeTypes:` adds or overrides some), and the file

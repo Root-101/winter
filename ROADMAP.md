@@ -235,9 +235,9 @@ Until then the same checks run by hand. Notes: run on a push to any branch and o
   3. [x] **`Forwarded`** (RFC 7239) and `X-Forwarded-Proto`/`Host` behind trusted proxies:
      `ServerConfig.trustedProxies` (`TrustedProxies`, `ForwardedHeaders`) for `clientIp` and
      `requestedUri` (§8). Medium-high, low.
-  4. [ ] **Conditional requests** (RFC 9110 §13) for any response: `ETag`/`If-None-Match` → 304,
-     `If-Match` → 412 (today only static files and the `api_patterns` example). Medium-high,
-     medium.
+  4. [x] **Conditional requests** (RFC 9110 §13) for any response: the 304 of the server for a
+     `GET` with `ETag`/`Last-Modified`, `request.checkPreconditions` for a change (412, 428),
+     static files on the same code (§10). Medium-high, medium.
   5. [ ] **`Deprecation`** (RFC 9745) + **`Sunset`** (RFC 8594): a `deprecated:` option of a
      route, also `deprecated: true` in OpenAPI. Medium, low.
   6. [ ] **`Link`** (RFC 8288) for pagination (`next`, `prev`, `first`, `last`). Medium-low, low.

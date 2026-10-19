@@ -5,6 +5,8 @@ import 'package:winter/src/i18n/winter_messages.dart';
 import 'package:winter/src/request_entity.dart'
     show attachRoute, limitRequestBody, requestFromHttpRequest;
 import 'package:winter/src/response_entity.dart' show writeResponse;
+import 'package:winter/src/http/conditional_requests.dart'
+    show notModifiedResponse;
 import 'package:winter/src/trusted_proxies.dart' show applyTrustedProxies;
 import 'package:winter/src/websocket.dart'
     show WebSocketUpgrade, webSocketUpgradeKey;
@@ -622,7 +624,12 @@ class Winter {
             router: router,
             globalFilterConfig: globalFilterConfig,
           );
-          return _checkHeaders(requestEntity, response);
+
+          ///A GET whose version the client already has is a 304 (RFC 9110 §13)
+          return notModifiedResponse(
+            requestEntity,
+            _checkHeaders(requestEntity, response),
+          );
         } finally {
           ///The callbacks of `scope.onComplete` (the scoped dependencies are disposed there)
           await scope.complete();

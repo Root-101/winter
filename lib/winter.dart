@@ -4,7 +4,8 @@ export 'src/context/context.dart';
 export 'src/env/env.dart';
 export 'src/filter_chain/filter.dart';
 export 'src/handler.dart';
-export 'src/http/http.dart';
+export 'src/http/http.dart'
+    hide ifRangeMatches, notModifiedResponse, parseHttpDate;
 export 'src/i18n/i18n.dart';
 export 'src/logging/logger.dart';
 export 'src/logging/trace_context.dart';
