@@ -9,6 +9,17 @@ class HttpHeader {
   /// (de facto standard, not in the HTTP spec).
   static const String xForwardedFor = 'X-Forwarded-For';
 
+  /// The `X-Forwarded-Proto` header: the scheme (`https`) the client used with the proxy
+  /// (de facto standard).
+  static const String xForwardedProto = 'X-Forwarded-Proto';
+
+  /// The `X-Forwarded-Host` header: the `Host` the client sent to the proxy (de facto standard).
+  static const String xForwardedHost = 'X-Forwarded-Host';
+
+  /// The `Forwarded` header: what each proxy saw of the client (`for`, `proto`, `host`).
+  /// See [RFC 7239](https://www.rfc-editor.org/rfc/rfc7239).
+  static const String forwarded = 'Forwarded';
+
   /// The `X-Accel-Buffering` header: `no` tells nginx not to buffer a response that is streamed
   /// (Server-Sent Events).
   static const String xAccelBuffering = 'X-Accel-Buffering';

@@ -5,6 +5,7 @@ import 'package:winter/src/i18n/winter_messages.dart';
 import 'package:winter/src/request_entity.dart'
     show attachRoute, limitRequestBody, requestFromHttpRequest;
 import 'package:winter/src/response_entity.dart' show writeResponse;
+import 'package:winter/src/trusted_proxies.dart' show applyTrustedProxies;
 import 'package:winter/src/websocket.dart'
     show WebSocketUpgrade, webSocketUpgradeKey;
 import 'package:winter/winter.dart';
@@ -262,6 +263,7 @@ class Winter {
       router: nonNullRouter,
       globalFilterConfig: nonNullGlobalFilterConfig,
       maxBodySize: nonNullConfig.maxBodySize,
+      trustedProxies: nonNullConfig.trustedProxies,
     );
     rawServer.listen(
       (request) => _serve(
@@ -427,7 +429,9 @@ class Winter {
     SecurityConfig? securityConfig,
     int? maxBodySize = defaultMaxBodySize,
     Duration? requestTimeout,
+    TrustedProxies? trustedProxies,
   }) {
+    trustedProxies?.validate();
     return _buildHandler(
       router: router,
       globalFilterConfig: _globalFilters(
@@ -436,6 +440,7 @@ class Winter {
         requestTimeout,
       ),
       maxBodySize: maxBodySize,
+      trustedProxies: trustedProxies,
     );
   }
 
@@ -443,11 +448,13 @@ class Winter {
     required BaseRouter router,
     required FilterConfig globalFilterConfig,
     required int? maxBodySize,
+    required TrustedProxies? trustedProxies,
   }) {
     return (request) => _handleRunRequest(
       router: router,
       globalFilterConfig: globalFilterConfig,
       maxBodySize: maxBodySize,
+      trustedProxies: trustedProxies,
       request: request,
     );
   }
@@ -582,8 +589,13 @@ class Winter {
     required BaseRouter router,
     required FilterConfig globalFilterConfig,
     required int? maxBodySize,
+    required TrustedProxies? trustedProxies,
   }) async {
-    final RequestEntity requestEntity = request;
+    ///The request as the client sent it to the proxies (its IP, scheme and host), before
+    ///anything reads it
+    final RequestEntity requestEntity = trustedProxies == null
+        ? request
+        : applyTrustedProxies(request, trustedProxies);
     if (maxBodySize != null) limitRequestBody(requestEntity, maxBodySize);
 
     ///Created now and not lazily, so the request, its changes (`change` copies the context)

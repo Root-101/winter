@@ -44,6 +44,14 @@ void main() {
       expect(logger.isEnabled(LogLevel.debug), isTrue);
     });
 
+    test('the load balancer is only trusted when TRUSTED_PROXIES says so', () {
+      expect(
+        ProductionApp.trustedProxies(Env(env: {'TRUSTED_PROXIES': '1'}))?.count,
+        1,
+      );
+      expect(ProductionApp.trustedProxies(Env(env: {})), isNull);
+    });
+
     test('a missing variable fails at start, naming it', () {
       expect(
         () => ProductionApp.loadEnv(

@@ -4,9 +4,9 @@ import 'package:winter/winter.dart';
 
 /// A filter that limits the number of requests a client can make within a given time window.
 ///
-/// It uses a [RateLimiter] to track requests, per client: [clientId] identifies it (by default, the
-/// IP of the client; behind proxies use
-/// `clientId: (request) => request.clientIp(trustedProxies: 1) ?? 'unknown'`).
+/// It uses a [RateLimiter] to track requests, per client: [clientId] identifies it (by default,
+/// [RequestEntity.clientIp]; behind proxies, set [ServerConfig.trustedProxies] so it's the IP
+/// they forward).
 ///
 /// Every response it lets through, and its 429, carry the headers of the IETF draft
 /// *RateLimit header fields for HTTP* (`draft-ietf-httpapi-ratelimit-headers`):

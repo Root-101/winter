@@ -232,8 +232,9 @@ Until then the same checks run by hand. Notes: run on a push to any branch and o
   2. [x] **W3C Trace Context** (`traceparent`/`tracestate`): `TraceContext`, `requestTrace`, a
      span per request, `traceId`/`spanId` in `JsonLogger`, the trace id as the request id (§7).
      High, medium.
-  3. [ ] **`Forwarded`** (RFC 7239) and `X-Forwarded-Proto`/`Host` behind trusted proxies:
-     `clientIp` and `requestedUri` (so `Location`, `instance`, OpenAPI). Medium-high, low.
+  3. [x] **`Forwarded`** (RFC 7239) and `X-Forwarded-Proto`/`Host` behind trusted proxies:
+     `ServerConfig.trustedProxies` (`TrustedProxies`, `ForwardedHeaders`) for `clientIp` and
+     `requestedUri` (§8). Medium-high, low.
   4. [ ] **Conditional requests** (RFC 9110 §13) for any response: `ETag`/`If-None-Match` → 304,
      `If-Match` → 412 (today only static files and the `api_patterns` example). Medium-high,
      medium.

@@ -34,7 +34,9 @@ continues that trace. `GET /products/{sku}/stock` calls the stock service (`STOC
     out of the load balancer without restarting it.
 
 ### 5. Security behind a proxy
-*   `RateLimiterFilter` by client IP with `clientIp(trustedProxies: TRUSTED_PROXIES)`.
+*   `ServerConfig(trustedProxies: TrustedProxies(TRUSTED_PROXIES))`: the IP of the client, the
+    scheme and the host come from the `X-Forwarded-*` of the load balancer (never trusted locally).
+*   `RateLimiterFilter` by client IP (the forwarded one).
 *   CORS with the origins of `CORS_ORIGINS`, and HSTS with `HSTS=true` (TLS ends at the proxy).
 *   `maxBodySize` of 1 MB.
 
