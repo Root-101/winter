@@ -45,6 +45,13 @@ class MediaType {
   /// `application/json`
   static const MediaType applicationJson = MediaType('application', 'json');
 
+  /// `application/health+json`: the state of a health check (`draft-inadarei-api-health-check`),
+  /// what `Route.health` answers
+  static const MediaType applicationHealthJson = MediaType(
+    'application',
+    'health+json',
+  );
+
   /// `application/x-ndjson`: one JSON value per line
   static const MediaType applicationNdjson = MediaType(
     'application',

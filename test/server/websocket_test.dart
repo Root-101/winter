@@ -63,6 +63,7 @@ void main() {
             'fromRequest': request.principal<String>(),
             'fromScope': requestPrincipal<String>(),
             'requestId': requestId,
+            'trace': requestTrace?.traceId,
           });
         },
       ),
@@ -112,11 +113,14 @@ void main() {
   });
 
   test(
-    'the handler has the principal, in the request and in the scope',
+    'the handler has the principal, the id and the trace of the handshake',
     () async {
       final WebSocket socket = await WebSocket.connect(
         '$base/me',
-        headers: {'X-User': 'ann'},
+        headers: {
+          'X-User': 'ann',
+          'traceparent': '00-$_traceId-00f067aa0ba902b7-01',
+        },
       );
 
       final Map<String, Object?> message =
@@ -124,7 +128,8 @@ void main() {
 
       expect(message['fromRequest'], 'ann');
       expect(message['fromScope'], 'ann');
-      expect(message['requestId'], isNotEmpty);
+      expect(message['requestId'], _traceId);
+      expect(message['trace'], _traceId);
       await socket.close();
     },
   );
@@ -208,3 +213,5 @@ void main() {
     );
   });
 }
+
+const String _traceId = '4bf92f3577b34da6a3ce929d0e0e4736';

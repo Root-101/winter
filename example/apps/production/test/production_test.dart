@@ -44,6 +44,14 @@ void main() {
       expect(logger.isEnabled(LogLevel.debug), isTrue);
     });
 
+    test('the load balancer is only trusted when TRUSTED_PROXIES says so', () {
+      expect(
+        ProductionApp.trustedProxies(Env(env: {'TRUSTED_PROXIES': '1'}))?.count,
+        1,
+      );
+      expect(ProductionApp.trustedProxies(Env(env: {})), isNull);
+    });
+
     test('a missing variable fails at start, naming it', () {
       expect(
         () => ProductionApp.loadEnv(
@@ -85,7 +93,7 @@ void main() {
       expect(response.headers['x-request-id'], isNotNull);
     });
 
-    test('/ready is a 503 DOWN while the database is down', () async {
+    test('/ready is a 503 fail while the database is down', () async {
       expect((await client.get('/ready')).statusCode, 200);
 
       await database.close();
@@ -93,8 +101,12 @@ void main() {
 
       expect(response.statusCode, 503);
       expect(response.json, {
-        'status': 'DOWN',
-        'checks': {'database': 'DOWN'},
+        'status': 'fail',
+        'checks': {
+          'database': [
+            {'status': 'fail'},
+          ],
+        },
       });
       expect(
         response.headers['ratelimit-policy'],
@@ -102,6 +114,47 @@ void main() {
       );
     });
   });
+
+  test(
+    'a call to another service continues the trace of the request',
+    () async {
+      // The other service: answers 3 and keeps the traceparent it got
+      final HttpServer stock = await HttpServer.bind(
+        InternetAddress.loopbackIPv4,
+        0,
+      );
+      addTearDown(() => stock.close(force: true));
+      String? received;
+      stock.listen((request) {
+        received = request.headers.value('traceparent');
+        request.response
+          ..write('3')
+          ..close();
+      });
+      Winter.context.setUp(dependencyInjection: DependencyInjection());
+      di.put<StockClient>(
+        StockClient(Uri.parse('http://127.0.0.1:${stock.port}')),
+      );
+      final client = WinterTestClient.build(router: ProductionApp.router());
+
+      final response = await client.get(
+        '/products/pen/stock',
+        headers: {
+          'traceparent':
+              '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
+        },
+      );
+
+      expect(response.json, {'sku': 'pen', 'available': 3});
+      // The same trace, with the span of this request as the parent
+      expect(received, startsWith('00-4bf92f3577b34da6a3ce929d0e0e4736-'));
+      expect(received, isNot(contains('00f067aa0ba902b7')));
+      expect(
+        response.headers['x-request-id'],
+        '4bf92f3577b34da6a3ce929d0e0e4736',
+      );
+    },
+  );
 
   test(
     'SIGTERM-like shutdown: requests finish, then the database closes',

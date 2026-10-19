@@ -208,6 +208,15 @@ Guide: [`doc/logging.md`](doc/logging.md).
 - **Every request has an id**, always: its `X-Request-Id` when it's valid (1–128 safe characters,
   so a header can't inject lines into the logs), or a new UUID. It's in `requestId`, the response,
   every log of the request and a 500. It turns "it failed at 10:31" into the logs of that request.
+- **W3C Trace Context, not a tracer**: a valid `traceparent` (strict parsing: lowercase hex, no
+  ids of zeros, `ff` invalid, only one header) is continued with a new span id per request, and
+  its `tracestate` kept to forward (dropped if longer than 512 or not printable ASCII); otherwise
+  the request starts a trace (created lazily, so a request that never logs pays no random ids).
+  It's the standard every tracing tool speaks, without a dependency on OpenTelemetry. Without a
+  valid `X-Request-Id`, the request id is the trace id, one id across the services. `JsonLogger`
+  writes `traceId`/`spanId`; `ConsoleLogger` doesn't (noise for a person). No `traceresponse`
+  (a draft of Level 2, and it would expose the trace to the client). A WebSocket keeps the trace
+  of its handshake; a scheduled task starts its own.
 - Every level takes `error`, `stackTrace` and `fields`; `isEnabled(level)` skips building an
   expensive message (the framework's debug logs use it, so an attack doesn't cost a string per
   rejected request).
@@ -236,8 +245,16 @@ Guide: [`doc/security.md`](doc/security.md).
   API doesn't announce its framework.
 - **Rate limiter**: a sliding window over an asynchronous `RateLimiterStore` (in memory by default,
   so per isolate and per process; a shared store like Redis implements the same interface).
-  `maxRequests < 1` or a non positive window is an `ArgumentError`. The client is its IP; behind a
-  proxy `trustedProxies` reads `X-Forwarded-For`, never trusted without it.
+  `maxRequests < 1` or a non positive window is an `ArgumentError`. The client is its IP.
+- **The proxies are trusted in one place, `ServerConfig.trustedProxies`** (and `buildHandler`), not
+  per call of `clientIp`: the IP, the scheme and the host of the client must agree for the whole
+  request (the rate limiter, `Location`, the `instance` of the errors, OpenAPI). `TrustedProxies`
+  names how many proxies append their entry (the client is the one the outermost added) and the
+  one kind of header they write, `X-Forwarded-*` (the default: nginx, the load balancers of the
+  clouds) or `Forwarded` (RFC 7239): reading both would let a client fake the one its proxy
+  doesn't write. Every value is checked (an IP, `http`/`https`, a bare `host[:port]`) and ignored
+  otherwise. The scheme and the host take the entry at the place of the client, or the first one
+  when the proxies overwrite them with a single value. Without it (the default) none is read.
 - **The limits are announced with the IETF headers** (`draft-ietf-httpapi-ratelimit-headers`), not
   the `X-RateLimit-*` of each vendor: `RateLimit-Policy: "default";q=100;w=60` and
   `RateLimit: "default";r=42;t=17`, on every response the filter lets through and on its 429 (with
@@ -280,7 +297,7 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
   filters and route keys work as in any route. Only files inside the folder, checked twice: no
   `..`, hidden, `\` or `:` segment (`.env`, `.git/`, a Windows separator, drive or stream), and the
   canonical path (links resolved) inside the canonical folder. `ETag` from size and modification
-  time (strong, so `If-Range` can use it), 304, one `Range` (several are rare and need
+  time (strong, so `If-Range` can use it), the 304 of the server, one `Range` (several are rare and need
   `multipart/byteranges`: the whole file is sent instead), the file streamed with its
   `Content-Length`. A folder redirects to its `/` before serving its index, with a relative
   `Location` that works behind a proxy prefix. MIME types are a short table of the web formats,
@@ -288,19 +305,59 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
 - **Health checks** (`Route.health`): a route, not a server feature, so the app decides its paths
   (liveness and readiness are two of them) and its filters. Named checks (`FutureOr<bool>`) run at
   once, each with a timeout (a hung database must not hang the probe); a false, an error or a
-  timeout is a 503 `DOWN` with the state of each check, never the reason (it's logged). Its own
-  JSON (`status`/`checks`, as Spring Actuator), not a Problem Details, also for the 503.
+  timeout is a 503 `fail` with the state of each check, never the reason (it's logged). The
+  format is the draft *Health Check Response Format for HTTP APIs* (`application/health+json`,
+  `pass`/`fail`, a list of measurements per check), not a Problem Details, also for the 503: it
+  has expired, but it's the shared format of the monitors and gateways, where `UP`/`DOWN` was
+  only Spring's. A check is a `bool`, so there is no `warn`; probes only read the status code.
 - **A route path has no query**: a `?` in it belongs to a regex (`{id|\d?}`, `(/.*)?`).
 - **Immutable configuration**: `FilterConfig` (combined with `merge`) and the routes of a router
   (added with `addRoute`, validated like the constructor).
 - **Filters run sorted by `order`**, stable (global first, then the route's, parents before
   children); CORS (-100) and the security headers (-99) first, so every response has them. An
   error becomes a response where it's thrown, so a filter never receives an exception.
+- **Idempotency keys are a filter** (`IdempotencyFilter`) over an async `IdempotencyStore`, like the
+  rate limiter: the handler stays plain, and a shared store (Redis, a table) implements the same
+  interface with an atomic `reserve`. It follows the IETF draft (a 400 without a key, a 422 for the
+  same key with another body, a 409 while it runs, the kept answer for a retry, success or error),
+  reads the key quoted or bare, and keeps neither a failure of the server nor a temporary one
+  (408, 425, 429) nor a stream, so a retry can still succeed. The key is scoped by method, path
+  and an optional `partition` (the user), never global: a key alone would hand one user's answer
+  to another. The body is compared by a 64-bit FNV-1a fingerprint, not a cryptographic hash: there
+  is no `crypto` dependency, and a collision only matters between two bodies of the same client
+  with the same key. `Idempotent-Replayed: true` (not in the draft) tells a replay apart.
+- **Deprecation is a filter** (`DeprecationFilter`), not a field of `Route`: a parent deprecates a
+  whole version and its children inherit it the way they inherit any filter, its errors carry the
+  headers too (the chain answers them where they're thrown), and OpenAPI finds it as it finds the
+  `AuthFilter`s. It sends the final RFCs: `Deprecation` as a Structured Field Date (`@seconds`,
+  RFC 9745; the `true` of the drafts is gone), `Sunset` as an HTTP date (RFC 8594, never before the
+  deprecation), and `Link`s `rel="deprecation"` and `rel="successor-version"` appended after the
+  ones of the response.
 
 ## 10. The HTTP layer
 
 Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
 
+- **Conditional requests are the server's, not each handler's** (RFC 9110 §13): a 200 or 206 of
+  a `GET`/`HEAD` with an `ETag` or a `Last-Modified` becomes a 304 when `If-None-Match` (weak
+  comparison) or, without it, `If-Modified-Since` says the client has that version, after the
+  pipeline (so the handler, static files included, only sets the validator; the 304 keeps every
+  header but those of the body). A change can't be checked afterwards, so the handler calls
+  `request.checkPreconditions(etag:, lastModified:, exists:, required:)` before making it, which
+  follows the order of §13.2.2 and throws a 412 (`PreconditionFailedException`), a 428
+  (`PreconditionRequiredException`, RFC 6585) or, in a `GET`, the 304. Winter never computes an
+  `ETag` from the body: it would need the whole body (no streams) and a hash per response, and
+  the app knows the version better.
+- **`Link` (RFC 8288) is a value, `WebLink`**, not a string built by hand: its attributes are
+  quoted and escaped, and one that isn't printable ASCII fails when it's created (a header can't
+  carry it). `WebLink.pages` takes the URL of the request and changes only the page param, so the
+  other params are never lost; the targets are relative to the request, right behind any proxy
+  without depending on `trustedProxies`.
+- **`Prefer` (RFC 7240) is read, never applied by itself**: `request.preferences` parses it (the
+  first of a repeated name wins, a malformed part is skipped) and the handler decides, because
+  only it knows what a minimal answer is; it says what it honored with `Preference-Applied`.
+  Reading it marks the request like reading the language, so the server adds `Vary: Prefer` and
+  no cache mixes the answers.
 - **Winter serves with `dart:io` directly**, with its own request and response, without shelf: its
   public API doesn't depend on another package (nor on its breaking changes), and an empty endpoint
   is close to the `dart:io` ceiling (~83 %, `benchmark/http_benchmark.dart`).
@@ -394,7 +451,8 @@ Guide: [`doc/openapi.md`](doc/openapi.md).
 - **What Winter knows, it writes by itself**: the paths and methods, the path params (an integer
   from `[0-9]+`/`\d+`, a `pattern` from another regex), the security of the `AuthFilter`s that run
   for each route (found by running their `shouldFilter` with a request to it, the way the server
-  does), and the errors as Problem Details (400, 401/403, 404, 415, 422, 429).
+  does), the errors as Problem Details (400, 401/403, 404, 415, 422, 429), and `deprecated` for a
+  route with a `DeprecationFilter`.
 - **The bodies come from examples**, not from annotations nor code generation (the project avoids
   both): an example is written by the object mapper, so its schema is what the API really sends,
   and the rules of its `validate()` become the constraints. Those rules are recorded without being

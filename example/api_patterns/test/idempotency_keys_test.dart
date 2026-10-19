@@ -12,7 +12,7 @@ void main() {
     charges = [];
     client = WinterTestClient.build(
       router: router(
-        store: IdempotencyStore(),
+        store: InMemoryIdempotencyStore(),
         charge: (amount) async {
           charges.add(amount);
           return Payment(charges.length, amount);
@@ -60,7 +60,7 @@ void main() {
     final Completer<void> slow = Completer<void>();
     final blocked = WinterTestClient.build(
       router: router(
-        store: IdempotencyStore(),
+        store: InMemoryIdempotencyStore(),
         charge: (amount) async {
           await slow.future;
           return Payment(1, amount);

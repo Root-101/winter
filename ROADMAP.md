@@ -229,23 +229,30 @@ Until then the same checks run by hand. Notes: run on a push to any branch and o
   1. [x] **RateLimit headers** (`draft-ietf-httpapi-ratelimit-headers`): `RateLimit-Policy` and
      `RateLimit` instead of `X-RateLimit-*`, a `policy` name per filter (§8). Impact high, effort
      low.
-  2. [ ] **W3C Trace Context** (`traceparent`/`tracestate`): read and propagate the trace, in the
-     logs and the request id (OpenTelemetry, Datadog, Jaeger). High, medium.
-  3. [ ] **`Forwarded`** (RFC 7239) and `X-Forwarded-Proto`/`Host` behind trusted proxies:
-     `clientIp` and `requestedUri` (so `Location`, `instance`, OpenAPI). Medium-high, low.
-  4. [ ] **Conditional requests** (RFC 9110 §13) for any response: `ETag`/`If-None-Match` → 304,
-     `If-Match` → 412 (today only static files and the `api_patterns` example). Medium-high,
-     medium.
-  5. [ ] **`Deprecation`** (RFC 9745) + **`Sunset`** (RFC 8594): a `deprecated:` option of a
-     route, also `deprecated: true` in OpenAPI. Medium, low.
-  6. [ ] **`Link`** (RFC 8288) for pagination (`next`, `prev`, `first`, `last`). Medium-low, low.
-  7. [ ] **`Idempotency-Key`** (IETF draft): a filter with a pluggable store, like the rate
-     limiter. Medium, medium-high.
-  8. [ ] **`Prefer`** (RFC 7240): `return=minimal`/`representation`, `respond-async`, with
-     `Preference-Applied`. Low, low.
-  9. [ ] **Health Check Response Format** (`application/health+json`, expired draft) for
-     `Route.health`. Low, low.
+  2. [x] **W3C Trace Context** (`traceparent`/`tracestate`): `TraceContext`, `requestTrace`, a
+     span per request, `traceId`/`spanId` in `JsonLogger`, the trace id as the request id (§7).
+     High, medium.
+  3. [x] **`Forwarded`** (RFC 7239) and `X-Forwarded-Proto`/`Host` behind trusted proxies:
+     `ServerConfig.trustedProxies` (`TrustedProxies`, `ForwardedHeaders`) for `clientIp` and
+     `requestedUri` (§8). Medium-high, low.
+  4. [x] **Conditional requests** (RFC 9110 §13) for any response: the 304 of the server for a
+     `GET` with `ETag`/`Last-Modified`, `request.checkPreconditions` for a change (412, 428),
+     static files on the same code (§10). Medium-high, medium.
+  5. [x] **`Deprecation`** (RFC 9745) + **`Sunset`** (RFC 8594): `DeprecationFilter` (inherited by
+     the children of a parent, with its `Link`s), also `deprecated: true` in OpenAPI (§9). Medium,
+     low.
+  6. [x] **`Link`** (RFC 8288) for pagination: `WebLink` and `WebLink.pages` (`first`, `prev`,
+     `next`, `last`, keeping the other params) (§10). Medium-low, low.
+  7. [x] **`Idempotency-Key`** (IETF draft): `IdempotencyFilter` over an `IdempotencyStore`
+     (in memory by default, with expiry), a key per method, path and `partition` (§9). Medium,
+     medium-high.
+  8. [x] **`Prefer`** (RFC 7240): `request.preferences` (`return`, `respond-async`, `wait`,
+     `handling`), `Vary: Prefer` by itself, `Preference-Applied` (§10). Low, low.
+  9. [x] **Health Check Response Format** (`application/health+json`, expired draft) for
+     `Route.health`: `pass`/`fail` and a list per check (§9). Low, low.
   10. [ ] **`Content-Digest`** (RFC 9530) / **HTTP Message Signatures** (RFC 9421). Low, high.
+      Postponed: it needs cryptographic hashes and signatures (a `crypto` dependency, which the
+      project doesn't have) and RFC 9421 is a large spec; only if a real use asks for it.
 - [ ] GitHub Actions: `dart format --set-exit-if-changed`, `dart analyze`, `dart test` with
   coverage, and the tests of every example, on Linux and Windows.
 - [ ] `messages*.g.dart` up to date (`dart run slang` + `git diff --exit-code`).

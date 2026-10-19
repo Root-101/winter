@@ -395,8 +395,10 @@ a file name with accents.
 
 ### Pagination
 
-The page in the query, the total and the links to the other pages in headers (RFC 8288). A list of
-values of one header is a `List`:
+The page in the query, the total and the links to the other pages in the `Link` header (RFC
+8288), as GitHub does. `WebLink.pages(request, page:, last:)` builds `first`, `prev` (not on the
+first page), `next` (not on the last) and `last` from the URL of the request, changing only the
+`page` param, so the size, a filter or a sort stay in every link:
 
 ```dart
 Route.get(
@@ -409,38 +411,97 @@ Route.get(
       body: articles.skip((page - 1) * size).take(size).toList(),
       headers: {
         'X-Total-Count': '${articles.length}',
-        HttpHeader.link: [
-          '</articles?page=${page + 1}&size=$size>; rel="next"',
-          // first, prev, last...
-        ],
+        HttpHeader.link: WebLink.pages(
+          request,
+          page: page,
+          last: (articles.length / size).ceil(),
+        ),
       },
     );
   },
 )
 ```
 
+```http
+GET /articles?page=2&size=5&sort=title
+
+Link: </articles?page=1&size=5&sort=title>; rel="first"
+Link: </articles?page=1&size=5&sort=title>; rel="prev"
+Link: </articles?page=3&size=5&sort=title>; rel="next"
+Link: </articles?page=5&size=5&sort=title>; rel="last"
+```
+
+- The targets are relative to the request (RFC 8288 allows it), so they are right behind any
+  proxy. `param:` names another query param (`p`); a `last` under 1 (an empty list) is one page.
+- Any other link is a `WebLink(target, rel:, type:, title:, hreflang:, params:)`, written with
+  its values quoted and escaped; a value that isn't printable ASCII is an `ArgumentError`. A list
+  of them (and strings) is the value of the header:
+  `HttpHeader.link: [...WebLink.pages(...), WebLink(docs, rel: 'help')]`.
+
 A browser reads them only if CORS exposes them: `CorsConfig(exposedHeaders: ['X-Total-Count',
 'Link'])`. [`api_patterns/pagination.dart`](../example/api_patterns/lib/pagination.dart).
 
 ### Conditional requests: `ETag`, 304 and optimistic locking
 
-An `ETag` (the version of the resource) lets a client skip a download it already has, and stops
-two users from overwriting each other:
+An `ETag` (the version of the resource, a quoted value: `"7"`, or `W/"7"` when it's only
+equivalent) or a `Last-Modified` lets a client skip a download it already has, and stops two users
+from overwriting each other (RFC 9110 §13).
+
+**A `GET` only sets the validator**: the server compares it with `If-None-Match` (or, without
+it, `If-Modified-Since`) and answers a **304** without body by itself, keeping the other headers
+(`Cache-Control`, `Vary`, CORS). Only a 200 or a 206 of a `GET` or `HEAD` changes; static files
+work the same way.
 
 ```dart
-// GET: a 304 without body when the client has this version
-if (request.headers[HttpHeader.ifNoneMatch] == document.etag) {
-  return ResponseEntity(304, headers: {HttpHeader.etag: document.etag});
-}
-
-// PUT: only over the version the client read
-final String? ifMatch = request.headers[HttpHeader.ifMatch];
-if (ifMatch == null) throw const ApiException(StatusCode.preconditionRequired);   // 428
-if (ifMatch != current.etag) throw const ApiException(StatusCode.preconditionFailed); // 412
+Route.get(
+  path: '/documents/{id}',
+  handler: (request) {
+    final Document document = store.find(request.pathParam<int>('id'));
+    return ResponseEntity.ok(
+      body: document,
+      headers: {HttpHeader.etag: '"${document.version}"', HttpHeader.cacheControl: 'no-cache'},
+    );
+  },
+),
 ```
 
-[`api_patterns/conditional_requests.dart`](../example/api_patterns/lib/conditional_requests.dart)
-also reads lists of tags, `W/` and `*`.
+```http
+GET /documents/1
+If-None-Match: "1"
+
+HTTP/1.1 304 Not Modified
+ETag: "1"
+Cache-Control: no-cache
+```
+
+**A change checks its preconditions before it's made**, against the version stored now, with
+`request.checkPreconditions(etag:, lastModified:)`:
+
+```dart
+Route.put(
+  path: '/documents/{id}',
+  handler: (request) async {
+    final int id = request.pathParam<int>('id');
+    request.checkPreconditions(etag: store.find(id).etag, required: true);
+    final Document saved = store.save(id, await request.body<DocumentChanges>());
+    return ResponseEntity.ok(body: saved, headers: {HttpHeader.etag: saved.etag});
+  },
+),
+```
+
+| The request                                          | The answer                                           |
+|------------------------------------------------------|------------------------------------------------------|
+| `If-Match` with the current ETag (or `*`)            | Goes on                                              |
+| `If-Match` with another one, or a weak one           | **412** `PreconditionFailedException`                |
+| `If-Unmodified-Since` before `lastModified`          | **412** (only without `If-Match`)                    |
+| `If-None-Match: *` and the resource exists           | **412** (`exists: false` for a `PUT` that creates it)|
+| No `If-Match` nor `If-Unmodified-Since`, `required`  | **428** `PreconditionRequiredException` (RFC 6585)   |
+| In a `GET`: `If-None-Match` with the current ETag    | 304                                                  |
+
+`If-Match` compares strongly (a `W/` tag never matches) and `If-None-Match` weakly, as the RFC
+says; both take lists (`"1", "2"`) and `*`. The 412 and the 428 are Problem Details like any
+other error. Example:
+[`api_patterns/conditional_requests.dart`](../example/api_patterns/lib/conditional_requests.dart).
 
 ### Content negotiation
 
@@ -481,17 +542,121 @@ Route.get(
 
 ### Idempotency keys
 
-A client that didn't get the answer of a `POST` (a timeout) sends it again with the same
-`Idempotency-Key`, and must get the first answer instead of a second payment. A route filter does
-it without touching the handler: it reads the body with `bytes()` (cached, so the handler still
-reads it with `body<T>()`), keeps the response of the first request, and answers it again.
+A client that didn't get the answer of a `POST` (a timeout, a dropped connection) sends it again
+with the same `Idempotency-Key` (IETF draft `draft-ietf-httpapi-idempotency-key-header`, what
+Stripe and Adyen use), and must get the first answer instead of a second payment.
+`IdempotencyFilter` on the route does it without touching the handler:
+
+```dart
+Route.post(
+  path: '/payments',
+  filterConfig: FilterConfig([
+    AuthFilter(),
+    IdempotencyFilter(partition: (request) => requestPrincipal<User>().id),
+  ]),
+  handler: createPayment,
+),
+```
+
+| The request                                     | The answer                                         |
+|-------------------------------------------------|----------------------------------------------------|
+| A new key                                       | Runs, and its response is kept for `expiry` (24 h) |
+| The same key and the same body                  | The kept response, with `Idempotent-Replayed: true`; the handler doesn't run |
+| The same key with another body                  | **422**                                            |
+| The same key while the first one still runs     | **409**                                            |
+| No key (unless `required: false`), or an invalid one | **400**                                       |
+
+- The key is quoted (`Idempotency-Key: "8e03978e"`, the draft) or bare (what most clients send),
+  1 to 255 printable ASCII characters.
+- A response of 500 or more, a 408, a 425 or a 429 is not kept, so the client can retry with the
+  same key; neither is a stream. A `GET`, `HEAD` or `OPTIONS` is never filtered.
+- **A key is unique per method and path.** With users, give `partition:` (the user, the API key):
+  otherwise two users with the same key and the same body get each other's response. Put the
+  filter after the `AuthFilter`, so a 401 isn't kept.
+- The body is read with `bytes()` (cached, so the handler still reads it with `body<T>()`) and
+  compared by a fingerprint.
+- The keys live in an `IdempotencyStore`: `InMemoryIdempotencyStore` by default (per isolate and
+  per process, purged as it's used, `clock:` for the tests). Several instances need a shared one
+  (a table, Redis) implementing `reserve` (atomic), `complete`, `release` and `clear`.
+
 [`api_patterns/idempotency_keys.dart`](../example/api_patterns/lib/idempotency_keys.dart).
+
+### Client preferences: `Prefer`
+
+A client can say what it would like (RFC 7240); the server may honor it or not.
+`request.preferences` reads the `Prefer` headers:
+
+| Preference              | Getter                    | Meaning                                         |
+|-------------------------|---------------------------|-------------------------------------------------|
+| `return=minimal`        | `returns == 'minimal'`    | Only the status and the headers that matter (`Location`), no body |
+| `return=representation` | `returns == 'representation'` | The whole resource                          |
+| `respond-async`         | `respondAsync`            | A `202 Accepted` rather than waiting (see [a long task](#a-long-task-202-accepted)) |
+| `wait=10`               | `wait` (a `Duration`)     | How long the client is willing to wait          |
+| `handling=lenient`      | `handling`                | `strict` (reject anything invalid) or `lenient` |
+| any other               | `preferences['name']`, `has('name')` | Its value, or whether it came        |
+
+```dart
+Route.post(
+  path: '/notes',
+  handler: (request) async {
+    final Note note = store.create(await request.body<NewNote>());
+    if (request.preferences.returns == 'minimal') {
+      return ResponseEntity.created(
+        location: '/notes/${note.id}',
+        headers: {HttpHeader.preferenceApplied: 'return=minimal'},
+      );
+    }
+    return ResponseEntity.created(location: '/notes/${note.id}', body: note);
+  },
+),
+```
+
+- Names are case insensitive; when one comes twice, the first wins; a malformed part is skipped.
+  Several `Prefer` headers are one list, and a parameter (`respond-async; wait=10`) is in
+  `preferences.all['respond-async']!.params`.
+- Tell the client what was honored with `Preference-Applied`.
+- **Reading `request.preferences` adds `Vary: Prefer`** to the response, as reading the language
+  adds `Vary: Accept-Language`: the answer depends on the header even when it didn't come, and a
+  cache must not give the minimal version to someone who wants the whole one.
+
+[`api_patterns/prefer_return.dart`](../example/api_patterns/lib/prefer_return.dart).
 
 ### Versions of an API
 
-Each version is a parent route (`/v1`, `/v2`) over the same services; a filter of the old one adds
-`Deprecation` and `Sunset` to every response, errors included. See
-[routing](routing.md#a-versioned-api) and
+Each version is a parent route (`/v1`, `/v2`) over the same services. The old one announces its
+end with a `DeprecationFilter` in its parent, which every child inherits:
+
+```dart
+Route.parent(
+  path: '/v1',
+  filterConfig: FilterConfig([
+    DeprecationFilter(
+      deprecated: DateTime.utc(2026, 7),   // since when (past or future)
+      sunset: DateTime.utc(2027),          // when it may stop answering (optional)
+      link: Uri.parse('https://api.example.com/docs/v2-migration'), // optional
+      successor: (request) => request.requestedUri.path.replaceFirst('/v1/', '/v2/'), // optional
+    ),
+  ]),
+  routes: v1Routes,
+),
+```
+
+Every response of `/v1`, errors included, then has:
+
+```http
+Deprecation: @1782864000
+Sunset: Fri, 01 Jan 2027 00:00:00 GMT
+Link: <https://api.example.com/docs/v2-migration>; rel="deprecation"; type="text/html"
+Link: </v2/users/1>; rel="successor-version"
+```
+
+- `Deprecation` (RFC 9745) is a date, `@` and the seconds since 1970 (the old `Deprecation: true`
+  of the drafts is not valid anymore). `Sunset` (RFC 8594) is an HTTP date, never before the
+  deprecation (an `ArgumentError`).
+- The `Link`s go after the ones the handler gave (a pagination `next`, for example).
+- OpenAPI marks its operations `deprecated: true`.
+
+See [routing](routing.md#a-versioned-api) and
 [`api_patterns/api_versioning.dart`](../example/api_patterns/lib/api_versioning.dart).
 
 ### Testing with a request in memory

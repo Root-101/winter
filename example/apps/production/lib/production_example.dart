@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:winter/winter.dart';
 
 /// A stand-in for a connection pool: it can be checked and must be closed on shutdown
@@ -13,6 +16,29 @@ class Database {
   Future<bool> ping() async => _open;
 
   Future<void> close() async => _open = false;
+}
+
+/// Another service of the platform. Every call carries the W3C trace of the request in progress
+/// (`traceparent`/`tracestate`), so OpenTelemetry, Datadog or Jaeger show both services in one
+/// trace, and their JSON logs share the `traceId`.
+class StockClient {
+  final Uri baseUrl;
+
+  StockClient(this.baseUrl);
+
+  Future<int> available(String sku) async {
+    final HttpClient client = HttpClient();
+    try {
+      final HttpClientRequest request = await client.getUrl(
+        baseUrl.resolve('/stock/${Uri.encodeComponent(sku)}'),
+      );
+      requestTrace?.headers.forEach(request.headers.set);
+      final HttpClientResponse response = await request.close();
+      return int.parse(await response.transform(utf8.decoder).join());
+    } finally {
+      client.close();
+    }
+  }
 }
 
 class ProductionApp {
@@ -51,6 +77,18 @@ class ProductionApp {
         checks: {'database': () => di.find<Database>().ping()},
       ),
       Route.get(
+        path: '/products/{sku}/stock',
+        handler: (request) async {
+          final String sku = request.pathParam<String>('sku');
+          return ResponseEntity.ok(
+            body: {
+              'sku': sku,
+              'available': await di.find<StockClient>().available(sku),
+            },
+          );
+        },
+      ),
+      Route.get(
         path: '/hello',
         handler: (request) {
           logger.info(
@@ -69,16 +107,18 @@ class ProductionApp {
     LoggingFilter(),
     RateLimiterFilter(
       maxRequests: env.find<int>('RATE_LIMIT') ?? 100,
+      // The client is its IP: behind the load balancer, the one it forwarded (trustedProxies)
       window: const Duration(minutes: 1),
-
-      /// Behind the load balancer, the client is in X-Forwarded-For
-      clientId: (request) =>
-          request.clientIp(
-            trustedProxies: env.find<int>('TRUSTED_PROXIES') ?? 0,
-          ) ??
-          'unknown',
     ),
   ]);
+
+  /// The load balancers in front of the app (`TRUSTED_PROXIES`), whose `X-Forwarded-For`,
+  /// `X-Forwarded-Proto` and `X-Forwarded-Host` give the IP of the client and the public URL;
+  /// none locally, where a client could fake them
+  static TrustedProxies? trustedProxies(Env env) {
+    final int count = env.find<int>('TRUSTED_PROXIES') ?? 0;
+    return count > 0 ? TrustedProxies(count) : null;
+  }
 
   static SecurityConfig security(Env env) => SecurityConfig(
     cors: CorsConfig(
@@ -97,6 +137,11 @@ class ProductionApp {
       Database(config.require<String>('DATABASE_URL')),
       onDispose: (database) => database.close(),
     );
+    di.put<StockClient>(
+      StockClient(
+        Uri.parse(config.find<String>('STOCK_URL') ?? 'http://localhost:8081'),
+      ),
+    );
 
     await Winter.start(
       config: ServerConfig.fromEnv(
@@ -108,6 +153,7 @@ class ProductionApp {
             config.find<Duration>('SHUTDOWN_TIMEOUT') ??
             const Duration(seconds: 25),
         onShutdown: () => logger.info('Stopped accepting requests'),
+        trustedProxies: trustedProxies(config),
       ),
       router: router(),
       globalFilterConfig: filters(config),

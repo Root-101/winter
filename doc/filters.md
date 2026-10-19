@@ -145,6 +145,8 @@ outer filters. So:
 | `SecurityHeadersFilter`   | Added by `SecurityConfig(securityHeaders:)`                          |
 | `AuthFilter`              | 401/403 by authentication and rules ([security](security.md))        |
 | `RateLimiterFilter`       | 429 beyond a limit per client ([security](security.md#rate-limiter)) |
+| `IdempotencyFilter`       | Replays the first answer of a retried `POST` with the same `Idempotency-Key` ([idempotency keys](requests-and-responses.md#idempotency-keys)) |
+| `DeprecationFilter`       | `Deprecation`, `Sunset` and their `Link`s on every response ([versions](requests-and-responses.md#versions-of-an-api)) |
 
 ## Common cases
 

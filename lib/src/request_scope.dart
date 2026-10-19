@@ -22,18 +22,28 @@ class RequestScope {
 
   final WinterLocale _locale;
   bool _localeRead = false;
+  bool _preferencesRead = false;
 
   /// The id of the request: its `X-Request-Id` if valid ([isValidRequestId]), or a new one. It's
   /// in every log written for the request, in the `X-Request-Id` of the response and in a 500.
   final String requestId;
 
+  final TraceContext? _trace;
+
+  /// The distributed trace of the request: the one its `traceparent` continues, or a new one
+  /// (created on the first read, so a request that never logs nor calls another service doesn't
+  /// pay for its random ids)
+  late final TraceContext trace = _trace ?? TraceContext.root();
+
   /// Without [securityContext], an empty one.
   /// Without [locale], the fallback of `Winter.context.localeConfig`.
   /// Without [requestId], a new one ([newRequestId]).
+  /// Without [trace], a new one ([TraceContext.root]).
   RequestScope({
     RequestSecurityContext? securityContext,
     WinterLocale? locale,
     String? requestId,
+    this._trace,
   }) : securityContext =
            securityContext ?? RequestSecurityContext<dynamic>.empty(),
        _locale = locale ?? Winter.context.localeConfig.fallback,
@@ -77,6 +87,10 @@ class RequestScope {
   /// True once some code read the language of the request (`requestLocale` or `request.locale`).
   /// Then the server adds `Vary: Accept-Language` to the response, so caches keep one copy per language.
   bool get localeRead => _localeRead;
+
+  /// True once some code read the preferences of the request (`request.preferences`). Then the
+  /// server adds `Vary: Prefer` to the response, so caches keep one copy per preference.
+  bool get preferencesRead => _preferencesRead;
 
   final List<FutureOr<void> Function()> _onComplete = [];
 
@@ -159,6 +173,28 @@ WinterLocale get requestLocale =>
 /// {@category Server}
 Authentication? get requestAuthentication =>
     requestSecurityContext?.authentication;
+
+/// The preferences of a request, cached in its context
+final ContextKey<Preferences> _preferencesKey = ContextKey<Preferences>(
+  'winter.preferences',
+);
+
+/// The preferences of a request (`request.preferences`)
+///
+/// {@category HTTP}
+extension RequestPreferencesX on RequestEntity {
+  /// The preferences of its `Prefer` headers (RFC 7240), parsed the first time and cached in the
+  /// request context; [Preferences.none] without them.
+  ///
+  /// Reading them inside a request adds `Vary: Prefer` to the response.
+  Preferences get preferences {
+    RequestScope.current?._preferencesRead = true;
+    return context.putIfAbsent(_preferencesKey, () {
+      final List<String>? headers = headersAll[HttpHeader.prefer];
+      return headers == null ? Preferences.none : Preferences.parse(headers);
+    });
+  }
+}
 
 /// The language of a request, cached in its context
 final ContextKey<WinterLocale> _localeKey = ContextKey<WinterLocale>(
