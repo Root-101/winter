@@ -80,8 +80,10 @@ class DeprecationFilter extends Filter {
         if (link != null || successor != null)
           HttpHeader.link: [
             ...?response.headersAll[HttpHeader.link],
-            if (link != null) '<$link>; rel="deprecation"; type="text/html"',
-            if (successor != null) '<$successor>; rel="successor-version"',
+            if (link != null)
+              WebLink(link, rel: 'deprecation', type: 'text/html'),
+            if (successor != null)
+              WebLink(Uri.parse(successor), rel: 'successor-version'),
           ],
       },
     );
