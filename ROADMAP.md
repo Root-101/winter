@@ -33,25 +33,25 @@ criteria:
 
 ## 1. Current state
 
-| Module                                                             | Guide                          | Decisions |
-|--------------------------------------------------------------------|--------------------------------|-----------|
-| HTTP engine on `dart:io`, own `RequestEntity`/`ResponseEntity`     | `requests-and-responses.md`    | §10       |
-| Pipeline, filters, request scope (`Zone`)                          | `architecture.md`, `filters.md`| §9, §10   |
-| Router (nested, regex, 404/405, HEAD, static files, health)        | `routing.md`                   | §9        |
-| Object mapper                                                      | `object-mapper.md`             | §2        |
-| Validation (sync and async)                                        | `validation.md`                | §3        |
-| Errors (Problem Details)                                           | `error-handling.md`            | §4        |
-| Dependency injection                                               | `dependency-injection.md`      | §5        |
-| Configuration (`Env`, `ServerConfig`)                              | `configuration.md`             | §6        |
-| Logging (request id, JSON logger)                                  | `logging.md`                   | §7        |
-| Security (auth, CORS, rate limit, headers)                         | `security.md`                  | §8        |
-| i18n (slang + YAML, `Accept-Language`)                             | `i18n.md`                      | §1        |
-| WebSockets and Server-Sent Events                                  | `requests-and-responses.md`    | §10       |
-| OpenAPI and Swagger UI                                             | `openapi.md`                   | §12       |
-| Scheduled tasks                                                    | `scheduling.md`                | §13       |
-| Testing in memory (`WinterTestClient`)                             | `testing.md`                   |           |
-| Deployment, benchmarks                                             | `deployment.md`, `benchmarks.md`|          |
-| CI / publishing                                                    | ❌ Postponed (6.1, 6.4)         |           |
+| Module                                                         | Guide                            | Decisions |
+|----------------------------------------------------------------|----------------------------------|-----------|
+| HTTP engine on `dart:io`, own `RequestEntity`/`ResponseEntity` | `requests-and-responses.md`      | §10       |
+| Pipeline, filters, request scope (`Zone`)                      | `architecture.md`, `filters.md`  | §9, §10   |
+| Router (nested, regex, 404/405, HEAD, static files, health)    | `routing.md`                     | §9        |
+| Object mapper                                                  | `object-mapper.md`               | §2        |
+| Validation (sync and async)                                    | `validation.md`                  | §3        |
+| Errors (Problem Details)                                       | `error-handling.md`              | §4        |
+| Dependency injection                                           | `dependency-injection.md`        | §5        |
+| Configuration (`Env`, `ServerConfig`)                          | `configuration.md`               | §6        |
+| Logging (request id, JSON logger)                              | `logging.md`                     | §7        |
+| Security (auth, CORS, rate limit, headers)                     | `security.md`                    | §8        |
+| i18n (slang + YAML, `Accept-Language`)                         | `i18n.md`                        | §1        |
+| WebSockets and Server-Sent Events                              | `requests-and-responses.md`      | §10       |
+| OpenAPI and Swagger UI                                         | `openapi.md`                     | §12       |
+| Scheduled tasks                                                | `scheduling.md`                  | §13       |
+| Testing in memory (`WinterTestClient`)                         | `testing.md`                     |           |
+| Deployment, benchmarks                                         | `deployment.md`, `benchmarks.md` |           |
+| CI / publishing                                                | ❌ Postponed (6.1, 6.4)           |           |
 
 ---
 
@@ -115,14 +115,14 @@ documented. The behavior of each one is in its `*_behavior_test.dart`.
 - **4.3 More features:** WebSockets (`Route.websocket`, `allowedOrigins`, §10), Server-Sent Events
   (`ResponseEntity.sse`, §10), scheduled tasks (`Scheduler`, `every`/`cron`, §13), OpenAPI
   (`Route.openApi`, `Route.swaggerUi`, `RouteDocs`, `JsonSchema`, §12), `AsyncValidatable` (§3).
-  - DI: `putLazyAsync` + `ready()`/`findAsync`, `di.child()` for tests, `di.registrations`.
-  - Validation: `Map<String, Validatable>`, LRU for `pattern()`, `copyWith(code: () => null)`.
-  - Object mapper: `JsonAdapter<T>`, typed fields for a hand-written `fromJson`
-    (`json.field<T>()`, `json.object()`), `TestResponse.as<T>()`, a warning when replacing the
-    mapper loses registrations, `encodeBytes`/`decodeBytes` (16–46 % faster), `PatchValue<T>`,
-    `rejectUnknownFields`, `mapWithKeys<K>()`.
-  - Not possible on purpose: reading an unregistered class or serializing records; both need
-    reflection or codegen (§11).
+    - DI: `putLazyAsync` + `ready()`/`findAsync`, `di.child()` for tests, `di.registrations`.
+    - Validation: `Map<String, Validatable>`, LRU for `pattern()`, `copyWith(code: () => null)`.
+    - Object mapper: `JsonAdapter<T>`, typed fields for a hand-written `fromJson`
+      (`json.field<T>()`, `json.object()`), `TestResponse.as<T>()`, a warning when replacing the
+      mapper loses registrations, `encodeBytes`/`decodeBytes` (16–46 % faster), `PatchValue<T>`,
+      `rejectUnknownFields`, `mapWithKeys<K>()`.
+    - Not possible on purpose: reading an unregistered class or serializing records; both need
+      reflection or codegen (§11).
 
 ### Phase 5: documentation ✅
 
@@ -178,13 +178,13 @@ write down here what was found.
    no deprecated code, no internal helper exported by mistake (`lib/winter.dart`). Every public
    member has dartdoc and a `{@category}`.
 3. **Security.** Probe the real server, not only the tests:
-   - Nothing of the client in a log or an error (bodies, query strings, tokens, values of a
-     failed deserialization or validation), and a 500 never has details.
-   - Static files: `..` (also encoded), hidden files, `\`, device names, links out of the folder.
-   - Headers: a response header with CR/LF or non-ASCII is a 500; nothing long echoed back.
-   - Limits: `maxBodySize`, multipart part headers, malformed bodies are a 400.
-   - CORS (`'*'` with credentials), `allowedOrigins` of the WebSockets, `trustedProxies`.
-   - The dependencies: `dart pub outdated` and the advisories of pub.dev.
+    - Nothing of the client in a log or an error (bodies, query strings, tokens, values of a
+      failed deserialization or validation), and a 500 never has details.
+    - Static files: `..` (also encoded), hidden files, `\`, device names, links out of the folder.
+    - Headers: a response header with CR/LF or non-ASCII is a 500; nothing long echoed back.
+    - Limits: `maxBodySize`, multipart part headers, malformed bodies are a 400.
+    - CORS (`'*'` with credentials), `allowedOrigins` of the WebSockets, `trustedProxies`.
+    - The dependencies: `dart pub outdated` and the advisories of pub.dev.
 4. **Tests.** Every use case covered, with no two tests checking the same thing: merge or delete
    the overlapping ones, rename the ones whose name no longer says what they check. No real
    clock, a free port per server test. Coverage at the current level (~99.7 %): look at every
@@ -197,7 +197,8 @@ write down here what was found.
    every feature.
 7. **Checks** (the ones of 6.1, by hand): `dart format --set-exit-if-changed .`, `dart analyze`,
    `dart test`, the tests of every example, `dart doc --dry-run` without warnings,
-   `dart pub publish --dry-run`, `pana` (on Linux: in Docker, `dart:stable`, from a clone of the repository; Windows fails), the generated `messages*.g.dart` up to date,
+   `dart pub publish --dry-run`, `pana` (on Linux: in Docker, `dart:stable`, from a clone of the
+   repository; Windows fails), the generated `messages*.g.dart` up to date,
    the benchmarks without a regression (`doc/benchmarks.md`).
 
 ---
@@ -212,17 +213,19 @@ exists on pub.dev (0.0.7, the same repository), so each release is a new version
 
 1. [x] **`1.0.0-rc.1` published on pub.dev on 2026-10-09**: `pana` 160/160, merged into `main`
    (`release/1.0.0-rc.1`), tag `v1.0.0-rc.1`. pub.dev keeps 0.0.7 as the latest stable until
-   1.0.0, and the install commands name the version (pub only picks a prerelease when asked).
-2. [ ] Use it in a real project for a few weeks (feather-io), and add it to *Powered by Winter*
-   in the README.
-3. [ ] Fix what comes up and publish `1.0.0`: tag `v1.0.0`, CHANGELOG with the date, announcement
-   (r/dartlang, Dart Discord, X).
+   1.0.0, and the installation commands name the version (pub only picks a prerelease when asked).
+2. [ ] Use it in a real project for a few weeks (feather-io). Already in *Powered by Winter* in
+   the README, with a teaser of Almond.
 
 ### 6.1 CI 🟢 (after 1.0)
 
 Until then the same checks run by hand. Notes: run on a push to any branch and on pull requests;
 `pana` fails on Windows (start it report-only on Linux); Codecov needs `CODECOV_TOKEN`.
 
+- [ ] Add the standard for RFC 9457 "Problem Details for HTTP APIs", include a ProblemDetails model
+  and the `Content-Type: application/problem+json` (maybe migrate the response of exceptions?)
+- [ ] What others standardizations are possibles in this project, like the one in RFC 9457 that we
+  can implement in order to improve the quality of the framework
 - [ ] GitHub Actions: `dart format --set-exit-if-changed`, `dart analyze`, `dart test` with
   coverage, and the tests of every example, on Linux and Windows.
 - [ ] `messages*.g.dart` up to date (`dart run slang` + `git diff --exit-code`).
@@ -232,7 +235,12 @@ Until then the same checks run by hand. Notes: run on a push to any branch and o
   types, two classes with the same name and a failing `fromJson`: the mapper works and its errors
   have no obfuscated names.
 
-### Possible improvements 🟢
+### 7.0 Real release, move out of RC
+
+1. [ ] Fix what comes up and publish `1.0.0`: tag `v1.0.0`, CHANGELOG with the date, announcement
+   (r/dartlang, Dart Discord, X).
+
+### Possible improvements after release 🟢
 
 Only if a real use asks for them; none breaks the API.
 
