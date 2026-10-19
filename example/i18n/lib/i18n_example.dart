@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:winter/winter.dart';
 
-import 'i18n/t.dart';
+import 'i18n/intl.dart';
 
 /// Body of `POST /orders`
 class OrderRequest implements Validatable {
@@ -16,13 +16,13 @@ class OrderRequest implements Validatable {
     quantity: json['quantity'] as int?,
   );
 
-  /// The validators are built here, inside the request, so `t` has its language
+  /// The validators are built here, inside the request, so `intl` has its language
   @override
   ConstraintValidatorContext validate() {
     final cvc = ConstraintValidatorContext();
     cvc
         .field('product', product)
-        .notBlank(message: t.orders.productRequired); // text of the app
+        .notBlank(message: intl.orders.productRequired); // text of the app
     cvc.field('quantity', quantity).notNull().min(1); // texts of Winter
     return cvc;
   }
@@ -42,8 +42,8 @@ class OrderService {
   OrderRequest find(int id) {
     final order = _orders[id];
     if (order == null) {
-      //`t` reads the language of the request: Winter adds `Vary: Accept-Language` by itself
-      throw NotFoundException(detail: t.orders.notFound(id: id));
+      // `intl` reads the language of the request: Winter adds `Vary: Accept-Language` by itself
+      throw NotFoundException(detail: intl.orders.notFound(id: id));
     }
     return order;
   }
@@ -79,7 +79,7 @@ class I18nServer {
         path: '/hello',
         filterConfig: FilterConfig([HeaderAuthFilter(), AuthFilter()]),
         handler: (request) => ResponseEntity.ok(
-          body: t.greetings.hello(name: requestAuthentication!.name),
+          body: intl.greetings.hello(name: requestAuthentication!.name),
         ),
       ),
       Route.post(
@@ -93,7 +93,7 @@ class I18nServer {
             201,
             body: {
               'id': id,
-              'message': t.orders.created(id: id),
+              'message': intl.orders.created(id: id),
             },
           );
         },

@@ -15,7 +15,7 @@ Guide: [`doc/i18n.md`](doc/i18n.md).
 - **Texts are resolved when they are created**, with `requestLocale`, the language of the request
   in progress, read from its `RequestScope` (a `Zone`). Any code (a validator, a service) builds
   the final text without receiving the request, and concurrent requests never mix. So a `message:`
-  is a plain `String`, and the `t` of an app is a **getter** over `requestLocale`; validators are
+  is a plain `String`, and the `intl` of an app is a **getter** over `requestLocale`; validators are
   built inside `validate()`, never in a `static final` (it would keep the first language). Outside
   a request `requestLocale` is the `fallback`.
 - **`Vary: Accept-Language` is automatic**: reading the language during a request marks its scope,

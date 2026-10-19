@@ -198,9 +198,9 @@ today, see the i18n section of [`DECISIONS.md`](../DECISIONS.md#1-translated-mes
 `message:` is used as it is, so translate it with the texts of your app:
 
 ```dart
-AppMessages get t => appMessages(requestLocale); // a getter, never a final
+AppMessages get intl => appMessages(requestLocale); // a getter, never a final
 
-cvc.field('product', product).notBlank(message: t.orders.productRequired);
+cvc.field('product', product).notBlank(message: intl.orders.productRequired);
 ```
 
 The text is only built when the rule fails, so a valid request never reads the language (and
@@ -302,7 +302,7 @@ class RegisterRequest implements Validatable, AsyncValidatable {
     await cvc.check(
       'email',
       () async => !await di.find<UserRepository>().emailExists(email),
-      message: () => 'The email is already registered', // or a translated text: t.emailTaken
+      message: () => 'The email is already registered', // or a translated text: intl.emailTaken
       code: 'email.taken',
     );
     return cvc;
