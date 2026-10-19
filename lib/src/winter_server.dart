@@ -649,10 +649,13 @@ class Winter {
 
     ///Some code used the language of the request, so the response depends on it
     ///(only if the app answers in more than one language)
-    if (scope.localeRead && Winter.context.localeConfig.supported.length > 1) {
-      return addVary(response, HttpHeader.acceptLanguage);
-    }
-    return response;
+    final ResponseEntity varied =
+        scope.localeRead && Winter.context.localeConfig.supported.length > 1
+        ? addVary(response, HttpHeader.acceptLanguage)
+        : response;
+
+    ///Some code read the preferences: the response may change with them (RFC 7240 §2)
+    return scope.preferencesRead ? addVary(varied, HttpHeader.prefer) : varied;
   }
 
   /// A header that `dart:io` would refuse (a line break or another control character, a

@@ -581,6 +581,46 @@ Route.post(
 
 [`api_patterns/idempotency_keys.dart`](../example/api_patterns/lib/idempotency_keys.dart).
 
+### Client preferences: `Prefer`
+
+A client can say what it would like (RFC 7240); the server may honor it or not.
+`request.preferences` reads the `Prefer` headers:
+
+| Preference              | Getter                    | Meaning                                         |
+|-------------------------|---------------------------|-------------------------------------------------|
+| `return=minimal`        | `returns == 'minimal'`    | Only the status and the headers that matter (`Location`), no body |
+| `return=representation` | `returns == 'representation'` | The whole resource                          |
+| `respond-async`         | `respondAsync`            | A `202 Accepted` rather than waiting (see [a long task](#a-long-task-202-accepted)) |
+| `wait=10`               | `wait` (a `Duration`)     | How long the client is willing to wait          |
+| `handling=lenient`      | `handling`                | `strict` (reject anything invalid) or `lenient` |
+| any other               | `preferences['name']`, `has('name')` | Its value, or whether it came        |
+
+```dart
+Route.post(
+  path: '/notes',
+  handler: (request) async {
+    final Note note = store.create(await request.body<NewNote>());
+    if (request.preferences.returns == 'minimal') {
+      return ResponseEntity.created(
+        location: '/notes/${note.id}',
+        headers: {HttpHeader.preferenceApplied: 'return=minimal'},
+      );
+    }
+    return ResponseEntity.created(location: '/notes/${note.id}', body: note);
+  },
+),
+```
+
+- Names are case insensitive; when one comes twice, the first wins; a malformed part is skipped.
+  Several `Prefer` headers are one list, and a parameter (`respond-async; wait=10`) is in
+  `preferences.all['respond-async']!.params`.
+- Tell the client what was honored with `Preference-Applied`.
+- **Reading `request.preferences` adds `Vary: Prefer`** to the response, as reading the language
+  adds `Vary: Accept-Language`: the answer depends on the header even when it didn't come, and a
+  cache must not give the minimal version to someone who wants the whole one.
+
+[`api_patterns/prefer_return.dart`](../example/api_patterns/lib/prefer_return.dart).
+
 ### Versions of an API
 
 Each version is a parent route (`/v1`, `/v2`) over the same services. The old one announces its

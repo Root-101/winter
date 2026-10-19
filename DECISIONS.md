@@ -350,6 +350,11 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
   carry it). `WebLink.pages` takes the URL of the request and changes only the page param, so the
   other params are never lost; the targets are relative to the request, right behind any proxy
   without depending on `trustedProxies`.
+- **`Prefer` (RFC 7240) is read, never applied by itself**: `request.preferences` parses it (the
+  first of a repeated name wins, a malformed part is skipped) and the handler decides, because
+  only it knows what a minimal answer is; it says what it honored with `Preference-Applied`.
+  Reading it marks the request like reading the language, so the server adds `Vary: Prefer` and
+  no cache mixes the answers.
 - **Winter serves with `dart:io` directly**, with its own request and response, without shelf: its
   public API doesn't depend on another package (nor on its breaking changes), and an empty endpoint
   is close to the `dart:io` ceiling (~83 %, `benchmark/http_benchmark.dart`).

@@ -234,6 +234,14 @@ class HttpHeader {
   /// See [Section 4.4 of RFC 7235](https://tools.ietf.org/html/rfc7235#section-4.4).
   static const String proxyAuthorization = 'Proxy-Authorization';
 
+  /// The `Prefer` header: what the client would like (`return=minimal`, `respond-async`).
+  /// See [RFC 7240](https://www.rfc-editor.org/rfc/rfc7240).
+  static const String prefer = 'Prefer';
+
+  /// The `Preference-Applied` header: the preferences of `Prefer` the server honored.
+  /// See [RFC 7240](https://www.rfc-editor.org/rfc/rfc7240#section-3).
+  static const String preferenceApplied = 'Preference-Applied';
+
   /// The HTTP `Range` header.
   /// See [Section 3.1 of RFC 7233](https://tools.ietf.org/html/rfc7233#section-3.1).
   static const String range = 'Range';

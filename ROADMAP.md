@@ -246,8 +246,8 @@ Until then the same checks run by hand. Notes: run on a push to any branch and o
   7. [x] **`Idempotency-Key`** (IETF draft): `IdempotencyFilter` over an `IdempotencyStore`
      (in memory by default, with expiry), a key per method, path and `partition` (§9). Medium,
      medium-high.
-  8. [ ] **`Prefer`** (RFC 7240): `return=minimal`/`representation`, `respond-async`, with
-     `Preference-Applied`. Low, low.
+  8. [x] **`Prefer`** (RFC 7240): `request.preferences` (`return`, `respond-async`, `wait`,
+     `handling`), `Vary: Prefer` by itself, `Preference-Applied` (§10). Low, low.
   9. [ ] **Health Check Response Format** (`application/health+json`, expired draft) for
      `Route.health`. Low, low.
   10. [ ] **`Content-Digest`** (RFC 9530) / **HTTP Message Signatures** (RFC 9421). Low, high.
