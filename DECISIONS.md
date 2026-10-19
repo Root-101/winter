@@ -313,6 +313,16 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
 - **Filters run sorted by `order`**, stable (global first, then the route's, parents before
   children); CORS (-100) and the security headers (-99) first, so every response has them. An
   error becomes a response where it's thrown, so a filter never receives an exception.
+- **Idempotency keys are a filter** (`IdempotencyFilter`) over an async `IdempotencyStore`, like the
+  rate limiter: the handler stays plain, and a shared store (Redis, a table) implements the same
+  interface with an atomic `reserve`. It follows the IETF draft (a 400 without a key, a 422 for the
+  same key with another body, a 409 while it runs, the kept answer for a retry, success or error),
+  reads the key quoted or bare, and keeps neither a failure of the server nor a temporary one
+  (408, 425, 429) nor a stream, so a retry can still succeed. The key is scoped by method, path
+  and an optional `partition` (the user), never global: a key alone would hand one user's answer
+  to another. The body is compared by a 64-bit FNV-1a fingerprint, not a cryptographic hash: there
+  is no `crypto` dependency, and a collision only matters between two bodies of the same client
+  with the same key. `Idempotent-Replayed: true` (not in the draft) tells a replay apart.
 - **Deprecation is a filter** (`DeprecationFilter`), not a field of `Route`: a parent deprecates a
   whole version and its children inherit it the way they inherit any filter, its errors carry the
   headers too (the chain answers them where they're thrown), and OpenAPI finds it as it finds the

@@ -4,3 +4,4 @@ export 'deprecation_filter.dart';
 export 'filter_chain.dart';
 export 'filter_config.dart';
 export 'filter_extensions.dart';
+export 'idempotency_filter.dart';
