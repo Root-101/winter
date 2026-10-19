@@ -78,6 +78,7 @@ void main() {
 
     final response = await login('new@example.com', 'right');
     expect(response.statusCode, 429);
-    expect(response.headers['x-ratelimit-limit'], '20');
+    expect(response.headers['ratelimit-policy'], '"per-ip";q=20;w=60');
+    expect(response.headers['ratelimit'], '"per-ip";r=0;t=60');
   });
 }

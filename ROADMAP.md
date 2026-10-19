@@ -225,8 +225,27 @@ Until then the same checks run by hand. Notes: run on a push to any branch and o
 - [x] RFC 9457 "Problem Details for HTTP APIs": the model and `application/problem+json` already
   existed; added `instance` (the path of the request by default), `ProblemDetails.fromJson`
   (lenient, §3.1) and `application/problem+json` only for a `ProblemDetails` body (§4).
-- [ ] What others standardizations are possibles in this project, like the one in RFC 9457 that we
-  can implement in order to improve the quality of the framework
+- [x] What other standards to adopt, in this order (priority = impact against effort):
+  1. [x] **RateLimit headers** (`draft-ietf-httpapi-ratelimit-headers`): `RateLimit-Policy` and
+     `RateLimit` instead of `X-RateLimit-*`, a `policy` name per filter (§8). Impact high, effort
+     low.
+  2. [ ] **W3C Trace Context** (`traceparent`/`tracestate`): read and propagate the trace, in the
+     logs and the request id (OpenTelemetry, Datadog, Jaeger). High, medium.
+  3. [ ] **`Forwarded`** (RFC 7239) and `X-Forwarded-Proto`/`Host` behind trusted proxies:
+     `clientIp` and `requestedUri` (so `Location`, `instance`, OpenAPI). Medium-high, low.
+  4. [ ] **Conditional requests** (RFC 9110 §13) for any response: `ETag`/`If-None-Match` → 304,
+     `If-Match` → 412 (today only static files and the `api_patterns` example). Medium-high,
+     medium.
+  5. [ ] **`Deprecation`** (RFC 9745) + **`Sunset`** (RFC 8594): a `deprecated:` option of a
+     route, also `deprecated: true` in OpenAPI. Medium, low.
+  6. [ ] **`Link`** (RFC 8288) for pagination (`next`, `prev`, `first`, `last`). Medium-low, low.
+  7. [ ] **`Idempotency-Key`** (IETF draft): a filter with a pluggable store, like the rate
+     limiter. Medium, medium-high.
+  8. [ ] **`Prefer`** (RFC 7240): `return=minimal`/`representation`, `respond-async`, with
+     `Preference-Applied`. Low, low.
+  9. [ ] **Health Check Response Format** (`application/health+json`, expired draft) for
+     `Route.health`. Low, low.
+  10. [ ] **`Content-Digest`** (RFC 9530) / **HTTP Message Signatures** (RFC 9421). Low, high.
 - [ ] GitHub Actions: `dart format --set-exit-if-changed`, `dart analyze`, `dart test` with
   coverage, and the tests of every example, on Linux and Windows.
 - [ ] `messages*.g.dart` up to date (`dart run slang` + `git diff --exit-code`).

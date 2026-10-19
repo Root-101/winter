@@ -684,10 +684,16 @@ void main() {
       });
     });
 
-    test('a RateLimiterFilter adds a 429', () {
+    test('a RateLimiterFilter adds a 429 with its headers', () {
       expect((operation('/limited', 'get')['responses'] as Map)['429'], {
         r'$ref': '#/components/responses/TooManyRequests',
       });
+      final Map responses = (document['components'] as Map)['responses'] as Map;
+      expect(((responses['TooManyRequests'] as Map)['headers'] as Map).keys, [
+        'Retry-After',
+        'RateLimit-Policy',
+        'RateLimit',
+      ]);
     });
 
     test('the errors are Problem Details components', () {
