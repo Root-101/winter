@@ -9,9 +9,12 @@ void main() {
     final response = await client.get('/v1/users/1');
 
     expect(response.json, {'id': 1, 'name': 'Ann Lee'});
-    expect(response.headers['deprecation'], 'true');
+    expect(response.headers['deprecation'], '@1782864000'); // 2026-07-01
     expect(response.headers['sunset'], 'Fri, 01 Jan 2027 00:00:00 GMT');
-    expect(response.headers['link'], '</v2/users/1>; rel="successor-version"');
+    expect(response.headersAll['link'], [
+      '<https://api.example.com/docs/v2-migration>; rel="deprecation"; type="text/html"',
+      '</v2/users/1>; rel="successor-version"',
+    ]);
   });
 
   test('v2 answers the new shape, without deprecation', () async {
@@ -25,6 +28,6 @@ void main() {
     final response = await client.get('/v1/users/9');
 
     expect(response.statusCode, 404);
-    expect(response.headers['deprecation'], 'true');
+    expect(response.headers['deprecation'], '@1782864000');
   });
 }

@@ -531,9 +531,40 @@ reads it with `body<T>()`), keeps the response of the first request, and answers
 
 ### Versions of an API
 
-Each version is a parent route (`/v1`, `/v2`) over the same services; a filter of the old one adds
-`Deprecation` and `Sunset` to every response, errors included. See
-[routing](routing.md#a-versioned-api) and
+Each version is a parent route (`/v1`, `/v2`) over the same services. The old one announces its
+end with a `DeprecationFilter` in its parent, which every child inherits:
+
+```dart
+Route.parent(
+  path: '/v1',
+  filterConfig: FilterConfig([
+    DeprecationFilter(
+      deprecated: DateTime.utc(2026, 7),   // since when (past or future)
+      sunset: DateTime.utc(2027),          // when it may stop answering (optional)
+      link: Uri.parse('https://api.example.com/docs/v2-migration'), // optional
+      successor: (request) => request.requestedUri.path.replaceFirst('/v1/', '/v2/'), // optional
+    ),
+  ]),
+  routes: v1Routes,
+),
+```
+
+Every response of `/v1`, errors included, then has:
+
+```http
+Deprecation: @1782864000
+Sunset: Fri, 01 Jan 2027 00:00:00 GMT
+Link: <https://api.example.com/docs/v2-migration>; rel="deprecation"; type="text/html"
+Link: </v2/users/1>; rel="successor-version"
+```
+
+- `Deprecation` (RFC 9745) is a date, `@` and the seconds since 1970 (the old `Deprecation: true`
+  of the drafts is not valid anymore). `Sunset` (RFC 8594) is an HTTP date, never before the
+  deprecation (an `ArgumentError`).
+- The `Link`s go after the ones the handler gave (a pagination `next`, for example).
+- OpenAPI marks its operations `deprecated: true`.
+
+See [routing](routing.md#a-versioned-api) and
 [`api_patterns/api_versioning.dart`](../example/api_patterns/lib/api_versioning.dart).
 
 ### Testing with a request in memory
