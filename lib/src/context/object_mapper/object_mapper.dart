@@ -652,6 +652,12 @@ class ObjectMapper {
         DurationFormat.iso8601 => _parseIsoDuration(data),
       },
     ),
+    // Never renamed by fieldNaming: the members of a problem have fixed names (RFC 9457)
+    Deserializer<ProblemDetails>._withMapper(
+      (data, _) => data is Map<String, Object?>
+          ? ProblemDetails.fromJson(data)
+          : throw _expected('an object', data),
+    ),
   ];
 
   /// Adds a [Serializer] to the mapper (it replaces the one of the same type).

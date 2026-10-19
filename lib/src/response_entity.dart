@@ -383,7 +383,7 @@ class ResponseEntity<T> {
   }
 
   /// The bytes (or stream) of [body] and its `Content-Type`: a String is text, a `Uint8List`
-  /// bytes, a Stream a stream, anything else JSON (`application/problem+json` for errors)
+  /// bytes, a Stream a stream, anything else JSON (`application/problem+json` for a [ProblemDetails])
   static (_ResponseBody, String?) _resolve(
     int statusCode,
     Object? body,
@@ -416,7 +416,7 @@ class ResponseEntity<T> {
                 ),
         ),
         text(
-          statusCode >= 400
+          body is ProblemDetails
               ? MediaType.applicationProblemJson
               : MediaType.applicationJson,
         ),

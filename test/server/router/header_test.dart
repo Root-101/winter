@@ -27,6 +27,13 @@ void main() {
             path: '/problem',
             method: HttpMethod.get,
             handler: (request) async {
+              return ProblemDetails.of(StatusCode.badRequest).toResponse();
+            },
+          ),
+          Route(
+            path: '/json-error',
+            method: HttpMethod.get,
+            handler: (request) async {
               return ResponseEntity.badRequest(body: {'error': 'some error'});
             },
           ),
@@ -92,6 +99,17 @@ void main() {
         contains(MediaType.applicationProblemJson.mimeType),
       );
     });
+
+    test(
+      'An error with another JSON body has application/json content-type',
+      () async {
+        http.Response response = await http.get(url('/json-error'));
+        expect(
+          response.headers[HttpHeader.contentType.toLowerCase()],
+          startsWith(MediaType.applicationJson.mimeType),
+        );
+      },
+    );
 
     test('Response with String body has text/plain content-type', () async {
       http.Response response = await http.get(url('/text'));

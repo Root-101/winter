@@ -222,8 +222,9 @@ exists on pub.dev (0.0.7, the same repository), so each release is a new version
 Until then the same checks run by hand. Notes: run on a push to any branch and on pull requests;
 `pana` fails on Windows (start it report-only on Linux); Codecov needs `CODECOV_TOKEN`.
 
-- [ ] Add the standard for RFC 9457 "Problem Details for HTTP APIs", include a ProblemDetails model
-  and the `Content-Type: application/problem+json` (maybe migrate the response of exceptions?)
+- [x] RFC 9457 "Problem Details for HTTP APIs": the model and `application/problem+json` already
+  existed; added `instance` (the path of the request by default), `ProblemDetails.fromJson`
+  (lenient, §3.1) and `application/problem+json` only for a `ProblemDetails` body (§4).
 - [ ] What others standardizations are possibles in this project, like the one in RFC 9457 that we
   can implement in order to improve the quality of the framework
 - [ ] GitHub Actions: `dart format --set-exit-if-changed`, `dart analyze`, `dart test` with
