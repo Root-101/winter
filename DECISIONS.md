@@ -238,6 +238,14 @@ Guide: [`doc/security.md`](doc/security.md).
   so per isolate and per process; a shared store like Redis implements the same interface).
   `maxRequests < 1` or a non positive window is an `ArgumentError`. The client is its IP; behind a
   proxy `trustedProxies` reads `X-Forwarded-For`, never trusted without it.
+- **The limits are announced with the IETF headers** (`draft-ietf-httpapi-ratelimit-headers`), not
+  the `X-RateLimit-*` of each vendor: `RateLimit-Policy: "default";q=100;w=60` and
+  `RateLimit: "default";r=42;t=17`, on every response the filter lets through and on its 429 (with
+  `Retry-After`, which wins for the client). `w` is the window rounded up to whole seconds (the
+  draft has no fractions nor zero); `t` the seconds until one more request is available, never a
+  timestamp. Each filter is a policy with a name (`policy:`, printable ASCII, quoted and escaped
+  as a Structured Field String); several filters on a route add one item each. The partition key
+  (`pk`) is never sent: it would echo the id of the client (its IP, its user).
 - **Response headers are checked before they're sent**: a value with a line break, another control
   character or a character that isn't ASCII, or a name that isn't a token, is a 500 with the error
   logged (never the value). `dart:io` refuses those headers, so the response would leave broken and

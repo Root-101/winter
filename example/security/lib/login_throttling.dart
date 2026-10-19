@@ -1,6 +1,7 @@
 /// Brute force on a login, stopped twice:
 ///
-/// - Per IP, on the login route only: `RateLimiterFilter` (20 attempts a minute).
+/// - Per IP, on the login route only: `RateLimiterFilter` (20 attempts a minute), announced to
+///   the client as the policy `per-ip` (`RateLimit-Policy: "per-ip";q=20;w=60`).
 /// - Per account, whatever the IP (a botnet tries one password from many IPs): a `RateLimiter`
 ///   used by the handler, 5 failures in 15 minutes, forgotten after a correct login.
 ///
@@ -35,7 +36,7 @@ WinterRouter router({
     Route.post(
       path: '/login',
       filterConfig: FilterConfig([
-        RateLimiterFilter.fromRateLimiter(rateLimiter: perIp),
+        RateLimiterFilter.fromRateLimiter(rateLimiter: perIp, policy: 'per-ip'),
       ]),
       handler: (request) async {
         final Login login = await request.body<Login>();

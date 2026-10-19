@@ -260,8 +260,35 @@ globalFilterConfig: FilterConfig([
 ]),
 ```
 
-Every response has `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (seconds
-until a slot is free).
+Every response it lets through, and its 429, has the headers of the IETF draft *RateLimit header
+fields for HTTP*, which clients and gateways (Kong, Envoy) read without knowing the API:
+
+```http
+RateLimit-Policy: "default";q=100;w=60
+RateLimit: "default";r=42;t=17
+```
+
+- `RateLimit-Policy`: the quota (`q`, the `maxRequests`) of each window (`w`, in seconds, rounded
+  up: a window under a second is announced as `w=1`).
+- `RateLimit`: the requests left (`r`) and the seconds until one more is available (`t`).
+- The 429 also has `Retry-After`, which wins for the client.
+- Each filter is a **policy** with a name, `"default"` unless you give one. Several filters on a
+  route (a burst and a daily limit) add one item each to both headers, so give each one its own
+  `policy:` (printable ASCII):
+
+```dart
+filterConfig: FilterConfig([
+  RateLimiterFilter(maxRequests: 10, window: const Duration(seconds: 1), policy: 'burst'),
+  RateLimiterFilter(maxRequests: 1000, window: const Duration(days: 1), policy: 'daily'),
+]),
+```
+
+```http
+RateLimit-Policy: "burst";q=10;w=1
+RateLimit-Policy: "daily";q=1000;w=86400
+RateLimit: "burst";r=9;t=1
+RateLimit: "daily";r=999;t=86400
+```
 
 - The client is its IP, the address of the connection. Behind a proxy (a load balancer, nginx),
   that's the proxy: trust its `X-Forwarded-For` with

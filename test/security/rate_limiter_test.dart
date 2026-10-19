@@ -192,16 +192,65 @@ void main() {
     Future<ResponseEntity> handle(RequestEntity req) async =>
         ResponseEntity.ok();
 
-    test('should allow request and add Rate-Limit headers', () async {
+    test('should allow request and add the RateLimit headers', () async {
       final chain = FilterChain([], handle);
 
       final response = await _run(filter, request, chain);
 
       expect(response.statusCode, 200);
-      expect(response.headers['X-RateLimit-Limit'], '2');
-      expect(response.headers['X-RateLimit-Remaining'], '1');
-      expect(response.headers['X-RateLimit-Reset'], '1');
+      expect(response.headers['RateLimit-Policy'], '"default";q=2;w=1');
+      expect(response.headers['RateLimit'], '"default";r=1;t=1');
     });
+
+    test('several filters add one item each, with their policy', () async {
+      final burst = RateLimiterFilter.fromRateLimiter(
+        rateLimiter: limiter(2, const Duration(seconds: 1)),
+        clientId: (req) => 'id',
+        policy: 'burst',
+      );
+      final daily = RateLimiterFilter.fromRateLimiter(
+        rateLimiter: limiter(1000, const Duration(days: 1)),
+        clientId: (req) => 'id',
+        policy: 'daily',
+      );
+
+      final response = await _run(daily, request, FilterChain([burst], handle));
+
+      expect(response.headersAll['RateLimit-Policy'], [
+        '"burst";q=2;w=1',
+        '"daily";q=1000;w=86400',
+      ]);
+      expect(response.headersAll['RateLimit'], [
+        '"burst";r=1;t=1',
+        '"daily";r=999;t=86400',
+      ]);
+    });
+
+    test(
+      'the policy is a quoted string: escaped, and only printable ASCII',
+      () async {
+        final quoted = RateLimiterFilter.fromRateLimiter(
+          rateLimiter: limiter(2, const Duration(milliseconds: 300)),
+          clientId: (req) => 'id',
+          policy: r'a"b\c',
+        );
+
+        final response = await _run(quoted, request, FilterChain([], handle));
+
+        // A window under a second is announced as one (w is a whole, non-zero number)
+        expect(response.headers['RateLimit-Policy'], r'"a\"b\\c";q=2;w=1');
+        for (final invalid in ['línea', 'a\nb']) {
+          expect(
+            () => RateLimiterFilter(
+              maxRequests: 1,
+              window: const Duration(seconds: 1),
+              policy: invalid,
+            ),
+            throwsArgumentError,
+          );
+        }
+      },
+    );
 
     test('should deny request when limit exceeded', () async {
       final chain = FilterChain([], handle);
@@ -214,7 +263,7 @@ void main() {
       final response = await _run(filter, request, chain);
 
       expect(response.statusCode, 429); // Too Many Requests
-      expect(response.headers['X-RateLimit-Remaining'], '0');
+      expect(response.headers['RateLimit'], '"default";r=0;t=1');
       expect(response.headers['Retry-After'], '1');
     });
 
@@ -222,10 +271,10 @@ void main() {
       final chain = FilterChain([], handle);
 
       final response1 = await _run(filter, request, chain);
-      expect(response1.headers['X-RateLimit-Remaining'], '1');
+      expect(response1.headers['RateLimit'], startsWith('"default";r=1;'));
 
       final response2 = await _run(filter, request, chain);
-      expect(response2.headers['X-RateLimit-Remaining'], '0');
+      expect(response2.headers['RateLimit'], startsWith('"default";r=0;'));
     });
 
     test('should handle different users independently', () async {
@@ -276,7 +325,7 @@ void main() {
       expect(response.headers['Retry-After'], '8');
     });
 
-    test('X-RateLimit-Reset counts down (not the window size)', () async {
+    test('the t of RateLimit counts down (not the window size)', () async {
       final chain = FilterChain([], handle);
       final countDownFilter = RateLimiterFilter.fromRateLimiter(
         rateLimiter: limiter(5, const Duration(seconds: 3)),
@@ -284,11 +333,11 @@ void main() {
       );
 
       final first = await _run(countDownFilter, request, chain);
-      expect(first.headers['X-RateLimit-Reset'], '3');
+      expect(first.headers['RateLimit'], '"default";r=4;t=3');
 
       clock.advance(const Duration(seconds: 1));
       final second = await _run(countDownFilter, request, chain);
-      expect(second.headers['X-RateLimit-Reset'], '2');
+      expect(second.headers['RateLimit'], '"default";r=3;t=2');
     });
 
     test('should work with an async ID extractor', () async {
@@ -429,8 +478,11 @@ void main() {
           startsWith('application/problem+json'),
         );
         expect(response.headers['retry-after'], isNotNull);
-        expect(response.headers['x-ratelimit-limit'], '1');
-        expect(response.headers['x-ratelimit-remaining'], '0');
+        expect(
+          response.headers['ratelimit-policy'],
+          startsWith('"default";q=1;'),
+        );
+        expect(response.headers['ratelimit'], startsWith('"default";r=0;'));
       },
     );
 
@@ -439,7 +491,7 @@ void main() {
       for (var i = 0; i < 5; i++) {
         final response = await unlimited.get('/unlimited');
         expect(response.statusCode, 200);
-        expect(response.headers.containsKey('x-ratelimit-limit'), isFalse);
+        expect(response.headers.containsKey('ratelimit-policy'), isFalse);
       }
     });
   });

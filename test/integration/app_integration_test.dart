@@ -157,7 +157,10 @@ void main() {
         ],
       });
       expectCommonHeaders(response);
-      expect(response.headers['x-ratelimit-limit'], '50');
+      expect(
+        response.headers['ratelimit-policy'],
+        startsWith('"default";q=50;'),
+      );
       // Nothing read the language: the response doesn't depend on it
       expect(response.headers['vary'], isNot(contains('Accept-Language')));
     });
@@ -294,7 +297,7 @@ void main() {
 
       expect(limited.statusCode, 429);
       expect(limited.headers['retry-after'], isNotNull);
-      expect(limited.headers['x-ratelimit-remaining'], '0');
+      expect(limited.headers['ratelimit'], startsWith('"default";r=0;'));
       expectCommonHeaders(limited);
       expect(other.statusCode, 404);
     });
