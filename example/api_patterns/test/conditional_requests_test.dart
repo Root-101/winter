@@ -46,7 +46,6 @@ void main() {
     );
 
     expect(late.statusCode, 412);
-    expect((late.json as Map)['currentVersion'], '"2"');
     expect(
       ((await client.get('/documents/1')).json as Map)['text'],
       'from Ann',
@@ -57,13 +56,5 @@ void main() {
     final response = await client.put('/documents/1', body: {'text': 'x'});
 
     expect(response.statusCode, 428);
-  });
-
-  test('etagMatches() understands lists, weak tags and *', () {
-    expect(etagMatches('"3", "1"', '"1"'), isTrue);
-    expect(etagMatches('W/"1"', '"1"'), isTrue);
-    expect(etagMatches('*', '"1"'), isTrue);
-    expect(etagMatches('"2"', '"1"'), isFalse);
-    expect(etagMatches(null, '"1"'), isFalse);
   });
 }

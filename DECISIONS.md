@@ -297,7 +297,7 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
   filters and route keys work as in any route. Only files inside the folder, checked twice: no
   `..`, hidden, `\` or `:` segment (`.env`, `.git/`, a Windows separator, drive or stream), and the
   canonical path (links resolved) inside the canonical folder. `ETag` from size and modification
-  time (strong, so `If-Range` can use it), 304, one `Range` (several are rare and need
+  time (strong, so `If-Range` can use it), the 304 of the server, one `Range` (several are rare and need
   `multipart/byteranges`: the whole file is sent instead), the file streamed with its
   `Content-Length`. A folder redirects to its `/` before serving its index, with a relative
   `Location` that works behind a proxy prefix. MIME types are a short table of the web formats,
@@ -318,6 +318,16 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
 
 Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
 
+- **Conditional requests are the server's, not each handler's** (RFC 9110 §13): a 200 or 206 of
+  a `GET`/`HEAD` with an `ETag` or a `Last-Modified` becomes a 304 when `If-None-Match` (weak
+  comparison) or, without it, `If-Modified-Since` says the client has that version, after the
+  pipeline (so the handler, static files included, only sets the validator; the 304 keeps every
+  header but those of the body). A change can't be checked afterwards, so the handler calls
+  `request.checkPreconditions(etag:, lastModified:, exists:, required:)` before making it, which
+  follows the order of §13.2.2 and throws a 412 (`PreconditionFailedException`), a 428
+  (`PreconditionRequiredException`, RFC 6585) or, in a `GET`, the 304. Winter never computes an
+  `ETag` from the body: it would need the whole body (no streams) and a hash per response, and
+  the app knows the version better.
 - **Winter serves with `dart:io` directly**, with its own request and response, without shelf: its
   public API doesn't depend on another package (nor on its breaking changes), and an empty endpoint
   is close to the `dart:io` ceiling (~83 %, `benchmark/http_benchmark.dart`).

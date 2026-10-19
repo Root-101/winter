@@ -332,6 +332,37 @@ class UnprocessableEntityException extends ApiException {
   }) : super(StatusCode.unprocessableEntity);
 }
 
+/// 412: a precondition of the request (`If-Match`, `If-Unmodified-Since`) failed: the resource
+/// changed since the client read it (see [ConditionalRequests.checkPreconditions])
+///
+/// {@category Errors}
+class PreconditionFailedException extends ApiException {
+  /// A 412
+  const PreconditionFailedException({
+    super.detail,
+    super.type,
+    super.title,
+    super.instance,
+    super.extensions,
+    super.headers,
+  }) : super(StatusCode.preconditionFailed);
+}
+
+/// 428 (RFC 6585): the change needs a precondition (`If-Match`) and the request had none
+///
+/// {@category Errors}
+class PreconditionRequiredException extends ApiException {
+  /// A 428
+  const PreconditionRequiredException({
+    super.detail,
+    super.type,
+    super.title,
+    super.instance,
+    super.extensions,
+    super.headers,
+  }) : super(StatusCode.preconditionRequired);
+}
+
 /// 422 with the [violations] of a validation, sent as the `violations` member of the problem
 ///
 /// {@category Errors}
