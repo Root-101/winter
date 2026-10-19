@@ -395,8 +395,10 @@ a file name with accents.
 
 ### Pagination
 
-The page in the query, the total and the links to the other pages in headers (RFC 8288). A list of
-values of one header is a `List`:
+The page in the query, the total and the links to the other pages in the `Link` header (RFC
+8288), as GitHub does. `WebLink.pages(request, page:, last:)` builds `first`, `prev` (not on the
+first page), `next` (not on the last) and `last` from the URL of the request, changing only the
+`page` param, so the size, a filter or a sort stay in every link:
 
 ```dart
 Route.get(
@@ -409,15 +411,32 @@ Route.get(
       body: articles.skip((page - 1) * size).take(size).toList(),
       headers: {
         'X-Total-Count': '${articles.length}',
-        HttpHeader.link: [
-          '</articles?page=${page + 1}&size=$size>; rel="next"',
-          // first, prev, last...
-        ],
+        HttpHeader.link: WebLink.pages(
+          request,
+          page: page,
+          last: (articles.length / size).ceil(),
+        ),
       },
     );
   },
 )
 ```
+
+```http
+GET /articles?page=2&size=5&sort=title
+
+Link: </articles?page=1&size=5&sort=title>; rel="first"
+Link: </articles?page=1&size=5&sort=title>; rel="prev"
+Link: </articles?page=3&size=5&sort=title>; rel="next"
+Link: </articles?page=5&size=5&sort=title>; rel="last"
+```
+
+- The targets are relative to the request (RFC 8288 allows it), so they are right behind any
+  proxy. `param:` names another query param (`p`); a `last` under 1 (an empty list) is one page.
+- Any other link is a `WebLink(target, rel:, type:, title:, hreflang:, params:)`, written with
+  its values quoted and escaped; a value that isn't printable ASCII is an `ArgumentError`. A list
+  of them (and strings) is the value of the header:
+  `HttpHeader.link: [...WebLink.pages(...), WebLink(docs, rel: 'help')]`.
 
 A browser reads them only if CORS exposes them: `CorsConfig(exposedHeaders: ['X-Total-Count',
 'Link'])`. [`api_patterns/pagination.dart`](../example/api_patterns/lib/pagination.dart).

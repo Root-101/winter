@@ -335,6 +335,11 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
   (`PreconditionRequiredException`, RFC 6585) or, in a `GET`, the 304. Winter never computes an
   `ETag` from the body: it would need the whole body (no streams) and a hash per response, and
   the app knows the version better.
+- **`Link` (RFC 8288) is a value, `WebLink`**, not a string built by hand: its attributes are
+  quoted and escaped, and one that isn't printable ASCII fails when it's created (a header can't
+  carry it). `WebLink.pages` takes the URL of the request and changes only the page param, so the
+  other params are never lost; the targets are relative to the request, right behind any proxy
+  without depending on `trustedProxies`.
 - **Winter serves with `dart:io` directly**, with its own request and response, without shelf: its
   public API doesn't depend on another package (nor on its breaking changes), and an empty endpoint
   is close to the `dart:io` ceiling (~83 %, `benchmark/http_benchmark.dart`).

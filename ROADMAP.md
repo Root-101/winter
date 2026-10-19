@@ -241,7 +241,8 @@ Until then the same checks run by hand. Notes: run on a push to any branch and o
   5. [x] **`Deprecation`** (RFC 9745) + **`Sunset`** (RFC 8594): `DeprecationFilter` (inherited by
      the children of a parent, with its `Link`s), also `deprecated: true` in OpenAPI (§9). Medium,
      low.
-  6. [ ] **`Link`** (RFC 8288) for pagination (`next`, `prev`, `first`, `last`). Medium-low, low.
+  6. [x] **`Link`** (RFC 8288) for pagination: `WebLink` and `WebLink.pages` (`first`, `prev`,
+     `next`, `last`, keeping the other params) (§10). Medium-low, low.
   7. [ ] **`Idempotency-Key`** (IETF draft): a filter with a pluggable store, like the rate
      limiter. Medium, medium-high.
   8. [ ] **`Prefer`** (RFC 7240): `return=minimal`/`representation`, `respond-async`, with
