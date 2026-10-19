@@ -245,9 +245,9 @@ case with its test, and complete apps.
 
 The projects that run on Winter:
 
-|       [➕](https://github.com/Root-101/winter/pulls)       |
-|:---------------------------------------------------------:|
-| [Your project?](https://github.com/Root-101/winter/pulls) |
+| [<img src="https://raw.githubusercontent.com/Root-101/feather-io/main/docs/design/brand/icon.svg" width="64" alt="feather-io">](https://github.com/Root-101/feather-io) |           🌰           |       [➕](https://github.com/Root-101/winter/pulls)       |
+|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:----------------------:|:---------------------------------------------------------:|
+|                                                          [feather-io](https://github.com/Root-101/feather-io)                                                           | Almond: coming soon 🤭 | [Your project?](https://github.com/Root-101/winter/pulls) |
 
 <!--
 A column per project, before the "Your project?" one: its icon in the first row, its name in the
