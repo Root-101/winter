@@ -290,10 +290,11 @@ RateLimit: "burst";r=9;t=1
 RateLimit: "daily";r=999;t=86400
 ```
 
-- The client is its IP, the address of the connection. Behind a proxy (a load balancer, nginx),
-  that's the proxy: trust its `X-Forwarded-For` with
-  `clientId: (request) => request.clientIp(trustedProxies: 1) ?? 'unknown'` (the number of proxies
-  in front of the app). Never trust it without a proxy: a client can send any value.
+- The client is its IP, `request.clientIp()`: the address of the connection. Behind a proxy (a
+  load balancer, nginx) that's the proxy, unless the server trusts it:
+  `ServerConfig(trustedProxies: TrustedProxies(1))` (the number of proxies in front of the app,
+  see [deployment](deployment.md#behind-a-proxy)) makes it the IP the proxy forwarded. Never trust
+  them without a proxy: a client can send any value.
 - `clientId` can return any id: the user (`requestPrincipalOrNull<User>()?.name`), an API key...
 - A `maxRequests` under 1 or a `window` that isn't positive is an `ArgumentError` when it's created.
 - Inactive clients are forgotten once per window, so the memory doesn't grow with every new IP.
@@ -403,7 +404,8 @@ RateLimiterFilter.fromRateLimiter(
 
 - **HTTPS**, in the app or in its proxy, and then `SecurityHeaders(hsts: true)`.
 - CORS with the list of your origins, never `'*'` with credentials.
-- `trustedProxies` in the rate limiter (and in `clientIp`) equal to the proxies in front of the app.
+- `ServerConfig.trustedProxies` equal to the proxies in front of the app, and the kind of header
+  they write (`X-Forwarded-*` or `Forwarded`).
 - A rate limit on the login, per account, besides the one per IP.
 - `ServerConfig.maxBodySize` (10 MB by default) as small as your biggest request.
 - Secrets (the key of the JWTs) from the environment: `env.require<String>('JWT_SECRET')`.

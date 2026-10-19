@@ -622,15 +622,21 @@ class Route {
     docs: RouteDocs.none,
   );
 
-  /// `{"status": "UP", "checks": {"database": "UP"}}`
+  /// `{"status": "pass", "checks": {"database": [{"status": "pass"}]}}`
   static JsonSchema _healthSchema(Iterable<String> checks) {
-    JsonSchema state() => JsonSchema.string(enumValues: const ['UP', 'DOWN']);
+    JsonSchema state() => JsonSchema.string(enumValues: const ['pass', 'fail']);
     return JsonSchema.object(
       {
         'status': state(),
         if (checks.isNotEmpty)
           'checks': JsonSchema.object({
-            for (final String name in checks) name: state(),
+            for (final String name in checks)
+              name: JsonSchema.array(
+                JsonSchema.object(
+                  {'status': state()},
+                  required: const ['status'],
+                ),
+              ),
           }),
       },
       required: const ['status'],
@@ -690,10 +696,12 @@ class Route {
 
   ///GET (and HEAD) [path]: a health check for a load balancer, Docker or Kubernetes.
   ///
-  ///Every one of [checks] runs at once, each limited to [timeout]: a 200
-  ///`{"status": "UP", "checks": {"database": "UP"}}` when all of them pass, and a 503 with
-  ///`"status": "DOWN"` when one returns false, throws or takes too long (the reason is logged,
-  ///never sent). Without checks it's a 200 while the server answers. Never cached
+  ///Every one of [checks] runs at once, each limited to [timeout]. The answer has the format of
+  ///the draft *Health Check Response Format for HTTP APIs* (`application/health+json`), which
+  ///Kubernetes tooling, gateways and monitors read: a 200
+  ///`{"status": "pass", "checks": {"database": [{"status": "pass"}]}}` when all of them pass, and
+  ///a 503 with `"status": "fail"` when one returns false, throws or takes too long (the reason is
+  ///logged, never sent). Without checks it's a 200 while the server answers. Never cached
   ///(`Cache-Control: no-store`).
   ///
   ///```dart
@@ -718,13 +726,15 @@ class Route {
           summary: 'Health check',
           tags: const ['health'],
           response: BodyDocs(
-            description: 'Every check is up',
+            description: 'Every check passes',
             schema: _healthSchema(checks.keys),
+            contentType: MediaType.applicationHealthJson.mimeType,
           ),
           responses: {
             503: BodyDocs(
-              description: 'A check is down',
+              description: 'A check fails',
               schema: _healthSchema(checks.keys),
+              contentType: MediaType.applicationHealthJson.mimeType,
             ),
           },
         ),

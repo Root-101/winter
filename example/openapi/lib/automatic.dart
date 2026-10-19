@@ -40,7 +40,7 @@ WinterRouter router() {
         ]),
         handler: (request) => ResponseEntity.ok(body: const <Object>[]),
       ),
-      // Documented by itself: its UP/DOWN body and its 503
+      // Documented by itself: its application/health+json body (pass/fail) and its 503
       Route.health(path: '/health'),
     ],
   );

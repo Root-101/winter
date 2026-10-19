@@ -33,6 +33,7 @@ class WinterTestClient {
     SecurityConfig? securityConfig,
     int? maxBodySize = defaultMaxBodySize,
     Duration? requestTimeout,
+    TrustedProxies? trustedProxies,
   }) => WinterTestClient(
     Winter.buildHandler(
       router: router,
@@ -40,6 +41,7 @@ class WinterTestClient {
       securityConfig: securityConfig,
       maxBodySize: maxBodySize,
       requestTimeout: requestTimeout,
+      trustedProxies: trustedProxies,
     ),
   );
 

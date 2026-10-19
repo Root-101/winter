@@ -91,7 +91,7 @@ route's, and their `shouldFilter` is run with a request to that route, so a glob
 that skips `/public` doesn't mark `/public` as protected. The errors are Problem Details
 (`#/components/responses/...`), the format of every error of Winter.
 
-`Route.health` is documented by itself (its `UP`/`DOWN` body and its 503). `Route.static` and
+`Route.health` is documented by itself (its `application/health+json` body, `pass`/`fail`, and its 503). `Route.static` and
 `Route.websocket` are left out (a tree of files, a WebSocket: not operations of an API); give them
 `docs:` to show them. A path with a regex outside a param (`/files/.*`) can't be written in
 OpenAPI and is left out.
@@ -187,7 +187,7 @@ give the example every field.
 | `responses`   | other statuses: `{409: 'Already registered'}`                       |
 | `query`       | the query params the handler reads: `[QueryParam('page', JsonSchema.integer(minimum: 1))]` |
 | `operationId` | an id for the clients generated from the document                   |
-| `deprecated`, `hidden` | `RouteDocs.none` leaves a route out                         |
+| `deprecated`, `hidden` | `RouteDocs.none` leaves a route out; a route with a `DeprecationFilter` is `deprecated` by itself |
 
 ### Serving the document
 

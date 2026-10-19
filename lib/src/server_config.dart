@@ -84,6 +84,10 @@ class ServerConfig {
   ///Default `null`: no limit. Leave room for the slow uploads of the app.
   final Duration? requestTimeout;
 
+  /// The reverse proxies in front of the app whose headers about the client are trusted (the
+  /// client IP, the scheme and the host), or null (the default) to ignore those headers
+  final TrustedProxies? trustedProxies;
+
   /// The configuration of the server
   const ServerConfig({
     this.host = '0.0.0.0',
@@ -97,6 +101,7 @@ class ServerConfig {
     this.idleTimeout = const Duration(seconds: 120),
     this.securityContext,
     this.requestTimeout,
+    this.trustedProxies,
   });
 
   /// The configuration with the `PORT` and `HOST` of [env], the variables that Cloud Run, Heroku,
@@ -114,6 +119,7 @@ class ServerConfig {
     Duration? idleTimeout = const Duration(seconds: 120),
     SecurityContext? securityContext,
     Duration? requestTimeout,
+    TrustedProxies? trustedProxies,
   }) => ServerConfig(
     host: env.find<String>('HOST')?.trim() ?? host,
     port: env.find<int>('PORT') ?? port,
@@ -126,6 +132,7 @@ class ServerConfig {
     idleTimeout: idleTimeout,
     securityContext: securityContext,
     requestTimeout: requestTimeout,
+    trustedProxies: trustedProxies,
   );
 
   /// An [ArgumentError] if a value is out of its range (a `const` constructor can't check it)
@@ -167,5 +174,6 @@ class ServerConfig {
         'Must be more than 0 (null for no limit)',
       );
     }
+    trustedProxies?.validate();
   }
 }

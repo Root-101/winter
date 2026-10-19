@@ -5,6 +5,9 @@ import 'package:winter/src/i18n/winter_messages.dart';
 import 'package:winter/src/request_entity.dart'
     show attachRoute, limitRequestBody, requestFromHttpRequest;
 import 'package:winter/src/response_entity.dart' show writeResponse;
+import 'package:winter/src/http/conditional_requests.dart'
+    show notModifiedResponse;
+import 'package:winter/src/trusted_proxies.dart' show applyTrustedProxies;
 import 'package:winter/src/websocket.dart'
     show WebSocketUpgrade, webSocketUpgradeKey;
 import 'package:winter/winter.dart';
@@ -262,6 +265,7 @@ class Winter {
       router: nonNullRouter,
       globalFilterConfig: nonNullGlobalFilterConfig,
       maxBodySize: nonNullConfig.maxBodySize,
+      trustedProxies: nonNullConfig.trustedProxies,
     );
     rawServer.listen(
       (request) => _serve(
@@ -427,7 +431,9 @@ class Winter {
     SecurityConfig? securityConfig,
     int? maxBodySize = defaultMaxBodySize,
     Duration? requestTimeout,
+    TrustedProxies? trustedProxies,
   }) {
+    trustedProxies?.validate();
     return _buildHandler(
       router: router,
       globalFilterConfig: _globalFilters(
@@ -436,6 +442,7 @@ class Winter {
         requestTimeout,
       ),
       maxBodySize: maxBodySize,
+      trustedProxies: trustedProxies,
     );
   }
 
@@ -443,11 +450,13 @@ class Winter {
     required BaseRouter router,
     required FilterConfig globalFilterConfig,
     required int? maxBodySize,
+    required TrustedProxies? trustedProxies,
   }) {
     return (request) => _handleRunRequest(
       router: router,
       globalFilterConfig: globalFilterConfig,
       maxBodySize: maxBodySize,
+      trustedProxies: trustedProxies,
       request: request,
     );
   }
@@ -534,6 +543,7 @@ class Winter {
       securityContext: handshake.securityContext,
       locale: handshake.locale,
       requestId: requestId,
+      trace: upgrade.trace,
     );
     unawaited(socket.done.whenComplete(scope.complete));
     unawaited(
@@ -581,18 +591,29 @@ class Winter {
     required BaseRouter router,
     required FilterConfig globalFilterConfig,
     required int? maxBodySize,
+    required TrustedProxies? trustedProxies,
   }) async {
-    final RequestEntity requestEntity = request;
+    ///The request as the client sent it to the proxies (its IP, scheme and host), before
+    ///anything reads it
+    final RequestEntity requestEntity = trustedProxies == null
+        ? request
+        : applyTrustedProxies(request, trustedProxies);
     if (maxBodySize != null) limitRequestBody(requestEntity, maxBodySize);
 
     ///Created now and not lazily, so the request, its changes (`change` copies the context)
     ///and the scope share the same security context and locale.
     ///(Outside the zone yet: reading `request.locale` here doesn't mark the scope)
+    ///Without a valid `X-Request-Id`, the id of the trace of the caller: one id for the logs of
+    ///every service of that trace
     final String? sentId = requestEntity.headers[HttpHeader.xRequestId];
+    final TraceContext? trace = TraceContext.fromRequest(requestEntity);
     final RequestScope scope = RequestScope(
       securityContext: requestEntity.securityContext,
       locale: requestEntity.locale,
-      requestId: RequestScope.isValidRequestId(sentId) ? sentId : null,
+      requestId: RequestScope.isValidRequestId(sentId)
+          ? sentId
+          : trace?.traceId,
+      trace: trace,
     );
     final ResponseEntity pipelineResponse = await RequestScope.run(
       scope,
@@ -603,7 +624,12 @@ class Winter {
             router: router,
             globalFilterConfig: globalFilterConfig,
           );
-          return _checkHeaders(requestEntity, response);
+
+          ///A GET whose version the client already has is a 304 (RFC 9110 §13)
+          return notModifiedResponse(
+            requestEntity,
+            _checkHeaders(requestEntity, response),
+          );
         } finally {
           ///The callbacks of `scope.onComplete` (the scoped dependencies are disposed there)
           await scope.complete();
@@ -623,10 +649,13 @@ class Winter {
 
     ///Some code used the language of the request, so the response depends on it
     ///(only if the app answers in more than one language)
-    if (scope.localeRead && Winter.context.localeConfig.supported.length > 1) {
-      return addVary(response, HttpHeader.acceptLanguage);
-    }
-    return response;
+    final ResponseEntity varied =
+        scope.localeRead && Winter.context.localeConfig.supported.length > 1
+        ? addVary(response, HttpHeader.acceptLanguage)
+        : response;
+
+    ///Some code read the preferences: the response may change with them (RFC 7240 §2)
+    return scope.preferencesRead ? addVary(varied, HttpHeader.prefer) : varied;
   }
 
   /// A header that `dart:io` would refuse (a line break or another control character, a

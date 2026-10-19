@@ -1,5 +1,6 @@
 /// Pagination of a list: `page` and `size` checked, the total in `X-Total-Count` and the links to
-/// the other pages in `Link` (RFC 8288), as GitHub does.
+/// the other pages in `Link` (RFC 8288), as GitHub does. `WebLink.pages` builds them from the URL
+/// of the request, so the other params (`size`, a filter) stay in every link.
 ///
 /// Run: `dart run lib/pagination.dart`, then `curl -i 'localhost:8080/articles?page=2&size=5'`
 library;
@@ -26,21 +27,16 @@ WinterRouter router() => WinterRouter(
           );
         }
 
-        final int last = (articles.length / size).ceil();
-        String link(int page, String rel) =>
-            '</articles?page=$page&size=$size>; rel="$rel"';
-
         return ResponseEntity.ok(
           body: articles.skip((page - 1) * size).take(size).toList(),
           headers: {
             'X-Total-Count': '${articles.length}',
-            // Several values of one header: a list
-            HttpHeader.link: [
-              link(1, 'first'),
-              if (page > 1) link(page - 1, 'prev'),
-              if (page < last) link(page + 1, 'next'),
-              link(last, 'last'),
-            ],
+            // first, prev, next and last: one value of the header each
+            HttpHeader.link: WebLink.pages(
+              request,
+              page: page,
+              last: (articles.length / size).ceil(),
+            ),
           },
         );
       },

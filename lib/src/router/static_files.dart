@@ -1,13 +1,15 @@
 import 'dart:io';
 import 'dart:math';
 
+import 'package:winter/src/http/conditional_requests.dart' show ifRangeMatches;
 import 'package:winter/winter.dart';
 
 /// Serves the files of a [directory]: what [Route.static] uses, and usable from any handler.
 ///
 /// - Only the files inside [directory]: a path with `..`, a hidden file or folder (`.env`,
 ///   `.git/`), a `\`, a `:`, or a link that leads out of it is a 404.
-/// - `ETag` and `Last-Modified`, and a 304 for `If-None-Match`/`If-Modified-Since`.
+/// - `ETag` and `Last-Modified`, so the server answers a 304 for `If-None-Match` and
+///   `If-Modified-Since` (see [ConditionalRequests]).
 /// - `Range` requests (one range: a 206, or a 416 when it's out of the file), as video players and
 ///   resumed downloads send them, checked with `If-Range`.
 /// - The file is streamed, never read whole into memory.
@@ -117,10 +119,7 @@ final class StaticFiles {
       HttpHeader.cacheControl: ?cacheControl,
     };
 
-    if (_notModified(request, etag, modified)) {
-      return ResponseEntity(StatusCode.notModified.value, headers: validators);
-    }
-
+    // A 304 for If-None-Match/If-Modified-Since comes from the server (notModifiedResponse)
     final Map<String, String> headers = {
       ...validators,
       HttpHeader.contentType: _contentType(file.path),
@@ -149,38 +148,11 @@ final class StaticFiles {
     );
   }
 
-  /// `If-None-Match` (any of its ETags, weak or not, or `*`), or, without it, `If-Modified-Since`
-  /// (HTTP dates have seconds)
-  static bool _notModified(
-    RequestEntity request,
-    String etag,
-    DateTime modified,
-  ) {
-    final String? ifNoneMatch = request.headers[HttpHeader.ifNoneMatch];
-    if (ifNoneMatch != null) {
-      return ifNoneMatch.trim() == '*' ||
-          ifNoneMatch
-              .split(',')
-              .map((tag) => tag.trim())
-              .map((tag) => tag.startsWith('W/') ? tag.substring(2) : tag)
-              .contains(etag);
-    }
-    final DateTime? since = _parseDate(
-      request.headers[HttpHeader.ifModifiedSince],
-    );
-    return since != null && _seconds(modified) <= _seconds(since);
-  }
-
   /// A `Range` is used only if `If-Range` is missing or still matches the file: its ETag
   /// (strong) or its exact `Last-Modified`
   static bool _ifRange(RequestEntity request, String etag, DateTime modified) {
-    final String? ifRange = request.headers[HttpHeader.ifRange]?.trim();
-    if (ifRange == null) return true;
-    if (ifRange.startsWith('"') || ifRange.startsWith('W/')) {
-      return ifRange == etag;
-    }
-    final DateTime? date = _parseDate(ifRange);
-    return date != null && _seconds(date) == _seconds(modified);
+    final String? ifRange = request.headers[HttpHeader.ifRange];
+    return ifRange == null || ifRangeMatches(ifRange, etag, modified);
   }
 
   /// The first and the last byte of a `Range` with one range (`bytes=0-99`, `bytes=100-`,
@@ -219,17 +191,6 @@ final class StaticFiles {
     StatusCode.rangeNotSatisfiable,
     headers: {HttpHeader.contentRange: 'bytes */$size'},
   );
-
-  static DateTime? _parseDate(String? value) {
-    if (value == null) return null;
-    try {
-      return HttpDate.parse(value);
-    } on HttpException {
-      return null;
-    }
-  }
-
-  static int _seconds(DateTime date) => date.millisecondsSinceEpoch ~/ 1000;
 
   String _contentType(String path) {
     final String name = path.split(Platform.pathSeparator).last;
