@@ -93,7 +93,7 @@ void main() {
       expect(response.headers['x-request-id'], isNotNull);
     });
 
-    test('/ready is a 503 DOWN while the database is down', () async {
+    test('/ready is a 503 fail while the database is down', () async {
       expect((await client.get('/ready')).statusCode, 200);
 
       await database.close();
@@ -101,8 +101,12 @@ void main() {
 
       expect(response.statusCode, 503);
       expect(response.json, {
-        'status': 'DOWN',
-        'checks': {'database': 'DOWN'},
+        'status': 'fail',
+        'checks': {
+          'database': [
+            {'status': 'fail'},
+          ],
+        },
       });
       expect(
         response.headers['ratelimit-policy'],

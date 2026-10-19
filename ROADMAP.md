@@ -248,8 +248,8 @@ Until then the same checks run by hand. Notes: run on a push to any branch and o
      medium-high.
   8. [x] **`Prefer`** (RFC 7240): `request.preferences` (`return`, `respond-async`, `wait`,
      `handling`), `Vary: Prefer` by itself, `Preference-Applied` (§10). Low, low.
-  9. [ ] **Health Check Response Format** (`application/health+json`, expired draft) for
-     `Route.health`. Low, low.
+  9. [x] **Health Check Response Format** (`application/health+json`, expired draft) for
+     `Route.health`: `pass`/`fail` and a list per check (§9). Low, low.
   10. [ ] **`Content-Digest`** (RFC 9530) / **HTTP Message Signatures** (RFC 9421). Low, high.
 - [ ] GitHub Actions: `dart format --set-exit-if-changed`, `dart analyze`, `dart test` with
   coverage, and the tests of every example, on Linux and Windows.
