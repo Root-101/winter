@@ -9,6 +9,7 @@ import 'package:winter/src/context/validation/validation.dart' show mapKeyPath;
 import 'package:winter/src/multipart.dart'
     show multipartBoundary, parseMultipart;
 import 'package:winter/src/router/path_template.dart';
+import 'package:winter/src/trusted_proxies.dart' show forwardedClientIpKey;
 import 'package:winter/winter.dart';
 
 /// An HTTP request: what a handler and every filter receive.
@@ -151,25 +152,13 @@ class RequestEntity {
 
   ///IP address of the client (null if unknown, ex: a request built in a test).
   ///
-  ///By default it's the address of the connection, `X-Forwarded-For` is ignored because
-  ///any client can send it with a fake IP (ex: to bypass a rate limiter).
-  ///Behind proxies, set [trustedProxies] to how many proxies (that you control) add
-  ///their entry to `X-Forwarded-For`: the entry added by the last of them is the client.
-  String? clientIp({int trustedProxies = 0}) {
-    final String? connectionIp = connectionInfo?.remoteAddress.address;
-    if (trustedProxies <= 0) return connectionIp;
-
-    final forwardedFor = headers[HttpHeader.xForwardedFor];
-    if (forwardedFor == null) return connectionIp;
-
-    final ips = forwardedFor
-        .split(',')
-        .map((ip) => ip.trim())
-        .where((ip) => ip.isNotEmpty)
-        .toList();
-    final index = ips.length - trustedProxies;
-    return index >= 0 ? ips[index] : connectionIp;
-  }
+  ///The address of the connection, unless the server trusts the proxies in front of it
+  ///([ServerConfig.trustedProxies]): then the address they forwarded (`X-Forwarded-For` or
+  ///`Forwarded`). Without that, those headers are ignored, because any client can send them
+  ///with a fake IP (ex: to bypass a rate limiter).
+  String? clientIp() =>
+      context.get(forwardedClientIpKey) ??
+      connectionInfo?.remoteAddress.address;
 
   ///The query params, with the last value of a repeated param (`?tag=a&tag=b` => `{tag: b}`).
   ///Use [queryParamsAll] to get every value.

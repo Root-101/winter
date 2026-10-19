@@ -107,16 +107,18 @@ class ProductionApp {
     LoggingFilter(),
     RateLimiterFilter(
       maxRequests: env.find<int>('RATE_LIMIT') ?? 100,
+      // The client is its IP: behind the load balancer, the one it forwarded (trustedProxies)
       window: const Duration(minutes: 1),
-
-      /// Behind the load balancer, the client is in X-Forwarded-For
-      clientId: (request) =>
-          request.clientIp(
-            trustedProxies: env.find<int>('TRUSTED_PROXIES') ?? 0,
-          ) ??
-          'unknown',
     ),
   ]);
+
+  /// The load balancers in front of the app (`TRUSTED_PROXIES`), whose `X-Forwarded-For`,
+  /// `X-Forwarded-Proto` and `X-Forwarded-Host` give the IP of the client and the public URL;
+  /// none locally, where a client could fake them
+  static TrustedProxies? trustedProxies(Env env) {
+    final int count = env.find<int>('TRUSTED_PROXIES') ?? 0;
+    return count > 0 ? TrustedProxies(count) : null;
+  }
 
   static SecurityConfig security(Env env) => SecurityConfig(
     cors: CorsConfig(
@@ -151,6 +153,7 @@ class ProductionApp {
             config.find<Duration>('SHUTDOWN_TIMEOUT') ??
             const Duration(seconds: 25),
         onShutdown: () => logger.info('Stopped accepting requests'),
+        trustedProxies: trustedProxies(config),
       ),
       router: router(),
       globalFilterConfig: filters(config),

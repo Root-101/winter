@@ -245,8 +245,16 @@ Guide: [`doc/security.md`](doc/security.md).
   API doesn't announce its framework.
 - **Rate limiter**: a sliding window over an asynchronous `RateLimiterStore` (in memory by default,
   so per isolate and per process; a shared store like Redis implements the same interface).
-  `maxRequests < 1` or a non positive window is an `ArgumentError`. The client is its IP; behind a
-  proxy `trustedProxies` reads `X-Forwarded-For`, never trusted without it.
+  `maxRequests < 1` or a non positive window is an `ArgumentError`. The client is its IP.
+- **The proxies are trusted in one place, `ServerConfig.trustedProxies`** (and `buildHandler`), not
+  per call of `clientIp`: the IP, the scheme and the host of the client must agree for the whole
+  request (the rate limiter, `Location`, the `instance` of the errors, OpenAPI). `TrustedProxies`
+  names how many proxies append their entry (the client is the one the outermost added) and the
+  one kind of header they write, `X-Forwarded-*` (the default: nginx, the load balancers of the
+  clouds) or `Forwarded` (RFC 7239): reading both would let a client fake the one its proxy
+  doesn't write. Every value is checked (an IP, `http`/`https`, a bare `host[:port]`) and ignored
+  otherwise. The scheme and the host take the entry at the place of the client, or the first one
+  when the proxies overwrite them with a single value. Without it (the default) none is read.
 - **The limits are announced with the IETF headers** (`draft-ietf-httpapi-ratelimit-headers`), not
   the `X-RateLimit-*` of each vendor: `RateLimit-Policy: "default";q=100;w=60` and
   `RateLimit: "default";r=42;t=17`, on every response the filter lets through and on its 429 (with
