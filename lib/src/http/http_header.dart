@@ -211,6 +211,14 @@ class HttpHeader {
   /// See [Section 3.1 of RFC 7233](https://tools.ietf.org/html/rfc7233#section-3.1).
   static const String range = 'Range';
 
+  /// The `RateLimit` header: the quota left of each policy (`"default";r=42;t=17`).
+  /// See [draft-ietf-httpapi-ratelimit-headers](https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/).
+  static const String rateLimit = 'RateLimit';
+
+  /// The `RateLimit-Policy` header: the quota policies of the server (`"default";q=100;w=60`).
+  /// See [draft-ietf-httpapi-ratelimit-headers](https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/).
+  static const String rateLimitPolicy = 'RateLimit-Policy';
+
   /// The HTTP `Referer` header.
   /// See [Section 5.5.2 of RFC 7231](https://tools.ietf.org/html/rfc7231#section-5.5.2).
   static const String referer = 'Referer';

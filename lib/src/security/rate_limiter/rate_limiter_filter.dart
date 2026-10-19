@@ -8,6 +8,18 @@ import 'package:winter/winter.dart';
 /// IP of the client; behind proxies use
 /// `clientId: (request) => request.clientIp(trustedProxies: 1) ?? 'unknown'`).
 ///
+/// Every response it lets through, and its 429, carry the headers of the IETF draft
+/// *RateLimit header fields for HTTP* (`draft-ietf-httpapi-ratelimit-headers`):
+///
+/// ```http
+/// RateLimit-Policy: "default";q=100;w=60
+/// RateLimit: "default";r=42;t=17
+/// ```
+///
+/// `q` is [RateLimiter.maxRequests], `w` the window in seconds, `r` the requests left and `t` the
+/// seconds until one more is available. Several filters on a route (a `burst` and a `daily` one)
+/// add one item each: give each a [policy] name of its own.
+///
 /// {@category Security}
 class RateLimiterFilter extends Filter {
   /// The underlying rate limiter implementation.
@@ -19,13 +31,21 @@ class RateLimiterFilter extends Filter {
   /// Called for every rejected request (a debug log by default), or null for nothing
   final void Function(RequestEntity request, String clientId)? onLimited;
 
+  /// The name of the quota policy in the `RateLimit-Policy` and `RateLimit` headers: printable
+  /// ASCII (an [ArgumentError] otherwise)
+  final String policy;
+
+  final String _policyItem;
+
   /// At most [maxRequests] per client in every [window] (a sliding window, in memory)
   RateLimiterFilter({
     required int maxRequests,
     required Duration window,
     this.clientId = defaultClientId,
     this.onLimited = defaultLogRateLimiter,
-  }) : rateLimiter = RateLimiter(maxRequests: maxRequests, window: window);
+    this.policy = 'default',
+  }) : rateLimiter = RateLimiter(maxRequests: maxRequests, window: window),
+       _policyItem = _structuredString(policy);
 
   /// A filter over [rateLimiter]: a [RateLimiter] with another store (shared by several
   /// instances) or clock
@@ -33,7 +53,18 @@ class RateLimiterFilter extends Filter {
     required this.rateLimiter,
     this.clientId = defaultClientId,
     this.onLimited = defaultLogRateLimiter,
-  });
+    this.policy = 'default',
+  }) : _policyItem = _structuredString(policy);
+
+  static final RegExp _printableAscii = RegExp(r'^[\x20-\x7E]*$');
+
+  /// [value] as a String of a Structured Field (RFC 9651): quoted, with `\` and `"` escaped
+  static String _structuredString(String value) {
+    if (!_printableAscii.hasMatch(value)) {
+      throw ArgumentError.value(value, 'policy', 'must be printable ASCII');
+    }
+    return '"${value.replaceAllMapped(RegExp(r'[\\"]'), (m) => '\\${m[0]}')}"';
+  }
 
   @override
   Future<ResponseEntity> doFilter(
@@ -43,26 +74,39 @@ class RateLimiterFilter extends Filter {
     final String id = await clientId(request);
     final RateLimitResult result = await rateLimiter.check(id);
 
-    // Standard Rate Limit headers
-    // Reset: seconds until the oldest request leaves the window (a new slot is available)
-    final rateLimitHeaders = {
-      'X-RateLimit-Limit': '${result.limit}',
-      'X-RateLimit-Remaining': '${result.remaining}',
-      'X-RateLimit-Reset': '${_ceilSeconds(result.resetAfter)}',
-    };
+    // w can't be zero nor have a fraction: a window under a second is announced as one
+    final int window = _ceilSeconds(rateLimiter.window);
+    final String policyItem = '$_policyItem;q=${result.limit};w=$window';
+    // t: seconds until the oldest request leaves the window (one more is available then)
+    final String limitItem =
+        '$_policyItem;r=${result.remaining};t=${_ceilSeconds(result.resetAfter)}';
 
     if (!result.allowed) {
       onLimited?.call(request, id);
       final wait = _ceilSeconds(result.retryAfter);
       throw TooManyRequestsException(
         retryAfter: wait > 0 ? wait : 1,
-        headers: rateLimitHeaders,
+        headers: {
+          HttpHeader.rateLimitPolicy: policyItem,
+          HttpHeader.rateLimit: limitItem,
+        },
       );
     }
 
     final response = await chain.doFilter(request);
-    // Add headers to the successful response
-    return response.copyWith(headers: rateLimitHeaders);
+    // Appended, not replaced: an inner filter (another policy) may have added its own item
+    return response.copyWith(
+      headers: {
+        HttpHeader.rateLimitPolicy: [
+          ...?response.headersAll[HttpHeader.rateLimitPolicy],
+          policyItem,
+        ],
+        HttpHeader.rateLimit: [
+          ...?response.headersAll[HttpHeader.rateLimit],
+          limitItem,
+        ],
+      },
+    );
   }
 
   /// Round up, so a client waiting the given seconds is never too early

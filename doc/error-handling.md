@@ -110,7 +110,7 @@ the names you give them.
 | No route for the path (`NotFoundException`)    | 404    | —                                          |
 | The path exists for other methods (`MethodNotAllowedException`) | 405 | — (the `Allow` header lists them) |
 | `AuthFilter`: nobody authenticated / not allowed | 401 / 403 | —                                     |
-| `RateLimiterFilter`: too many requests         | 429    | — (`Retry-After` and `X-RateLimit-*` headers) |
+| `RateLimiterFilter`: too many requests         | 429    | — (`Retry-After`, `RateLimit-Policy` and `RateLimit` headers) |
 | `ResponseException(response)`                  | Its own | The response is sent as it is (not a Problem Details) |
 | Anything else: any other `Exception`, any `Error` | 500 | — (logged with its stack trace, never sent) |
 
