@@ -6,7 +6,7 @@ headers, `ApiException`). One file per case, each a server of its own: `dart run
 
 | Case | File | What it shows |
 |------|------|---------------|
-| Pagination | [`pagination.dart`](lib/pagination.dart) | `page`/`size` with a limit, `X-Total-Count`, `Link` with `first`/`prev`/`next`/`last`, exposed through CORS |
+| Pagination | [`pagination.dart`](lib/pagination.dart) | `page`/`size` with a limit, `X-Total-Count`, `Link` with `first`/`prev`/`next`/`last` from `WebLink.pages` (keeping the other params), exposed through CORS |
 | Conditional requests | [`conditional_requests.dart`](lib/conditional_requests.dart) | `ETag` and the 304 the server gives for `If-None-Match`; optimistic locking with `request.checkPreconditions`: 412 for a stale version, 428 without `If-Match` |
 | Content negotiation | [`content_negotiation.dart`](lib/content_negotiation.dart) | JSON or CSV by `Accept` (with `q`), 406, `Vary: Accept` |
 | File download | [`file_download.dart`](lib/file_download.dart) | A CSV export streamed row by row, `Content-Disposition` with a name that isn't ASCII, `inline` vs `attachment` |
