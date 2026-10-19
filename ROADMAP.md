@@ -251,6 +251,8 @@ Until then the same checks run by hand. Notes: run on a push to any branch and o
   9. [x] **Health Check Response Format** (`application/health+json`, expired draft) for
      `Route.health`: `pass`/`fail` and a list per check (§9). Low, low.
   10. [ ] **`Content-Digest`** (RFC 9530) / **HTTP Message Signatures** (RFC 9421). Low, high.
+      Postponed: it needs cryptographic hashes and signatures (a `crypto` dependency, which the
+      project doesn't have) and RFC 9421 is a large spec; only if a real use asks for it.
 - [ ] GitHub Actions: `dart format --set-exit-if-changed`, `dart analyze`, `dart test` with
   coverage, and the tests of every example, on Linux and Windows.
 - [ ] `messages*.g.dart` up to date (`dart run slang` + `git diff --exit-code`).
