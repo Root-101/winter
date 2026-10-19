@@ -79,8 +79,8 @@ if (logger.isEnabled(LogLevel.debug)) {
 - `ConsoleLogger` writes debug and info to stdout, warning and error to stderr, with the error and
   the stack trace in the next lines.
 - `JsonLogger` writes everything to stdout, one line per log. `time`, `severity` and `message`
-  are the keys that Cloud Logging reads by itself (Datadog and Loki map them easily); `requestId`
-  is there inside a request; `error` and `stackTrace` are strings. The `fields` are members of
+  are the keys that Cloud Logging reads by itself (Datadog and Loki map them easily); `requestId`,
+  `traceId` and `spanId` (the W3C trace, below) are there inside a request; `error` and `stackTrace` are strings. The `fields` are members of
   their own and never replace those keys; a field that is not a JSON value is written as its text.
 
 ### The request id
@@ -88,8 +88,9 @@ if (logger.isEnabled(LogLevel.debug)) {
 Every request has an id, without adding anything:
 
 - The `X-Request-Id` of the request when it's valid (1 to 128 letters, digits and `.`, `_`, `:`,
-  `-`), so an id created by a gateway or a load balancer is kept along the way. Otherwise, a new
-  random UUID.
+  `-`), so an id created by a gateway or a load balancer is kept along the way. Otherwise, the
+  trace id of its `traceparent` (below), so the logs of every service of a trace share one id.
+  Otherwise, a new random UUID.
 - It's in the `X-Request-Id` header of the response, in every log written during the request
   (also from services, after an `await`), and in the body of a 500:
 
@@ -99,6 +100,31 @@ Every request has an id, without adding anything:
 
 - Read it anywhere with `requestId` (null outside a request), for example to pass it to another
   service: `headers: {'X-Request-Id': requestId!}`.
+
+### The W3C trace (`traceparent`)
+
+Every request belongs to a distributed trace, as the W3C *Trace Context* recommendation defines it
+(the format of OpenTelemetry, Datadog, Jaeger and most gateways):
+
+- A request with a valid `traceparent` (`00-<trace-id>-<parent-id>-<flags>`) continues that trace;
+  its `tracestate` is kept to forward it. Any other request (none, or an invalid one: uppercase,
+  ids of zeros, version `ff`, two `traceparent` headers) starts a trace of its own.
+- Each request gets a new span id, its own span in the trace.
+- `requestTrace` (null outside a request) is the `TraceContext`: `traceId`, `spanId`, `parentId`
+  (the span of the caller, null when the trace started here), `sampled` and `traceState`.
+- `JsonLogger` writes `traceId` and `spanId` in every log of the request, so a log tool links the
+  logs to the trace.
+- The trace is never sent back to the client (no `traceresponse`, a draft that would expose it);
+  the `X-Request-Id` is what the client gets.
+
+A request without `traceparent` has these logs:
+
+```json
+{"time":"...","severity":"INFO","message":"Order created","requestId":"8f1c2a47-...","traceId":"0af7651916cd43dd8448eb211c80319c","spanId":"b7ad6b7169203331"}
+```
+
+Winter records no spans itself (it's not a tracer): a trace it starts has `sampled` false, and an
+OpenTelemetry SDK of the app can still read `requestTrace` to create them.
 
 ### What Winter logs
 
@@ -173,11 +199,20 @@ setUp(() {
 
 ### Following a request across services
 
-Send the id to the services you call, so their logs share it:
+Send the trace to the services you call: they continue it (with Winter, or any service with
+OpenTelemetry), so a tracing tool shows all of them in one trace and their logs share the
+`traceId`. Send the request id too if they read it:
 
 ```dart
-await http.get(url, headers: {HttpHeader.xRequestId: requestId!});
+await http.get(
+  url,
+  headers: {...requestTrace!.headers, HttpHeader.xRequestId: requestId!},
+);
 ```
+
+`requestTrace!.headers` has the `traceparent` with this request's span as the parent, and the
+`tracestate` when one came. The production app does it in `StockClient`
+([`example/apps/production`](../example/apps/production)).
 
 ## Typical mistakes and limitations
 

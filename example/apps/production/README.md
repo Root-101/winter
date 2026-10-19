@@ -17,26 +17,33 @@ JSON logs with the request id, it has health checks for the platform, it shuts d
     Kubernetes set.
 
 ### 2. Logs (`ProductionApp.loggerFor`)
-`LOG_FORMAT=json` gives a `JsonLogger`: one JSON object per line, with the request id, for Cloud
-Logging, Datadog or Loki. Locally, a readable `ConsoleLogger` at `debug`.
+`LOG_FORMAT=json` gives a `JsonLogger`: one JSON object per line, with the request id and the W3C
+trace (`traceId`, `spanId`), for Cloud Logging, Datadog or Loki. Locally, a readable `ConsoleLogger`
+at `debug`.
 
-### 3. Health checks
+### 3. Distributed tracing (`StockClient`)
+A request that comes with a `traceparent` (from a gateway, or a service with OpenTelemetry)
+continues that trace. `GET /products/{sku}/stock` calls the stock service (`STOCK_URL`) with
+`requestTrace!.headers`, so both services show up in one trace and their logs share the `traceId`
+(which is also the request id when no `X-Request-Id` came).
+
+### 4. Health checks
 *   `GET /health` (liveness, `Route.health()`): the process answers.
 *   `GET /ready` (readiness, `Route.health(checks: {'database': ...})`): the database answers;
     otherwise a 503 `{"status": "DOWN", "checks": {"database": "DOWN"}}`, which takes the instance
     out of the load balancer without restarting it.
 
-### 4. Security behind a proxy
+### 5. Security behind a proxy
 *   `RateLimiterFilter` by client IP with `clientIp(trustedProxies: TRUSTED_PROXIES)`.
 *   CORS with the origins of `CORS_ORIGINS`, and HSTS with `HSTS=true` (TLS ends at the proxy).
 *   `maxBodySize` of 1 MB.
 
-### 5. Graceful shutdown
+### 6. Graceful shutdown
 On `SIGTERM` (`docker stop`, a deploy) Winter stops accepting connections, waits for the requests in
 progress (up to `SHUTDOWN_TIMEOUT`, below the 30 s grace period of Kubernetes), calls
 `onShutdown`, and then the `onDispose` of the `Database` closes it.
 
-### 6. Docker
+### 7. Docker
 `Dockerfile` compiles a native executable (`dart compile exe`) into a `scratch` image: no Dart SDK
 inside, and it starts in milliseconds.
 

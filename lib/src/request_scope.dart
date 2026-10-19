@@ -27,13 +27,22 @@ class RequestScope {
   /// in every log written for the request, in the `X-Request-Id` of the response and in a 500.
   final String requestId;
 
+  final TraceContext? _trace;
+
+  /// The distributed trace of the request: the one its `traceparent` continues, or a new one
+  /// (created on the first read, so a request that never logs nor calls another service doesn't
+  /// pay for its random ids)
+  late final TraceContext trace = _trace ?? TraceContext.root();
+
   /// Without [securityContext], an empty one.
   /// Without [locale], the fallback of `Winter.context.localeConfig`.
   /// Without [requestId], a new one ([newRequestId]).
+  /// Without [trace], a new one ([TraceContext.root]).
   RequestScope({
     RequestSecurityContext? securityContext,
     WinterLocale? locale,
     String? requestId,
+    this._trace,
   }) : securityContext =
            securityContext ?? RequestSecurityContext<dynamic>.empty(),
        _locale = locale ?? Winter.context.localeConfig.fallback,

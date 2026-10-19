@@ -534,6 +534,7 @@ class Winter {
       securityContext: handshake.securityContext,
       locale: handshake.locale,
       requestId: requestId,
+      trace: upgrade.trace,
     );
     unawaited(socket.done.whenComplete(scope.complete));
     unawaited(
@@ -588,11 +589,17 @@ class Winter {
     ///Created now and not lazily, so the request, its changes (`change` copies the context)
     ///and the scope share the same security context and locale.
     ///(Outside the zone yet: reading `request.locale` here doesn't mark the scope)
+    ///Without a valid `X-Request-Id`, the id of the trace of the caller: one id for the logs of
+    ///every service of that trace
     final String? sentId = requestEntity.headers[HttpHeader.xRequestId];
+    final TraceContext? trace = TraceContext.fromRequest(requestEntity);
     final RequestScope scope = RequestScope(
       securityContext: requestEntity.securityContext,
       locale: requestEntity.locale,
-      requestId: RequestScope.isValidRequestId(sentId) ? sentId : null,
+      requestId: RequestScope.isValidRequestId(sentId)
+          ? sentId
+          : trace?.traceId,
+      trace: trace,
     );
     final ResponseEntity pipelineResponse = await RequestScope.run(
       scope,

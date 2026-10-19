@@ -32,12 +32,16 @@ final class WebSocketUpgrade {
   /// How often a ping goes to the client, or null for none
   final Duration? pingInterval;
 
+  /// The trace of the handshake, kept by the scope of the socket
+  final TraceContext? trace;
+
   /// An upgrade to [handler]
   const WebSocketUpgrade({
     required this.handler,
     required this.request,
     required this.protocols,
     required this.pingInterval,
+    this.trace,
   });
 
   /// The subprotocol to answer among the ones the client asked for: the first of [protocols]
@@ -90,6 +94,7 @@ RequestHandler webSocketRouteHandler({
       request: request,
       protocols: protocols,
       pingInterval: pingInterval,
+      trace: requestTrace,
     ),
   );
   return response;
