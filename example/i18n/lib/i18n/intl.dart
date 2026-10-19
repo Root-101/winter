@@ -13,7 +13,7 @@ final Map<AppLocale, AppMessages> _cache = {
 ///
 /// A getter, never a `final`: it is evaluated on every use, with the locale of that moment.
 /// A region uses its language (`es-MX` → `es`) and an unknown language the base one (`en`).
-AppMessages get t =>
+AppMessages get intl =>
     _cache[AppLocaleUtils.parseLocaleParts(
       languageCode: requestLocale.languageCode,
       countryCode: requestLocale.countryCode,
