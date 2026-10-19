@@ -428,7 +428,25 @@ class _OpenApiBuilder {
       'The body has invalid fields',
       'ValidationProblem',
     ),
-    'TooManyRequests': _problem('Too many requests: wait for Retry-After'),
+    'TooManyRequests': {
+      ..._problem('Too many requests: wait for Retry-After'),
+      'headers': {
+        'Retry-After': _header('Seconds to wait before retrying'),
+        'RateLimit-Policy': _header(
+          'The quota policy (draft-ietf-httpapi-ratelimit-headers): '
+          '"default";q=100;w=60',
+        ),
+        'RateLimit': _header(
+          'The quota left (draft-ietf-httpapi-ratelimit-headers): '
+          '"default";r=0;t=17',
+        ),
+      },
+    },
+  };
+
+  static Map<String, Object?> _header(String description) => {
+    'description': description,
+    'schema': {'type': 'string'},
   };
 }
 

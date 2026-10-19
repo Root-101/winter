@@ -96,7 +96,10 @@ void main() {
         'status': 'DOWN',
         'checks': {'database': 'DOWN'},
       });
-      expect(response.headers['x-ratelimit-limit'], '100');
+      expect(
+        response.headers['ratelimit-policy'],
+        startsWith('"default";q=100;'),
+      );
     });
   });
 

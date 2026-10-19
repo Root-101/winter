@@ -236,7 +236,10 @@ void main() {
 
       expect(response.body, 'new body');
       expect(response.headers['access-control-allow-origin'], origin['origin']);
-      expect(response.headers['x-ratelimit-limit'], '1000');
+      expect(
+        response.headers['ratelimit-policy'],
+        startsWith('"default";q=1000;'),
+      );
     });
 
     test('an object body is serialized once, whatever the filters', () async {

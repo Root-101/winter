@@ -1,5 +1,6 @@
 * 1.0.0 (unreleased):
     * **Errors** :rotating_light: : Problem Details (RFC 9457) complete: `instance` (the path of the request by default, never its query string, or your own with `ApiException(instance:)`), `ProblemDetails.fromJson` (registered in the object mapper, so `as<ProblemDetails>()` works; a member of the wrong type is ignored, as the RFC asks), and `application/problem+json` only for a `ProblemDetails` body (any other JSON is `application/json`).
+    * **Security** :lock: : `RateLimiterFilter` announces its limits with the headers of the IETF draft *RateLimit header fields for HTTP*: `RateLimit-Policy` (`"default";q=100;w=60`) and `RateLimit` (`"default";r=42;t=17`), on every response it lets through and on its 429; a `policy:` name per filter, so a burst and a daily limit on a route add one item each.
 
 * 1.0.0-rc.1:
     * **DATE** :date: : 2026-10-09.
