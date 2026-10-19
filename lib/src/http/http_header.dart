@@ -162,6 +162,14 @@ class HttpHeader {
   /// See [Section 5.4 of RFC 7230](https://tools.ietf.org/html/rfc7230#section-5.4).
   static const String host = 'Host';
 
+  /// The `Idempotency-Key` header: a key the client chooses to retry a `POST` safely.
+  /// See [draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/).
+  static const String idempotencyKey = 'Idempotency-Key';
+
+  /// `Idempotent-Replayed: true`: the response is the one kept for the `Idempotency-Key` of the
+  /// request (not standard; what Stripe sends)
+  static const String idempotentReplayed = 'Idempotent-Replayed';
+
   /// The HTTP `If-Match` header.
   /// See [Section 3.1 of RFC 7232](https://tools.ietf.org/html/rfc7232#section-3.1).
   static const String ifMatch = 'If-Match';

@@ -542,10 +542,43 @@ Route.get(
 
 ### Idempotency keys
 
-A client that didn't get the answer of a `POST` (a timeout) sends it again with the same
-`Idempotency-Key`, and must get the first answer instead of a second payment. A route filter does
-it without touching the handler: it reads the body with `bytes()` (cached, so the handler still
-reads it with `body<T>()`), keeps the response of the first request, and answers it again.
+A client that didn't get the answer of a `POST` (a timeout, a dropped connection) sends it again
+with the same `Idempotency-Key` (IETF draft `draft-ietf-httpapi-idempotency-key-header`, what
+Stripe and Adyen use), and must get the first answer instead of a second payment.
+`IdempotencyFilter` on the route does it without touching the handler:
+
+```dart
+Route.post(
+  path: '/payments',
+  filterConfig: FilterConfig([
+    AuthFilter(),
+    IdempotencyFilter(partition: (request) => requestPrincipal<User>().id),
+  ]),
+  handler: createPayment,
+),
+```
+
+| The request                                     | The answer                                         |
+|-------------------------------------------------|----------------------------------------------------|
+| A new key                                       | Runs, and its response is kept for `expiry` (24 h) |
+| The same key and the same body                  | The kept response, with `Idempotent-Replayed: true`; the handler doesn't run |
+| The same key with another body                  | **422**                                            |
+| The same key while the first one still runs     | **409**                                            |
+| No key (unless `required: false`), or an invalid one | **400**                                       |
+
+- The key is quoted (`Idempotency-Key: "8e03978e"`, the draft) or bare (what most clients send),
+  1 to 255 printable ASCII characters.
+- A response of 500 or more, a 408, a 425 or a 429 is not kept, so the client can retry with the
+  same key; neither is a stream. A `GET`, `HEAD` or `OPTIONS` is never filtered.
+- **A key is unique per method and path.** With users, give `partition:` (the user, the API key):
+  otherwise two users with the same key and the same body get each other's response. Put the
+  filter after the `AuthFilter`, so a 401 isn't kept.
+- The body is read with `bytes()` (cached, so the handler still reads it with `body<T>()`) and
+  compared by a fingerprint.
+- The keys live in an `IdempotencyStore`: `InMemoryIdempotencyStore` by default (per isolate and
+  per process, purged as it's used, `clock:` for the tests). Several instances need a shared one
+  (a table, Redis) implementing `reserve` (atomic), `complete`, `release` and `clear`.
+
 [`api_patterns/idempotency_keys.dart`](../example/api_patterns/lib/idempotency_keys.dart).
 
 ### Versions of an API
