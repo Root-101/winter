@@ -412,6 +412,13 @@ void main() {
             ]),
           ),
           Route.get(path: '/public', handler: _ok),
+          Route.parent(
+            path: '/v1',
+            filterConfig: FilterConfig([
+              DeprecationFilter(deprecated: DateTime.utc(2026)),
+            ]),
+            routes: [Route.get(path: '/old', handler: _ok)],
+          ),
         ],
       );
       document = OpenApi(
@@ -453,6 +460,7 @@ void main() {
           '/health',
           '/limited',
           '/public',
+          '/v1/old',
         ]),
       );
       expect(
@@ -683,6 +691,14 @@ void main() {
         'schema': {'type': 'string'},
       });
     });
+
+    test(
+      'a DeprecationFilter (inherited from a parent) marks it deprecated',
+      () {
+        expect(operation('/v1/old', 'get')['deprecated'], isTrue);
+        expect(operation('/public', 'get'), isNot(contains('deprecated')));
+      },
+    );
 
     test('a RateLimiterFilter adds a 429 with its headers', () {
       expect((operation('/limited', 'get')['responses'] as Map)['429'], {

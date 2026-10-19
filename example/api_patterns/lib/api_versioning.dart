@@ -1,12 +1,11 @@
 /// Two versions of an API side by side, by path (`/v1`, `/v2`): each version is a parent route,
-/// and the old one announces its end with the `Deprecation` and `Sunset` headers (RFC 9745,
-/// RFC 8594) and a `Link` to its successor, added by a filter of the parent.
+/// and the old one announces its end with a `DeprecationFilter` in the parent: the `Deprecation`
+/// and `Sunset` headers (RFC 9745, RFC 8594), a `Link` to the migration guide and another to the
+/// same resource in v2, on every response of v1 (its errors too), and `deprecated` in OpenAPI.
 ///
 /// Run: `dart run lib/api_versioning.dart`, then
 /// `curl -i localhost:8080/v1/users/1` and `curl localhost:8080/v2/users/1`
 library;
-
-import 'dart:io' show HttpDate;
 
 import 'package:winter/winter.dart';
 
@@ -25,40 +24,16 @@ User findUser(RequestEntity request) {
   return users[id] ?? (throw NotFoundException(detail: 'User $id not found'));
 }
 
-/// Marks every response of a version as deprecated
-class DeprecationFilter extends Filter {
-  /// When the version stops answering
-  final DateTime sunset;
-
-  /// The same resource in the new version
-  final String Function(RequestEntity request) successor;
-
-  DeprecationFilter({required this.sunset, required this.successor});
-
-  @override
-  Future<ResponseEntity> doFilter(
-    RequestEntity request,
-    FilterChain chain,
-  ) async {
-    final ResponseEntity response = await chain.doFilter(request);
-    return response.copyWith(
-      headers: {
-        'Deprecation': 'true',
-        'Sunset': HttpDate.format(sunset),
-        HttpHeader.link: '<${successor(request)}>; rel="successor-version"',
-      },
-    );
-  }
-}
-
 WinterRouter router() => WinterRouter(
   routes: [
-    // v1: the name in one field. Deprecated: it ends on 2027-01-01
+    // v1: the name in one field. Deprecated since 2026-07-01, it ends on 2027-01-01
     Route.parent(
       path: '/v1',
       filterConfig: FilterConfig([
         DeprecationFilter(
+          deprecated: DateTime.utc(2026, 7),
           sunset: DateTime.utc(2027),
+          link: Uri.parse('https://api.example.com/docs/v2-migration'),
           successor: (request) =>
               request.requestedUri.path.replaceFirst('/v1/', '/v2/'),
         ),

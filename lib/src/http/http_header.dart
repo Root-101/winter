@@ -190,6 +190,14 @@ class HttpHeader {
   /// See [Section 2.2 of RFC 7232](https://tools.ietf.org/html/rfc7232#section-2.2).
   static const String lastModified = 'Last-Modified';
 
+  /// The `Deprecation` header: since when the resource is deprecated (`@1767225600`).
+  /// See [RFC 9745](https://www.rfc-editor.org/rfc/rfc9745).
+  static const String deprecation = 'Deprecation';
+
+  /// The `Sunset` header: when the resource may stop answering (an HTTP date).
+  /// See [RFC 8594](https://www.rfc-editor.org/rfc/rfc8594).
+  static const String sunset = 'Sunset';
+
   /// The HTTP `Link` header.
   /// See [RFC 5988](https://tools.ietf.org/html/rfc5988).
   static const String link = 'Link';

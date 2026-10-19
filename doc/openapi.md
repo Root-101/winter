@@ -187,7 +187,7 @@ give the example every field.
 | `responses`   | other statuses: `{409: 'Already registered'}`                       |
 | `query`       | the query params the handler reads: `[QueryParam('page', JsonSchema.integer(minimum: 1))]` |
 | `operationId` | an id for the clients generated from the document                   |
-| `deprecated`, `hidden` | `RouteDocs.none` leaves a route out                         |
+| `deprecated`, `hidden` | `RouteDocs.none` leaves a route out; a route with a `DeprecationFilter` is `deprecated` by itself |
 
 ### Serving the document
 

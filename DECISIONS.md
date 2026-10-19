@@ -313,6 +313,13 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
 - **Filters run sorted by `order`**, stable (global first, then the route's, parents before
   children); CORS (-100) and the security headers (-99) first, so every response has them. An
   error becomes a response where it's thrown, so a filter never receives an exception.
+- **Deprecation is a filter** (`DeprecationFilter`), not a field of `Route`: a parent deprecates a
+  whole version and its children inherit it the way they inherit any filter, its errors carry the
+  headers too (the chain answers them where they're thrown), and OpenAPI finds it as it finds the
+  `AuthFilter`s. It sends the final RFCs: `Deprecation` as a Structured Field Date (`@seconds`,
+  RFC 9745; the `true` of the drafts is gone), `Sunset` as an HTTP date (RFC 8594, never before the
+  deprecation), and `Link`s `rel="deprecation"` and `rel="successor-version"` appended after the
+  ones of the response.
 
 ## 10. The HTTP layer
 
@@ -421,7 +428,8 @@ Guide: [`doc/openapi.md`](doc/openapi.md).
 - **What Winter knows, it writes by itself**: the paths and methods, the path params (an integer
   from `[0-9]+`/`\d+`, a `pattern` from another regex), the security of the `AuthFilter`s that run
   for each route (found by running their `shouldFilter` with a request to it, the way the server
-  does), and the errors as Problem Details (400, 401/403, 404, 415, 422, 429).
+  does), the errors as Problem Details (400, 401/403, 404, 415, 422, 429), and `deprecated` for a
+  route with a `DeprecationFilter`.
 - **The bodies come from examples**, not from annotations nor code generation (the project avoids
   both): an example is written by the object mapper, so its schema is what the API really sends,
   and the rules of its `validate()` become the constraints. Those rules are recorded without being

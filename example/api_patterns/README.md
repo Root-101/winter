@@ -12,7 +12,7 @@ headers, `ApiException`). One file per case, each a server of its own: `dart run
 | File download | [`file_download.dart`](lib/file_download.dart) | A CSV export streamed row by row, `Content-Disposition` with a name that isn't ASCII, `inline` vs `attachment` |
 | Long-running jobs | [`async_jobs.dart`](lib/async_jobs.dart) | `202 Accepted` + `Location` of the job, polling with `Retry-After`, `303 See Other` to the result |
 | Idempotency keys | [`idempotency_keys.dart`](lib/idempotency_keys.dart) | A route filter that replays the first answer of a retried POST (`Idempotency-Key`), 422 for another body, 409 while running |
-| API versioning | [`api_versioning.dart`](lib/api_versioning.dart) | `/v1` and `/v2` as parent routes, `Deprecation`/`Sunset`/`Link` added by a filter of the old version |
+| API versioning | [`api_versioning.dart`](lib/api_versioning.dart) | `/v1` and `/v2` as parent routes, a `DeprecationFilter` in the old version: `Deprecation`/`Sunset`/`Link` on its responses and `deprecated` in OpenAPI |
 
 Guides: [requests and responses](../../doc/requests-and-responses.md), [filters](../../doc/filters.md),
 [error handling](../../doc/error-handling.md).
