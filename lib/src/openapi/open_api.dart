@@ -372,6 +372,7 @@ class _OpenApiBuilder {
         'title': {'type': 'string', 'example': 'Not Found'},
         'status': {'type': 'integer', 'example': 404},
         'detail': {'type': 'string'},
+        'instance': {'type': 'string', 'example': '/users/42'},
         'requestId': {'type': 'string'},
       },
       'required': ['type', 'title', 'status'],

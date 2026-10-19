@@ -23,6 +23,7 @@ void main() {
       'title': 'Conflict',
       'status': 409,
       'detail': 'Only 3 left of pen',
+      'instance': '/orders',
     });
   });
 
