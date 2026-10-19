@@ -245,7 +245,7 @@ void main() {
   });
 
   group('A custom message is translated with the locale', () {
-    /// Like the getter of an app over its own slang messages: `AppMessages get t => ...(requestLocale)`
+    /// Like the getter of an app over its own slang messages: `AppMessages get intl => ...(requestLocale)`
     String custom() =>
         requestLocale.languageCode == 'es' ? 'Personalizado' : 'Custom';
 

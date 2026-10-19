@@ -68,7 +68,7 @@ void main() async {
 | extensions  | Members of your own (`"violations"` in a 422, `"email"` below)                   |
 
 The `title` is never translated: it's the standard reason phrase. What the user reads is the
-`detail`, which your app writes in the language of the request (`t.users.notFound(id: id)`).
+`detail`, which your app writes in the language of the request (`intl.users.notFound(id: id)`).
 
 The names of the members of Winter are fixed, whatever the `fieldNaming` of the object mapper:
 `requestId` (in a 500), `violations` and their `fieldName`, `message`, `code` and `params`. A
@@ -219,9 +219,9 @@ trace).
 ### A translated `detail`
 
 ```dart
-AppMessages get t => appMessages(requestLocale); // a getter, never a final
+AppMessages get intl => appMessages(requestLocale); // a getter, never a final
 
-throw NotFoundException(detail: t.orders.notFound(id: id));
+throw NotFoundException(detail: intl.orders.notFound(id: id));
 ```
 
 The response gets `Vary: Accept-Language` by itself, since it depends on the language.

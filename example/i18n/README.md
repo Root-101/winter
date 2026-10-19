@@ -15,9 +15,9 @@ Answers in the language of each request (`Accept-Language`), with typed translat
    dart run slang
    ```
    It writes `lib/i18n/messages.g.dart`, `messages_en.g.dart` and `messages_es.g.dart`.
-3. **The getter `t`** (`lib/i18n/t.dart`) returns the messages in the language of the request:
+3. **The getter `intl`** (`lib/i18n/intl.dart`) returns the messages in the language of the request:
    ```dart
-   AppMessages get t => _cache[AppLocaleUtils.parseLocaleParts(
+   AppMessages get intl => _cache[AppLocaleUtils.parseLocaleParts(
      languageCode: requestLocale.languageCode,
      countryCode: requestLocale.countryCode,
    )]!;
@@ -30,17 +30,17 @@ Answers in the language of each request (`Accept-Language`), with typed translat
    );
    ```
 
-## Where `t` is used
+## Where `intl` is used
 
-- **Validator with a text of the app**: `notBlank(message: t.orders.productRequired)` in
+- **Validator with a text of the app**: `notBlank(message: intl.orders.productRequired)` in
   `OrderRequest.validate()`. The built-in texts of Winter (`notNull`, `min`...) are translated too,
   so a 422 mixes both, all in the same language.
-- **Service**: `OrderService.find` throws `NotFoundException(detail: t.orders.notFound(id: id))`
+- **Service**: `OrderService.find` throws `NotFoundException(detail: intl.orders.notFound(id: id))`
   without receiving the request.
-- **Handler**: `t.greetings.hello(name: requestAuthentication!.name)` uses both the language and
+- **Handler**: `intl.greetings.hello(name: requestAuthentication!.name)` uses both the language and
   the user of the request.
 
-Every response whose code read the language (`t`, `requestLocale` or `request.locale`) gets
+Every response whose code read the language (`intl`, `requestLocale` or `request.locale`) gets
 `Vary: Accept-Language` automatically, so caches keep one copy per language. A response that never
 reads it (e.g. `GET /orders/1` when the order exists) does not vary.
 
@@ -60,5 +60,5 @@ curl -H 'X-User: adam' -H 'Accept-Language: es-MX' localhost:8080/hello   # Hola
 ## Tests
 
 `test/i18n_test.dart` runs the whole pipeline in memory with `WinterTestClient` (no port). To test
-code that uses `t` outside the server, give it a language with
+code that uses `intl` outside the server, give it a language with
 `RequestScope.run(RequestScope(locale: WinterLocale.spanish), () => ...)`.

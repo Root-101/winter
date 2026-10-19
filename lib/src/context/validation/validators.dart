@@ -8,7 +8,7 @@ import 'package:winter/winter.dart';
 ///   (`requestLocale`), and the violation has a `code` (the key of the text) and its `params`.
 /// - With `stopOnFailure`, a failure skips the next validators of the field.
 
-/// Messages of Winter in the language of the request in progress, like the `t` of an app
+/// Messages of Winter in the language of the request in progress, like the `intl` of an app
 WinterMessages get _intl => winterMessages(requestLocale);
 
 /// For any type of value
