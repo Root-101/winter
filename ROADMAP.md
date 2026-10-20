@@ -277,7 +277,7 @@ exists on pub.dev (0.0.7, the same repository), so each release is a new version
 1. [x] **`1.0.0-rc.1` published on pub.dev on 2026-10-09**: `pana` 160/160, merged into `main`
    (`release/1.0.0-rc.1`), tag `v1.0.0-rc.1`. pub.dev keeps 0.0.7 as the latest stable until
    1.0.0, and the installation commands name the version (pub only picks a prerelease when asked).
-2. [ ] Use it in a real project for a few weeks (feather-io). Already in *Powered by Winter* in
+2. [x] Use it in a real project for a few weeks (feather-io). Already in *Powered by Winter* in
    the README, with a teaser of Almond.
 
 ### 6.1 CI 🟢 (after 1.0)
