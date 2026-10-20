@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:winter/winter.dart';
@@ -22,7 +23,7 @@ import 'package:winter/winter.dart';
 /// - The first request runs, and its response is kept for [expiry].
 /// - The same key and the same body: the kept response, with `Idempotent-Replayed: true`, and the
 ///   handler doesn't run again.
-/// - The same key with another body: a 422. While the first one is still running: a 409.
+/// - The same key with another body or query: a 422. While the first one is still running: a 409.
 /// - No key (when [required]), or one that isn't valid: a 400.
 ///
 /// A response of 500 or more, a 408, a 425 or a 429 is not kept: the client may try again with the
@@ -102,14 +103,19 @@ class IdempotencyFilter extends Filter {
       );
     }
     final String? owner = await partition?.call(request);
-    final String id = [
+    // A JSON list, not the parts joined: a key or a partition with a space can't make the id of
+    // another one (`carol` + `k2 x` and `carol k2` + `x`)
+    final String id = jsonEncode([
       request.method,
       request.requestedUri.path,
-      ?owner,
+      owner,
       key,
-    ].join(' ');
+    ]);
     // bytes() is cached: the handler reads the same body with body<T>()
-    final String fingerprint = _fingerprint(await request.bytes());
+    final String fingerprint = _fingerprint(
+      request.requestedUri.query,
+      await request.bytes(),
+    );
 
     final IdempotencyRecord? record = await store.reserve(
       id,
@@ -130,7 +136,8 @@ class IdempotencyFilter extends Filter {
       }
       return ResponseEntity<Uint8List>(
         kept.statusCode,
-        body: kept.body,
+        // A response without body is replayed without one (and without a Content-Type)
+        body: kept.body.isEmpty ? null : kept.body,
         headers: {...kept.headers, HttpHeader.idempotentReplayed: 'true'},
       );
     }
@@ -171,14 +178,16 @@ class IdempotencyFilter extends Filter {
         status != 408 &&
         status != 425 &&
         status != 429 &&
-        response.body() is! Stream;
+        !response.isStreamed;
   }
 
-  /// FNV-1a of 64 bits of [bytes], with their length: enough to tell two bodies of the same
-  /// client apart (it's not a cryptographic hash, and it doesn't need to be)
-  static String _fingerprint(Uint8List bytes) {
+  /// FNV-1a of 64 bits of the [query] and the [bytes] of the body, with their length: enough to
+  /// tell two requests of the same client apart (it's not a cryptographic hash, and it doesn't
+  /// need to be)
+  static String _fingerprint(String query, Uint8List bytes) {
     var hash = 0xcbf29ce484222325;
-    for (final int byte in bytes) {
+    // The query, then a byte no UTF-8 text has, then the body
+    for (final int byte in [...utf8.encode(query), 0xFF, ...bytes]) {
       // The ints of the VM have 64 bits and wrap around, as FNV needs
       hash = (hash ^ byte) * 0x100000001b3;
     }
@@ -254,11 +263,20 @@ class InMemoryIdempotencyStore implements IdempotencyStore {
   /// The time now (`DateTime.now` by default; a fake one in tests)
   final DateTime Function() clock;
 
+  /// The most keys kept: a new one past it forgets the oldest, so a client sending a new key with
+  /// every request can't grow the memory without end
+  final int maxKeys;
+
+  /// In the order they were reserved: the first is the oldest
   final Map<String, (IdempotencyRecord, DateTime expires)> _keys = {};
   DateTime? _lastPurge;
 
-  /// An empty store
-  InMemoryIdempotencyStore({this.clock = DateTime.now});
+  /// An empty store of at most [maxKeys]
+  InMemoryIdempotencyStore({this.clock = DateTime.now, this.maxKeys = 100000}) {
+    if (maxKeys < 1) {
+      throw ArgumentError.value(maxKeys, 'maxKeys', 'Must be at least 1');
+    }
+  }
 
   /// How many keys are kept (to watch the memory)
   int get size => _keys.length;
@@ -273,6 +291,8 @@ class InMemoryIdempotencyStore implements IdempotencyStore {
     _purge(now);
     final (IdempotencyRecord, DateTime)? entry = _keys[key];
     if (entry != null && now.isBefore(entry.$2)) return entry.$1;
+    _keys.remove(key);
+    if (_keys.length >= maxKeys) _keys.remove(_keys.keys.first);
     _keys[key] = (IdempotencyRecord(fingerprint: fingerprint), now.add(expiry));
     return null;
   }
