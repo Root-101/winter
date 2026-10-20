@@ -18,6 +18,7 @@ void main() {
       expect(trace.spanId, isNot(parentId));
       expect(trace.sampled, isTrue);
       expect(trace.traceState, 'congo=t61');
+      expect(trace.toString(), 'TraceContext(${trace.traceparent})');
       expect(TraceContext.parse('00-$traceId-$parentId-00')!.sampled, isFalse);
     });
 

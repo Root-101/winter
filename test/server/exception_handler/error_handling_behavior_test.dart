@@ -562,6 +562,19 @@ void main() {
         ),
       );
     });
+
+    test('a value that is not an object is a 400', () {
+      expect(
+        () => om.deserialize<ProblemDetails>('x'),
+        throwsA(
+          isA<DeserializationException>().having(
+            (e) => e.message,
+            'message',
+            r'$: expected an object, got a string',
+          ),
+        ),
+      );
+    });
   });
 
   group('A broken ExceptionHandler', () {

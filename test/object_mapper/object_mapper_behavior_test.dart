@@ -751,6 +751,21 @@ void main() {
   });
 
   group('A hostile body', () {
+    test('thousands of new keys are renamed right, past the cache', () {
+      final ObjectMapper snake = ObjectMapper(
+        fieldNaming: FieldNaming.snakeCase,
+        deserializers: [Deserializer<_Keys>.json(_Keys.new)],
+      );
+      final Map<String, dynamic> body = snake
+          .decode<_Keys>(
+            jsonEncode({for (var i = 0; i < 3000; i++) 'key_$i': i}),
+          )
+          .json;
+
+      expect(body['key2999'], 2999);
+      expect(body, hasLength(3000));
+    });
+
     String nested(int depth) => '${'{"child":' * depth}null${'}' * depth}';
 
     for (final naming in [FieldNaming.none, FieldNaming.snakeCase]) {
@@ -1772,4 +1787,11 @@ class _Node {
       _Node(json.field<_Node?>('child'));
 
   int get depth => 1 + (child?.depth ?? 0);
+}
+
+/// The object a `fromJson` receives, as it is
+class _Keys {
+  final Map<String, dynamic> json;
+
+  const _Keys(this.json);
 }

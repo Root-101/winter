@@ -56,47 +56,28 @@ void main() {
     );
   });
 
-  test('Test /parent.*/child-1', () async {
-    String urlToTest = '/parent_hello_world/child-1';
-    TestResponse response = await client.get(urlToTest);
+  test('the regex of a parent matches before each child', () async {
+    for (final (String url, String child) in [
+      ('/parent_hello_world/child-1', 'child-1'),
+      ('/parent_hi/child-2', 'child-2'),
+    ]) {
+      final TestResponse response = await client.get(url);
 
-    expect(response.statusCode, 200);
-    expect(response.body, 'Return from response /parent/child-1');
+      expect(response.statusCode, 200, reason: url);
+      expect(response.body, 'Return from response /parent/$child');
+    }
   });
 
-  test('Test /parent.*/child-2', () async {
-    String urlToTest = '/parent_hi/child-2';
-    TestResponse response = await client.get(urlToTest);
+  test('a regex route matches any rest of the path, / included', () async {
+    for (final String url in ['/single-route-alleluia', '/single-route/bye']) {
+      final TestResponse response = await client.get(url);
 
-    expect(response.statusCode, 200);
-    expect(response.body, 'Return from response /parent/child-2');
+      expect(response.statusCode, 200, reason: url);
+      expect(response.body, 'Return from response /single-route');
+    }
   });
 
-  test('Test /single-route.* #1', () async {
-    String urlToTest = '/single-route-alleluia';
-    TestResponse response = await client.get(urlToTest);
-
-    expect(response.statusCode, 200);
-    expect(response.body, 'Return from response /single-route');
-  });
-
-  test('Test /single-route.* #2', () async {
-    String urlToTest = '/single-route/bye';
-    TestResponse response = await client.get(urlToTest);
-
-    expect(response.statusCode, 200);
-    expect(response.body, 'Return from response /single-route');
-  });
-
-  test('Test /route-parent', () async {
-    String urlToTest = '/route-parent';
-    TestResponse response = await client.get(urlToTest);
-
-    expect(response.statusCode, 200);
-    expect(response.body, 'Return from response /route-parent');
-  });
-
-  test('Test /route-parent/child', () async {
+  test('a regex child after a static parent', () async {
     String urlToTest = '/route-parent/child_123546789';
     TestResponse response = await client.get(urlToTest);
 

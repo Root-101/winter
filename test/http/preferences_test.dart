@@ -14,6 +14,10 @@ void main() {
       expect(preferences.respondAsync, isTrue);
       expect(preferences.handling, 'lenient');
       expect(preferences.all.keys, ['return', 'respond-async', 'handling']);
+      expect(
+        preferences.toString(),
+        'Preferences(return, respond-async, handling)',
+      );
       // A parameter of a preference is not a preference of its own
       expect(preferences.wait, isNull);
       expect(preferences.all['respond-async']!.params, {'wait': '10'});
