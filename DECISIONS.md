@@ -473,7 +473,8 @@ Guide: [`doc/openapi.md`](doc/openapi.md).
 Guide: [`doc/scheduling.md`](doc/scheduling.md).
 
 - **Its own cron parser, no dependency**: 5 fields with ranges, steps, lists, names and macros,
-  the day of the month and of the week matched as in cron (either one when both are restricted).
+  the day of the month and of the week matched as in cron (either one when both are restricted,
+  both when one starts with `*`, so `*/2` keeps its step).
   No seconds and no `L`/`W`/`#`: they cover rare cases, and a `Schedule` of your own (`next`)
   covers anything else. An invalid expression fails when the task is added, naming the field.
 - **Local time by default**, as cron, and `utc: true`. The calendar is walked in UTC fields and
