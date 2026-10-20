@@ -65,14 +65,17 @@ Guide: [`doc/object-mapper.md`](doc/object-mapper.md).
   `fromJson` (casts, `json.field`, generated code) without declaring the fields twice. Off by
   default: a client that sends more than the model knows (a newer version) keeps working.
 - **Strict primitives**: JSON has one number type, so `12.0` is an `int`; a string is never a
-  number nor a bool (`"12"` is a 400).
+  number nor a bool (`"12"` is a 400), and an integer beyond 64 bits is a 400, never clamped.
+- **Limits against a hostile body**: at most 128 objects inside each other (deeper is a 400), each
+  object renamed by `fieldNaming` once, and the cache of renamed keys bounded (the keys come from
+  the client).
 - **Errors say where, never what Dart said**: `$.items[1]: expected a string, got an integer`.
   The message never contains a Dart type (an internal, maybe obfuscated, name), a cast, a file path
   nor the value sent. Inside a `fromJson` the path is unknown: `$: invalid value`, with the original
   error in `cause` and its type logged at debug. A `fromJson` that deserializes its children loses
   their path; known limitation for 1.0.
-- **`DateTime` is written in UTC**: a local time without offset can't be read correctly in another
-  time zone.
+- **`DateTime` is written in UTC**, and one read without an offset is taken as UTC: a local time
+  can't be read correctly in another time zone, and the server's own would change the instant.
 - **Options apply to objects only**: `includeNulls` and `fieldNaming` touch the maps of `toJson()`,
   of a serializer and of `Deserializer.json`, never a `Map` used as data. `fieldNaming` renames the
   whole object given to `Deserializer.json` (a parent reads its children with Dart names), and is
@@ -206,7 +209,8 @@ Guide: [`doc/logging.md`](doc/logging.md).
 - **The logs never contain the data of a request**: no bodies, query strings, tokens, nor the
   message of a deserialization error (it may contain the value sent); only the type of the error.
 - **Every request has an id**, always: its `X-Request-Id` when it's valid (1–128 safe characters,
-  so a header can't inject lines into the logs), or a new UUID. It's in `requestId`, the response,
+  so a header can't inject lines into the logs), or the trace id of a valid `traceparent`, or a new
+  UUID. It's in `requestId`, the response,
   every log of the request and a 500. It turns "it failed at 10:31" into the logs of that request.
 - **W3C Trace Context, not a tracer**: a valid `traceparent` (strict parsing: lowercase hex, no
   ids of zeros, `ff` invalid, only one header) is continued with a new span id per request, and
@@ -276,7 +280,8 @@ Guide: [`doc/security.md`](doc/security.md).
 Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
 
 - **The route table is checked at start**: an invalid path or a duplicated route is a `StateError`
-  (`RouterConfig.fail()`), found at start instead of as a 404. A duplicate is the same key, or the
+  (`DefaultOnInvalidUrl.fail()`/`DefaultOnDuplicatedRoute.fail()`, the defaults of `RouterConfig`),
+  found at start instead of as a 404. A duplicate is the same key, or the
   same method and shape (`/users/{id}` and `/users/{name}`: the second could never be reached).
   Only the literal parts of a path are validated; params and regex can have any character.
 - **The resolved `Route` travels in the request** (`request.route`), not as text: the server
@@ -319,11 +324,13 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
 - **Idempotency keys are a filter** (`IdempotencyFilter`) over an async `IdempotencyStore`, like the
   rate limiter: the handler stays plain, and a shared store (Redis, a table) implements the same
   interface with an atomic `reserve`. It follows the IETF draft (a 400 without a key, a 422 for the
-  same key with another body, a 409 while it runs, the kept answer for a retry, success or error),
+  same key with another body or query, a 409 while it runs, the kept answer for a retry, success or error),
   reads the key quoted or bare, and keeps neither a failure of the server nor a temporary one
   (408, 425, 429) nor a stream, so a retry can still succeed. The key is scoped by method, path
   and an optional `partition` (the user), never global: a key alone would hand one user's answer
-  to another. The body is compared by a 64-bit FNV-1a fingerprint, not a cryptographic hash: there
+  to another; the parts are a JSON list, so a space in a key or a partition can't forge the id of
+  another. The in-memory store keeps at most `maxKeys` (the oldest go first). The body and the
+  query are compared by a 64-bit FNV-1a fingerprint, not a cryptographic hash: there
   is no `crypto` dependency, and a collision only matters between two bodies of the same client
   with the same key. `Idempotent-Replayed: true` (not in the draft) tells a replay apart.
 - **Deprecation is a filter** (`DeprecationFilter`), not a field of `Route`: a parent deprecates a
@@ -360,7 +367,7 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
   no cache mixes the answers.
 - **Winter serves with `dart:io` directly**, with its own request and response, without shelf: its
   public API doesn't depend on another package (nor on its breaking changes), and an empty endpoint
-  is close to the `dart:io` ceiling (~83 %, `benchmark/http_benchmark.dart`).
+  is close to the `dart:io` ceiling (~85 %, `benchmark/http_benchmark.dart`).
 - **The request is read-only** (headers, query and path params): a filter passes a copy to the
   chain. `headers` (one value, case insensitive) and `headersAll` (every value); the headers of
   `dart:io` are read as a view, not copied. The body is read once and shared by the copies;
@@ -392,8 +399,10 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
   doesn't exist, and a slow upload would fail): a filter right after CORS and the security headers
   (order -98), so the 503 is a Problem Details with their headers and every other filter is timed.
   A `Future` can't be cancelled: the handler is abandoned, its late result ignored and a late error
-  logged; the response is sent, so the request stops holding the graceful shutdown. Only building
-  the response is timed, not sending it (streams).
+  logged; the response is sent, so the request stops holding the graceful shutdown. Its scope
+  ends when the handler does (`RequestScope.holdUntil`): disposing its scoped dependencies at the
+  503 would give its connection to the next request while it still uses it. Only building the
+  response is timed, not sending it (streams).
 - **`Winter.buildHandler`** returns the pipeline as a `RequestHandler`; `WinterTestClient` calls it
   in memory, so tests run the real pipeline.
 - **Forms and uploads**: `formData()` reads a whole form (`application/x-www-form-urlencoded` or
@@ -428,7 +437,9 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
 - **One library**, `package:winter/winter.dart`. Internal helpers stay in `lib/src` and are hidden
   with `export ... hide`: `addVary`, `limitBodySize`, `isValidUri`, the router helpers,
   `writeResponse`, the construction from an `HttpRequest`, the multipart parser, Winter's own
-  translations and the console styles. Public on purpose: `internalServerErrorResponse` and `defaultLogUnhandledError`
+  translations, the console styles, the helpers of the trusted proxies and of the conditional
+  requests, `healthHandler`, the OpenAPI and Swagger handlers, the WebSocket upgrade and
+  `onServerClosing`. Public on purpose: `internalServerErrorResponse` and `defaultLogUnhandledError`
   (for an `ExceptionHandler` of the app), the defaults of the filters (`defaultLog*`,
   `defaultClientId`), and the shortcuts `di`, `om`, `eh`, `env`, `logger` (short on purpose; the
   long form is `Winter.context`).
@@ -471,7 +482,8 @@ Guide: [`doc/openapi.md`](doc/openapi.md).
 Guide: [`doc/scheduling.md`](doc/scheduling.md).
 
 - **Its own cron parser, no dependency**: 5 fields with ranges, steps, lists, names and macros,
-  the day of the month and of the week matched as in cron (either one when both are restricted).
+  the day of the month and of the week matched as in cron (either one when both are restricted,
+  both when one starts with `*`, so `*/2` keeps its step).
   No seconds and no `L`/`W`/`#`: they cover rare cases, and a `Schedule` of your own (`next`)
   covers anything else. An invalid expression fails when the task is added, naming the field.
 - **Local time by default**, as cron, and `utc: true`. The calendar is walked in UTC fields and

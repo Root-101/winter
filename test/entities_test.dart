@@ -7,7 +7,7 @@ import 'package:winter/winter.dart';
 
 void main() {
   group('RequestEntity copyWith', () {
-    test('should return an object with identical fields when no parameters are provided', () async {
+    test('copyWith() with no arguments keeps every field', () async {
       final uri = Uri.parse('http://localhost/test?q=1');
       final original = RequestEntity(
         'POST',
@@ -118,23 +118,10 @@ void main() {
 
       expect(results[0], results[1]);
     });
-
-    test('copyWith after a typed body keeps the raw body', () async {
-      final request = jsonRequest();
-      await request.body<Map<String, dynamic>>();
-
-      final copy = request.copyWith(headers: {'x': '1'});
-
-      expect(await copy.body<String>(), '{"name":"Adam","age":30}');
-      expect(await copy.body<Map<String, dynamic>>(), {
-        'name': 'Adam',
-        'age': 30,
-      });
-    });
   });
 
   group('ResponseEntity copyWith', () {
-    test('should return an object with identical fields when no parameters are provided', () {
+    test('copyWith() with no arguments keeps every field', () {
       final original = ResponseEntity<Map>(
         200,
         body: {'id': 1},
@@ -155,7 +142,7 @@ void main() {
       expect(copy.body()['id'], equals(1));
     });
 
-    test('should allow overriding fields', () {
+    test('the status, body and headers given replace the old ones', () {
       final original = ResponseEntity.ok(body: 'old');
 
       final copy = original.copyWith(
@@ -263,8 +250,10 @@ void main() {
 
       expect(request.pathParams, isEmpty);
     });
+  });
 
-    test('query params', () {
+  group('RequestEntity query params', () {
+    test('one value per name, and the method', () {
       final request = RequestEntity(
         'GET',
         Uri.parse('http://x/search?q=dart&page=2'),
@@ -274,22 +263,25 @@ void main() {
       expect(request.httpMethod, HttpMethod.get);
     });
 
-    test('repeated query params', () {
-      final request = RequestEntity(
-        'GET',
-        Uri.parse('http://x/search?tag=a&q=dart&tag=b'),
-      );
+    test(
+      'a repeated name keeps the last in queryParams, all in queryParamsAll',
+      () {
+        final request = RequestEntity(
+          'GET',
+          Uri.parse('http://x/search?tag=a&q=dart&tag=b'),
+        );
 
-      expect(request.queryParams, {'tag': 'b', 'q': 'dart'});
-      expect(request.queryParamsAll, {
-        'tag': ['a', 'b'],
-        'q': ['dart'],
-      });
-      expect(
-        RequestEntity('GET', Uri.parse('http://x/')).queryParamsAll,
-        isEmpty,
-      );
-    });
+        expect(request.queryParams, {'tag': 'b', 'q': 'dart'});
+        expect(request.queryParamsAll, {
+          'tag': ['a', 'b'],
+          'q': ['dart'],
+        });
+        expect(
+          RequestEntity('GET', Uri.parse('http://x/')).queryParamsAll,
+          isEmpty,
+        );
+      },
+    );
   });
 }
 

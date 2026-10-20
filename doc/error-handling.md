@@ -116,17 +116,21 @@ the names you give them.
 
 ### The shortcuts
 
-`ApiException(status, detail:, type:, title:, extensions:, headers:)` works for any status of
-`StatusCode`. The common ones have a shortcut with the same parameters:
+`ApiException(status, detail:, type:, title:, instance:, extensions:, headers:)` works for any
+status of `StatusCode`. The common ones have a shortcut with the same parameters:
 
 | Status | Exception                          | Status | Exception                          |
 |--------|------------------------------------|--------|------------------------------------|
-| 400    | `BadRequestException`              | 413    | `PayloadTooLargeException`         |
-| 401    | `UnauthorizedException`            | 415    | `UnsupportedMediaTypeException`    |
-| 403    | `ForbiddenException`               | 422    | `UnprocessableEntityException`, `ValidationException` |
+| 400    | `BadRequestException`              | 415    | `UnsupportedMediaTypeException`    |
+| 401    | `UnauthorizedException`            | 422    | `UnprocessableContentException`, `ValidationException` |
+| 403    | `ForbiddenException`               | 428    | `PreconditionRequiredException`    |
 | 404    | `NotFoundException`                | 429    | `TooManyRequestsException(retryAfter:)` |
 | 405    | `MethodNotAllowedException(allowedMethods)` | 500 | `InternalServerErrorException`  |
 | 409    | `ConflictException`                | 503    | `ServiceUnavailableException(retryAfter:)` |
+| 412    | `PreconditionFailedException`      | 413    | `ContentTooLargeException`         |
+
+The reason phrases (the `title`) are those of RFC 9110: 413 is `Content Too Large` and 422
+`Unprocessable Content`.
 
 Most of them are `const`: `throw const NotFoundException()`.
 
@@ -145,7 +149,8 @@ throw ApiException(
   "type": "https://api.example.com/errors/email-taken",
   "title": "Conflict",
   "status": 409,
-  "detail": "The email is already registered"
+  "detail": "The email is already registered",
+  "instance": "/users"
 }
 ```
 

@@ -6,7 +6,8 @@ REST API. Not at the level of Spring, but with the basics complete, stable and d
 **Legend:** 🔴 blocks 1.0 · 🟡 should be in 1.0 · 🟢 after 1.0 (1.x) · ✅ done · ⏸️ on hold
 
 > **Now: `1.0.0-rc.1` is on pub.dev (2026-10-09)**, to be used in a real project before 1.0.0
-> (6.4). Phases 1 to 7 are done. The CI (6.1) comes after 1.0.
+> (6.4). Phases 1 to 9 are done (8: the standards, after the rc; 9: the review after them). The CI
+> (6.1) comes after 1.0.
 
 The decisions behind each point are in `DECISIONS.md` (§ numbers below), the behavior in the
 tests, and the usage in `doc/`.
@@ -164,6 +165,68 @@ The [release review](#release-review-before-every-release), the first time (2026
   **160/160** on Linux (Docker). The benchmarks showed no regression; refreshing
   `doc/benchmarks.md` needs a quiet machine.
 
+### Phase 8: standards ✅
+
+The behaviors of the framework moved to the RFCs and drafts that clients, gateways and tracing
+tools already read, by priority (impact against effort). Each one with its guide, decision,
+example case and tests.
+
+- **RFC 9457 complete (§4):** `instance` (the path, never the query), `ProblemDetails.fromJson`
+  (lenient, §3.1), `application/problem+json` only for a `ProblemDetails` body.
+- **RateLimit headers (§8):** `RateLimit-Policy`/`RateLimit` of the IETF draft instead of
+  `X-RateLimit-*`, a `policy` per filter.
+- **W3C Trace Context (§7):** `traceparent`/`tracestate`, `requestTrace`, a span per request,
+  `traceId`/`spanId` in `JsonLogger`, the trace id as the request id.
+- **Trusted proxies (§8):** `ServerConfig.trustedProxies` (`Forwarded` of RFC 7239 or
+  `X-Forwarded-*`, one kind only) for `clientIp()` and `requestedUri`.
+- **Conditional requests (§10):** the 304 of the server for any `GET`, `checkPreconditions`
+  (412, 428), static files on the same code.
+- **Deprecation (§9):** `DeprecationFilter` (`Deprecation` RFC 9745, `Sunset` RFC 8594, links,
+  `deprecated` in OpenAPI).
+- **`Link` (§10):** `WebLink` and `WebLink.pages` for pagination (RFC 8288).
+- **Idempotency keys (§9):** `IdempotencyFilter` over an `IdempotencyStore` (IETF draft).
+- **`Prefer` (§10):** `request.preferences` (RFC 7240), `Vary: Prefer` by itself.
+- **Health (§9):** `Route.health` answers `application/health+json` (`pass`/`fail`).
+
+### Phase 9: third full review ✅
+
+The [release review](#release-review-before-every-release) after phase 8 (2026-10-19), with a
+quality audit of the whole code: five reviews at once (the server, the context modules, security
+against a real server, the tests, the docs and the API), then every finding fixed with its test.
+
+- **Security (real server):** the URI of a request came from `dart:io`'s `requestedUri`, which
+  takes `X-Forwarded-Host`/`-Proto` from any client and glues them before the path: a client chose
+  the host, the scheme and even the routed path (`X-Forwarded-Host: h/static/ENV~1?` read a
+  `.env`). Now it's the request target, the scheme of the server and a valid `Host`. Static files
+  on Windows served hidden files by their 8.3 short name (`ENV~1`): the real names are checked
+  too. Two idempotency partitions could share an id through a space; CORS echoed any
+  `Access-Control-Request-Headers` (a 500 on demand); `Prefer` had no size limit.
+- **Bugs:** cron `*/2` in the day of the month ran every day; a typed response without body broke
+  `IdempotencyFilter` and locked its key; the query string wasn't part of an idempotent request;
+  a request that timed out disposed its scoped dependencies under the handler still running; every
+  SSE connection left a listener until shutdown; typed params took `NaN`, `Infinity` and hex; the
+  422 named the fields with the global mapper when `body<T>()` had its own; integers beyond 64 bits
+  were clamped; a date without offset was read in the server's time zone; a hidden parent didn't
+  hide its children in OpenAPI.
+- **Limits:** objects nested more than 128 levels are a 400 (they cost seconds), the cache of
+  renamed keys is bounded, `InMemoryIdempotencyStore` keeps at most `maxKeys`, an IPv6 client
+  counts by its /64 in the rate limiter.
+- **API:** `clientIp` is a getter, `RequestPreconditionsX`, the reason phrases of RFC 9110
+  (`ContentTooLargeException`, `UnprocessableContentException`, 421), no `Set-Cookie2`, `Warning`
+  nor 509, the categories of the request getters, `Scheduler.cron(runOnStart:)`.
+- **Tests:** from 1237 to 1215, without overlaps, without the real clock, coverage 99.7 % (the
+  rest: other platforms, races and unreachable code, listed in `CLAUDE.md`).
+- **Docs:** 21 outdated sentences (Problem Details without `instance`, hand-written health checks,
+  `change()`, the pipeline of `architecture.md`...), every snippet analyzed against the API (none
+  broken), no broken link.
+- **Checks:** format, analyze, tests, every example, `dart doc`, the publish dry run, `pana`
+  **160/160** on Linux (Docker), `messages*.g.dart` up to date, `dart pub outdated` only minor
+  updates. Benchmarks without a regression: 81–85 % of `dart:io` (noisy machine), the router
+  ~225 000 req/s, the mapper as before.
+- **Not done, on purpose:** `fieldNaming` renames the whole object given to `Deserializer.json`
+  (map fields included) but writes only the top of a `toJson()`, a known limitation (§2). A cycle
+  of async dependencies found concurrently waits forever (`ready()` is safe; documented).
+
 ---
 
 ## Release review (before every release)
@@ -214,7 +277,7 @@ exists on pub.dev (0.0.7, the same repository), so each release is a new version
 1. [x] **`1.0.0-rc.1` published on pub.dev on 2026-10-09**: `pana` 160/160, merged into `main`
    (`release/1.0.0-rc.1`), tag `v1.0.0-rc.1`. pub.dev keeps 0.0.7 as the latest stable until
    1.0.0, and the installation commands name the version (pub only picks a prerelease when asked).
-2. [ ] Use it in a real project for a few weeks (feather-io). Already in *Powered by Winter* in
+2. [x] Use it in a real project for a few weeks (feather-io). Already in *Powered by Winter* in
    the README, with a teaser of Almond.
 
 ### 6.1 CI 🟢 (after 1.0)
@@ -222,37 +285,6 @@ exists on pub.dev (0.0.7, the same repository), so each release is a new version
 Until then the same checks run by hand. Notes: run on a push to any branch and on pull requests;
 `pana` fails on Windows (start it report-only on Linux); Codecov needs `CODECOV_TOKEN`.
 
-- [x] RFC 9457 "Problem Details for HTTP APIs": the model and `application/problem+json` already
-  existed; added `instance` (the path of the request by default), `ProblemDetails.fromJson`
-  (lenient, §3.1) and `application/problem+json` only for a `ProblemDetails` body (§4).
-- [x] What other standards to adopt, in this order (priority = impact against effort):
-  1. [x] **RateLimit headers** (`draft-ietf-httpapi-ratelimit-headers`): `RateLimit-Policy` and
-     `RateLimit` instead of `X-RateLimit-*`, a `policy` name per filter (§8). Impact high, effort
-     low.
-  2. [x] **W3C Trace Context** (`traceparent`/`tracestate`): `TraceContext`, `requestTrace`, a
-     span per request, `traceId`/`spanId` in `JsonLogger`, the trace id as the request id (§7).
-     High, medium.
-  3. [x] **`Forwarded`** (RFC 7239) and `X-Forwarded-Proto`/`Host` behind trusted proxies:
-     `ServerConfig.trustedProxies` (`TrustedProxies`, `ForwardedHeaders`) for `clientIp` and
-     `requestedUri` (§8). Medium-high, low.
-  4. [x] **Conditional requests** (RFC 9110 §13) for any response: the 304 of the server for a
-     `GET` with `ETag`/`Last-Modified`, `request.checkPreconditions` for a change (412, 428),
-     static files on the same code (§10). Medium-high, medium.
-  5. [x] **`Deprecation`** (RFC 9745) + **`Sunset`** (RFC 8594): `DeprecationFilter` (inherited by
-     the children of a parent, with its `Link`s), also `deprecated: true` in OpenAPI (§9). Medium,
-     low.
-  6. [x] **`Link`** (RFC 8288) for pagination: `WebLink` and `WebLink.pages` (`first`, `prev`,
-     `next`, `last`, keeping the other params) (§10). Medium-low, low.
-  7. [x] **`Idempotency-Key`** (IETF draft): `IdempotencyFilter` over an `IdempotencyStore`
-     (in memory by default, with expiry), a key per method, path and `partition` (§9). Medium,
-     medium-high.
-  8. [x] **`Prefer`** (RFC 7240): `request.preferences` (`return`, `respond-async`, `wait`,
-     `handling`), `Vary: Prefer` by itself, `Preference-Applied` (§10). Low, low.
-  9. [x] **Health Check Response Format** (`application/health+json`, expired draft) for
-     `Route.health`: `pass`/`fail` and a list per check (§9). Low, low.
-  10. [ ] **`Content-Digest`** (RFC 9530) / **HTTP Message Signatures** (RFC 9421). Low, high.
-      Postponed: it needs cryptographic hashes and signatures (a `crypto` dependency, which the
-      project doesn't have) and RFC 9421 is a large spec; only if a real use asks for it.
 - [ ] GitHub Actions: `dart format --set-exit-if-changed`, `dart analyze`, `dart test` with
   coverage, and the tests of every example, on Linux and Windows.
 - [ ] `messages*.g.dart` up to date (`dart run slang` + `git diff --exit-code`).
@@ -262,15 +294,18 @@ Until then the same checks run by hand. Notes: run on a push to any branch and o
   types, two classes with the same name and a failing `fromJson`: the mapper works and its errors
   have no obfuscated names.
 
-### 7.0 Real release, move out of RC
+### 6.5 Release `1.0.0`
 
-1. [ ] Fix what comes up and publish `1.0.0`: tag `v1.0.0`, CHANGELOG with the date, announcement
-   (r/dartlang, Dart Discord, X).
+1. [ ] Fix what comes up in 6.4 and publish `1.0.0`: tag `v1.0.0`, the version in `pubspec.yaml`,
+   CHANGELOG with the date, announcement (r/dartlang, Dart Discord, X).
 
 ### Possible improvements after release 🟢
 
 Only if a real use asks for them; none breaks the API.
 
+- [ ] `Content-Digest` (RFC 9530) and HTTP Message Signatures (RFC 9421), the last standard of
+  phase 8: they need cryptographic hashes and signatures (a `crypto` dependency the project
+  doesn't have), and RFC 9421 is a large spec.
 - [ ] A Redis `RateLimiterStore` in its own package (`winter_redis`), so several instances share
   the limit.
 - [ ] More languages for Winter's messages (fr, pt, de…): the `*.i18n.yaml` of `lib/src/i18n/`.

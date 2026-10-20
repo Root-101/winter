@@ -115,7 +115,7 @@ class LocaleConfig {
       if (locale != null) entries.add((locale, q));
     }
 
-    ///List.sort isn't stable, so sort the indexes to keep the order of the header on ties
+    /// List.sort isn't stable, so sort the indexes to keep the order of the header on ties
     final List<int> indexes = List.generate(entries.length, (i) => i)
       ..sort((a, b) {
         final int byQ = entries[b].$2.compareTo(entries[a].$2);

@@ -14,6 +14,10 @@ void main() {
       expect(preferences.respondAsync, isTrue);
       expect(preferences.handling, 'lenient');
       expect(preferences.all.keys, ['return', 'respond-async', 'handling']);
+      expect(
+        preferences.toString(),
+        'Preferences(return, respond-async, handling)',
+      );
       // A parameter of a preference is not a preference of its own
       expect(preferences.wait, isNull);
       expect(preferences.all['respond-async']!.params, {'wait': '10'});
@@ -38,20 +42,25 @@ void main() {
       expect(preferences['bar'], isNull);
     });
 
-    test(
-      'a malformed part is skipped, and so is a wait that is not seconds',
-      () {
-        final preferences = Preferences.parse([
-          'bad name=1, =x, , ok, wait=soon',
-        ]);
+    test('a malformed part is skipped, and so is a wait that is not seconds', () {
+      final preferences = Preferences.parse([
+        'bad name=1, =x, , ok, wait=soon',
+      ]);
 
-        expect(preferences.all.keys, ['ok', 'wait']);
-        expect(preferences.wait, isNull);
-        expect(Preferences.parse(['wait=-1']).wait, isNull);
-        expect(Preferences.none.returns, isNull);
-        expect(Preferences.none.respondAsync, isFalse);
-      },
-    );
+      expect(preferences.all.keys, ['ok', 'wait']);
+      // A huge header (hostile, never a real one) is ignored without parsing it
+      expect(
+        Preferences.parse([
+          'respond-async, ${List.filled(2000, 'p=v').join(',')}',
+          'return=minimal',
+        ]).all.keys,
+        ['return'],
+      );
+      expect(preferences.wait, isNull);
+      expect(Preferences.parse(['wait=-1']).wait, isNull);
+      expect(Preferences.none.returns, isNull);
+      expect(Preferences.none.respondAsync, isFalse);
+    });
   });
 
   group('In a request', () {

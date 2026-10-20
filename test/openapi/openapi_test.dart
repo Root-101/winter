@@ -398,6 +398,19 @@ void main() {
             ),
           ),
           Route.get(path: '/hidden', handler: _ok, docs: RouteDocs.none),
+          Route.parent(
+            path: '/internal',
+            docs: RouteDocs.none,
+            routes: [
+              Route.get(
+                path: '/stats',
+                handler: _ok,
+                docs: const RouteDocs(
+                  summary: 'Has docs, under a hidden parent',
+                ),
+              ),
+            ],
+          ),
           Route.get(path: '/files/.*', handler: _ok),
           Route.health(checks: {'database': () => true}),
           Route.websocket(path: '/ws', handler: (socket, request) {}),
@@ -659,6 +672,8 @@ void main() {
       expect((ok['content'] as Map).keys, ['application/health+json']);
       expect((document['paths'] as Map), isNot(contains('/ws')));
       expect((document['paths'] as Map), isNot(contains('/hidden')));
+      // A hidden parent hides its children, even with docs of their own
+      expect((document['paths'] as Map), isNot(contains('/internal/stats')));
     });
 
     test('an API key, another HTTP scheme, and a param without a regex', () {

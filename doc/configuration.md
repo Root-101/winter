@@ -137,6 +137,7 @@ adds yours on top of them (handy in tests).
 | `idleTimeout`     | 120 seconds    | How long an idle keep-alive connection stays open; `null` keeps them |
 | `securityContext` | —              | Serve HTTPS with this certificate and key                         |
 | `requestTimeout`  | —              | A response that takes longer is a 503; `null` (default) for no limit |
+| `trustedProxies`  | —              | The proxies in front of the app (`TrustedProxies(count, headers:)`): `clientIp` and `requestedUri` from their `X-Forwarded-*` or `Forwarded` ([deployment](deployment.md#behind-a-proxy)) |
 
 - It's `const`: `const ServerConfig(port: 9000)`.
 - `ServerConfig.fromEnv(env)` reads `PORT` and `HOST`, the variables that Cloud Run, Heroku,
@@ -149,7 +150,9 @@ adds yours on top of them (handy in tests).
   the response (a stream of Server-Sent Events goes on). After it, the client gets a 503 Problem
   Details (with the CORS headers) and a warning is logged; the request no longer holds a graceful
   shutdown. Dart can't stop the handler: it goes on in the background, its result is ignored and
-  a late error is logged. Leave room for the slowest upload of the app.
+  a late error is logged. Its scoped dependencies (`putScoped`) are disposed when it ends, not at
+  the 503, so a connection it holds isn't given to another request. Leave room for the slowest
+  upload of the app.
   `WinterTestClient.build(requestTimeout: ...)` takes it too.
 - HTTPS: usually the proxy in front of the app terminates TLS. To serve it from the app:
 

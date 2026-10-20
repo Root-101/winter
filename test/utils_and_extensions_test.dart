@@ -51,15 +51,7 @@ void main() {
     });
   });
 
-  group('Console style', () {
-    test('stylize adds the ANSI codes', () {
-      expect('text'.stylize(), 'text');
-      expect('text'.stylize(bold: true), '\x1B[1mtext\x1B[0m');
-      expect(
-        'text'.stylize(bold: true, color: ConsoleColor.red),
-        '\x1B[1;31mtext\x1B[0m',
-      );
-      expect('text'.stylize(color: ConsoleColor.green), '\x1B[32mtext\x1B[0m');
-    });
+  test('bold adds the ANSI codes of a terminal', () {
+    expect('text'.bold, '\x1B[1mtext\x1B[0m');
   });
 }

@@ -103,11 +103,13 @@ class Scheduler {
     required String name,
     required ScheduledTaskFunction task,
     bool utc = false,
+    bool runOnStart = false,
     bool allowOverlap = false,
   }) => schedule(
     Schedule.cron(expression, utc: utc),
     name: name,
     task: task,
+    runOnStart: runOnStart,
     allowOverlap: allowOverlap,
   );
 

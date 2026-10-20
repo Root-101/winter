@@ -293,9 +293,9 @@ void main() {
         MethodNotAllowedException({}): 405,
         const ConflictException(): 409,
         const PreconditionFailedException(): 412,
-        const PayloadTooLargeException(): 413,
+        const ContentTooLargeException(): 413,
         const UnsupportedMediaTypeException(): 415,
-        const UnprocessableEntityException(): 422,
+        const UnprocessableContentException(): 422,
         const ValidationException(violations: []): 422,
         const PreconditionRequiredException(): 428,
         TooManyRequestsException(): 429,
@@ -558,6 +558,19 @@ void main() {
             (e) => e.message,
             'message',
             r'$.status: expected an integer',
+          ),
+        ),
+      );
+    });
+
+    test('a value that is not an object is a 400', () {
+      expect(
+        () => om.deserialize<ProblemDetails>('x'),
+        throwsA(
+          isA<DeserializationException>().having(
+            (e) => e.message,
+            'message',
+            r'$: expected an object, got a string',
           ),
         ),
       );

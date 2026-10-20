@@ -1,3 +1,6 @@
+@TestOn('vm')
+library;
+
 import 'dart:convert';
 
 import 'package:auth_security_example/auth_security_example.dart';

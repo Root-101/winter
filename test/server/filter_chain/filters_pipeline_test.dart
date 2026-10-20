@@ -254,7 +254,7 @@ void main() {
       );
     });
 
-    test('a response without body gets no Content-Type', () async {
+    test('an empty 401 through CORS gets no Content-Type', () async {
       final response = await client.get('/empty', headers: origin);
 
       expect(response.statusCode, 401);

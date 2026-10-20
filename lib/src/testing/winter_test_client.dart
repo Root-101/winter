@@ -76,7 +76,7 @@ class WinterTestClient {
       ),
     );
 
-    ///Like a real server: the body of a HEAD response is never sent
+    /// Like a real server: the body of a HEAD response is never sent
     final BytesBuilder bytes = BytesBuilder(copy: false);
     if (method.toUpperCase() != 'HEAD') {
       await response.read().forEach(bytes.add);

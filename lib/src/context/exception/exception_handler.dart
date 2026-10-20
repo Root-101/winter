@@ -140,7 +140,7 @@ class SimpleExceptionHandler extends ExceptionHandler {
         return error.responseEntity;
       case DeserializationException():
 
-        ///The client sent a body that can't be read: 400 with the reason (never Dart details)
+        /// The client sent a body that can't be read: 400 with the reason (never Dart details)
         return ProblemDetails.of(
           StatusCode.badRequest,
           detail: error.message,
@@ -148,9 +148,9 @@ class SimpleExceptionHandler extends ExceptionHandler {
         ).toResponse();
       case ValidationException():
 
-        ///The messages are already in the language of the request
-        ///(reading it adds `Vary: Accept-Language`, see `RequestScope.localeRead`).
-        ///`fieldName` follows the `fieldNaming` of the mapper, so it's the name the client sent
+        /// The messages are already in the language of the request
+        /// (reading it adds `Vary: Accept-Language`, see `RequestScope.localeRead`).
+        /// `fieldName` follows the `fieldNaming` of the mapper, so it's the name the client sent
         return ProblemDetails.of(
           error.status,
           type: error.type,
@@ -174,8 +174,8 @@ class SimpleExceptionHandler extends ExceptionHandler {
         ).toResponse(headers: error.headers);
     }
 
-    ///Anything else (a failed serialization of a response, any Error) is a server error:
-    ///log it and don't expose its details
+    /// Anything else (a failed serialization of a response, any Error) is a server error:
+    /// log it and don't expose its details
     logUnhandledError(request, error, stackTrace);
     return internalServerErrorResponse(instance: request.requestedUri.path);
   }

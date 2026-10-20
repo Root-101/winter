@@ -9,7 +9,8 @@ import 'package:winter/src/context/validation/validation.dart' show mapKeyPath;
 import 'package:winter/src/multipart.dart'
     show multipartBoundary, parseMultipart;
 import 'package:winter/src/router/path_template.dart';
-import 'package:winter/src/trusted_proxies.dart' show forwardedClientIpKey;
+import 'package:winter/src/trusted_proxies.dart'
+    show forwardedClientIpKey, parseHost;
 import 'package:winter/winter.dart';
 
 /// An HTTP request: what a handler and every filter receive.
@@ -150,23 +151,23 @@ class RequestEntity {
   /// (`request.route?.key == 'health'`).
   Route? get route => _route;
 
-  ///IP address of the client (null if unknown, ex: a request built in a test).
+  /// IP address of the client (null if unknown, ex: a request built in a test).
   ///
-  ///The address of the connection, unless the server trusts the proxies in front of it
-  ///([ServerConfig.trustedProxies]): then the address they forwarded (`X-Forwarded-For` or
-  ///`Forwarded`). Without that, those headers are ignored, because any client can send them
-  ///with a fake IP (ex: to bypass a rate limiter).
-  String? clientIp() =>
+  /// The address of the connection, unless the server trusts the proxies in front of it
+  /// ([ServerConfig.trustedProxies]): then the address they forwarded (`X-Forwarded-For` or
+  /// `Forwarded`). Without that, those headers are ignored, because any client can send them
+  /// with a fake IP (ex: to bypass a rate limiter).
+  String? get clientIp =>
       context.get(forwardedClientIpKey) ??
       connectionInfo?.remoteAddress.address;
 
-  ///The query params, with the last value of a repeated param (`?tag=a&tag=b` => `{tag: b}`).
-  ///Use [queryParamsAll] to get every value.
+  /// The query params, with the last value of a repeated param (`?tag=a&tag=b` => `{tag: b}`).
+  /// Use [queryParamsAll] to get every value.
   late final Map<String, String> queryParams = Map.unmodifiable(
     requestedUri.queryParameters,
   );
 
-  ///Every value of each query param, in order (`?tag=a&tag=b` => `{tag: [a, b]}`)
+  /// Every value of each query param, in order (`?tag=a&tag=b` => `{tag: [a, b]}`)
   late final Map<String, List<String>> queryParamsAll = Map.unmodifiable({
     for (final entry in requestedUri.queryParametersAll.entries)
       entry.key: List<String>.unmodifiable(entry.value),
@@ -214,9 +215,9 @@ class RequestEntity {
     }
     final (String expected, Object? Function(String) parse) = switch (T) {
       const (String) => ('a string', (String value) => value),
-      const (int) => ('an integer', int.tryParse),
-      const (double) => ('a number', double.tryParse),
-      const (num) => ('a number', num.tryParse),
+      const (int) => ('an integer', _parseInt),
+      const (double) => ('a number', _parseDouble),
+      const (num) => ('a number', _parseNum),
       const (bool) => ('true or false', _parseBool),
       const (DateTime) => ('an ISO 8601 date', DateTime.tryParse),
       _ => throw ArgumentError.value(
@@ -232,6 +233,24 @@ class RequestEntity {
 
   static String _nameOf(Object value) =>
       value is Enum ? value.name : value.toString();
+
+  static final RegExp _integer = RegExp(r'^[+-]?\d+$');
+  static final RegExp _decimal = RegExp(
+    r'^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$',
+  );
+
+  /// Only decimal digits: never `0x10`, ` 5` nor `1e3`
+  static int? _parseInt(String value) =>
+      _integer.hasMatch(value) ? int.tryParse(value) : null;
+
+  /// A finite decimal number: never `NaN`, `Infinity`, `0x10` nor ` 5`
+  static num? _parseNum(String value) {
+    if (!_decimal.hasMatch(value)) return null;
+    final num? number = num.tryParse(value);
+    return number != null && number.isFinite ? number : null;
+  }
+
+  static double? _parseDouble(String value) => _parseNum(value)?.toDouble();
 
   static bool? _parseBool(String value) => switch (value.toLowerCase()) {
     'true' => true,
@@ -322,9 +341,26 @@ class RequestEntity {
         ? mapper.decodeBytes<T>(await _body.bytes())
         : mapper.decode<T>(await _body.text(encoding));
     if (validate) {
-      _validate(body);
-      // Only after the synchronous rules passed: a wrong value never reaches a query
-      await _validateAsync(body);
+      try {
+        _validate(body);
+        // Only after the synchronous rules passed: a wrong value never reaches a query
+        await _validateAsync(body);
+      } on ValidationException catch (error) {
+        // The exception handler names the fields with the global mapper: with another one, the
+        // client must see the names it sent to this one
+        if (objectMapper == null) rethrow;
+        throw ValidationException(
+          violations: [
+            for (final ConstraintViolation violation in error.violations)
+              violation.copyWith(
+                fieldName: objectMapper.jsonFieldName(violation.fieldName),
+              ),
+          ],
+          detail: error.detail,
+          instance: error.instance,
+          headers: error.headers,
+        );
+      }
     }
     return body;
   }
@@ -665,16 +701,41 @@ String _decodePathParam(String value) {
 /// request built in memory. Internal: not exported by `winter.dart`.
 ///
 /// {@category Requests and responses}
-RequestEntity requestFromHttpRequest(HttpRequest request) =>
-    RequestEntity._copy(
-      method: request.method.toUpperCase(),
-      requestedUri: request.requestedUri,
-      protocolVersion: request.protocolVersion,
-      headersAll: ioHeaders(request.headers),
-      context: ContextMap(),
-      connectionInfo: request.connectionInfo,
-      body: _RequestBody(_discardedOnCancel(request)),
-    );
+RequestEntity requestFromHttpRequest(
+  HttpRequest request, {
+  bool secure = false,
+}) => RequestEntity._copy(
+  method: request.method.toUpperCase(),
+  requestedUri: _requestedUri(request, secure: secure),
+  protocolVersion: request.protocolVersion,
+  headersAll: ioHeaders(request.headers),
+  context: ContextMap(),
+  connectionInfo: request.connectionInfo,
+  body: _RequestBody(_discardedOnCancel(request)),
+);
+
+/// The URI the client asked for: the path and the query of the request target, the scheme of the
+/// server ([secure] is HTTPS) and its `Host` (`localhost` and the port of the connection when it
+/// isn't a valid `host[:port]`).
+///
+/// Never the `requestedUri` of `dart:io`: it takes the scheme and the host from
+/// `X-Forwarded-Proto` and `X-Forwarded-Host`, and glues them before the path, so any client could
+/// choose the host, the scheme and even the path that is routed (`X-Forwarded-Host: h/admin?`).
+/// Those headers are only read for trusted proxies (`applyTrustedProxies`).
+Uri _requestedUri(HttpRequest request, {required bool secure}) {
+  final String scheme = secure ? 'https' : 'http';
+  final Uri? host = parseHost(request.headers.value(HttpHeader.host));
+  final Uri target = request.uri;
+  return Uri(
+    scheme: scheme,
+    host: host?.host ?? 'localhost',
+    port: host == null
+        ? request.connectionInfo?.localPort
+        : (host.hasPort ? host.port : null),
+    path: target.path,
+    query: target.hasQuery ? target.query : null,
+  );
+}
 
 /// [body], but a reader that stops before its end (a 413 of `maxBodySize`, a malformed multipart
 /// body, a handler that reads only the start) doesn't cancel it: the rest is read and discarded.
@@ -719,7 +780,7 @@ void attachRoute(RequestEntity request, Route route) {
 }
 
 /// Limits the body of [request] to [maxBytes] (`ServerConfig.maxBodySize`): reading a bigger one is
-/// a [PayloadTooLargeException] (413); a body nobody reads is never rejected. Internal.
+/// a [ContentTooLargeException] (413); a body nobody reads is never rejected. Internal.
 ///
 /// {@category Requests and responses}
 void limitRequestBody(RequestEntity request, int maxBytes) {
@@ -731,7 +792,7 @@ void limitRequestBody(RequestEntity request, int maxBytes) {
   );
 }
 
-/// Fail (with a [PayloadTooLargeException], a 413) when the body is bigger than [maxBytes].
+/// Fail (with a [ContentTooLargeException], a 413) when the body is bigger than [maxBytes].
 ///
 /// The check is done while the body is read, so a request is only rejected if its body is used,
 /// and the body is never fully loaded in memory:
@@ -745,14 +806,14 @@ Stream<List<int>> limitBodySize(
   int? contentLength,
 }) async* {
   if (contentLength != null && contentLength > maxBytes) {
-    throw const PayloadTooLargeException();
+    throw const ContentTooLargeException();
   }
 
   int readBytes = 0;
   await for (final chunk in body) {
     readBytes += chunk.length;
     if (readBytes > maxBytes) {
-      throw const PayloadTooLargeException();
+      throw const ContentTooLargeException();
     }
     yield chunk;
   }

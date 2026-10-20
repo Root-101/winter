@@ -71,7 +71,8 @@ void main() {
 
     var closed = false;
     final closing = Winter.close().then((_) => closed = true);
-    await Future<void>.delayed(const Duration(milliseconds: 100));
+    // enough turns of the event loop for a close that did not wait
+    await pumpEventQueue(times: 100);
     expect(closed, isFalse);
 
     releaseHandler.complete();

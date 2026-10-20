@@ -69,8 +69,9 @@ void main() async {
     { "fieldName": "age", "message": "The minimum is 18", "code": "min.inclusive", "params": { "value": 18 } }
   ],
   "type": "about:blank",
-  "title": "Unprocessable Entity",
-  "status": 422
+  "title": "Unprocessable Content",
+  "status": 422,
+  "instance": "/users"
 }
 ```
 
@@ -189,6 +190,8 @@ the same way (`["eur"].amount`).
 
 A pattern given as a String (`pattern('^[A-Z]+$')`) is compiled once and cached, up to 256 of
 them (the least recently used is dropped): a pattern built from data doesn't grow memory forever.
+The regex goes in the `params` of the violation (and in OpenAPI) so a client can check it first;
+a `RegExp` with flags (`caseSensitive: false`) is left out, as its source alone is another rule.
 For anything else, `cvc.merge(other.validate(), prefix: 'name')` merges a context by hand.
 
 ### Messages and languages

@@ -17,7 +17,7 @@ import 'package:winter/winter.dart';
 /// ```
 ///
 /// {@category HTTP}
-extension ConditionalRequests on RequestEntity {
+extension RequestPreconditionsX on RequestEntity {
   /// Evaluates the preconditions of this request against the current [etag] (a quoted
   /// entity-tag: `"7"` or `W/"7"`) and [lastModified] of the resource, in the order of RFC 9110
   /// §13.2.2, and throws when one fails:

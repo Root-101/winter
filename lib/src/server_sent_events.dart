@@ -105,16 +105,23 @@ final class ServerSentEvent {
 
 /// The body of `ResponseEntity.sse`: a comment first (so the headers leave at once), [events]
 /// as they come, a comment every [keepAlive] without events, and the end when [events] ends, when
-/// [closing] completes (the server shuts down) or when the client leaves (its subscription to
-/// [events] is cancelled). Internal.
+/// the server starts closing ([onClosing] registers it and returns how to cancel it) or when the
+/// client leaves (its subscription to [events] is cancelled). Internal.
 Stream<List<int>> serverSentEventsBody(
   Stream<ServerSentEvent> events, {
   required Duration? keepAlive,
-  required Future<void> closing,
+  required void Function() Function(void Function() callback) onClosing,
 }) {
   late final StreamController<List<int>> output;
   StreamSubscription<ServerSentEvent>? subscription;
   Timer? timer;
+  void Function()? cancelClosing;
+
+  /// Leaves the callbacks of the closing server, once
+  void forgetClosing() {
+    cancelClosing?.call();
+    cancelClosing = null;
+  }
 
   List<int> bytes(ServerSentEvent event) => utf8.encode(event.encode());
 
@@ -128,6 +135,7 @@ Stream<List<int>> serverSentEventsBody(
   }
 
   Future<void> finish() async {
+    forgetClosing();
     timer?.cancel();
     await subscription?.cancel();
     if (!output.isClosed) await output.close();
@@ -152,12 +160,13 @@ Stream<List<int>> serverSentEventsBody(
         },
         onDone: () => unawaited(finish()),
       );
-      unawaited(closing.then((_) => finish()));
+      cancelClosing = onClosing(() => unawaited(finish()));
     },
     onPause: () => subscription?.pause(),
     onResume: () => subscription?.resume(),
     // The client left (or the response could not be written)
     onCancel: () {
+      forgetClosing();
       timer?.cancel();
       return subscription?.cancel();
     },

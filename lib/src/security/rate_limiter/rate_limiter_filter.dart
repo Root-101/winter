@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show InternetAddress, InternetAddressType;
 
 import 'package:winter/winter.dart';
 
@@ -119,15 +120,28 @@ class RateLimiterFilter extends Filter {
 ///
 /// {@category Security}
 void defaultLogRateLimiter(RequestEntity request, String clientId) {
-  ///Skipped before building the message: under an attack there is one per rejected request
+  /// Skipped before building the message: under an attack there is one per rejected request
   if (!logger.isEnabled(LogLevel.debug)) return;
   logger.debug(
     'Rate limit exceeded for id: $clientId in ${request.method} ${request.requestedUri.path}',
   );
 }
 
-/// Identify the client by its IP (the address of the connection, see [RequestEntity.clientIp])
+/// Identify the client by its IP (the address of the connection, see [RequestEntity.clientIp]).
+/// An IPv6 address counts by its /64 (`2001:db8:0:1::/64`): one host usually has a whole /64 and
+/// could take a new address for every request. An IPv4 one, mapped or not, is the address.
 ///
 /// {@category Security}
-String defaultClientId(RequestEntity request) =>
-    request.clientIp() ?? 'unknown';
+String defaultClientId(RequestEntity request) {
+  final String? ip = request.clientIp;
+  if (ip == null) return 'unknown';
+  final InternetAddress? address = InternetAddress.tryParse(ip);
+  if (address == null || address.type != InternetAddressType.IPv6) return ip;
+  final List<int> bytes = address.rawAddress;
+  final bool mappedIPv4 =
+      bytes.take(10).every((byte) => byte == 0) &&
+      bytes[10] == 0xFF &&
+      bytes[11] == 0xFF;
+  if (mappedIPv4) return ip;
+  return '${[for (var i = 0; i < 8; i += 2) ((bytes[i] << 8) | bytes[i + 1]).toRadixString(16)].join(':')}::/64';
+}

@@ -33,7 +33,17 @@ void main() {
       () => WebLink(Uri.parse('/x'), rel: 'next', title: 'año'),
       () => WebLink(Uri.parse('/x'), rel: 'next', params: {'a b': 'c'}),
     ]) {
-      expect(make, throwsArgumentError);
+      // Without the value: it may come from the client
+      expect(
+        make,
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => '$e',
+            'text',
+            allOf(isNot(contains('Evil')), isNot(contains('año'))),
+          ),
+        ),
+      );
     }
   });
 
