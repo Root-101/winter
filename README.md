@@ -1,5 +1,7 @@
 # Winter ❄️
 
+[![CI](https://github.com/Root-101/winter/actions/workflows/ci.yml/badge.svg)](https://github.com/Root-101/winter/actions/workflows/ci.yml)
+
 ### A backend framework for the Dart enthusiasts
 
 Winter is a backend framework for Dart, inspired by **Spring**, **ASP.NET Core** and **NestJS**.

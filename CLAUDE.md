@@ -22,7 +22,10 @@ dart test test/server/router/basic_routing_test.dart        # single file
 dart test test/security/cors_test.dart -N "name substring"  # single test by name
 dart test --coverage-path=coverage/lcov.info --branch-coverage   # coverage (lcov)
 dart run benchmark/router_benchmark.dart   # in-process routing benchmark (also server_*_benchmark.dart)
+dart run tool/check_doc_snippets.dart      # the Dart snippets of README.md and doc/ against the API
 ```
+
+The CI (`.github/workflows/ci.yml`, described in `CONTRIBUTING.md`) runs format, analyze and the tests with the examples on Linux and Windows, `messages*.g.dart` against `dart run slang` with the lowest slang of `pubspec.yaml` (`dart pub downgrade slang`, so regenerate them that way), `tool/check_doc_snippets.dart`, `tool/obfuscation/main.dart` built with `--obfuscate`, the publish dry run (under 1 MB) and pana (red below 150). The examples are packages of their own: `dart pub get` in each before `dart format`, or their language version is unknown and the formatter changes them.
 
 `example/` has one package per topic (`routing`, `bodies`, `validation`, `object_mapper`, `errors`, `filters`, `security`, `di`, `api_patterns`, `openapi`, `realtime`, `scheduling`, `i18n`) with one file per case (`lib/<case>.dart` with a `router()` and a `main`, its `test/<case>_test.dart` in memory, a row in the README of the topic), and complete apps in `example/apps/` (`auth_jwt`, `orders`, `files_gallery`, `production`). Each is a standalone package that depends on the framework by path (`../../`, `../../../` for the apps). Run them from inside their own folder (`dart pub get`, `dart run lib/<case>.dart` or `lib/main.dart`, `dart test`). A new feature gets a small case in its topic; a test that needs a real server (WebSockets) uses its own port.
 

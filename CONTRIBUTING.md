@@ -19,10 +19,29 @@ fvm dart test                         # every test, in parallel
 fvm dart test test/security/cors_test.dart -N "preflight"   # one file, one test
 fvm dart test --coverage-path=coverage/lcov.info --branch-coverage
 fvm dart run benchmark/http_benchmark.dart                   # compile it with `dart compile exe` to measure
+fvm dart run tool/check_doc_snippets.dart                    # the snippets of the docs use the API right
 ```
 
 Every topic of `example/` (and every app of `example/apps/`) is a package of its own: run
 `fvm dart pub get` and `fvm dart test` inside it.
+
+## CI
+
+`.github/workflows/ci.yml` runs on every push and pull request:
+
+- **Tests**, on Linux and Windows: the format, the analysis, the tests (with coverage, sent to
+  Codecov when the repository has the `CODECOV_TOKEN` secret) and the analysis and tests of every
+  example.
+- **Generated code**: `messages*.g.dart` equal to what `dart run slang` writes with the lowest
+  slang of `pubspec.yaml` (`dart pub downgrade slang` first), in the package and in `example/i18n`.
+- **Docs**: `tool/check_doc_snippets.dart` analyzes every Dart snippet of `README.md` and `doc/`
+  against the API (a fragment's own names, like `User`, don't count; a parameter or a method of
+  Winter that doesn't exist does).
+- **Obfuscation**: `tool/obfuscation/main.dart` built with `--obfuscate`: generic types, two
+  classes with the same name and a failing `fromJson` work, and the errors have no obfuscated
+  names.
+- **Package**: `dart pub publish --dry-run` without warnings, and an archive under 1 MB.
+- **pana**: on Linux (it fails on Windows), red below 150 of its 160 points.
 
 ## How the code is written
 
@@ -50,7 +69,9 @@ Every topic of `example/` (and every app of `example/apps/`) is a package of its
 
 Winter's validation messages live in `lib/src/i18n/*.i18n.yaml`. To add a language, copy
 `en.i18n.yaml` to `<language>.i18n.yaml`, translate the texts (keep the `{params}`), and run
-`fvm dart run slang` to regenerate `messages*.g.dart` (versioned).
+`fvm dart run slang` to regenerate `messages*.g.dart` (versioned). Generate them with the lowest
+slang of `pubspec.yaml` (`fvm dart pub downgrade slang`): a newer one writes them a little
+differently, and the CI compares them with that one.
 
 ## Branches
 
