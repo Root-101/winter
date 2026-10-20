@@ -803,20 +803,24 @@ class _RequestTimeoutFilter extends Filter {
   _RequestTimeoutFilter(this.timeout) : super(order: -98);
 
   @override
-  Future<ResponseEntity> doFilter(RequestEntity request, FilterChain chain) =>
-      // A late result (or error) of the chain is ignored by `timeout`, never uncaught
-      Future<ResponseEntity>.sync(() => chain.doFilter(request)).timeout(
-        timeout,
-        onTimeout: () {
-          logger.warning(
-            'The request ${request.method} ${request.requestedUri.path} took more than '
-            '$timeout, answered with a 503',
-          );
-          throw ServiceUnavailableException(
-            detail: 'The request took too long',
-          );
-        },
-      );
+  Future<ResponseEntity> doFilter(RequestEntity request, FilterChain chain) {
+    final Future<ResponseEntity> handling = Future<ResponseEntity>.sync(
+      () => chain.doFilter(request),
+    );
+    // A late result (or error) of the chain is ignored by `timeout`, never uncaught
+    return handling.timeout(
+      timeout,
+      onTimeout: () {
+        // The handler goes on: its scoped dependencies are disposed when it ends, not now
+        RequestScope.current?.holdUntil(handling);
+        logger.warning(
+          'The request ${request.method} ${request.requestedUri.path} took more than '
+          '$timeout, answered with a 503',
+        );
+        throw ServiceUnavailableException(detail: 'The request took too long');
+      },
+    );
+  }
 }
 
 /// The WebSockets of a server. Once it's closing, a socket that finishes its upgrade (a handshake
