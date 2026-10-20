@@ -738,6 +738,17 @@ void main() {
       expect(cvc.violations.map((v) => v.fieldName), ['c']);
     });
 
+    test('pattern() gives its regex to a client only when it has no flags', () {
+      cvc.field('plain', 'x').pattern(RegExp(r'^\d+$'));
+      cvc.field('flagged', 'x').pattern(RegExp(r'^\d+$', caseSensitive: false));
+
+      // The source of a case insensitive regex would make a client reject what the server accepts
+      expect(cvc.violations.map((v) => v.params), [
+        {'pattern': r'^\d+$'},
+        <String, Object?>{},
+      ]);
+    });
+
     test('pattern() with any other Pattern uses its matches', () {
       cvc.field('ok', 'a-b').pattern(const _Contains('-'));
       cvc.field('ko', 'ab').pattern(const _Contains('-'));
