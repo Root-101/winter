@@ -295,6 +295,8 @@ RateLimit: "daily";r=999;t=86400
   `ServerConfig(trustedProxies: TrustedProxies(1))` (the number of proxies in front of the app,
   see [deployment](deployment.md#behind-a-proxy)) makes it the IP the proxy forwarded. Never trust
   them without a proxy: a client can send any value.
+- An IPv6 client counts by its /64 (`2001:db8:0:1::/64`): a host usually has a whole /64 and
+  could take a new address for every request. An IPv4 one counts by its address.
 - `clientId` can return any id: the user (`requestPrincipalOrNull<User>()?.name`), an API key...
 - A `maxRequests` under 1 or a `window` that isn't positive is an `ArgumentError` when it's created.
 - Inactive clients are forgotten once per window, so the memory doesn't grow with every new IP.

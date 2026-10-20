@@ -200,6 +200,23 @@ void main() {
     });
   });
 
+  test('the default id of the rate limiter groups IPv6 by its /64', () {
+    String idOf(String ip) => defaultClientId(
+      RequestEntity(
+        'GET',
+        Uri.parse(_uri),
+        connectionInfo: _FakeConnectionInfo(ip),
+      ),
+    );
+
+    // Two addresses of the same /64 are one client: it can't rotate them to get past the limit
+    expect(idOf('2001:db8:0:1::5'), '2001:db8:0:1::/64');
+    expect(idOf('2001:db8:0:1:ffff::9'), '2001:db8:0:1::/64');
+    expect(idOf('2001:db8:0:2::5'), '2001:db8:0:2::/64');
+    expect(idOf('203.0.113.7'), '203.0.113.7');
+    expect(idOf('::ffff:203.0.113.7'), '::ffff:203.0.113.7');
+  });
+
   test('fewer than one proxy is an ArgumentError', () {
     expect(
       () => const ServerConfig(trustedProxies: TrustedProxies(0)).validate(),

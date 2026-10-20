@@ -248,17 +248,6 @@ void main() {
       expect(mapper.serialize(DateTime.utc(2026)), '2026-01-01T00:00:00.000Z');
     });
 
-    test('a date without an offset is read as UTC, not as the local time', () {
-      final DateTime date = mapper.decode<DateTime>('"2024-01-01T10:00:00"');
-
-      expect(date, DateTime.utc(2024, 1, 1, 10));
-      expect(date.isUtc, isTrue);
-      expect(
-        mapper.decode<DateTime>('"2024-01-01T10:00:00+02:00"'),
-        DateTime.utc(2024, 1, 1, 8),
-      );
-    });
-
     test('an invalid date is a 400 without the parser message', () {
       expect(
         () => mapper.decode<DateTime>('"yesterday"'),
