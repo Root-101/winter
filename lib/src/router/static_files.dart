@@ -9,7 +9,7 @@ import 'package:winter/winter.dart';
 /// - Only the files inside [directory]: a path with `..`, a hidden file or folder (`.env`,
 ///   `.git/`), a `\`, a `:`, or a link that leads out of it is a 404.
 /// - `ETag` and `Last-Modified`, so the server answers a 304 for `If-None-Match` and
-///   `If-Modified-Since` (see [ConditionalRequests]).
+///   `If-Modified-Since` (see [RequestPreconditionsX]).
 /// - `Range` requests (one range: a 206, or a 416 when it's out of the file), as video players and
 ///   resumed downloads send them, checked with `If-Range`.
 /// - The file is streamed, never read whole into memory.
@@ -86,6 +86,14 @@ final class StaticFiles {
       throw const NotFoundException();
     }
     if (!_isInside(canonical)) throw const NotFoundException();
+    // The real names, checked again: Windows also reaches a file by an alias the segments of the
+    // request don't show (`ENV~1`, the 8.3 short name of `.env`)
+    if (canonical
+        .substring(_root.length)
+        .split(Platform.pathSeparator)
+        .any(_isForbidden)) {
+      throw const NotFoundException();
+    }
 
     return _respond(request, File(canonical), stat);
   }
@@ -98,14 +106,14 @@ final class StaticFiles {
       segment.contains(':') ||
       segment.contains('\x00');
 
-  bool _isInside(String canonical) {
-    final String root = directory.endsWith(Platform.pathSeparator)
-        ? directory
-        : '$directory${Platform.pathSeparator}';
-    return Platform.isWindows
-        ? canonical.toLowerCase().startsWith(root.toLowerCase())
-        : canonical.startsWith(root);
-  }
+  /// [directory] ending in a separator
+  String get _root => directory.endsWith(Platform.pathSeparator)
+      ? directory
+      : '$directory${Platform.pathSeparator}';
+
+  bool _isInside(String canonical) => Platform.isWindows
+      ? canonical.toLowerCase().startsWith(_root.toLowerCase())
+      : canonical.startsWith(_root);
 
   ResponseEntity _respond(RequestEntity request, File file, FileStat stat) {
     final int size = stat.size;

@@ -145,7 +145,7 @@ void main() {
     final slow = http.get(Uri.parse('http://localhost:9096/slow'));
     await slowStarted.future;
     final shutdown = Winter.shutdown();
-    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await pumpEventQueue(times: 100);
     expect(events, ['session closed'], reason: 'still waiting for /slow');
 
     releaseSlow.complete();

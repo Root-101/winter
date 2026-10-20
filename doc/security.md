@@ -86,7 +86,7 @@ The full app, with login, hashed passwords and expiring JWTs, is
 - `authenticated`: `true` by default. `Authentication.anonymous()` is the one with `false`.
 
 It's saved in the `RequestSecurityContext` of the request (`request.securityContext`), which the
-server creates before the filters, so every filter, the handler and the `change()` copies of the
+server creates before the filters, so every filter, the handler and the `copyWith()` copies of the
 request share it.
 
 Your filter calls `setAuthentication(...)` when the credentials are valid, and does nothing
@@ -290,11 +290,13 @@ RateLimit: "burst";r=9;t=1
 RateLimit: "daily";r=999;t=86400
 ```
 
-- The client is its IP, `request.clientIp()`: the address of the connection. Behind a proxy (a
+- The client is its IP, `request.clientIp`: the address of the connection. Behind a proxy (a
   load balancer, nginx) that's the proxy, unless the server trusts it:
   `ServerConfig(trustedProxies: TrustedProxies(1))` (the number of proxies in front of the app,
   see [deployment](deployment.md#behind-a-proxy)) makes it the IP the proxy forwarded. Never trust
   them without a proxy: a client can send any value.
+- An IPv6 client counts by its /64 (`2001:db8:0:1::/64`): a host usually has a whole /64 and
+  could take a new address for every request. An IPv4 one counts by its address.
 - `clientId` can return any id: the user (`requestPrincipalOrNull<User>()?.name`), an API key...
 - A `maxRequests` under 1 or a `window` that isn't positive is an `ArgumentError` when it's created.
 - Inactive clients are forgotten once per window, so the memory doesn't grow with every new IP.
@@ -415,7 +417,8 @@ RateLimiterFilter.fromRateLimiter(
   slow clients that send their headers byte by byte, the size of the headers (`dart:io` accepts
   tens of KB, 20 000 headers were accepted in the probe), the number of connections per client,
   a body that never ends (a rejected body is read to its end and discarded, so the client gets
-  the 413), and a request with both `Content-Length` and `Transfer-Encoding` (`dart:io` reads it
+  the 413; `dart:io` sends any answer, even a 405 that never reads the body, only once the whole
+  declared body has arrived, so a client that stops sending holds its connection), and a request with both `Content-Length` and `Transfer-Encoding` (`dart:io` reads it
   as chunked; a proxy that reads the other one is open to request smuggling).
 - `ServerConfig.requestTimeout` so a slow upload or a stuck handler can't hold a request forever.
 - `allowedOrigins` on every `Route.websocket` of an app with a session in a cookie: browsers send

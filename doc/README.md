@@ -12,7 +12,7 @@ examples are runnable: one file per case, with its test.
 | [Architecture](architecture.md)                     | The path of a request, `WinterContext`, global state, request scope, isolates | |
 | [Routing](routing.md)                                | Routes, typed path and query params, priority, 404/405/OPTIONS, static files, health, WebSockets, `MultiRouter`, your own router | [routing](../example/routing), [realtime](../example/realtime) |
 | [Filters](filters.md)                                | `Filter`, the chain, `order`, `shouldFilter`, global and route filters, errors as responses | [filters](../example/filters) |
-| [Requests and responses](requests-and-responses.md) | `RequestEntity`, `ResponseEntity`, every kind of body, forms and uploads, cookies, `copyWith`, Server-Sent Events, patterns of real APIs (pagination, ETag, 202, idempotency) | [bodies](../example/bodies), [api_patterns](../example/api_patterns), [realtime](../example/realtime) |
+| [Requests and responses](requests-and-responses.md) | `RequestEntity`, `ResponseEntity`, every kind of body, forms and uploads, cookies, `copyWith`, Server-Sent Events, patterns of real APIs (pagination, ETag, 202, idempotency, `Prefer`, versions and deprecation) | [bodies](../example/bodies), [api_patterns](../example/api_patterns), [realtime](../example/realtime) |
 | [Object mapper](object-mapper.md)                    | JSON ↔ objects: `toJson()`, serializers, deserializers, generics, errors, options | [object_mapper](../example/object_mapper) |
 | [Validation](validation.md)                          | `Validatable`, `cvc.field(...)`, the validators, nested objects, async rules, the 422 | [validation](../example/validation) |
 | [Error handling](error-handling.md)                  | Problem Details, `ApiException` and its shortcuts, `on<T>()`, the 500        | [errors](../example/errors) |
@@ -20,11 +20,11 @@ examples are runnable: one file per case, with its test.
 | [Security](security.md)                              | Your authentication filter, `AuthFilter` (401/403), rules, the principal, CORS, headers, rate limiter | [security](../example/security), [apps/auth_jwt](../example/apps/auth_jwt) |
 | [Dependency injection](dependency-injection.md)      | `put`, `putLazy`, `putFactory`, `putScoped`, `putLazyAsync`, `child()`, `onDispose`, tests | [di](../example/di) |
 | [Configuration](configuration.md)                    | `Env` (`find`, `require`, types, `.env` and profiles), `ServerConfig`, `WinterContext` | [apps/production](../example/apps/production) |
-| [Logging](logging.md)                                | `ConsoleLogger`, `JsonLogger`, fields, the request id, what Winter logs      | [apps/production](../example/apps/production) |
+| [Logging](logging.md)                                | `ConsoleLogger`, `JsonLogger`, fields, the request id, the W3C trace, what Winter logs | [apps/production](../example/apps/production) |
 | [Testing](testing.md)                               | `WinterTestClient`, tests without ports, `RequestScope.run`, fake clocks     | every `test/` of `example/` |
 | [OpenAPI](openapi.md)                               | The document of the routes, Swagger UI, schemas from examples and `validate()` | [openapi](../example/openapi) |
 | [Scheduled tasks](scheduling.md)                    | `Scheduler`, `every` and cron expressions, each run in a scope, with the server's shutdown | [scheduling](../example/scheduling) |
-| [Deployment](deployment.md)                         | `dart compile exe`, Docker, graceful shutdown, isolates, reverse proxy       | [apps/production](../example/apps/production) |
+| [Deployment](deployment.md)                         | `dart compile exe`, Docker, graceful shutdown, isolates, reverse proxy and trusted proxies | [apps/production](../example/apps/production) |
 | [Benchmarks](benchmarks.md)                         | The results of [`benchmark/`](../benchmark) against `dart:io`, and how to run them | |
 | [Winter and other frameworks](comparison.md)      | Where each idea comes from (Spring, ASP.NET Core, Ktor...), the closest frameworks, the Dart ones, what Winter does its own way | |
 

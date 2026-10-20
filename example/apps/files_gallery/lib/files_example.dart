@@ -96,7 +96,7 @@ class FileStore {
   /// Saves a photo read whole by `formData()`: its type comes from its first bytes
   Future<Photo> savePhoto(String title, String owner, UploadedFile file) async {
     if (file.length > maxPhotoSize) {
-      throw const PayloadTooLargeException(detail: 'A photo is 5 MB at most');
+      throw const ContentTooLargeException(detail: 'A photo is 5 MB at most');
     }
     final String extension =
         imageExtension(file.bytes) ??

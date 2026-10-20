@@ -163,7 +163,7 @@ logger.info('Dependencies:\n${di.registrations.join('\n')}');
 ```
 
 It's a read-only snapshot. Each `DependencyRegistration` has `type` (the type it was registered
-with), `tag`, `kind` (`DependencyKind.instance`, `lazy`, `factory` or `scoped`) and `created`.
+with), `tag`, `kind` (`DependencyKind.instance`, `lazy`, `lazyAsync`, `factory` or `scoped`) and `created`.
 
 ### Failing at start-up: `createAll`
 
@@ -334,6 +334,10 @@ di.put(AppConfig.fromEnv(env)); // read once at start-up, fail fast if something
 - **An async initialization in `putLazy`**: its function is synchronous; use `putLazyAsync`.
 - **A test that uses an async dependency without `ready()`**: `WinterTestClient` doesn't call it
   (only `Winter.start` does); `await di.ready()` in `setUp`.
+- **A cycle of async dependencies found concurrently**: a cycle is detected along one chain of
+  `findAsync`, but two that start at the same time from both ends (`A` waiting for `B` while `B`,
+  already being created, waits for `A`) wait for each other forever. `ready()` creates them one at
+  a time, so it always reports the cycle: create them with it at start.
 - **A scoped dependency outside a request** (a `Timer`, a background job, or after the response):
   it's a `StateError`; run that code inside `RequestScope.run` or use a lazy or factory dependency.
 - **A lazy singleton that depends on a scoped one**: it's a `StateError`. Register the service with

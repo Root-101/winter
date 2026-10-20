@@ -67,10 +67,10 @@ void main() async {
 | `queryParams`, `queryParamsAll`, `queryParam<T>()` | The query (the last value, or every value)     |
 | `mimeType`, `encoding`             | Of the `Content-Type` (`application/json`, its charset)        |
 | `contentLength`                    | The `Content-Length`, if it's known                            |
-| `clientIp()`, `connectionInfo`     | The client (see [security](security.md#rate-limiter))          |
+| `clientIp`, `connectionInfo`     | The client (see [security](security.md#rate-limiter))          |
 | `route`                            | The `Route` that answers it (its `key`, its `path`), null without one |
 | `context`                          | Data attached to the request, found by a typed `ContextKey` (see [below](#extending-a-request-the-context)) |
-| `locale`, `securityContext`, `principal<T>()` | Extensions of i18n and security                     |
+| `locale`, `preferences`, `securityContext`, `principal<T>()`, `checkPreconditions()` | Extensions of i18n, HTTP and security |
 
 Every map is read-only: a filter that needs to change the request passes a copy to the chain (see
 [`copyWith`](#copywith)).
@@ -183,7 +183,7 @@ The type of the body decides how it's written:
 | `String`             | Text                       | `text/plain; charset=utf-8`                  |
 | `Uint8List`          | Bytes                      | `application/octet-stream`                   |
 | `Stream<List<int>>`  | As it's produced (chunked) | `application/octet-stream`                   |
-| Anything else        | JSON (the object mapper)   | `application/json; charset=utf-8` (`application/problem+json` from 400) |
+| Anything else        | JSON (the object mapper)   | `application/json; charset=utf-8` (`application/problem+json` for a `ProblemDetails`) |
 
 - A `Content-Type` in `headers` wins: `headers: {'content-type': 'text/html'}`.
 - `Content-Length` is added for everything but a stream.
@@ -198,7 +198,7 @@ The type of the body decides how it's written:
 The shortcuts: `ok`, `created`, `accepted`, `noContent`; the redirects `redirect` (302),
 `seeOther` (303), `temporaryRedirect` (307) and `permanentRedirect` (308), which take the
 `Location`; and `badRequest`, `unauthorized`, `forbidden`, `notFound`, `methodNotAllowed`,
-`conflict`, `unprocessableEntity`, `tooManyRequests`, `internalServerError`, `serviceUnavailable`
+`conflict`, `unprocessableContent`, `tooManyRequests`, `internalServerError`, `serviceUnavailable`
 (`retryAfter:` in seconds, like `tooManyRequests`). A browser follows a 302 or a 303 with a `GET`;
 a 307 or a 308 repeats the method and the body. For an error, throwing an `ApiException` gives a Problem Details (see [error handling](error-handling.md)).
 
@@ -362,7 +362,7 @@ on.
 
 ### How a response is written
 
-The status line has the reason phrase of `StatusCode` (`HTTP/1.1 422 Unprocessable Entity`).
+The status line has the reason phrase of `StatusCode` (`HTTP/1.1 422 Unprocessable Content`).
 `HEAD`, `204` and `304` responses never have a body (a `HEAD` keeps the `Content-Length` of its
 `GET`). Every response has a `Date`, and no `Server` nor `X-Powered-By` header. With
 `ServerConfig(autoCompress: true)` a response is gzipped for a client that accepts it.
@@ -562,7 +562,7 @@ Route.post(
 |-------------------------------------------------|----------------------------------------------------|
 | A new key                                       | Runs, and its response is kept for `expiry` (24 h) |
 | The same key and the same body                  | The kept response, with `Idempotent-Replayed: true`; the handler doesn't run |
-| The same key with another body                  | **422**                                            |
+| The same key with another body or query         | **422**                                            |
 | The same key while the first one still runs     | **409**                                            |
 | No key (unless `required: false`), or an invalid one | **400**                                       |
 
@@ -574,7 +574,9 @@ Route.post(
   otherwise two users with the same key and the same body get each other's response. Put the
   filter after the `AuthFilter`, so a 401 isn't kept.
 - The body is read with `bytes()` (cached, so the handler still reads it with `body<T>()`) and
-  compared by a fingerprint.
+  compared, with the query string, by a fingerprint.
+- `InMemoryIdempotencyStore(maxKeys:)` keeps at most 100 000 keys by default: a new one past it
+  forgets the oldest, so a client sending a new key with every request can't fill the memory.
 - The keys live in an `IdempotencyStore`: `InMemoryIdempotencyStore` by default (per isolate and
   per process, purged as it's used, `clock:` for the tests). Several instances need a shared one
   (a table, Redis) implementing `reserve` (atomic), `complete`, `release` and `clear`.
@@ -611,7 +613,8 @@ Route.post(
 ),
 ```
 
-- Names are case insensitive; when one comes twice, the first wins; a malformed part is skipped.
+- Names are case insensitive; when one comes twice, the first wins; a malformed part is skipped,
+  and so is a `Prefer` longer than 4 KB (a real one is a few words).
   Several `Prefer` headers are one list, and a parameter (`respond-async; wait=10`) is in
   `preferences.all['respond-async']!.params`.
 - Tell the client what was honored with `Preference-Applied`.

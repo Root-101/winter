@@ -94,20 +94,18 @@ requests before the shutdown starts.
 
 ### Health checks
 
-Two routes, two questions:
+Two routes, two questions, both with `Route.health` (see [routing](routing.md#health-checks)):
 
 ```dart
-Route.get(path: '/health', handler: (request) => ResponseEntity.ok(body: {'status': 'up'})),
-Route.get(
-  path: '/ready',
-  handler: (request) async {
-    if (!await di.find<Database>().ping()) {
-      throw ServiceUnavailableException(detail: 'The database is not available', retryAfter: 5);
-    }
-    return ResponseEntity.ok(body: {'status': 'ready'});
-  },
+Route.health(path: '/health'),                       // liveness
+Route.health(
+  path: '/ready',                                    // readiness: a 503 "fail" when a check fails
+  checks: {'database': () => di.find<Database>().ping()},
 ),
 ```
+
+They answer `application/health+json` (`{"status": "pass"}`), the format monitors and gateways
+read; the probes of Kubernetes and Docker only look at the status code.
 
 - **Liveness** (`/health`): the process answers. If it fails, the platform restarts the container.
 - **Readiness** (`/ready`): its dependencies answer. If it fails (503), the instance leaves the load
@@ -130,7 +128,7 @@ In production a load balancer or a reverse proxy (nginx, an ingress) sits in fro
   await Winter.start(config: const ServerConfig(trustedProxies: TrustedProxies(1)));
   ```
 
-  Then `request.clientIp()` (and the default id of `RateLimiterFilter`) is the client, and
+  Then `request.clientIp` (and the default id of `RateLimiterFilter`) is the client, and
   `request.requestedUri` is the public URL (`https://api.example.com/orders`, not
   `http://10.0.0.5:8080/orders`), so are `Location`, the `instance` of the errors and OpenAPI.
   A value that isn't an IP, a scheme other than `http`/`https`, or a host with a path, a user or
@@ -177,7 +175,7 @@ database). Often it's simpler to run one isolate per container and let the platf
   platform, never in the image.
 - `JsonLogger`, and no bodies, tokens nor passwords in the logs.
 - `shutdownTimeout` below the grace period, and `onDispose` on every resource.
-- `/health` and `/ready`.
+- `Route.health` for `/health` and `/ready`.
 - `ServerConfig.trustedProxies` equal to the proxies in front, HSTS when TLS ends at the proxy, CORS with your
   origins.
 - `maxBodySize` as small as your biggest request.

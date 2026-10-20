@@ -74,6 +74,41 @@ void main() {
       );
     });
 
+    test('only header names and origins are echoed: never a 500 forced by the client', () async {
+      final any = clientWith(
+        SecurityConfig(cors: const CorsConfig(allowCredentials: true)),
+      );
+
+      final listed = await any.request(
+        'OPTIONS',
+        '/test',
+        headers: {
+          HttpHeader.origin: 'https://app.example.com',
+          HttpHeader.accessControlRequestHeaders: 'content-type, x-api-key',
+        },
+      );
+      final odd = await any.request(
+        'OPTIONS',
+        '/test',
+        headers: {
+          HttpHeader.origin: 'https://app.example.com/path?x',
+          HttpHeader.accessControlRequestHeaders: 'xé, (evil)',
+        },
+      );
+
+      expect(
+        listed.headers[HttpHeader.accessControlAllowHeaders],
+        'content-type, x-api-key',
+      );
+      expect(
+        listed.headers[HttpHeader.accessControlAllowOrigin],
+        'https://app.example.com',
+      );
+      expect(odd.statusCode, isNot(500));
+      expect(odd.headers, isNot(contains('access-control-allow-headers')));
+      expect(odd.headers, isNot(contains('access-control-allow-origin')));
+    });
+
     test('a SecurityConfig of the app (preflight and request)', () async {
       final client = clientWith(CustomCorsSecurityConfig());
 

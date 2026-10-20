@@ -167,7 +167,7 @@ asynchronous ones of `validateAsync()` never run):
 | `notEmpty()`                           | `minLength`, `minItems` or `minProperties: 1`  |
 | `size(min:, max:)`                     | `minLength`/`maxLength` (`minItems`... for a list) |
 | `email()`, `url()`, `uuid()`           | `format: email`, `uri`, `uuid`                 |
-| `pattern(...)`                         | `pattern` (a `RegExp` or a String)             |
+| `pattern(...)`                         | `pattern` (a `RegExp` without flags, or a String) |
 | `min(n)`, `max(n)` (`inclusive: false`)| `minimum`, `maximum` (`exclusiveMinimum`...)   |
 | `positive()`, `positiveOrZero()`...    | `exclusiveMinimum: 0`, `minimum: 0`...         |
 | `oneOf(values)`, `isEnum(values)`      | `enum`                                         |

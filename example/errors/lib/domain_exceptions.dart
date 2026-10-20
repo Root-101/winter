@@ -58,7 +58,7 @@ ExceptionHandler exceptionHandler() => SimpleExceptionHandler()
   )
   ..on<CouponExpired>(
     (request, e) => ApiException(
-      StatusCode.unprocessableEntity,
+      StatusCode.unprocessableContent,
       type: '$errors/coupon-expired',
       detail: 'The coupon ${e.code} expired',
     ),

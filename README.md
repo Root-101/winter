@@ -18,7 +18,7 @@ consistent errors, on top of `dart:io` and without code generation.
   configuration, logs, scheduled tasks, OpenAPI, WebSockets and Server-Sent Events.
 - **Small and explicit**: no reflection, no annotations, no code generation; what you register is
   what runs.
-- **Tested and documented**: about 1150 tests (99.7 % of the lines), a guide per module and an
+- **Tested and documented**: about 1200 tests (99.7 % of the lines), a guide per module and an
   example for every feature.
 
 **What Winter is not (yet):**
@@ -77,14 +77,14 @@ That's as simple as it gets, but Winter does a lot more.
 |------------------------|---------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
 | Routing                | Nested routes, typed path and query params, regex, 404/405, `HEAD` and `OPTIONS`, static files, health checks | [routing](doc/routing.md)                                                                     |
 | Filters                | Global and route filters, ordered, that see every error                                                       | [filters](doc/filters.md)                                                                     |
-| Requests and responses | Headers, cookies, every kind of body (JSON, forms, uploads, binary), streams                                  | [requests and responses](doc/requests-and-responses.md)                                       |
+| Requests and responses | Headers, cookies, every kind of body (JSON, forms, uploads, binary), streams, conditional requests (304/412/428), `Prefer`, `Link` pagination, idempotency keys, deprecation headers | [requests and responses](doc/requests-and-responses.md)                                       |
 | JSON                   | `toJson()` without interfaces, your own serializers, generics, `snake_case`, clear errors                     | [object mapper](doc/object-mapper.md)                                                         |
 | Validation             | Typed validators, nested objects, async rules, a 422 with a code per field                                    | [validation](doc/validation.md)                                                               |
 | Errors                 | Every error is a Problem Details (RFC 9457); a 500 never leaks details                                        | [error handling](doc/error-handling.md)                                                       |
 | Security               | Authentication filters, roles and permissions, CORS, security headers, a rate limiter                         | [security](doc/security.md)                                                                   |
 | Dependency injection   | Singletons, lazy, factories, one instance per request, async startup, disposal on shutdown                    | [dependency injection](doc/dependency-injection.md)                                           |
 | Configuration          | Typed environment variables, `.env` files and profiles                                                        | [configuration](doc/configuration.md)                                                         |
-| Logging                | Console and JSON loggers, a request id in every log                                                           | [logging](doc/logging.md)                                                                     |
+| Logging                | Console and JSON loggers, a request id and the W3C trace in every log                                         | [logging](doc/logging.md)                                                                     |
 | i18n                   | Messages in the language of the request                                                                       | [i18n](doc/i18n.md)                                                                           |
 | Real time              | WebSockets that go through the filters first, and Server-Sent Events                                          | [routing](doc/routing.md#websockets), [SSE](doc/requests-and-responses.md#server-sent-events) |
 | OpenAPI                | The document of the routes and Swagger UI, schemas from an example and its `validate()`                       | [openapi](doc/openapi.md)                                                                     |
@@ -237,7 +237,7 @@ case with its test, and complete apps.
 | [object_mapper](example/object_mapper), [validation](example/validation)                                         | Field naming, adapters, `PATCH`, sealed classes; nested objects, custom and async rules                         |
 | [errors](example/errors), [filters](example/filters)                                                             | Exceptions of the domain, a handler of your own; tenants, maintenance mode, a response cache                    |
 | [security](example/security), [di](example/di)                                                                   | API keys, Basic auth, webhook signatures, login throttling; scoped services, async startup                      |
-| [api_patterns](example/api_patterns)                                                                             | Pagination, ETag and `If-Match`, content negotiation, downloads, `202` jobs, idempotency keys, versioning       |
+| [api_patterns](example/api_patterns)                                                                             | Pagination, ETag and `If-Match`, content negotiation, downloads, `202` jobs, idempotency keys, `Prefer`, versioning |
 | [openapi](example/openapi), [realtime](example/realtime), [scheduling](example/scheduling), [i18n](example/i18n) | Swagger UI, Server-Sent Events, a WebSocket chat, cron tasks, translated messages                               |
 | [apps](example/apps)                                                                                             | Authentication with JWT, an orders API, a photo gallery with uploads and a chat, a production setup with Docker |
 

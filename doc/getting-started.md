@@ -145,7 +145,7 @@ curl -X POST localhost:8080/todos -H 'content-type: application/json' -d '{"titl
 # 422 {"violations": [{"fieldName": "title", "message": "The field cannot be blank", ...}], ...}
 
 curl localhost:8080/todos/7
-# 404 {"type": "about:blank", "title": "Not Found", "status": 404, "detail": "To-do 7 not found"}
+# 404 {"type": "about:blank", "title": "Not Found", "status": 404, "detail": "To-do 7 not found", "instance": "/todos/7"}
 
 curl localhost:8080/todos/abc
 # 400 {"detail": "The path param id must be an integer", ...}

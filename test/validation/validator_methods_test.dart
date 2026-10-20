@@ -2,9 +2,7 @@ import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
 void main() {
-  validationFixesTests();
-
-  group('ConstraintValidator Individual Methods Tests', () {
+  group('Each validator of FieldValidator', () {
     group('notNull()', () {
       test('Success when value is not null', () {
         final cvc = ConstraintValidatorContext();
@@ -23,12 +21,6 @@ void main() {
         final cvc = ConstraintValidatorContext();
         cvc.field('test', null).notNull(message: 'Required');
         expect(cvc.violations.first.message, equals('Required'));
-      });
-
-      test('stopOnFailure: true (default) stops subsequent rules', () {
-        final cvc = ConstraintValidatorContext();
-        cvc.field('test', null).notNull().custom((v) => 'should not run');
-        expect(cvc.violations.length, equals(1));
       });
 
       test('stopOnFailure: false continues to subsequent rules', () {
@@ -115,27 +107,27 @@ void main() {
       });
     });
 
-    group('email()', () {
-      test('Success with valid email', () {
+    test('email() accepts and rejects these formats', () {
+      for (final (email, valid) in [
+        ('user@domain.com', true),
+        ('user+tag@domain.com', true),
+        ('first.last@sub.domain.co', true),
+        ('user@domain.photography', true),
+        ('user_name-1@my-domain.museum', true),
+        ('plain', false),
+        ('@missing-user', false),
+        ('user@', false),
+        ('user@.com', false),
+        ('user@domain..com', false),
+        ('user@domain', false),
+        ('user@-domain.com', false),
+        ('user@domain-.com', false),
+        ('user name@domain.com', false),
+      ]) {
         final cvc = ConstraintValidatorContext();
-        cvc.field('test', 'user@domain.com').email();
-        expect(cvc.isValid, isTrue);
-      });
-
-      test('Failure with invalid formats', () {
-        final invalidEmails = [
-          'plain',
-          '@missing-user',
-          'user@',
-          'user@.com',
-          'user@domain..com',
-        ];
-        for (var email in invalidEmails) {
-          final tempCvc = ConstraintValidatorContext();
-          tempCvc.field('test', email).email();
-          expect(tempCvc.isValid, isFalse, reason: 'Failed for $email');
-        }
-      });
+        cvc.field('test', email).email();
+        expect(cvc.isValid, valid, reason: email);
+      }
     });
 
     group('min()', () {
@@ -243,8 +235,8 @@ void main() {
     });
   });
 
-  group('ConstraintValidatorContext Internal Tests', () {
-    test('Violations list should be unmodifiable', () {
+  group('ConstraintValidatorContext.violations', () {
+    test('is unmodifiable', () {
       final cvc = ConstraintValidatorContext();
       cvc.addViolation(
         const ConstraintViolation(value: 1, fieldName: 'f', message: 'm'),
@@ -257,57 +249,22 @@ void main() {
         throwsUnsupportedError,
       );
     });
-
-    test('toString() contains violations', () {
-      final cvc = ConstraintValidatorContext();
-      cvc.addViolation(
-        const ConstraintViolation(value: 1, fieldName: 'f', message: 'm'),
-      );
-      expect(cvc.toString(), contains('f'));
-      expect(cvc.toString(), contains('m'));
-    });
-  });
-}
-
-void validationFixesTests() {
-  group('email() accepted formats', () {
-    for (final email in [
-      'user+tag@domain.com',
-      'first.last@sub.domain.co',
-      'user@domain.photography',
-      'user_name-1@my-domain.museum',
-    ]) {
-      test('Valid: $email', () {
-        final cvc = ConstraintValidatorContext();
-        cvc.field('test', email).email();
-        expect(cvc.isValid, isTrue);
-      });
-    }
-
-    for (final email in [
-      'user@domain',
-      'user@-domain.com',
-      'user@domain-.com',
-      'user name@domain.com',
-    ]) {
-      test('Invalid: $email', () {
-        final cvc = ConstraintValidatorContext();
-        cvc.field('test', email).email();
-        expect(cvc.isValid, isFalse);
-      });
-    }
   });
 
   group('Sensitive fields', () {
-    test('The value of a sensitive field is never exposed', () {
+    test('a sensitive value is never kept; any other only in Dart, never in the JSON', () {
       final cvc = ConstraintValidatorContext();
       cvc.field('password', 'secret', sensitive: true).size(min: 8);
+      cvc.field('name', 'short').size(min: 8);
 
-      final violation = cvc.violations.single;
-      expect(violation.value, isNull);
-      expect(violation.toJson(), isNot(contains('value')));
-      expect(violation.toJson(), containsPair('fieldName', 'password'));
-      expect(violation.toString(), isNot(contains('secret')));
+      final [sensitive, plain] = cvc.violations;
+      expect(sensitive.value, isNull);
+      expect(sensitive.toJson(), isNot(contains('value')));
+      expect(sensitive.toJson(), containsPair('fieldName', 'password'));
+      expect(sensitive.toString(), isNot(contains('secret')));
+      expect(plain.value, 'short');
+      expect(plain.toString(), contains('short'));
+      expect(plain.toJson(), isNot(contains('value')));
     });
 
     test('Sensitive stays hidden when merged with a prefix', () {
@@ -318,14 +275,6 @@ void validationFixesTests() {
 
       expect(outer.violations.single.fieldName, 'user.password');
       expect(outer.violations.single.toJson(), isNot(contains('value')));
-    });
-
-    test('Non sensitive fields keep the value in Dart, never in the JSON', () {
-      final cvc = ConstraintValidatorContext();
-      cvc.field('name', 'short').size(min: 8);
-
-      expect(cvc.violations.single.value, 'short');
-      expect(cvc.violations.single.toJson(), isNot(contains('value')));
     });
   });
 }

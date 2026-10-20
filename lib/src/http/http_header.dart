@@ -262,6 +262,14 @@ class HttpHeader {
   /// See [Section 7.1.3 of RFC 7231](https://tools.ietf.org/html/rfc7231#section-7.1.3).
   static const String retryAfter = 'Retry-After';
 
+  /// The `Sec-WebSocket-Key` header: the nonce of a WebSocket handshake.
+  /// See [RFC 6455](https://www.rfc-editor.org/rfc/rfc6455#section-11.3.1).
+  static const String secWebSocketKey = 'Sec-WebSocket-Key';
+
+  /// The `Sec-WebSocket-Version` header: the version of a WebSocket handshake (`13`).
+  /// See [RFC 6455](https://www.rfc-editor.org/rfc/rfc6455#section-11.3.5).
+  static const String secWebSocketVersion = 'Sec-WebSocket-Version';
+
   /// The HTTP `Server` header.
   /// See [Section 7.4.2 of RFC 7231](https://tools.ietf.org/html/rfc7231#section-7.4.2).
   static const String server = 'Server';
@@ -269,10 +277,6 @@ class HttpHeader {
   /// The HTTP `Set-Cookie` header.
   /// See [Section 4.2.2 of RFC 2109](https://tools.ietf.org/html/rfc2109#section-4.2.2).
   static const String setCookie = 'Set-Cookie';
-
-  /// The HTTP `Set-Cookie2` header.
-  /// See [RFC 2965](https://tools.ietf.org/html/rfc2965).
-  static const String setCookie2 = 'Set-Cookie2';
 
   /// The HTTP `TE` header.
   /// See [Section 4.3 of RFC 7230](https://tools.ietf.org/html/rfc7230#section-4.3).
@@ -309,10 +313,6 @@ class HttpHeader {
   /// The `tracestate` header: the data of each tracing vendor, forwarded with `traceparent`.
   /// See [W3C Trace Context](https://www.w3.org/TR/trace-context/#tracestate-header).
   static const String tracestate = 'tracestate';
-
-  /// The HTTP `Warning` header.
-  /// See [Section 5.5 of RFC 7234](https://tools.ietf.org/html/rfc7234#section-5.5).
-  static const String warning = 'Warning';
 
   /// The HTTP `WWW-Authenticate` header.
   /// See [Section 4.1 of RFC 7235](https://tools.ietf.org/html/rfc7235#section-4.1).

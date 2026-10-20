@@ -374,6 +374,33 @@ void main() {
   });
 
   group('Strict types (§2)', () {
+    test(
+      'an integer beyond 64 bits, or a duration that overflows, is a 400',
+      () {
+        for (final json in ['100000000000000000000', '1e19', '-1e19']) {
+          expect(
+            () => mapper.decode<int>(json),
+            throwsA(
+              isA<DeserializationException>().having(
+                (e) => e.message,
+                'message',
+                r'$: expected an integer, got a number too big',
+              ),
+            ),
+            reason: json,
+          );
+        }
+        expect(
+          () => mapper.decode<Duration>('10000000000000000'),
+          throwsA(isA<DeserializationException>()),
+        );
+        expect(
+          mapper.decode<Duration>('1500'),
+          const Duration(milliseconds: 1500),
+        );
+      },
+    );
+
     test('a JSON string is not a number', () {
       expect(
         () => mapper.decode<Map<String, int>>('{"a":"12"}'),
@@ -723,6 +750,49 @@ void main() {
     });
   });
 
+  group('A hostile body', () {
+    test('thousands of new keys are renamed right, past the cache', () {
+      final ObjectMapper snake = ObjectMapper(
+        fieldNaming: FieldNaming.snakeCase,
+        deserializers: [Deserializer<_Keys>.json(_Keys.new)],
+      );
+      final Map<String, dynamic> body = snake
+          .decode<_Keys>(
+            jsonEncode({for (var i = 0; i < 3000; i++) 'key_$i': i}),
+          )
+          .json;
+
+      expect(body['key2999'], 2999);
+      expect(body, hasLength(3000));
+    });
+
+    String nested(int depth) => '${'{"child":' * depth}null${'}' * depth}';
+
+    for (final naming in [FieldNaming.none, FieldNaming.snakeCase]) {
+      test('objects nested too deeply are a 400, quickly (${naming.name})', () {
+        final ObjectMapper nodes = ObjectMapper(
+          fieldNaming: naming,
+          deserializers: [Deserializer<_Node>.json(_Node.fromJson)],
+        );
+
+        expect(nodes.decode<_Node>(nested(100)).depth, 100);
+        final Stopwatch watch = Stopwatch()..start();
+        expect(
+          () => nodes.decode<_Node>(nested(2000)),
+          throwsA(
+            isA<DeserializationException>().having(
+              (e) => e.reason,
+              'reason',
+              'the objects are nested too deeply',
+            ),
+          ),
+        );
+        // It used to take seconds (a stack overflow, or a copy per level)
+        expect(watch.elapsed, lessThan(const Duration(seconds: 1)));
+      });
+    }
+  });
+
   group('Options (§2)', () {
     test('includeNulls: false drops the null fields of the objects', () {
       final mapper = ObjectMapper(includeNulls: false);
@@ -990,6 +1060,27 @@ void main() {
   });
 
   group('encodeBytes and decodeBytes: straight to and from UTF-8', () {
+    test(
+      'decode and decodeBytes agree on blank bodies and the byte order mark',
+      () {
+        // A no-break space is not JSON whitespace: invalid for both, never an empty body
+        expect(
+          () => mapper.decode<int?>(' '),
+          throwsA(isA<DeserializationFormatException>()),
+        );
+        expect(
+          () => mapper.decodeBytes<int?>(utf8.encode(' ')),
+          throwsA(isA<DeserializationFormatException>()),
+        );
+        expect(mapper.decode<Map<String, dynamic>>('﻿{"a":1}'), {'a': 1});
+        expect(
+          mapper.decodeBytes<Map<String, dynamic>>(utf8.encode('﻿{"a":1}')),
+          {'a': 1},
+        );
+        expect(mapper.decode<int?>(' \n'), isNull);
+      },
+    );
+
     final Object value = {
       'name': 'Begoña 😀',
       'at': DateTime.utc(2026, 1, 2),
@@ -1684,4 +1775,23 @@ class _UpdateUser implements Validatable {
     cvc.field('name', name.valueOrNull).size(min: 2);
     return cvc;
   }
+}
+
+/// A tree that reads its child through the mapper, as any recursive model does
+class _Node {
+  final _Node? child;
+
+  const _Node(this.child);
+
+  factory _Node.fromJson(Map<String, dynamic> json) =>
+      _Node(json.field<_Node?>('child'));
+
+  int get depth => 1 + (child?.depth ?? 0);
+}
+
+/// The object a `fromJson` receives, as it is
+class _Keys {
+  final Map<String, dynamic> json;
+
+  const _Keys(this.json);
 }

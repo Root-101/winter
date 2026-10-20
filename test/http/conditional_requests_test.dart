@@ -43,6 +43,13 @@ void main() {
               },
             ),
           ),
+          Route.get(
+            path: '/weak',
+            handler: (r) => ResponseEntity.ok(
+              body: 'text',
+              headers: {HttpHeader.etag: 'W/"v7"'},
+            ),
+          ),
           Route.post(
             path: '/etag',
             handler: (r) => ResponseEntity.ok(
@@ -82,6 +89,17 @@ void main() {
         )).statusCode,
         304,
       );
+    });
+
+    test('a weak ETag of the response matches weakly', () async {
+      for (final ifNoneMatch in ['"v7"', 'W/"v7"']) {
+        final response = await client.get(
+          '/weak',
+          headers: {HttpHeader.ifNoneMatch: ifNoneMatch},
+        );
+
+        expect(response.statusCode, 304, reason: ifNoneMatch);
+      }
     });
 
     test(
@@ -243,6 +261,12 @@ void main() {
         () => request('GET', {
           HttpHeader.ifModifiedSince: after,
         }).checkPreconditions(lastModified: modified),
+        throwsA(isA<ResponseException>()),
+      );
+      expect(
+        () => request('GET', {
+          HttpHeader.ifNoneMatch: '"v7"',
+        }).checkPreconditions(etag: 'W/"v7"'),
         throwsA(isA<ResponseException>()),
       );
       request('GET', {}).checkPreconditions(etag: '"v7"');

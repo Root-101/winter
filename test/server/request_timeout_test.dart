@@ -128,6 +128,48 @@ void main() {
       expect(response.statusCode, 503);
     });
 
+    test('the scoped dependencies of a handler that timed out are disposed when it ends', () async {
+      final List<String> disposed = [];
+      final previous = di;
+      Winter.context.setUp(dependencyInjection: DependencyInjection());
+      addTearDown(() => Winter.context.setUp(dependencyInjection: previous));
+      di.putScoped<_Connection>(
+        _Connection.new,
+        onDispose: (connection) => disposed.add('released'),
+      );
+      final Completer<void> handlerEnded = Completer<void>();
+      final WinterTestClient scoped = WinterTestClient.build(
+        requestTimeout: timeout,
+        router: WinterRouter(
+          routes: [
+            Route.get(
+              path: '/query',
+              handler: (request) async {
+                di.find<_Connection>();
+                final ResponseEntity response = await stuck.future;
+                // Still usable: it was not given back to the pool under the handler
+                di.find<_Connection>();
+                handlerEnded.complete();
+                return response;
+              },
+            ),
+          ],
+        ),
+      );
+
+      final TestResponse response = await _instantTimers(
+        [],
+        () => scoped.get('/query'),
+      );
+      expect(response.statusCode, 503);
+      expect(disposed, isEmpty);
+
+      stuck.complete(ResponseEntity.ok());
+      await handlerEnded.future;
+      await pumpEventQueue();
+      expect(disposed, ['released']);
+    });
+
     test('a late error of the handler is logged, never uncaught', () async {
       final TestResponse response = await _instantTimers(
         [],
@@ -185,3 +227,6 @@ class _StuckFilter extends Filter {
   Future<ResponseEntity> doFilter(RequestEntity request, FilterChain chain) =>
       stuck;
 }
+
+/// A connection of a pool, one per request
+class _Connection {}

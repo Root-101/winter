@@ -4,7 +4,8 @@ Two kinds of examples:
 
 - **By topic**: many small examples, each about one case. One package per topic, one file per case
   (`lib/<case>.dart`, a server of its own on port 8080) and its test (`test/<case>_test.dart`, in
-  memory). Each topic has a README with the table of its cases.
+  memory). Each topic has a README with the table of its cases. `i18n` is the exception: one case
+  (an app translated with slang, from the YAML files to the tests), walked through in its README.
 - **Apps**: complete applications that combine several systems on purpose.
 
 The smallest server is [`main.dart`](main.dart).
@@ -21,7 +22,7 @@ The smallest server is [`main.dart`](main.dart).
 | [filters](filters) | Writing filters (before/after, `order`, `shouldFilter`), a tenant in the request context, maintenance mode, a response cache |
 | [security](security) | API keys, Basic auth, webhook signatures (HMAC), CORS with cookies for a SPA, login throttling, "the author or an admin" |
 | [di](di) | Layered services with tags and fakes in a child container, one instance per request, async startup |
-| [api_patterns](api_patterns) | Pagination with `Link`, ETag and `If-Match` (304/412/428), content negotiation (406), streamed downloads, `202` jobs, idempotency keys, API versioning |
+| [api_patterns](api_patterns) | Pagination with `Link`, ETag and `If-Match` (304/412/428), content negotiation (406), streamed downloads, `202` jobs, idempotency keys, `Prefer: return=minimal`, API versioning with deprecation |
 | [openapi](openapi) | The document without any docs, bodies from examples, schemas by hand, `BodyDocs`, a whole documented API with Swagger UI, exporting the document |
 | [realtime](realtime) | Server-Sent Events, a WebSocket chat |
 | [scheduling](scheduling) | A task every few minutes, a nightly cron task with a health check |
