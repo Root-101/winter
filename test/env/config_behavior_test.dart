@@ -147,6 +147,17 @@ void main() {
           ),
         ),
       );
+      // Too big for an int: the same error, naming the key and never the value
+      expect(
+        () => Env(env: {'T': '99999999999999999999s'}).find<Duration>('T'),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('T'), isNot(contains('99999'))),
+          ),
+        ),
+      );
     });
 
     test('Uri must be absolute', () {

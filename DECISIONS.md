@@ -15,7 +15,7 @@ Guide: [`doc/i18n.md`](doc/i18n.md).
 - **Texts are resolved when they are created**, with `requestLocale`, the language of the request
   in progress, read from its `RequestScope` (a `Zone`). Any code (a validator, a service) builds
   the final text without receiving the request, and concurrent requests never mix. So a `message:`
-  is a plain `String`, and the `t` of an app is a **getter** over `requestLocale`; validators are
+  is a plain `String`, and the `intl` of an app is a **getter** over `requestLocale`; validators are
   built inside `validate()`, never in a `static final` (it would keep the first language). Outside
   a request `requestLocale` is the `fallback`.
 - **`Vary: Accept-Language` is automatic**: reading the language during a request marks its scope,
@@ -65,14 +65,17 @@ Guide: [`doc/object-mapper.md`](doc/object-mapper.md).
   `fromJson` (casts, `json.field`, generated code) without declaring the fields twice. Off by
   default: a client that sends more than the model knows (a newer version) keeps working.
 - **Strict primitives**: JSON has one number type, so `12.0` is an `int`; a string is never a
-  number nor a bool (`"12"` is a 400).
+  number nor a bool (`"12"` is a 400), and an integer beyond 64 bits is a 400, never clamped.
+- **Limits against a hostile body**: at most 128 objects inside each other (deeper is a 400), each
+  object renamed by `fieldNaming` once, and the cache of renamed keys bounded (the keys come from
+  the client).
 - **Errors say where, never what Dart said**: `$.items[1]: expected a string, got an integer`.
   The message never contains a Dart type (an internal, maybe obfuscated, name), a cast, a file path
   nor the value sent. Inside a `fromJson` the path is unknown: `$: invalid value`, with the original
   error in `cause` and its type logged at debug. A `fromJson` that deserializes its children loses
   their path; known limitation for 1.0.
-- **`DateTime` is written in UTC**: a local time without offset can't be read correctly in another
-  time zone.
+- **`DateTime` is written in UTC**, and one read without an offset is taken as UTC: a local time
+  can't be read correctly in another time zone, and the server's own would change the instant.
 - **Options apply to objects only**: `includeNulls` and `fieldNaming` touch the maps of `toJson()`,
   of a serializer and of `Deserializer.json`, never a `Map` used as data. `fieldNaming` renames the
   whole object given to `Deserializer.json` (a parent reads its children with Dart names), and is
@@ -123,10 +126,17 @@ Guide: [`doc/error-handling.md`](doc/error-handling.md).
   client reads, the standard Spring uses too. `type` (`about:blank` by default), `title` (the
   reason phrase, never translated), `status`, `detail` (what the user reads, never in a 500) and
   extensions; the 422 adds `violations`, a 500 its `requestId`.
+- **`instance` is the path of the request** when the error doesn't give one, as Spring and
+  ASP.NET Core do: it tells which call failed without reading the logs. Never the query string
+  (it can carry tokens). `application/problem+json` is only for a `ProblemDetails` body: another
+  JSON body with an error status is `application/json`, because the media type promises the format.
+- **`ProblemDetails.fromJson`** is registered in the mapper by default (tests, clients of other
+  APIs). It follows RFC 9457 §3.1: a standard member of the wrong type is ignored, the rest are
+  extensions; only `status` is required, because a Winter problem always has one.
 - **The names of the format are fixed** (`requestId`, `fieldName`...) whatever the `fieldNaming` of
   the app, so every Winter app answers errors the same way (and kebab-case would break the member
   names RFC 9457 recommends). The extensions of the app keep the names it gives.
-- **`ApiException(status, detail:, type:, title:, extensions:, headers:)`** with shortcuts for the
+- **`ApiException(status, detail:, type:, title:, instance:, extensions:, headers:)`** with shortcuts for the
   common statuses; they are `const`. A response that is not a Problem Details (or a status that
   `StatusCode` doesn't have) is a `ResponseException`.
 - **The `ExceptionHandler` receives everything** (`Object`: Exceptions and Errors), and the chain
@@ -199,8 +209,18 @@ Guide: [`doc/logging.md`](doc/logging.md).
 - **The logs never contain the data of a request**: no bodies, query strings, tokens, nor the
   message of a deserialization error (it may contain the value sent); only the type of the error.
 - **Every request has an id**, always: its `X-Request-Id` when it's valid (1–128 safe characters,
-  so a header can't inject lines into the logs), or a new UUID. It's in `requestId`, the response,
+  so a header can't inject lines into the logs), or the trace id of a valid `traceparent`, or a new
+  UUID. It's in `requestId`, the response,
   every log of the request and a 500. It turns "it failed at 10:31" into the logs of that request.
+- **W3C Trace Context, not a tracer**: a valid `traceparent` (strict parsing: lowercase hex, no
+  ids of zeros, `ff` invalid, only one header) is continued with a new span id per request, and
+  its `tracestate` kept to forward (dropped if longer than 512 or not printable ASCII); otherwise
+  the request starts a trace (created lazily, so a request that never logs pays no random ids).
+  It's the standard every tracing tool speaks, without a dependency on OpenTelemetry. Without a
+  valid `X-Request-Id`, the request id is the trace id, one id across the services. `JsonLogger`
+  writes `traceId`/`spanId`; `ConsoleLogger` doesn't (noise for a person). No `traceresponse`
+  (a draft of Level 2, and it would expose the trace to the client). A WebSocket keeps the trace
+  of its handshake; a scheduled task starts its own.
 - Every level takes `error`, `stackTrace` and `fields`; `isEnabled(level)` skips building an
   expensive message (the framework's debug logs use it, so an attack doesn't cost a string per
   rejected request).
@@ -229,8 +249,24 @@ Guide: [`doc/security.md`](doc/security.md).
   API doesn't announce its framework.
 - **Rate limiter**: a sliding window over an asynchronous `RateLimiterStore` (in memory by default,
   so per isolate and per process; a shared store like Redis implements the same interface).
-  `maxRequests < 1` or a non positive window is an `ArgumentError`. The client is its IP; behind a
-  proxy `trustedProxies` reads `X-Forwarded-For`, never trusted without it.
+  `maxRequests < 1` or a non positive window is an `ArgumentError`. The client is its IP.
+- **The proxies are trusted in one place, `ServerConfig.trustedProxies`** (and `buildHandler`), not
+  per call of `clientIp`: the IP, the scheme and the host of the client must agree for the whole
+  request (the rate limiter, `Location`, the `instance` of the errors, OpenAPI). `TrustedProxies`
+  names how many proxies append their entry (the client is the one the outermost added) and the
+  one kind of header they write, `X-Forwarded-*` (the default: nginx, the load balancers of the
+  clouds) or `Forwarded` (RFC 7239): reading both would let a client fake the one its proxy
+  doesn't write. Every value is checked (an IP, `http`/`https`, a bare `host[:port]`) and ignored
+  otherwise. The scheme and the host take the entry at the place of the client, or the first one
+  when the proxies overwrite them with a single value. Without it (the default) none is read.
+- **The limits are announced with the IETF headers** (`draft-ietf-httpapi-ratelimit-headers`), not
+  the `X-RateLimit-*` of each vendor: `RateLimit-Policy: "default";q=100;w=60` and
+  `RateLimit: "default";r=42;t=17`, on every response the filter lets through and on its 429 (with
+  `Retry-After`, which wins for the client). `w` is the window rounded up to whole seconds (the
+  draft has no fractions nor zero); `t` the seconds until one more request is available, never a
+  timestamp. Each filter is a policy with a name (`policy:`, printable ASCII, quoted and escaped
+  as a Structured Field String); several filters on a route add one item each. The partition key
+  (`pk`) is never sent: it would echo the id of the client (its IP, its user).
 - **Response headers are checked before they're sent**: a value with a line break, another control
   character or a character that isn't ASCII, or a name that isn't a token, is a 500 with the error
   logged (never the value). `dart:io` refuses those headers, so the response would leave broken and
@@ -244,7 +280,8 @@ Guide: [`doc/security.md`](doc/security.md).
 Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
 
 - **The route table is checked at start**: an invalid path or a duplicated route is a `StateError`
-  (`RouterConfig.fail()`), found at start instead of as a 404. A duplicate is the same key, or the
+  (`DefaultOnInvalidUrl.fail()`/`DefaultOnDuplicatedRoute.fail()`, the defaults of `RouterConfig`),
+  found at start instead of as a 404. A duplicate is the same key, or the
   same method and shape (`/users/{id}` and `/users/{name}`: the second could never be reached).
   Only the literal parts of a path are validated; params and regex can have any character.
 - **The resolved `Route` travels in the request** (`request.route`), not as text: the server
@@ -265,7 +302,7 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
   filters and route keys work as in any route. Only files inside the folder, checked twice: no
   `..`, hidden, `\` or `:` segment (`.env`, `.git/`, a Windows separator, drive or stream), and the
   canonical path (links resolved) inside the canonical folder. `ETag` from size and modification
-  time (strong, so `If-Range` can use it), 304, one `Range` (several are rare and need
+  time (strong, so `If-Range` can use it), the 304 of the server, one `Range` (several are rare and need
   `multipart/byteranges`: the whole file is sent instead), the file streamed with its
   `Content-Length`. A folder redirects to its `/` before serving its index, with a relative
   `Location` that works behind a proxy prefix. MIME types are a short table of the web formats,
@@ -273,22 +310,64 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
 - **Health checks** (`Route.health`): a route, not a server feature, so the app decides its paths
   (liveness and readiness are two of them) and its filters. Named checks (`FutureOr<bool>`) run at
   once, each with a timeout (a hung database must not hang the probe); a false, an error or a
-  timeout is a 503 `DOWN` with the state of each check, never the reason (it's logged). Its own
-  JSON (`status`/`checks`, as Spring Actuator), not a Problem Details, also for the 503.
+  timeout is a 503 `fail` with the state of each check, never the reason (it's logged). The
+  format is the draft *Health Check Response Format for HTTP APIs* (`application/health+json`,
+  `pass`/`fail`, a list of measurements per check), not a Problem Details, also for the 503: it
+  has expired, but it's the shared format of the monitors and gateways, where `UP`/`DOWN` was
+  only Spring's. A check is a `bool`, so there is no `warn`; probes only read the status code.
 - **A route path has no query**: a `?` in it belongs to a regex (`{id|\d?}`, `(/.*)?`).
 - **Immutable configuration**: `FilterConfig` (combined with `merge`) and the routes of a router
   (added with `addRoute`, validated like the constructor).
 - **Filters run sorted by `order`**, stable (global first, then the route's, parents before
   children); CORS (-100) and the security headers (-99) first, so every response has them. An
   error becomes a response where it's thrown, so a filter never receives an exception.
+- **Idempotency keys are a filter** (`IdempotencyFilter`) over an async `IdempotencyStore`, like the
+  rate limiter: the handler stays plain, and a shared store (Redis, a table) implements the same
+  interface with an atomic `reserve`. It follows the IETF draft (a 400 without a key, a 422 for the
+  same key with another body or query, a 409 while it runs, the kept answer for a retry, success or error),
+  reads the key quoted or bare, and keeps neither a failure of the server nor a temporary one
+  (408, 425, 429) nor a stream, so a retry can still succeed. The key is scoped by method, path
+  and an optional `partition` (the user), never global: a key alone would hand one user's answer
+  to another; the parts are a JSON list, so a space in a key or a partition can't forge the id of
+  another. The in-memory store keeps at most `maxKeys` (the oldest go first). The body and the
+  query are compared by a 64-bit FNV-1a fingerprint, not a cryptographic hash: there
+  is no `crypto` dependency, and a collision only matters between two bodies of the same client
+  with the same key. `Idempotent-Replayed: true` (not in the draft) tells a replay apart.
+- **Deprecation is a filter** (`DeprecationFilter`), not a field of `Route`: a parent deprecates a
+  whole version and its children inherit it the way they inherit any filter, its errors carry the
+  headers too (the chain answers them where they're thrown), and OpenAPI finds it as it finds the
+  `AuthFilter`s. It sends the final RFCs: `Deprecation` as a Structured Field Date (`@seconds`,
+  RFC 9745; the `true` of the drafts is gone), `Sunset` as an HTTP date (RFC 8594, never before the
+  deprecation), and `Link`s `rel="deprecation"` and `rel="successor-version"` appended after the
+  ones of the response.
 
 ## 10. The HTTP layer
 
 Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
 
+- **Conditional requests are the server's, not each handler's** (RFC 9110 §13): a 200 or 206 of
+  a `GET`/`HEAD` with an `ETag` or a `Last-Modified` becomes a 304 when `If-None-Match` (weak
+  comparison) or, without it, `If-Modified-Since` says the client has that version, after the
+  pipeline (so the handler, static files included, only sets the validator; the 304 keeps every
+  header but those of the body). A change can't be checked afterwards, so the handler calls
+  `request.checkPreconditions(etag:, lastModified:, exists:, required:)` before making it, which
+  follows the order of §13.2.2 and throws a 412 (`PreconditionFailedException`), a 428
+  (`PreconditionRequiredException`, RFC 6585) or, in a `GET`, the 304. Winter never computes an
+  `ETag` from the body: it would need the whole body (no streams) and a hash per response, and
+  the app knows the version better.
+- **`Link` (RFC 8288) is a value, `WebLink`**, not a string built by hand: its attributes are
+  quoted and escaped, and one that isn't printable ASCII fails when it's created (a header can't
+  carry it). `WebLink.pages` takes the URL of the request and changes only the page param, so the
+  other params are never lost; the targets are relative to the request, right behind any proxy
+  without depending on `trustedProxies`.
+- **`Prefer` (RFC 7240) is read, never applied by itself**: `request.preferences` parses it (the
+  first of a repeated name wins, a malformed part is skipped) and the handler decides, because
+  only it knows what a minimal answer is; it says what it honored with `Preference-Applied`.
+  Reading it marks the request like reading the language, so the server adds `Vary: Prefer` and
+  no cache mixes the answers.
 - **Winter serves with `dart:io` directly**, with its own request and response, without shelf: its
   public API doesn't depend on another package (nor on its breaking changes), and an empty endpoint
-  is close to the `dart:io` ceiling (~83 %, `benchmark/http_benchmark.dart`).
+  is close to the `dart:io` ceiling (~85 %, `benchmark/http_benchmark.dart`).
 - **The request is read-only** (headers, query and path params): a filter passes a copy to the
   chain. `headers` (one value, case insensitive) and `headersAll` (every value); the headers of
   `dart:io` are read as a view, not copied. The body is read once and shared by the copies;
@@ -320,8 +399,10 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
   doesn't exist, and a slow upload would fail): a filter right after CORS and the security headers
   (order -98), so the 503 is a Problem Details with their headers and every other filter is timed.
   A `Future` can't be cancelled: the handler is abandoned, its late result ignored and a late error
-  logged; the response is sent, so the request stops holding the graceful shutdown. Only building
-  the response is timed, not sending it (streams).
+  logged; the response is sent, so the request stops holding the graceful shutdown. Its scope
+  ends when the handler does (`RequestScope.holdUntil`): disposing its scoped dependencies at the
+  503 would give its connection to the next request while it still uses it. Only building the
+  response is timed, not sending it (streams).
 - **`Winter.buildHandler`** returns the pipeline as a `RequestHandler`; `WinterTestClient` calls it
   in memory, so tests run the real pipeline.
 - **Forms and uploads**: `formData()` reads a whole form (`application/x-www-form-urlencoded` or
@@ -356,7 +437,9 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
 - **One library**, `package:winter/winter.dart`. Internal helpers stay in `lib/src` and are hidden
   with `export ... hide`: `addVary`, `limitBodySize`, `isValidUri`, the router helpers,
   `writeResponse`, the construction from an `HttpRequest`, the multipart parser, Winter's own
-  translations and the console styles. Public on purpose: `internalServerErrorResponse` and `defaultLogUnhandledError`
+  translations, the console styles, the helpers of the trusted proxies and of the conditional
+  requests, `healthHandler`, the OpenAPI and Swagger handlers, the WebSocket upgrade and
+  `onServerClosing`. Public on purpose: `internalServerErrorResponse` and `defaultLogUnhandledError`
   (for an `ExceptionHandler` of the app), the defaults of the filters (`defaultLog*`,
   `defaultClientId`), and the shortcuts `di`, `om`, `eh`, `env`, `logger` (short on purpose; the
   long form is `Winter.context`).
@@ -379,7 +462,8 @@ Guide: [`doc/openapi.md`](doc/openapi.md).
 - **What Winter knows, it writes by itself**: the paths and methods, the path params (an integer
   from `[0-9]+`/`\d+`, a `pattern` from another regex), the security of the `AuthFilter`s that run
   for each route (found by running their `shouldFilter` with a request to it, the way the server
-  does), and the errors as Problem Details (400, 401/403, 404, 415, 422, 429).
+  does), the errors as Problem Details (400, 401/403, 404, 415, 422, 429), and `deprecated` for a
+  route with a `DeprecationFilter`.
 - **The bodies come from examples**, not from annotations nor code generation (the project avoids
   both): an example is written by the object mapper, so its schema is what the API really sends,
   and the rules of its `validate()` become the constraints. Those rules are recorded without being
@@ -398,7 +482,8 @@ Guide: [`doc/openapi.md`](doc/openapi.md).
 Guide: [`doc/scheduling.md`](doc/scheduling.md).
 
 - **Its own cron parser, no dependency**: 5 fields with ranges, steps, lists, names and macros,
-  the day of the month and of the week matched as in cron (either one when both are restricted).
+  the day of the month and of the week matched as in cron (either one when both are restricted,
+  both when one starts with `*`, so `*/2` keeps its step).
   No seconds and no `L`/`W`/`#`: they cover rare cases, and a `Schedule` of your own (`next`)
   covers anything else. An invalid expression fails when the task is added, naming the field.
 - **Local time by default**, as cron, and `utc: true`. The calendar is walked in UTC fields and

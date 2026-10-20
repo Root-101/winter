@@ -82,14 +82,16 @@ final class RouteDocs {
   /// Leaves the route out of the document
   static const RouteDocs none = RouteDocs(hidden: true);
 
-  /// These docs with the tags of [parent] when they have none
+  /// These docs with the tags of [parent] when they have none, and hidden when [parent] is: a
+  /// hidden parent (`RouteDocs.none`) hides its children even when they have docs of their own
   RouteDocs inheriting(RouteDocs? parent) =>
-      parent == null || tags.isNotEmpty || parent.tags.isEmpty
+      parent == null ||
+          (tags.isNotEmpty || parent.tags.isEmpty) && (hidden || !parent.hidden)
       ? this
       : RouteDocs(
           summary: summary,
           description: description,
-          tags: parent.tags,
+          tags: tags.isNotEmpty ? tags : parent.tags,
           operationId: operationId,
           deprecated: deprecated,
           hidden: hidden || parent.hidden,

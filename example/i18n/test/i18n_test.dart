@@ -1,4 +1,4 @@
-import 'package:i18n_example/i18n/t.dart';
+import 'package:i18n_example/i18n/intl.dart';
 import 'package:i18n_example/i18n_example.dart';
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
@@ -134,7 +134,7 @@ void main() {
     );
   });
 
-  test('t outside a request: the fallback (English)', () {
-    expect(t.orders.created(id: 1), 'Order 1 created');
+  test('intl outside a request: the fallback (English)', () {
+    expect(intl.orders.created(id: 1), 'Order 1 created');
   });
 }

@@ -973,26 +973,27 @@ void main() {
 
     test('an async onDispose is awaited before the next one', () async {
       final events = <String>[];
+      final repositoryClosed = Completer<void>();
       di
-        ..put(
-          _Service(),
-          onDispose: (_) async {
-            await Future<void>.delayed(Duration.zero);
-            events.add('service');
-          },
-        )
+        ..put(_Service(), onDispose: (_) => events.add('service'))
         ..put<_Repository>(
           _SqlRepository(),
           onDispose: (_) async {
-            await Future<void>.delayed(const Duration(milliseconds: 5));
+            events.add('repository started');
+            await repositoryClosed.future;
             events.add('repository');
           },
         );
 
-      await di.disposeAll();
+      final disposing = di.disposeAll();
+      await pumpEventQueue();
+      expect(events, ['repository started']);
+
+      repositoryClosed.complete();
+      await disposing;
       await di.disposeAll(); // nothing left: nothing happens
 
-      expect(events, ['repository', 'service']);
+      expect(events, ['repository started', 'repository', 'service']);
     });
   });
 

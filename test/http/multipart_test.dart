@@ -441,7 +441,7 @@ void main() {
     test('an error of the body reaches the reader of the part', () async {
       Stream<List<int>> failing() async* {
         yield utf8.encode(body.substring(0, body.indexOf('PNG-BYTES') + 3));
-        throw const PayloadTooLargeException();
+        throw const ContentTooLargeException();
       }
 
       final List<String> names = [];
@@ -456,7 +456,7 @@ void main() {
 
       await expectLater(
         read.timeout(const Duration(seconds: 5)),
-        throwsA(isA<PayloadTooLargeException>()),
+        throwsA(isA<ContentTooLargeException>()),
       );
       expect(names, ['title', 'photo']);
     });

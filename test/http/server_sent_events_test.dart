@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:test/test.dart';
+import 'package:winter/src/server_sent_events.dart' show serverSentEventsBody;
 import 'package:winter/winter.dart';
 
 class _MemoryLogger extends WinterLogger {
@@ -179,6 +180,25 @@ void main() {
         await subscription.cancel();
 
         await cancelled.future.timeout(const Duration(seconds: 5));
+      },
+    );
+
+    test(
+      'a stream that ends forgets the close of the server (no leak per client)',
+      () async {
+        final List<String> calls = [];
+        final Stream<List<int>> body = serverSentEventsBody(
+          const Stream<ServerSentEvent>.empty(),
+          keepAlive: null,
+          onClosing: (callback) {
+            calls.add('registered');
+            return () => calls.add('cancelled');
+          },
+        );
+
+        await body.drain<void>();
+
+        expect(calls, ['registered', 'cancelled']);
       },
     );
 

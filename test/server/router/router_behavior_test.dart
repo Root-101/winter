@@ -393,6 +393,12 @@ void main() {
     test('the errors of every type', () async {
       final cases = {
         '/search?page=1.5': 'The query param page must be an integer',
+        // Only decimal digits, and a number is finite: never hex, a space, NaN nor Infinity
+        '/search?page=0x10': 'The query param page must be an integer',
+        '/search?page=%205': 'The query param page must be an integer',
+        '/search?price=NaN': 'The query param price must be a number',
+        '/search?total=Infinity': 'The query param total must be a number',
+        '/search?total=0x10': 'The query param total must be a number',
         '/search?price=x': 'The query param price must be a number',
         '/search?total=x': 'The query param total must be a number',
         '/search?active=yes': 'The query param active must be true or false',
@@ -481,7 +487,7 @@ void main() {
           ResponseEntity<void>.notFound(),
           ResponseEntity<void>.methodNotAllowed(),
           ResponseEntity<void>.conflict(),
-          ResponseEntity<void>.unprocessableEntity(),
+          ResponseEntity<void>.unprocessableContent(),
           ResponseEntity<void>.tooManyRequests(),
           ResponseEntity<void>.internalServerError(),
           ResponseEntity<void>.serviceUnavailable(),

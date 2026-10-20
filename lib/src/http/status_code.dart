@@ -2,7 +2,7 @@
 ///
 /// ```dart
 /// throw ApiException(StatusCode.conflict, detail: 'The email is already registered');
-/// StatusCode.resolve(422)?.reasonPhrase; // Unprocessable Entity
+/// StatusCode.resolve(422)?.reasonPhrase; // Unprocessable Content
 /// ```
 ///
 /// {@category HTTP}
@@ -125,8 +125,8 @@ enum StatusCode {
   /// 412 Precondition Failed
   preconditionFailed(412, Series.clientError, 'Precondition Failed'),
 
-  /// 413 Payload Too Large
-  payloadTooLarge(413, Series.clientError, 'Payload Too Large'),
+  /// 413 Content Too Large ([RFC 9110, section 15.5.14](https://www.rfc-editor.org/rfc/rfc9110#section-15.5.14))
+  contentTooLarge(413, Series.clientError, 'Content Too Large'),
 
   /// 414 URI Too Long
   uriTooLong(414, Series.clientError, 'URI Too Long'),
@@ -134,12 +134,8 @@ enum StatusCode {
   /// 415 Unsupported Media Type
   unsupportedMediaType(415, Series.clientError, 'Unsupported Media Type'),
 
-  /// 416 Requested range not satisfiable ([HTTP/1.1: Range Requests, section 4.4](https://tools.ietf.org/html/rfc7233#section-4.4))
-  rangeNotSatisfiable(
-    416,
-    Series.clientError,
-    'Requested range not satisfiable',
-  ),
+  /// 416 Range Not Satisfiable ([RFC 9110, section 15.5.17](https://www.rfc-editor.org/rfc/rfc9110#section-15.5.17))
+  rangeNotSatisfiable(416, Series.clientError, 'Range Not Satisfiable'),
 
   /// 417 Expectation Failed
   expectationFailed(417, Series.clientError, 'Expectation Failed'),
@@ -147,8 +143,11 @@ enum StatusCode {
   /// 418 I'm a teapot ([HTCPCP/1.0](https://tools.ietf.org/html/rfc2324#section-2.3.2))
   imATeapot(418, Series.clientError, "I'm a teapot"),
 
-  /// 422 Unprocessable Entity ([WebDAV](https://tools.ietf.org/html/rfc4918#section-11.2))
-  unprocessableEntity(422, Series.clientError, 'Unprocessable Entity'),
+  /// 421 Misdirected Request ([RFC 9110, section 15.5.20](https://www.rfc-editor.org/rfc/rfc9110#section-15.5.20))
+  misdirectedRequest(421, Series.clientError, 'Misdirected Request'),
+
+  /// 422 Unprocessable Content ([RFC 9110, section 15.5.21](https://www.rfc-editor.org/rfc/rfc9110#section-15.5.21))
+  unprocessableContent(422, Series.clientError, 'Unprocessable Content'),
 
   /// 423 Locked ([WebDAV](https://tools.ietf.org/html/rfc4918#section-11.3))
   locked(423, Series.clientError, 'Locked'),
@@ -214,9 +213,6 @@ enum StatusCode {
 
   /// 508 Loop Detected ([WebDAV Binding Extensions](https://tools.ietf.org/html/rfc5842#section-7.2))
   loopDetected(508, Series.serverError, 'Loop Detected'),
-
-  /// 509 Bandwidth Limit Exceeded
-  bandwidthLimitExceeded(509, Series.serverError, 'Bandwidth Limit Exceeded'),
 
   /// 510 Not Extended ([HTTP Extension Framework](https://tools.ietf.org/html/rfc2774#section-7))
   notExtended(510, Series.serverError, 'Not Extended'),

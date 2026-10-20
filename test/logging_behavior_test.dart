@@ -158,6 +158,7 @@ void main() {
       expect(json['message'], 'Order created');
       expect(json['time'] as String, endsWith('Z'));
       expect(json, isNot(contains('requestId')));
+      expect(json, isNot(contains('traceId')));
     });
 
     test('the request id, the error and the stack trace as strings', () {
@@ -205,6 +206,22 @@ void main() {
         });
       },
     );
+
+    test('the W3C trace and span of the request', () {
+      final trace = TraceContext.parse(
+        '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
+      )!;
+      final out = _capture(
+        () => RequestScope.run(
+          RequestScope(trace: trace),
+          () => const JsonLogger().info('Order created'),
+        ),
+      );
+
+      final json = line(out.stdout);
+      expect(json['traceId'], '4bf92f3577b34da6a3ce929d0e0e4736');
+      expect(json['spanId'], trace.spanId);
+    });
 
     test('below minLevel nothing is written', () {
       final out = _capture(

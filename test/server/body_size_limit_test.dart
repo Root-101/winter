@@ -93,7 +93,7 @@ void main() {
 
     await expectLater(
       limitBodySize(chunks, maxBytes: 5).forEach(read.add),
-      throwsA(isA<PayloadTooLargeException>()),
+      throwsA(isA<ContentTooLargeException>()),
     );
     expect(read, [
       [1, 2, 3],

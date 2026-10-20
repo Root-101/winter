@@ -251,10 +251,16 @@ void main() {
           name: 'warm-up',
           runOnStart: true,
           task: () => runs.add('warm-up'),
+        )
+        ..cron(
+          '0 3 * * *',
+          name: 'nightly',
+          runOnStart: true,
+          task: () => runs.add('nightly'),
         );
       s.start();
       await FakeTime.flush();
-      expect(runs, ['warm-up']);
+      expect(runs, ['warm-up', 'nightly']);
 
       final ScheduledTask late = s.every(
         const Duration(minutes: 1),
@@ -263,7 +269,7 @@ void main() {
       );
       expect(late.nextRun, DateTime.utc(2026, 10, 8, 10, 1, 30));
       await time.advance(const Duration(minutes: 1));
-      expect(runs, ['warm-up', 'late']);
+      expect(runs, ['warm-up', 'nightly', 'late']);
 
       await s['warm-up']!.run();
       expect(runs.last, 'warm-up');

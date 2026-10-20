@@ -11,10 +11,10 @@ class FilterChain {
   final int _currentFilterIndex;
   final List<Filter> _filters;
 
-  ///If provided, anything thrown by a filter or by the handler ([Exception]s and [Error]s) is
-  ///converted into a response right where it happens, so every outer filter (CORS, logs...)
-  ///receives a response instead of the error.
-  ///If null, the error is propagated to the caller.
+  /// If provided, anything thrown by a filter or by the handler ([Exception]s and [Error]s) is
+  /// converted into a response right where it happens, so every outer filter (CORS, logs...)
+  /// receives a response instead of the error.
+  /// If null, the error is propagated to the caller.
   final ExceptionHandler? _exceptionHandler;
 
   /// A chain of [filters], sorted by [Filter.order] (stable), that ends in [requestHandler]
@@ -111,8 +111,8 @@ class _RequestHandlerFilter extends Filter {
   }
 }
 
-///Stable sort (List.sort is not guaranteed to be stable): filters with the same order
-///keep their declaration order (global filters first, then the route filters)
+/// Stable sort (List.sort is not guaranteed to be stable): filters with the same order
+/// keep their declaration order (global filters first, then the route filters)
 List<Filter> _sortByOrder(List<Filter> filters) {
   final sorted = List.of(filters);
   mergeSort(sorted, compare: (a, b) => a.order.compareTo(b.order));

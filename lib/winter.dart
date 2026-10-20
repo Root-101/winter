@@ -4,9 +4,11 @@ export 'src/context/context.dart';
 export 'src/env/env.dart';
 export 'src/filter_chain/filter.dart';
 export 'src/handler.dart';
-export 'src/http/http.dart';
+export 'src/http/http.dart'
+    hide ifRangeMatches, notModifiedResponse, parseHttpDate;
 export 'src/i18n/i18n.dart';
 export 'src/logging/logger.dart';
+export 'src/logging/trace_context.dart';
 export 'src/openapi/openapi.dart';
 export 'src/multipart.dart' hide multipartBoundary, parseMultipart;
 export 'src/request_entity.dart'
@@ -18,7 +20,9 @@ export 'src/scheduling/scheduling.dart';
 export 'src/security/security.dart';
 export 'src/server_config.dart';
 export 'src/testing/winter_test_client.dart';
+export 'src/trusted_proxies.dart'
+    hide applyTrustedProxies, forwardedClientIpKey, parseHost;
 export 'src/server_sent_events.dart' hide serverSentEventsBody;
 export 'src/websocket.dart'
     hide WebSocketUpgrade, webSocketUpgradeKey, webSocketRouteHandler;
-export 'src/winter_server.dart' hide addVary, serverClosing;
+export 'src/winter_server.dart' hide addVary, onServerClosing;

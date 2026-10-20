@@ -33,6 +33,7 @@ class WinterTestClient {
     SecurityConfig? securityConfig,
     int? maxBodySize = defaultMaxBodySize,
     Duration? requestTimeout,
+    TrustedProxies? trustedProxies,
   }) => WinterTestClient(
     Winter.buildHandler(
       router: router,
@@ -40,6 +41,7 @@ class WinterTestClient {
       securityConfig: securityConfig,
       maxBodySize: maxBodySize,
       requestTimeout: requestTimeout,
+      trustedProxies: trustedProxies,
     ),
   );
 
@@ -74,7 +76,7 @@ class WinterTestClient {
       ),
     );
 
-    ///Like a real server: the body of a HEAD response is never sent
+    /// Like a real server: the body of a HEAD response is never sent
     final BytesBuilder bytes = BytesBuilder(copy: false);
     if (method.toUpperCase() != 'HEAD') {
       await response.read().forEach(bytes.add);

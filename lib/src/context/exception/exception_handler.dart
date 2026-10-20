@@ -35,18 +35,36 @@ void defaultLogUnhandledError(
 }
 
 /// Generic 500, without any internal detail of the error. Inside a request it has the
-/// `requestId`, so the client can report it and the logs of that request can be found.
+/// `requestId`, so the client can report it and the logs of that request can be found, and
+/// [instance] (the path of the request).
 ///
 /// {@category Errors}
-ResponseEntity internalServerErrorResponse() => ProblemDetails.of(
-  StatusCode.internalServerError,
-  extensions: {'requestId': ?requestId},
-).toResponse();
+ResponseEntity internalServerErrorResponse({String? instance}) =>
+    ProblemDetails.of(
+      StatusCode.internalServerError,
+      instance: instance,
+      extensions: {'requestId': ?requestId},
+    ).toResponse();
+
+/// [problem] with the path of [request] as its `instance` when it has none (never the query
+/// string, which can carry tokens)
+ProblemDetails _withInstance(ProblemDetails problem, RequestEntity request) =>
+    problem.instance != null
+    ? problem
+    : ProblemDetails(
+        status: problem.status,
+        title: problem.title,
+        type: problem.type,
+        detail: problem.detail,
+        instance: request.requestedUri.path,
+        extensions: problem.extensions,
+      );
 
 /// The default [ExceptionHandler]: every error is answered as a [ProblemDetails].
 ///
 /// - An [ApiException] with its status, `detail` and headers; a [ValidationException] adds the
 ///   `violations`.
+/// - A problem without `instance` gets the path of the request.
 /// - A [DeserializationException] (a body that can't be read) is a 400 with its message.
 /// - A [ResponseException] answers its own response.
 /// - Anything else (including any [Error]) is logged with [logUnhandledError] and becomes a
@@ -106,7 +124,7 @@ class SimpleExceptionHandler extends ExceptionHandler {
     }
     return switch (result) {
       ResponseEntity() => result,
-      ProblemDetails() => result.toResponse(),
+      ProblemDetails() => _withInstance(result, request).toResponse(),
       _ => handle(request, result, stackTrace),
     };
   }
@@ -122,21 +140,23 @@ class SimpleExceptionHandler extends ExceptionHandler {
         return error.responseEntity;
       case DeserializationException():
 
-        ///The client sent a body that can't be read: 400 with the reason (never Dart details)
+        /// The client sent a body that can't be read: 400 with the reason (never Dart details)
         return ProblemDetails.of(
           StatusCode.badRequest,
           detail: error.message,
+          instance: request.requestedUri.path,
         ).toResponse();
       case ValidationException():
 
-        ///The messages are already in the language of the request
-        ///(reading it adds `Vary: Accept-Language`, see `RequestScope.localeRead`).
-        ///`fieldName` follows the `fieldNaming` of the mapper, so it's the name the client sent
+        /// The messages are already in the language of the request
+        /// (reading it adds `Vary: Accept-Language`, see `RequestScope.localeRead`).
+        /// `fieldName` follows the `fieldNaming` of the mapper, so it's the name the client sent
         return ProblemDetails.of(
           error.status,
           type: error.type,
           title: error.title,
           detail: error.detail,
+          instance: error.instance ?? request.requestedUri.path,
           extensions: {
             ...error.extensions,
             'violations': [
@@ -148,13 +168,16 @@ class SimpleExceptionHandler extends ExceptionHandler {
           },
         ).toResponse(headers: error.headers);
       case ApiException():
-        return error.toProblemDetails().toResponse(headers: error.headers);
+        return _withInstance(
+          error.toProblemDetails(),
+          request,
+        ).toResponse(headers: error.headers);
     }
 
-    ///Anything else (a failed serialization of a response, any Error) is a server error:
-    ///log it and don't expose its details
+    /// Anything else (a failed serialization of a response, any Error) is a server error:
+    /// log it and don't expose its details
     logUnhandledError(request, error, stackTrace);
-    return internalServerErrorResponse();
+    return internalServerErrorResponse(instance: request.requestedUri.path);
   }
 
   /// The registered mapping of the most specific type that matches [error]

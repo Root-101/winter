@@ -32,6 +32,15 @@ void main() {
     expect(last.headersAll['link']!.join(), isNot(contains('next')));
   });
 
+  test('the other params of the request stay in every link', () async {
+    final response = await client.get('/articles?size=5&sort=title&page=2');
+
+    expect(
+      response.headersAll['link']!.first,
+      '</articles?size=5&sort=title&page=1>; rel="first"',
+    );
+  });
+
   test('a size over the limit, or a page under 1, is a 400', () async {
     expect((await client.get('/articles?size=500')).statusCode, 400);
     expect((await client.get('/articles?page=0')).statusCode, 400);

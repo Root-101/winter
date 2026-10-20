@@ -161,7 +161,9 @@ class ConsoleLogger extends WinterLogger {
 /// {"time":"2026-10-07T16:11:07.171Z","severity":"INFO","message":"Order created","requestId":"8f1c...","orderId":42}
 /// ```
 ///
-/// `requestId` is there inside a request, `error` and `stackTrace` (as strings) when given, and the
+/// Inside a request it has `requestId`, and `traceId` and `spanId` (its W3C trace, see
+/// [TraceContext]: a log tool links it to the trace of OpenTelemetry or Datadog). `error` and
+/// `stackTrace` (as strings) are there when given, and the
 /// [fields] are members of their own (they never replace the keys above). A field that is not a
 /// JSON value is written as its text. Logs below [minLevel] are ignored.
 ///
@@ -185,6 +187,7 @@ class JsonLogger extends WinterLogger {
     Map<String, Object?> fields = const {},
   }) {
     if (!isEnabled(level)) return;
+    final TraceContext? trace = requestTrace;
     stdout.writeln(
       jsonEncode({
         ...fields,
@@ -192,6 +195,8 @@ class JsonLogger extends WinterLogger {
         'severity': level.name.toUpperCase(),
         'message': message,
         'requestId': ?requestId,
+        'traceId': ?trace?.traceId,
+        'spanId': ?trace?.spanId,
         if (error != null) 'error': '$error',
         if (stackTrace != null) 'stackTrace': '$stackTrace',
       }, toEncodable: (value) => '$value'),
