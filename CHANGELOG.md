@@ -1,5 +1,9 @@
-* 1.0.0-rc.2:
+* 1.0.0-rc.3:
     * **DATE** :date: : Unreleased.
+    * The same code as `1.0.0-rc.2`, which is retracted: its package carried the executables of the benchmarks by mistake (12 MB instead of 0.5 MB).
+
+* 1.0.0-rc.2:
+    * **DATE** :date: : 2026-10-20 (retracted, see `1.0.0-rc.3`).
     * The second release candidate: the standards that clients, gateways and tracing tools read (phase 8 of the roadmap), and the fixes of a full review of the code and a security probe of the real server (phase 9).
     * **Errors** :rotating_light: : Problem Details (RFC 9457) complete: `instance` (the path of the request by default, never its query string, or your own with `ApiException(instance:)`), `ProblemDetails.fromJson` (registered in the object mapper, so `as<ProblemDetails>()` works; a member of the wrong type is ignored, as the RFC asks), and `application/problem+json` only for a `ProblemDetails` body (any other JSON is `application/json`).
     * **Security** :lock: : `RateLimiterFilter` announces its limits with the headers of the IETF draft *RateLimit header fields for HTTP*: `RateLimit-Policy` (`"default";q=100;w=60`) and `RateLimit` (`"default";r=42;t=17`), on every response it lets through and on its 429; a `policy:` name per filter, so a burst and a daily limit on a route add one item each. Behind proxies, `ServerConfig.trustedProxies` (`TrustedProxies(count, headers:)`) reads `X-Forwarded-For`/`-Proto`/`-Host` or `Forwarded` (RFC 7239), one kind only and every value checked, so `clientIp` is the client and `requestedUri` the public URL (`Location`, `instance`, OpenAPI).
