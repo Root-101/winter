@@ -387,6 +387,45 @@ void main() {
       );
     });
 
+    test(
+      'with the mapper of body<T>(objectMapper:), the names it read',
+      () async {
+        final kebab = WinterTestClient.build(
+          router: WinterRouter(
+            routes: [
+              Route.post(
+                path: '/',
+                handler: (request) async {
+                  await request.body<_Signup>(
+                    objectMapper: ObjectMapper(
+                      fieldNaming: FieldNaming.kebabCase,
+                      deserializers: [
+                        Deserializer<_Signup>.json(_Signup.fromJson),
+                      ],
+                    ),
+                  );
+                  return ResponseEntity.ok();
+                },
+              ),
+            ],
+          ),
+        );
+
+        final response = await kebab.post(
+          '/',
+          body: '{"first-name": "", "home-address": {"zip-code": ""}}',
+          headers: {HttpHeader.contentType: 'application/json'},
+        );
+
+        expect(
+          ((response.json as Map)['violations'] as List).map(
+            (v) => (v as Map)['fieldName'],
+          ),
+          ['first-name', 'home-address.zip-code'],
+        );
+      },
+    );
+
     test('jsonFieldName() converts every name of a path, not the indexes', () {
       final snake = ObjectMapper(fieldNaming: FieldNaming.snakeCase);
       final kebab = ObjectMapper(fieldNaming: FieldNaming.kebabCase);

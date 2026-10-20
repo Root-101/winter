@@ -215,9 +215,9 @@ class RequestEntity {
     }
     final (String expected, Object? Function(String) parse) = switch (T) {
       const (String) => ('a string', (String value) => value),
-      const (int) => ('an integer', int.tryParse),
-      const (double) => ('a number', double.tryParse),
-      const (num) => ('a number', num.tryParse),
+      const (int) => ('an integer', _parseInt),
+      const (double) => ('a number', _parseDouble),
+      const (num) => ('a number', _parseNum),
       const (bool) => ('true or false', _parseBool),
       const (DateTime) => ('an ISO 8601 date', DateTime.tryParse),
       _ => throw ArgumentError.value(
@@ -233,6 +233,24 @@ class RequestEntity {
 
   static String _nameOf(Object value) =>
       value is Enum ? value.name : value.toString();
+
+  static final RegExp _integer = RegExp(r'^[+-]?\d+$');
+  static final RegExp _decimal = RegExp(
+    r'^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$',
+  );
+
+  /// Only decimal digits: never `0x10`, ` 5` nor `1e3`
+  static int? _parseInt(String value) =>
+      _integer.hasMatch(value) ? int.tryParse(value) : null;
+
+  /// A finite decimal number: never `NaN`, `Infinity`, `0x10` nor ` 5`
+  static num? _parseNum(String value) {
+    if (!_decimal.hasMatch(value)) return null;
+    final num? number = num.tryParse(value);
+    return number != null && number.isFinite ? number : null;
+  }
+
+  static double? _parseDouble(String value) => _parseNum(value)?.toDouble();
 
   static bool? _parseBool(String value) => switch (value.toLowerCase()) {
     'true' => true,
@@ -323,9 +341,26 @@ class RequestEntity {
         ? mapper.decodeBytes<T>(await _body.bytes())
         : mapper.decode<T>(await _body.text(encoding));
     if (validate) {
-      _validate(body);
-      // Only after the synchronous rules passed: a wrong value never reaches a query
-      await _validateAsync(body);
+      try {
+        _validate(body);
+        // Only after the synchronous rules passed: a wrong value never reaches a query
+        await _validateAsync(body);
+      } on ValidationException catch (error) {
+        // The exception handler names the fields with the global mapper: with another one, the
+        // client must see the names it sent to this one
+        if (objectMapper == null) rethrow;
+        throw ValidationException(
+          violations: [
+            for (final ConstraintViolation violation in error.violations)
+              violation.copyWith(
+                fieldName: objectMapper.jsonFieldName(violation.fieldName),
+              ),
+          ],
+          detail: error.detail,
+          instance: error.instance,
+          headers: error.headers,
+        );
+      }
     }
     return body;
   }
