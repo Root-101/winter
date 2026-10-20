@@ -28,10 +28,11 @@ final class Preferences {
   static const Preferences none = Preferences({});
 
   /// The preferences of the values of `Prefer` (several headers, or several preferences separated
-  /// by commas, are one list). A malformed part is skipped.
+  /// by commas, are one list). A malformed part is skipped, and so is a header longer than 4 KB.
   factory Preferences.parse(Iterable<String> headers) {
     final Map<String, Preference> all = {};
     for (final String header in headers) {
+      if (header.length > _maxLength) continue;
       for (final String part in _split(header, ',')) {
         final List<String> pieces = _split(part, ';');
         final (String, String?)? pair = _pair(pieces.first);
@@ -101,28 +102,31 @@ final class Preferences {
 
   /// [text] split by [separator] outside quoted strings
   static List<String> _split(String text, String separator) {
+    final int split = separator.codeUnitAt(0);
     final List<String> parts = [];
-    final StringBuffer part = StringBuffer();
+    var start = 0;
     var quoted = false;
     for (var i = 0; i < text.length; i++) {
-      final String char = text[i];
-      if (quoted && char == r'\' && i + 1 < text.length) {
-        part
-          ..write(char)
-          ..write(text[++i]);
-        continue;
-      }
-      if (char == '"') quoted = !quoted;
-      if (char == separator && !quoted) {
-        parts.add(part.toString());
-        part.clear();
-      } else {
-        part.write(char);
+      final int char = text.codeUnitAt(i);
+      if (quoted && char == _backslash) {
+        i++;
+      } else if (char == _quote) {
+        quoted = !quoted;
+      } else if (char == split && !quoted) {
+        parts.add(text.substring(start, i));
+        start = i + 1;
       }
     }
-    parts.add(part.toString());
+    parts.add(text.substring(start));
     return parts.where((part) => part.trim().isNotEmpty).toList();
   }
+
+  static const int _quote = 0x22;
+  static const int _backslash = 0x5C;
+
+  /// A `Prefer` longer than this is ignored: real ones are a few words, and a huge one would cost
+  /// the server time to parse on every request
+  static const int _maxLength = 4096;
 }
 
 /// One preference of `Prefer`: its value (`minimal` in `return=minimal`), and its parameters

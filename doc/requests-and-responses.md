@@ -613,7 +613,8 @@ Route.post(
 ),
 ```
 
-- Names are case insensitive; when one comes twice, the first wins; a malformed part is skipped.
+- Names are case insensitive; when one comes twice, the first wins; a malformed part is skipped,
+  and so is a `Prefer` longer than 4 KB (a real one is a few words).
   Several `Prefer` headers are one list, and a parameter (`respond-async; wait=10`) is in
   `preferences.all['respond-async']!.params`.
 - Tell the client what was honored with `Preference-Applied`.
