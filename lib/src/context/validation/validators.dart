@@ -8,7 +8,7 @@ import 'package:winter/winter.dart';
 ///   (`requestLocale`), and the violation has a `code` (the key of the text) and its `params`.
 /// - With `stopOnFailure`, a failure skips the next validators of the field.
 
-/// Messages of Winter in the language of the request in progress, like the `t` of an app
+/// Messages of Winter in the language of the request in progress, like the `intl` of an app
 WinterMessages get _intl => winterMessages(requestLocale);
 
 /// For any type of value
@@ -167,7 +167,8 @@ extension StringValidators<T extends String?> on FieldValidator<T> {
 
   /// The value has a match of [pattern]: a [RegExp] (used as it is, flags included), a String
   /// with a regular expression (compiled once), or any other [Pattern]. Anchor a regular
-  /// expression (`^...$`) to match the whole value.
+  /// expression (`^...$`) to match the whole value. The regex goes in the `params` of the
+  /// violation (and in OpenAPI) only without flags: a client checking it would see another rule.
   FieldValidator<T> pattern(
     Pattern pattern, {
     String? message,
@@ -179,7 +180,11 @@ extension StringValidators<T extends String?> on FieldValidator<T> {
       _ => (value) => pattern.allMatches(value).isNotEmpty,
     };
     final String? source = switch (pattern) {
-      RegExp() => pattern.pattern,
+      // A flag (case insensitive, multiline...) is not in the source: the schema would say
+      // another thing than the server checks, so it's left out
+      RegExp(isCaseSensitive: true, isMultiLine: false, isDotAll: false) =>
+        pattern.pattern,
+      RegExp() => null,
       String() => pattern,
       _ => null,
     };

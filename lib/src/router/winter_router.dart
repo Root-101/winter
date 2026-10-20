@@ -21,9 +21,9 @@ abstract class BaseRouter {
   /// 405, an automatic `OPTIONS`, or every request of a router without routes.
   FutureOr<ResponseEntity> handler(RequestEntity request);
 
-  ///Return the [Route] that will handle the request (if any).
-  ///The server uses it to apply the route-level filters and the path params,
-  ///so any router that works with routes (or wraps other routers) must override it
+  /// Return the [Route] that will handle the request (if any).
+  /// The server uses it to apply the route-level filters and the path params,
+  /// so any router that works with routes (or wraps other routers) must override it
   Route? resolveRoute(RequestEntity request) => null;
 }
 
@@ -52,9 +52,9 @@ class ServeRouter extends BaseRouter {
   }
 }
 
-///What happens when no route can handle a request: a [MethodNotAllowedException] (405, with the
-///`Allow` header) if the path exists for other methods, a [NotFoundException] (404) otherwise.
-///They go through the exception handler like any other error.
+/// What happens when no route can handle a request: a [MethodNotAllowedException] (405, with the
+/// `Allow` header) if the path exists for other methods, a [NotFoundException] (404) otherwise.
+/// They go through the exception handler like any other error.
 ///
 /// {@category Routing}
 Never methodNotAllowedOrNotFound(Set<HttpMethod> allowedMethods) {
@@ -62,8 +62,8 @@ Never methodNotAllowedOrNotFound(Set<HttpMethod> allowedMethods) {
   throw MethodNotAllowedException(allowedMethods);
 }
 
-///The answer of a router for a request without a route: an `OPTIONS` to a path that exists is a
-///204 with `Allow` (RFC 9110); anything else is [methodNotAllowedOrNotFound]
+/// The answer of a router for a request without a route: an `OPTIONS` to a path that exists is a
+/// 204 with `Allow` (RFC 9110); anything else is [methodNotAllowedOrNotFound]
 ///
 /// {@category Routing}
 ResponseEntity noRouteResponse(
@@ -78,7 +78,7 @@ ResponseEntity noRouteResponse(
   return methodNotAllowedOrNotFound(allowedMethods);
 }
 
-///The value of an `Allow` header: `GET, HEAD, OPTIONS`
+/// The value of an `Allow` header: `GET, HEAD, OPTIONS`
 ///
 /// {@category Routing}
 String allowHeader(Set<HttpMethod> methods) =>
@@ -116,7 +116,7 @@ class WinterRouter extends BaseRouter {
 
   final List<Route> _routes;
 
-  ///The routes of this router, flattened (read-only: add them with [addRoute])
+  /// The routes of this router, flattened (read-only: add them with [addRoute])
   List<Route> get routes => UnmodifiableListView(_routes);
 
   WinterRouter._({
@@ -173,9 +173,9 @@ class WinterRouter extends BaseRouter {
           final currentRoute = Route(
             path: fullPath,
 
-            ///A generated key is re-generated with the full path, otherwise two children
-            ///with the same relative path (`/users` + `/{id}`, `/items` + `/{id}`) get the same key
-            ///and the second one is dropped as duplicated
+            /// A generated key is re-generated with the full path, otherwise two children
+            /// with the same relative path (`/users` + `/{id}`, `/items` + `/{id}`) get the same key
+            /// and the second one is dropped as duplicated
             key: route._hasCustomKey ? route.key : null,
             method: route.method!,
             handler: route.handler!,
@@ -211,30 +211,30 @@ class WinterRouter extends BaseRouter {
     return result;
   }
 
-  ///The same key, or the same method and shape (`GET /users/{id}` and `GET /users/{name}`):
-  ///the second one could never be reached
+  /// The same key, or the same method and shape (`GET /users/{id}` and `GET /users/{name}`):
+  /// the second one could never be reached
   static bool _isDuplicated(Route route, List<Route> routes) => routes.any(
     (other) =>
         other.key == route.key ||
         (other.method == route.method && other._shape == route._shape),
   );
 
-  ///Routes that match the path of the request (ignoring the method)
+  /// Routes that match the path of the request (ignoring the method)
   List<Route> _routesMatchingPath(RequestEntity request) {
     String urlPath = request.requestedUri.path;
     return routes.where((element) => element.match(urlPath)).toList();
   }
 
-  ///Return the route that will handle the request
-  ///If a null value is returned, it means that this router can't handle the request with a route
-  ///(the handler will return a 404 or 405)
+  /// Return the route that will handle the request
+  /// If a null value is returned, it means that this router can't handle the request with a route
+  /// (the handler will return a 404 or 405)
   ///
-  ///A static route (without params or regex) has priority over the others, so
-  ///`/users/me` wins over `/users/{id}` no matter the declaration order.
-  ///Between routes of the same kind, the first declared wins.
+  /// A static route (without params or regex) has priority over the others, so
+  /// `/users/me` wins over `/users/{id}` no matter the declaration order.
+  /// Between routes of the same kind, the first declared wins.
   ///
-  ///A HEAD request without a HEAD route is handled by the GET route of the path
-  ///(the server sends the headers without the body).
+  /// A HEAD request without a HEAD route is handled by the GET route of the path
+  /// (the server sends the headers without the body).
   Route? _handlerRoute(RequestEntity request) {
     HttpMethod method = HttpMethod(request.method);
     String urlPath = request.requestedUri.path;
@@ -246,7 +246,7 @@ class WinterRouter extends BaseRouter {
   }
 
   Route? _findRoute(HttpMethod method, String urlPath) {
-    ///Filter by method first, it's much cheaper than matching the path regex
+    /// Filter by method first, it's much cheaper than matching the path regex
     List<Route> candidates = routes
         .where((element) => element.method == method && element.match(urlPath))
         .toList();
@@ -255,8 +255,8 @@ class WinterRouter extends BaseRouter {
         candidates.firstOrNull;
   }
 
-  ///Methods allowed for the path of the request (empty if no route match the path)
-  ///HEAD is allowed wherever GET is, and OPTIONS wherever the path exists
+  /// Methods allowed for the path of the request (empty if no route match the path)
+  /// HEAD is allowed wherever GET is, and OPTIONS wherever the path exists
   Set<HttpMethod> allowedMethods(RequestEntity request) {
     Set<HttpMethod> methods = _routesMatchingPath(request)
         .map((element) => element.method)
@@ -274,15 +274,15 @@ class WinterRouter extends BaseRouter {
   @override
   Route? resolveRoute(RequestEntity request) => _handlerRoute(request);
 
-  ///Return true or false if this router can successfully process a request
-  ///This means if the router if found, and the methods match
+  /// Return true or false if this router can successfully process a request
+  /// This means if the router if found, and the methods match
   @override
   bool canHandle(RequestEntity request) {
     return _handlerRoute(request) != null;
   }
 
-  ///In the server it's only called when no route matched (the pipeline calls the handler of the
-  ///route itself): a 404, a 405 or an automatic OPTIONS. Called directly, it routes the request.
+  /// In the server it's only called when no route matched (the pipeline calls the handler of the
+  /// route itself): a 404, a 405 or an automatic OPTIONS. Called directly, it routes the request.
   @override
   FutureOr<ResponseEntity> handler(RequestEntity request) {
     final Route? route = _handlerRoute(request);
@@ -290,8 +290,8 @@ class WinterRouter extends BaseRouter {
     return noRouteResponse(request, allowedMethods(request));
   }
 
-  ///Add a route (and its children) with the same rules as the constructor:
-  ///the [basePath] is applied, invalid urls & duplicated routes go to the [config] callbacks
+  /// Add a route (and its children) with the same rules as the constructor:
+  /// the [basePath] is applied, invalid urls & duplicated routes go to the [config] callbacks
   void addRoute(Route route) {
     for (final newRoute in _flattenRoutes([route], basePath, config)) {
       if (_isDuplicated(newRoute, _routes)) {
@@ -346,7 +346,7 @@ class Route {
   /// (`GET /users/{id}`)
   final String key;
 
-  ///True if the key was provided by the user (not generated from the path & method)
+  /// True if the key was provided by the user (not generated from the path & method)
   final bool _hasCustomKey;
 
   Route._({
@@ -405,8 +405,8 @@ class Route {
     );
   }
 
-  ///A parent route: no method nor handler, only a common [path] and [filterConfig] for its
-  ///[routes]
+  /// A parent route: no method nor handler, only a common [path] and [filterConfig] for its
+  /// [routes]
   factory Route.parent({
     required String path,
     String? key,
@@ -545,12 +545,12 @@ class Route {
     );
   }
 
-  ///GET (and HEAD) of the files of [directory] under [path]: `/assets/css/site.css` is
-  ///`directory/css/site.css`, and `/assets` (or a folder) its [index]. See [StaticFiles] for the
-  ///rules (no path traversal, ETag, 304, Range requests).
+  /// GET (and HEAD) of the files of [directory] under [path]: `/assets/css/site.css` is
+  /// `directory/css/site.css`, and `/assets` (or a folder) its [index]. See [StaticFiles] for the
+  /// rules (no path traversal, ETag, 304, Range requests).
   ///
-  ///It matches every path under [path], so a route declared after it with a param at the same
-  ///place (`/assets/{id}`) is never reached: declare those first. [directory] must exist.
+  /// It matches every path under [path], so a route declared after it with a param at the same
+  /// place (`/assets/{id}`) is never reached: declare those first. [directory] must exist.
   factory Route.static({
     required String path,
     required String directory,
@@ -583,14 +583,14 @@ class Route {
 
   static const String _staticFileParam = 'staticFile';
 
-  ///GET [path]: the OpenAPI document of the routes, as JSON (built by the first request).
+  /// GET [path]: the OpenAPI document of the routes, as JSON (built by the first request).
   ///
-  ///```dart
-  ///router.addRoute(Route.openApi(openApi: OpenApi(title: 'Users API', version: '1.0.0')));
-  ///```
+  /// ```dart
+  /// router.addRoute(Route.openApi(openApi: OpenApi(title: 'Users API', version: '1.0.0')));
+  /// ```
   ///
-  ///Add it with `addRoute` once the router exists: [OpenApi] documents the router of the running
-  ///server (or the one it's given). The route itself is not in the document.
+  /// Add it with `addRoute` once the router exists: [OpenApi] documents the router of the running
+  /// server (or the one it's given). The route itself is not in the document.
   factory Route.openApi({
     required OpenApi openApi,
     String path = '/openapi.json',
@@ -604,10 +604,10 @@ class Route {
     docs: RouteDocs.none,
   );
 
-  ///GET [path]: Swagger UI, a page to read and try the API, with the document at [specUrl]
-  ///(`Route.openApi`). Swagger UI is loaded from a CDN by the browser: `swagger-ui-dist` 5.17.14
-  ///from unpkg, a fixed version (the page never changes by itself); the page allows it in its
-  ///`Content-Security-Policy`.
+  /// GET [path]: Swagger UI, a page to read and try the API, with the document at [specUrl]
+  /// (`Route.openApi`). Swagger UI is loaded from a CDN by the browser: `swagger-ui-dist` 5.17.14
+  /// from unpkg, a fixed version (the page never changes by itself); the page allows it in its
+  /// `Content-Security-Policy`.
   factory Route.swaggerUi({
     String path = '/docs',
     String specUrl = '/openapi.json',
@@ -622,26 +622,32 @@ class Route {
     docs: RouteDocs.none,
   );
 
-  /// `{"status": "UP", "checks": {"database": "UP"}}`
+  /// `{"status": "pass", "checks": {"database": [{"status": "pass"}]}}`
   static JsonSchema _healthSchema(Iterable<String> checks) {
-    JsonSchema state() => JsonSchema.string(enumValues: const ['UP', 'DOWN']);
+    JsonSchema state() => JsonSchema.string(enumValues: const ['pass', 'fail']);
     return JsonSchema.object(
       {
         'status': state(),
         if (checks.isNotEmpty)
           'checks': JsonSchema.object({
-            for (final String name in checks) name: state(),
+            for (final String name in checks)
+              name: JsonSchema.array(
+                JsonSchema.object(
+                  {'status': state()},
+                  required: const ['status'],
+                ),
+              ),
           }),
       },
       required: const ['status'],
     );
   }
 
-  ///A WebSocket at [path]: the handshake (a `GET`) goes through the filters like any request, and
-  ///then [handler] gets the socket.
+  /// A WebSocket at [path]: the handshake (a `GET`) goes through the filters like any request, and
+  /// then [handler] gets the socket.
   ///
-  ///```dart
-  ///Route.websocket(
+  /// ```dart
+  /// Route.websocket(
   ///  path: '/chat/{room}',
   ///  filterConfig: FilterConfig([AuthFilter()]),
   ///  allowedOrigins: ['https://app.example.com'],
@@ -651,18 +657,18 @@ class Route {
   ///      socket.sendJson({'room': room, 'echo': message});
   ///    }
   ///  },
-  ///)
-  ///```
+  /// )
+  /// ```
   ///
-  ///- A request that isn't a WebSocket handshake is a 426 (`Upgrade Required`).
-  ///- [allowedOrigins]: the `Origin` a browser may connect from (a 403 otherwise; `'*'` for any).
+  /// - A request that isn't a WebSocket handshake is a 426 (`Upgrade Required`).
+  /// - [allowedOrigins]: the `Origin` a browser may connect from (a 403 otherwise; `'*'` for any).
   ///  Browsers don't apply CORS to WebSockets, so without it any website can open the socket with
   ///  the cookies of its user (cross-site WebSocket hijacking). A client without `Origin` (not a
   ///  browser) is let in.
-  ///- [protocols]: the subprotocols spoken, in order of preference; the first one the client
+  /// - [protocols]: the subprotocols spoken, in order of preference; the first one the client
   ///  asks for is chosen, and a client that asks only for others is refused.
-  ///- [pingInterval]: a ping every 30 seconds by default, so a dead client is found and closed.
-  ///- The handler runs in a request scope of its own (`requestPrincipal`, `requestId`); an error
+  /// - [pingInterval]: a ping every 30 seconds by default, so a dead client is found and closed.
+  /// - The handler runs in a request scope of its own (`requestPrincipal`, `requestId`); an error
   ///  in it is logged and closes the socket (1011). The server closes every socket (1001) when it
   ///  shuts down.
   factory Route.websocket({
@@ -688,18 +694,20 @@ class Route {
     docs: docs ?? RouteDocs.none,
   );
 
-  ///GET (and HEAD) [path]: a health check for a load balancer, Docker or Kubernetes.
+  /// GET (and HEAD) [path]: a health check for a load balancer, Docker or Kubernetes.
   ///
-  ///Every one of [checks] runs at once, each limited to [timeout]: a 200
-  ///`{"status": "UP", "checks": {"database": "UP"}}` when all of them pass, and a 503 with
-  ///`"status": "DOWN"` when one returns false, throws or takes too long (the reason is logged,
-  ///never sent). Without checks it's a 200 while the server answers. Never cached
-  ///(`Cache-Control: no-store`).
+  /// Every one of [checks] runs at once, each limited to [timeout]. The answer has the format of
+  /// the draft *Health Check Response Format for HTTP APIs* (`application/health+json`), which
+  /// Kubernetes tooling, gateways and monitors read: a 200
+  /// `{"status": "pass", "checks": {"database": [{"status": "pass"}]}}` when all of them pass, and
+  /// a 503 with `"status": "fail"` when one returns false, throws or takes too long (the reason is
+  /// logged, never sent). Without checks it's a 200 while the server answers. Never cached
+  /// (`Cache-Control: no-store`).
   ///
-  ///```dart
-  ///Route.health(path: '/livez'),                                  // the process is alive
-  ///Route.health(path: '/readyz', checks: {'database': db.ping}), // it can serve requests
-  ///```
+  /// ```dart
+  /// Route.health(path: '/livez'),                                  // the process is alive
+  /// Route.health(path: '/readyz', checks: {'database': db.ping}), // it can serve requests
+  /// ```
   factory Route.health({
     String path = '/health',
     Map<String, HealthCheck> checks = const {},
@@ -718,31 +726,33 @@ class Route {
           summary: 'Health check',
           tags: const ['health'],
           response: BodyDocs(
-            description: 'Every check is up',
+            description: 'Every check passes',
             schema: _healthSchema(checks.keys),
+            contentType: MediaType.applicationHealthJson.mimeType,
           ),
           responses: {
             503: BodyDocs(
-              description: 'A check is down',
+              description: 'A check fails',
               schema: _healthSchema(checks.keys),
+              contentType: MediaType.applicationHealthJson.mimeType,
             ),
           },
         ),
   );
 
-  ///A static route has no path params nor regex, it only match an exact path
+  /// A static route has no path params nor regex, it only match an exact path
   late final bool isStatic = !_dynamicPathPattern.hasMatch(path);
 
   static final RegExp _dynamicPathPattern = RegExp(r'[{}*+?()\[\]|\\^$]');
 
-  ///Compiled once and reused for every request
+  /// Compiled once and reused for every request
   late final PathTemplate _template = PathTemplate.of(path);
 
   /// Whether the path of an url (`/users/7`, a query is ignored) matches [path]
   bool match(String rawActualUrl) => _template.match(rawActualUrl);
 
-  ///The path without the names of its params (`/users/{id|[0-9]+}` => `/users/{|[0-9]+}`):
-  ///two routes with the same method and shape match the same urls
+  /// The path without the names of its params (`/users/{id|[0-9]+}` => `/users/{|[0-9]+}`):
+  /// two routes with the same method and shape match the same urls
   late final String _shape = path.replaceAllMapped(
     _paramNamePattern,
     (match) => '{${match[1] ?? ''}}',

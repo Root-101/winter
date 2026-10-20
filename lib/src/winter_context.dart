@@ -42,7 +42,7 @@ class WinterContext {
 
   LocaleConfig _localeConfig;
 
-  ///Languages of the responses, used by `request.locale`
+  /// Languages of the responses, used by `request.locale`
   LocaleConfig get localeConfig => _localeConfig;
 
   /// A context; what isn't given has its default (`ConsoleLogger`, `SimpleExceptionHandler`...)

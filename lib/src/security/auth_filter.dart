@@ -47,7 +47,7 @@ class AuthFilter extends Filter {
     final securityContext = request.securityContext;
     final bool isAuthenticated = securityContext.isAuthenticated;
 
-    ///401: nobody (or an authentication with `authenticated: false`) is logged in
+    /// 401: nobody (or an authentication with `authenticated: false`) is logged in
     if (authenticated && !isAuthenticated) {
       throw _unauthorized;
     }
@@ -56,8 +56,8 @@ class AuthFilter extends Filter {
       final authentication =
           securityContext.authentication ?? Authentication.anonymous();
       if (!rules!.evaluate(authentication, request)) {
-        ///An anonymous user may get access by logging in (401),
-        ///a logged in user without the needed roles/permissions can't (403)
+        /// An anonymous user may get access by logging in (401),
+        /// a logged in user without the needed roles/permissions can't (403)
         throw isAuthenticated ? const ForbiddenException() : _unauthorized;
       }
     }

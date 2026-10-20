@@ -5,8 +5,9 @@ REST API. Not at the level of Spring, but with the basics complete, stable and d
 
 **Legend:** 🔴 blocks 1.0 · 🟡 should be in 1.0 · 🟢 after 1.0 (1.x) · ✅ done · ⏸️ on hold
 
-> **Now: `1.0.0-rc.1` is on pub.dev (2026-10-09)**, to be used in a real project before 1.0.0
-> (6.4). Phases 1 to 7 are done. The CI (6.1) comes after 1.0.
+> **Now: the release of `1.0.0-rc.2`** (6.4), after `1.0.0-rc.1` (2026-10-09) was used in a real
+> project. Phases 1 to 9 are done (8: the standards, after the rc; 9: the review after them). The
+> CI (6.1) comes after 1.0.
 
 The decisions behind each point are in `DECISIONS.md` (§ numbers below), the behavior in the
 tests, and the usage in `doc/`.
@@ -27,31 +28,32 @@ criteria:
    version: no migration guide from 0.x.
 4. Before each release the checks pass locally (format, analyze, tests, examples, publish dry run)
    with a good pana score. The CI comes after 1.0 (6.1).
-5. At least one release candidate (`1.0.0-rc.1`) was published and used in a real project.
+5. At least one release candidate (`1.0.0-rc.1`, then `1.0.0-rc.2`) was published and used in a
+   real project.
 
 ---
 
 ## 1. Current state
 
-| Module                                                             | Guide                          | Decisions |
-|--------------------------------------------------------------------|--------------------------------|-----------|
-| HTTP engine on `dart:io`, own `RequestEntity`/`ResponseEntity`     | `requests-and-responses.md`    | §10       |
-| Pipeline, filters, request scope (`Zone`)                          | `architecture.md`, `filters.md`| §9, §10   |
-| Router (nested, regex, 404/405, HEAD, static files, health)        | `routing.md`                   | §9        |
-| Object mapper                                                      | `object-mapper.md`             | §2        |
-| Validation (sync and async)                                        | `validation.md`                | §3        |
-| Errors (Problem Details)                                           | `error-handling.md`            | §4        |
-| Dependency injection                                               | `dependency-injection.md`      | §5        |
-| Configuration (`Env`, `ServerConfig`)                              | `configuration.md`             | §6        |
-| Logging (request id, JSON logger)                                  | `logging.md`                   | §7        |
-| Security (auth, CORS, rate limit, headers)                         | `security.md`                  | §8        |
-| i18n (slang + YAML, `Accept-Language`)                             | `i18n.md`                      | §1        |
-| WebSockets and Server-Sent Events                                  | `requests-and-responses.md`    | §10       |
-| OpenAPI and Swagger UI                                             | `openapi.md`                   | §12       |
-| Scheduled tasks                                                    | `scheduling.md`                | §13       |
-| Testing in memory (`WinterTestClient`)                             | `testing.md`                   |           |
-| Deployment, benchmarks                                             | `deployment.md`, `benchmarks.md`|          |
-| CI / publishing                                                    | ❌ Postponed (6.1, 6.4)         |           |
+| Module                                                         | Guide                            | Decisions |
+|----------------------------------------------------------------|----------------------------------|-----------|
+| HTTP engine on `dart:io`, own `RequestEntity`/`ResponseEntity` | `requests-and-responses.md`      | §10       |
+| Pipeline, filters, request scope (`Zone`)                      | `architecture.md`, `filters.md`  | §9, §10   |
+| Router (nested, regex, 404/405, HEAD, static files, health)    | `routing.md`                     | §9        |
+| Object mapper                                                  | `object-mapper.md`               | §2        |
+| Validation (sync and async)                                    | `validation.md`                  | §3        |
+| Errors (Problem Details)                                       | `error-handling.md`              | §4        |
+| Dependency injection                                           | `dependency-injection.md`        | §5        |
+| Configuration (`Env`, `ServerConfig`)                          | `configuration.md`               | §6        |
+| Logging (request id, JSON logger)                              | `logging.md`                     | §7        |
+| Security (auth, CORS, rate limit, headers)                     | `security.md`                    | §8        |
+| i18n (slang + YAML, `Accept-Language`)                         | `i18n.md`                        | §1        |
+| WebSockets and Server-Sent Events                              | `requests-and-responses.md`      | §10       |
+| OpenAPI and Swagger UI                                         | `openapi.md`                     | §12       |
+| Scheduled tasks                                                | `scheduling.md`                  | §13       |
+| Testing in memory (`WinterTestClient`)                         | `testing.md`                     |           |
+| Deployment, benchmarks                                         | `deployment.md`, `benchmarks.md` |           |
+| CI / publishing                                                | ❌ Postponed (6.1, 6.4)           |           |
 
 ---
 
@@ -115,14 +117,14 @@ documented. The behavior of each one is in its `*_behavior_test.dart`.
 - **4.3 More features:** WebSockets (`Route.websocket`, `allowedOrigins`, §10), Server-Sent Events
   (`ResponseEntity.sse`, §10), scheduled tasks (`Scheduler`, `every`/`cron`, §13), OpenAPI
   (`Route.openApi`, `Route.swaggerUi`, `RouteDocs`, `JsonSchema`, §12), `AsyncValidatable` (§3).
-  - DI: `putLazyAsync` + `ready()`/`findAsync`, `di.child()` for tests, `di.registrations`.
-  - Validation: `Map<String, Validatable>`, LRU for `pattern()`, `copyWith(code: () => null)`.
-  - Object mapper: `JsonAdapter<T>`, typed fields for a hand-written `fromJson`
-    (`json.field<T>()`, `json.object()`), `TestResponse.as<T>()`, a warning when replacing the
-    mapper loses registrations, `encodeBytes`/`decodeBytes` (16–46 % faster), `PatchValue<T>`,
-    `rejectUnknownFields`, `mapWithKeys<K>()`.
-  - Not possible on purpose: reading an unregistered class or serializing records; both need
-    reflection or codegen (§11).
+    - DI: `putLazyAsync` + `ready()`/`findAsync`, `di.child()` for tests, `di.registrations`.
+    - Validation: `Map<String, Validatable>`, LRU for `pattern()`, `copyWith(code: () => null)`.
+    - Object mapper: `JsonAdapter<T>`, typed fields for a hand-written `fromJson`
+      (`json.field<T>()`, `json.object()`), `TestResponse.as<T>()`, a warning when replacing the
+      mapper loses registrations, `encodeBytes`/`decodeBytes` (16–46 % faster), `PatchValue<T>`,
+      `rejectUnknownFields`, `mapWithKeys<K>()`.
+    - Not possible on purpose: reading an unregistered class or serializing records; both need
+      reflection or codegen (§11).
 
 ### Phase 5: documentation ✅
 
@@ -164,6 +166,68 @@ The [release review](#release-review-before-every-release), the first time (2026
   **160/160** on Linux (Docker). The benchmarks showed no regression; refreshing
   `doc/benchmarks.md` needs a quiet machine.
 
+### Phase 8: standards ✅
+
+The behaviors of the framework moved to the RFCs and drafts that clients, gateways and tracing
+tools already read, by priority (impact against effort). Each one with its guide, decision,
+example case and tests.
+
+- **RFC 9457 complete (§4):** `instance` (the path, never the query), `ProblemDetails.fromJson`
+  (lenient, §3.1), `application/problem+json` only for a `ProblemDetails` body.
+- **RateLimit headers (§8):** `RateLimit-Policy`/`RateLimit` of the IETF draft instead of
+  `X-RateLimit-*`, a `policy` per filter.
+- **W3C Trace Context (§7):** `traceparent`/`tracestate`, `requestTrace`, a span per request,
+  `traceId`/`spanId` in `JsonLogger`, the trace id as the request id.
+- **Trusted proxies (§8):** `ServerConfig.trustedProxies` (`Forwarded` of RFC 7239 or
+  `X-Forwarded-*`, one kind only) for `clientIp()` and `requestedUri`.
+- **Conditional requests (§10):** the 304 of the server for any `GET`, `checkPreconditions`
+  (412, 428), static files on the same code.
+- **Deprecation (§9):** `DeprecationFilter` (`Deprecation` RFC 9745, `Sunset` RFC 8594, links,
+  `deprecated` in OpenAPI).
+- **`Link` (§10):** `WebLink` and `WebLink.pages` for pagination (RFC 8288).
+- **Idempotency keys (§9):** `IdempotencyFilter` over an `IdempotencyStore` (IETF draft).
+- **`Prefer` (§10):** `request.preferences` (RFC 7240), `Vary: Prefer` by itself.
+- **Health (§9):** `Route.health` answers `application/health+json` (`pass`/`fail`).
+
+### Phase 9: third full review ✅
+
+The [release review](#release-review-before-every-release) after phase 8 (2026-10-19), with a
+quality audit of the whole code: five reviews at once (the server, the context modules, security
+against a real server, the tests, the docs and the API), then every finding fixed with its test.
+
+- **Security (real server):** the URI of a request came from `dart:io`'s `requestedUri`, which
+  takes `X-Forwarded-Host`/`-Proto` from any client and glues them before the path: a client chose
+  the host, the scheme and even the routed path (`X-Forwarded-Host: h/static/ENV~1?` read a
+  `.env`). Now it's the request target, the scheme of the server and a valid `Host`. Static files
+  on Windows served hidden files by their 8.3 short name (`ENV~1`): the real names are checked
+  too. Two idempotency partitions could share an id through a space; CORS echoed any
+  `Access-Control-Request-Headers` (a 500 on demand); `Prefer` had no size limit.
+- **Bugs:** cron `*/2` in the day of the month ran every day; a typed response without body broke
+  `IdempotencyFilter` and locked its key; the query string wasn't part of an idempotent request;
+  a request that timed out disposed its scoped dependencies under the handler still running; every
+  SSE connection left a listener until shutdown; typed params took `NaN`, `Infinity` and hex; the
+  422 named the fields with the global mapper when `body<T>()` had its own; integers beyond 64 bits
+  were clamped; a date without offset was read in the server's time zone; a hidden parent didn't
+  hide its children in OpenAPI.
+- **Limits:** objects nested more than 128 levels are a 400 (they cost seconds), the cache of
+  renamed keys is bounded, `InMemoryIdempotencyStore` keeps at most `maxKeys`, an IPv6 client
+  counts by its /64 in the rate limiter.
+- **API:** `clientIp` is a getter, `RequestPreconditionsX`, the reason phrases of RFC 9110
+  (`ContentTooLargeException`, `UnprocessableContentException`, 421), no `Set-Cookie2`, `Warning`
+  nor 509, the categories of the request getters, `Scheduler.cron(runOnStart:)`.
+- **Tests:** from 1237 to 1215, without overlaps, without the real clock, coverage 99.7 % (the
+  rest: other platforms, races and unreachable code, listed in `CLAUDE.md`).
+- **Docs:** 21 outdated sentences (Problem Details without `instance`, hand-written health checks,
+  `change()`, the pipeline of `architecture.md`...), every snippet analyzed against the API (none
+  broken), no broken link.
+- **Checks:** format, analyze, tests, every example, `dart doc`, the publish dry run, `pana`
+  **160/160** on Linux (Docker), `messages*.g.dart` up to date, `dart pub outdated` only minor
+  updates. Benchmarks without a regression: 81–85 % of `dart:io` (noisy machine), the router
+  ~225 000 req/s, the mapper as before.
+- **Not done, on purpose:** `fieldNaming` renames the whole object given to `Deserializer.json`
+  (map fields included) but writes only the top of a `toJson()`, a known limitation (§2). A cycle
+  of async dependencies found concurrently waits forever (`ready()` is safe; documented).
+
 ---
 
 ## Release review (before every release)
@@ -178,13 +242,13 @@ write down here what was found.
    no deprecated code, no internal helper exported by mistake (`lib/winter.dart`). Every public
    member has dartdoc and a `{@category}`.
 3. **Security.** Probe the real server, not only the tests:
-   - Nothing of the client in a log or an error (bodies, query strings, tokens, values of a
-     failed deserialization or validation), and a 500 never has details.
-   - Static files: `..` (also encoded), hidden files, `\`, device names, links out of the folder.
-   - Headers: a response header with CR/LF or non-ASCII is a 500; nothing long echoed back.
-   - Limits: `maxBodySize`, multipart part headers, malformed bodies are a 400.
-   - CORS (`'*'` with credentials), `allowedOrigins` of the WebSockets, `trustedProxies`.
-   - The dependencies: `dart pub outdated` and the advisories of pub.dev.
+    - Nothing of the client in a log or an error (bodies, query strings, tokens, values of a
+      failed deserialization or validation), and a 500 never has details.
+    - Static files: `..` (also encoded), hidden files, `\`, device names, links out of the folder.
+    - Headers: a response header with CR/LF or non-ASCII is a 500; nothing long echoed back.
+    - Limits: `maxBodySize`, multipart part headers, malformed bodies are a 400.
+    - CORS (`'*'` with credentials), `allowedOrigins` of the WebSockets, `trustedProxies`.
+    - The dependencies: `dart pub outdated` and the advisories of pub.dev.
 4. **Tests.** Every use case covered, with no two tests checking the same thing: merge or delete
    the overlapping ones, rename the ones whose name no longer says what they check. No real
    clock, a free port per server test. Coverage at the current level (~99.7 %): look at every
@@ -197,7 +261,8 @@ write down here what was found.
    every feature.
 7. **Checks** (the ones of 6.1, by hand): `dart format --set-exit-if-changed .`, `dart analyze`,
    `dart test`, the tests of every example, `dart doc --dry-run` without warnings,
-   `dart pub publish --dry-run`, `pana` (on Linux: in Docker, `dart:stable`, from a clone of the repository; Windows fails), the generated `messages*.g.dart` up to date,
+   `dart pub publish --dry-run`, `pana` (on Linux: in Docker, `dart:stable`, from a clone of the
+   repository; Windows fails), the generated `messages*.g.dart` up to date,
    the benchmarks without a regression (`doc/benchmarks.md`).
 
 ---
@@ -212,11 +277,12 @@ exists on pub.dev (0.0.7, the same repository), so each release is a new version
 
 1. [x] **`1.0.0-rc.1` published on pub.dev on 2026-10-09**: `pana` 160/160, merged into `main`
    (`release/1.0.0-rc.1`), tag `v1.0.0-rc.1`. pub.dev keeps 0.0.7 as the latest stable until
-   1.0.0, and the install commands name the version (pub only picks a prerelease when asked).
-2. [ ] Use it in a real project for a few weeks (feather-io), and add it to *Powered by Winter*
-   in the README.
-3. [ ] Fix what comes up and publish `1.0.0`: tag `v1.0.0`, CHANGELOG with the date, announcement
-   (r/dartlang, Dart Discord, X).
+   1.0.0, and the installation commands name the version (pub only picks a prerelease when asked).
+2. [x] Use it in a real project for a few weeks (feather-io). Already in *Powered by Winter* in
+   the README, with a teaser of Almond.
+3. [ ] **`1.0.0-rc.2`**, with phases 8 and 9: the [release review](#release-review-before-every-release)
+   ran as phase 9 (2026-10-19); `release/1.0.0-rc.2` merged into `main`, tag `v1.0.0-rc.2`, published
+   on pub.dev.
 
 ### 6.1 CI 🟢 (after 1.0)
 
@@ -232,10 +298,18 @@ Until then the same checks run by hand. Notes: run on a push to any branch and o
   types, two classes with the same name and a failing `fromJson`: the mapper works and its errors
   have no obfuscated names.
 
-### Possible improvements 🟢
+### 6.5 Release `1.0.0`
+
+1. [ ] Fix what comes up in 6.4 and publish `1.0.0`: tag `v1.0.0`, the version in `pubspec.yaml`,
+   CHANGELOG with the date, announcement (r/dartlang, Dart Discord, X).
+
+### Possible improvements after release 🟢
 
 Only if a real use asks for them; none breaks the API.
 
+- [ ] `Content-Digest` (RFC 9530) and HTTP Message Signatures (RFC 9421), the last standard of
+  phase 8: they need cryptographic hashes and signatures (a `crypto` dependency the project
+  doesn't have), and RFC 9421 is a large spec.
 - [ ] A Redis `RateLimiterStore` in its own package (`winter_redis`), so several instances share
   the limit.
 - [ ] More languages for Winter's messages (fr, pt, de…): the `*.i18n.yaml` of `lib/src/i18n/`.

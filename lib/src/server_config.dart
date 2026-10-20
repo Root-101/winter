@@ -8,7 +8,7 @@ import 'package:winter/winter.dart';
 /// {@category Server}
 const int defaultServerPort = 8080;
 
-///10 MB
+/// 10 MB
 ///
 /// {@category Server}
 const int defaultMaxBodySize = 10 * 1024 * 1024;
@@ -26,63 +26,67 @@ const int defaultMaxBodySize = 10 * 1024 * 1024;
 ///
 /// {@category Server}
 class ServerConfig {
-  ///Address on which the server listens: `'0.0.0.0'` (default, every IPv4 interface),
-  ///`'localhost'`, `'127.0.0.1'`, `'::'`...
+  /// Address on which the server listens: `'0.0.0.0'` (default, every IPv4 interface),
+  /// `'localhost'`, `'127.0.0.1'`, `'::'`...
   final String host;
 
-  ///Port on which the server listens. Default to [defaultServerPort] (8080); `0` picks a free one.
+  /// Port on which the server listens. Default to [defaultServerPort] (8080); `0` picks a free one.
   final int port;
 
-  ///If true, several isolates can listen on the same [port] (see
-  ///`benchmark/server_shared_benchmark.dart`): the connections are balanced between them.
+  /// If true, several isolates can listen on the same [port] (see
+  /// `benchmark/server_shared_benchmark.dart`): the connections are balanced between them.
   final bool shared;
 
-  ///Max size (in bytes) of the body of a request, a bigger body is rejected with a 413 (Payload Too Large)
-  ///when it's read. It protects the server from running out of memory with huge requests.
-  ///Default to `defaultMaxBodySize` (10 MB), `null` means no limit.
+  /// Max size (in bytes) of the body of a request, a bigger body is rejected with a 413 (Content Too Large)
+  /// when it's read. It protects the server from running out of memory with huge requests.
+  /// Default to `defaultMaxBodySize` (10 MB), `null` means no limit.
   final int? maxBodySize;
 
-  ///If true (default), SIGINT (Ctrl+C) & SIGTERM shut the server down gracefully
-  ///(see `Winter.shutdown`): the requests in progress finish before the server stops.
-  ///Set it to false if your app handles the signals itself.
+  /// If true (default), SIGINT (Ctrl+C) & SIGTERM shut the server down gracefully
+  /// (see `Winter.shutdown`): the requests in progress finish before the server stops.
+  /// Set it to false if your app handles the signals itself.
   final bool handleSignals;
 
-  ///Max time to wait for the requests in progress on a graceful shutdown,
-  ///after it the remaining connections are closed. Default to 10 seconds.
+  /// Max time to wait for the requests in progress on a graceful shutdown,
+  /// after it the remaining connections are closed. Default to 10 seconds.
   final Duration shutdownTimeout;
 
-  ///Called on a graceful shutdown after the server is closed and before the dependencies are
-  ///disposed (`di.disposeAll()`), to release other resources
+  /// Called on a graceful shutdown after the server is closed and before the dependencies are
+  /// disposed (`di.disposeAll()`), to release other resources
   final FutureOr<void> Function()? onShutdown;
 
-  ///Compress the responses with gzip when the client accepts it (`Accept-Encoding`). Off by
-  ///default: usually the proxy in front of the app compresses, and it costs CPU.
+  /// Compress the responses with gzip when the client accepts it (`Accept-Encoding`). Off by
+  /// default: usually the proxy in front of the app compresses, and it costs CPU.
   final bool autoCompress;
 
-  ///How long an idle keep-alive connection stays open. Default to 120 seconds (the one of
-  ///`dart:io`); `null` keeps them open.
+  /// How long an idle keep-alive connection stays open. Default to 120 seconds (the one of
+  /// `dart:io`); `null` keeps them open.
   final Duration? idleTimeout;
 
-  ///Serve HTTPS with this certificate and key (`bindSecure`), or plain HTTP without it:
+  /// Serve HTTPS with this certificate and key (`bindSecure`), or plain HTTP without it:
   ///
-  ///```dart
-  ///ServerConfig(
+  /// ```dart
+  /// ServerConfig(
   ///  port: 8443,
   ///  securityContext: SecurityContext()
   ///    ..useCertificateChain('cert.pem')
   ///    ..usePrivateKey('key.pem'),
-  ///)
-  ///```
+  /// )
+  /// ```
   ///
-  ///Usually the proxy in front of the app (a load balancer, nginx) terminates TLS instead.
+  /// Usually the proxy in front of the app (a load balancer, nginx) terminates TLS instead.
   final SecurityContext? securityContext;
 
-  ///Max time to build the response of a request (the filters and the handler, reading its body
-  ///included). After it the client gets a 503 and the request no longer holds a graceful
-  ///shutdown; the handler can't be stopped, so it goes on in the background and its result is
-  ///ignored. Sending the response is not timed (a stream, like Server-Sent Events, can go on).
-  ///Default `null`: no limit. Leave room for the slow uploads of the app.
+  /// Max time to build the response of a request (the filters and the handler, reading its body
+  /// included). After it the client gets a 503 and the request no longer holds a graceful
+  /// shutdown; the handler can't be stopped, so it goes on in the background and its result is
+  /// ignored (its scoped dependencies are disposed when it ends). Sending the response is not timed (a stream, like Server-Sent Events, can go on).
+  /// Default `null`: no limit. Leave room for the slow uploads of the app.
   final Duration? requestTimeout;
+
+  /// The reverse proxies in front of the app whose headers about the client are trusted (the
+  /// client IP, the scheme and the host), or null (the default) to ignore those headers
+  final TrustedProxies? trustedProxies;
 
   /// The configuration of the server
   const ServerConfig({
@@ -97,6 +101,7 @@ class ServerConfig {
     this.idleTimeout = const Duration(seconds: 120),
     this.securityContext,
     this.requestTimeout,
+    this.trustedProxies,
   });
 
   /// The configuration with the `PORT` and `HOST` of [env], the variables that Cloud Run, Heroku,
@@ -114,6 +119,7 @@ class ServerConfig {
     Duration? idleTimeout = const Duration(seconds: 120),
     SecurityContext? securityContext,
     Duration? requestTimeout,
+    TrustedProxies? trustedProxies,
   }) => ServerConfig(
     host: env.find<String>('HOST')?.trim() ?? host,
     port: env.find<int>('PORT') ?? port,
@@ -126,6 +132,7 @@ class ServerConfig {
     idleTimeout: idleTimeout,
     securityContext: securityContext,
     requestTimeout: requestTimeout,
+    trustedProxies: trustedProxies,
   );
 
   /// An [ArgumentError] if a value is out of its range (a `const` constructor can't check it)
@@ -167,5 +174,6 @@ class ServerConfig {
         'Must be more than 0 (null for no limit)',
       );
     }
+    trustedProxies?.validate();
   }
 }

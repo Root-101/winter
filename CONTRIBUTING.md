@@ -52,10 +52,19 @@ Winter's validation messages live in `lib/src/i18n/*.i18n.yaml`. To add a langua
 `en.i18n.yaml` to `<language>.i18n.yaml`, translate the texts (keep the `{params}`), and run
 `fvm dart run slang` to regenerate `messages*.g.dart` (versioned).
 
+## Branches
+
+- Every feature or change gets its own branch from `develop` (`feature/<name>`), and all its work
+  goes there. When it's done and the checks pass, it's merged into `develop` and the branch is
+  deleted.
+- The `CHANGELOG.md` entry, the version and the rest of the release notes go in a commit of the
+  branch itself, preferably its last one, right before merging into `develop`.
+
 ## Commits and documentation
 
 - Commit messages start with the module: `[router] ...`, `[security] ...`, `[docs] ...`.
-- Update the entry of the next version in `CHANGELOG.md` (what the version contains).
+- Update the entry of the next version in `CHANGELOG.md` (what the version contains) in the last
+  commit of the branch, before merging into `develop`.
 - A design choice goes to `DECISIONS.md` (the decision and why), and the guide of its module in
   `doc/` explains how to use it; check its snippets by running them.
 

@@ -107,10 +107,19 @@ void main() {
         utc(2026, 10, 13),
         utc(2026, 10, 19),
       ]);
-      // A field that starts with * (`*/10`) counts as "any", as in cron: only the Mondays
+      // A field that starts with * (`*/10`) is an AND, as in cron: the Mondays of the days
+      // 1, 11, 21 and 31
       expect(nexts('0 0 */10 * MON', from, 2), [
-        utc(2026, 10, 12),
-        utc(2026, 10, 19),
+        utc(2026, 12, 21),
+        utc(2027, 1, 11),
+      ]);
+    });
+
+    test('a step from * in the day of the month is kept (every other day)', () {
+      expect(nexts('0 0 */2 * *', from, 3), [
+        utc(2026, 10, 9),
+        utc(2026, 10, 11),
+        utc(2026, 10, 13),
       ]);
     });
 

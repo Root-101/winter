@@ -22,18 +22,28 @@ class RequestScope {
 
   final WinterLocale _locale;
   bool _localeRead = false;
+  bool _preferencesRead = false;
 
   /// The id of the request: its `X-Request-Id` if valid ([isValidRequestId]), or a new one. It's
   /// in every log written for the request, in the `X-Request-Id` of the response and in a 500.
   final String requestId;
 
+  final TraceContext? _trace;
+
+  /// The distributed trace of the request: the one its `traceparent` continues, or a new one
+  /// (created on the first read, so a request that never logs nor calls another service doesn't
+  /// pay for its random ids)
+  late final TraceContext trace = _trace ?? TraceContext.root();
+
   /// Without [securityContext], an empty one.
   /// Without [locale], the fallback of `Winter.context.localeConfig`.
   /// Without [requestId], a new one ([newRequestId]).
+  /// Without [trace], a new one ([TraceContext.root]).
   RequestScope({
     RequestSecurityContext? securityContext,
     WinterLocale? locale,
     String? requestId,
+    this._trace,
   }) : securityContext =
            securityContext ?? RequestSecurityContext<dynamic>.empty(),
        _locale = locale ?? Winter.context.localeConfig.fallback,
@@ -78,6 +88,10 @@ class RequestScope {
   /// Then the server adds `Vary: Accept-Language` to the response, so caches keep one copy per language.
   bool get localeRead => _localeRead;
 
+  /// True once some code read the preferences of the request (`request.preferences`). Then the
+  /// server adds `Vary: Prefer` to the response, so caches keep one copy per preference.
+  bool get preferencesRead => _preferencesRead;
+
   final List<FutureOr<void> Function()> _onComplete = [];
 
   /// Runs [callback] when the request ends: after its response is built, before it's sent.
@@ -102,7 +116,16 @@ class RequestScope {
   /// Runs the [onComplete] callbacks (once: they are removed). A callback that fails is logged and
   /// the others still run. The server calls it for every request; call it yourself after
   /// [run] in a test that registers callbacks (or uses scoped dependencies).
+  ///
+  /// With work held by [holdUntil] still running, it returns at once and the callbacks run when
+  /// that work ends.
   Future<void> complete() async {
+    if (_held.isNotEmpty) {
+      final List<Future<void>> held = [..._held];
+      _held.clear();
+      unawaited(Future.wait(held).whenComplete(complete));
+      return;
+    }
     _completed = true;
     final callbacks = _onComplete.reversed.toList();
     _onComplete.clear();
@@ -118,6 +141,15 @@ class RequestScope {
       }
     }
   }
+
+  final List<Future<void>> _held = [];
+
+  /// Holds the end of the request until [work] ends: [complete] runs the [onComplete] callbacks
+  /// (the dispose of its scoped dependencies) after it. The server holds it for a handler still
+  /// running after its request timed out (`ServerConfig.requestTimeout`), so nothing it uses is
+  /// disposed under it. An error of [work] is ignored here.
+  void holdUntil(Future<void> work) =>
+      _held.add(work.then((_) {}, onError: (Object _) {}));
 
   /// The scope of the request in progress, or null outside a request
   static RequestScope? get current => Zone.current[_zoneKey] as RequestScope?;
@@ -139,14 +171,14 @@ String? get requestId => RequestScope.current?.requestId;
 /// Security context of the request in progress, or null outside a request.
 /// The same object as `request.securityContext`.
 ///
-/// {@category Server}
+/// {@category Security}
 RequestSecurityContext? get requestSecurityContext =>
     RequestScope.current?.securityContext;
 
 /// Locale of the request in progress (the same as `request.locale`),
 /// or the fallback of `Winter.context.localeConfig` outside a request.
 ///
-/// {@category Server}
+/// {@category i18n}
 WinterLocale get requestLocale =>
     RequestScope.current?.locale ?? Winter.context.localeConfig.fallback;
 
@@ -156,9 +188,31 @@ WinterLocale get requestLocale =>
 /// Work started by a request (even an `unawaited` one that ends after the response)
 /// keeps seeing this user.
 ///
-/// {@category Server}
+/// {@category Security}
 Authentication? get requestAuthentication =>
     requestSecurityContext?.authentication;
+
+/// The preferences of a request, cached in its context
+final ContextKey<Preferences> _preferencesKey = ContextKey<Preferences>(
+  'winter.preferences',
+);
+
+/// The preferences of a request (`request.preferences`)
+///
+/// {@category HTTP}
+extension RequestPreferencesX on RequestEntity {
+  /// The preferences of its `Prefer` headers (RFC 7240), parsed the first time and cached in the
+  /// request context; [Preferences.none] without them.
+  ///
+  /// Reading them inside a request adds `Vary: Prefer` to the response.
+  Preferences get preferences {
+    RequestScope.current?._preferencesRead = true;
+    return context.putIfAbsent(_preferencesKey, () {
+      final List<String>? headers = headersAll[HttpHeader.prefer];
+      return headers == null ? Preferences.none : Preferences.parse(headers);
+    });
+  }
+}
 
 /// The language of a request, cached in its context
 final ContextKey<WinterLocale> _localeKey = ContextKey<WinterLocale>(
@@ -167,7 +221,7 @@ final ContextKey<WinterLocale> _localeKey = ContextKey<WinterLocale>(
 
 /// The language of a request (`request.locale`)
 ///
-/// {@category Server}
+/// {@category i18n}
 extension RequestLocaleX on RequestEntity {
   /// Locale of this request, chosen from its `Accept-Language` with `Winter.context.localeConfig`.
   /// Calculated the first time and cached in the request context.

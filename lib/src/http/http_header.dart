@@ -9,6 +9,17 @@ class HttpHeader {
   /// (de facto standard, not in the HTTP spec).
   static const String xForwardedFor = 'X-Forwarded-For';
 
+  /// The `X-Forwarded-Proto` header: the scheme (`https`) the client used with the proxy
+  /// (de facto standard).
+  static const String xForwardedProto = 'X-Forwarded-Proto';
+
+  /// The `X-Forwarded-Host` header: the `Host` the client sent to the proxy (de facto standard).
+  static const String xForwardedHost = 'X-Forwarded-Host';
+
+  /// The `Forwarded` header: what each proxy saw of the client (`for`, `proto`, `host`).
+  /// See [RFC 7239](https://www.rfc-editor.org/rfc/rfc7239).
+  static const String forwarded = 'Forwarded';
+
   /// The `X-Accel-Buffering` header: `no` tells nginx not to buffer a response that is streamed
   /// (Server-Sent Events).
   static const String xAccelBuffering = 'X-Accel-Buffering';
@@ -151,6 +162,14 @@ class HttpHeader {
   /// See [Section 5.4 of RFC 7230](https://tools.ietf.org/html/rfc7230#section-5.4).
   static const String host = 'Host';
 
+  /// The `Idempotency-Key` header: a key the client chooses to retry a `POST` safely.
+  /// See [draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/).
+  static const String idempotencyKey = 'Idempotency-Key';
+
+  /// `Idempotent-Replayed: true`: the response is the one kept for the `Idempotency-Key` of the
+  /// request (not standard; what Stripe sends)
+  static const String idempotentReplayed = 'Idempotent-Replayed';
+
   /// The HTTP `If-Match` header.
   /// See [Section 3.1 of RFC 7232](https://tools.ietf.org/html/rfc7232#section-3.1).
   static const String ifMatch = 'If-Match';
@@ -178,6 +197,14 @@ class HttpHeader {
   /// The HTTP `Last-Modified` header.
   /// See [Section 2.2 of RFC 7232](https://tools.ietf.org/html/rfc7232#section-2.2).
   static const String lastModified = 'Last-Modified';
+
+  /// The `Deprecation` header: since when the resource is deprecated (`@1767225600`).
+  /// See [RFC 9745](https://www.rfc-editor.org/rfc/rfc9745).
+  static const String deprecation = 'Deprecation';
+
+  /// The `Sunset` header: when the resource may stop answering (an HTTP date).
+  /// See [RFC 8594](https://www.rfc-editor.org/rfc/rfc8594).
+  static const String sunset = 'Sunset';
 
   /// The HTTP `Link` header.
   /// See [RFC 5988](https://tools.ietf.org/html/rfc5988).
@@ -207,9 +234,25 @@ class HttpHeader {
   /// See [Section 4.4 of RFC 7235](https://tools.ietf.org/html/rfc7235#section-4.4).
   static const String proxyAuthorization = 'Proxy-Authorization';
 
+  /// The `Prefer` header: what the client would like (`return=minimal`, `respond-async`).
+  /// See [RFC 7240](https://www.rfc-editor.org/rfc/rfc7240).
+  static const String prefer = 'Prefer';
+
+  /// The `Preference-Applied` header: the preferences of `Prefer` the server honored.
+  /// See [RFC 7240](https://www.rfc-editor.org/rfc/rfc7240#section-3).
+  static const String preferenceApplied = 'Preference-Applied';
+
   /// The HTTP `Range` header.
   /// See [Section 3.1 of RFC 7233](https://tools.ietf.org/html/rfc7233#section-3.1).
   static const String range = 'Range';
+
+  /// The `RateLimit` header: the quota left of each policy (`"default";r=42;t=17`).
+  /// See [draft-ietf-httpapi-ratelimit-headers](https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/).
+  static const String rateLimit = 'RateLimit';
+
+  /// The `RateLimit-Policy` header: the quota policies of the server (`"default";q=100;w=60`).
+  /// See [draft-ietf-httpapi-ratelimit-headers](https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/).
+  static const String rateLimitPolicy = 'RateLimit-Policy';
 
   /// The HTTP `Referer` header.
   /// See [Section 5.5.2 of RFC 7231](https://tools.ietf.org/html/rfc7231#section-5.5.2).
@@ -219,6 +262,14 @@ class HttpHeader {
   /// See [Section 7.1.3 of RFC 7231](https://tools.ietf.org/html/rfc7231#section-7.1.3).
   static const String retryAfter = 'Retry-After';
 
+  /// The `Sec-WebSocket-Key` header: the nonce of a WebSocket handshake.
+  /// See [RFC 6455](https://www.rfc-editor.org/rfc/rfc6455#section-11.3.1).
+  static const String secWebSocketKey = 'Sec-WebSocket-Key';
+
+  /// The `Sec-WebSocket-Version` header: the version of a WebSocket handshake (`13`).
+  /// See [RFC 6455](https://www.rfc-editor.org/rfc/rfc6455#section-11.3.5).
+  static const String secWebSocketVersion = 'Sec-WebSocket-Version';
+
   /// The HTTP `Server` header.
   /// See [Section 7.4.2 of RFC 7231](https://tools.ietf.org/html/rfc7231#section-7.4.2).
   static const String server = 'Server';
@@ -226,10 +277,6 @@ class HttpHeader {
   /// The HTTP `Set-Cookie` header.
   /// See [Section 4.2.2 of RFC 2109](https://tools.ietf.org/html/rfc2109#section-4.2.2).
   static const String setCookie = 'Set-Cookie';
-
-  /// The HTTP `Set-Cookie2` header.
-  /// See [RFC 2965](https://tools.ietf.org/html/rfc2965).
-  static const String setCookie2 = 'Set-Cookie2';
 
   /// The HTTP `TE` header.
   /// See [Section 4.3 of RFC 7230](https://tools.ietf.org/html/rfc7230#section-4.3).
@@ -259,9 +306,13 @@ class HttpHeader {
   /// See [Section 5.7.1 of RFC 7230](https://tools.ietf.org/html/rfc7230#section-5.7.1).
   static const String via = 'Via';
 
-  /// The HTTP `Warning` header.
-  /// See [Section 5.5 of RFC 7234](https://tools.ietf.org/html/rfc7234#section-5.5).
-  static const String warning = 'Warning';
+  /// The `traceparent` header: the trace and the span of the caller (`00-<trace-id>-<parent-id>-01`).
+  /// See [W3C Trace Context](https://www.w3.org/TR/trace-context/#traceparent-header).
+  static const String traceparent = 'traceparent';
+
+  /// The `tracestate` header: the data of each tracing vendor, forwarded with `traceparent`.
+  /// See [W3C Trace Context](https://www.w3.org/TR/trace-context/#tracestate-header).
+  static const String tracestate = 'tracestate';
 
   /// The HTTP `WWW-Authenticate` header.
   /// See [Section 4.1 of RFC 7235](https://tools.ietf.org/html/rfc7235#section-4.1).

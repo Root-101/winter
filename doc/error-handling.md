@@ -4,7 +4,13 @@ Every error of a Winter app is answered the same way: a **Problem Details** (RFC
 `application/problem+json`.
 
 ```json
-{ "type": "about:blank", "title": "Not Found", "status": 404, "detail": "User 42 not found" }
+{
+  "type": "about:blank",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "User 42 not found",
+  "instance": "/users/42"
+}
 ```
 
 - Throw an `ApiException` (or one of its shortcuts, like `NotFoundException`) anywhere: in a
@@ -52,7 +58,13 @@ void main() async {
 `GET /users/7` answers `404`:
 
 ```json
-{ "type": "about:blank", "title": "Not Found", "status": 404, "detail": "User 7 not found" }
+{
+  "type": "about:blank",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "User 7 not found",
+  "instance": "/users/7"
+}
 ```
 
 ## How it works
@@ -65,10 +77,20 @@ void main() async {
 | `title`     | A short summary of the kind of problem: the reason phrase of the status (`Not Found`) |
 | `status`    | The status code                                                                  |
 | `detail`    | What happened this time, for the client. Only when there is one; never in a 500  |
+| `instance`  | This occurrence: the path of the request (never its query string), or your own URI |
 | extensions  | Members of your own (`"violations"` in a 422, `"email"` below)                   |
 
+Winter fills `instance` with the path of the request whenever an error has none (its own errors,
+your `ApiException`s and the `ProblemDetails` returned by `on<T>()`); give one of your own with
+`ApiException(..., instance: '/orders/7/payments/3')`. The query string is never copied: it can
+carry tokens.
+
+Only a `ProblemDetails` body is sent as `application/problem+json`. A JSON body of your own with
+an error status (`ResponseEntity.badRequest(body: {...})`) is `application/json`: the media type
+promises the format.
+
 The `title` is never translated: it's the standard reason phrase. What the user reads is the
-`detail`, which your app writes in the language of the request (`t.users.notFound(id: id)`).
+`detail`, which your app writes in the language of the request (`intl.users.notFound(id: id)`).
 
 The names of the members of Winter are fixed, whatever the `fieldNaming` of the object mapper:
 `requestId` (in a 500), `violations` and their `fieldName`, `message`, `code` and `params`. A
@@ -88,23 +110,27 @@ the names you give them.
 | No route for the path (`NotFoundException`)    | 404    | —                                          |
 | The path exists for other methods (`MethodNotAllowedException`) | 405 | — (the `Allow` header lists them) |
 | `AuthFilter`: nobody authenticated / not allowed | 401 / 403 | —                                     |
-| `RateLimiterFilter`: too many requests         | 429    | — (`Retry-After` and `X-RateLimit-*` headers) |
+| `RateLimiterFilter`: too many requests         | 429    | — (`Retry-After`, `RateLimit-Policy` and `RateLimit` headers) |
 | `ResponseException(response)`                  | Its own | The response is sent as it is (not a Problem Details) |
 | Anything else: any other `Exception`, any `Error` | 500 | — (logged with its stack trace, never sent) |
 
 ### The shortcuts
 
-`ApiException(status, detail:, type:, title:, extensions:, headers:)` works for any status of
-`StatusCode`. The common ones have a shortcut with the same parameters:
+`ApiException(status, detail:, type:, title:, instance:, extensions:, headers:)` works for any
+status of `StatusCode`. The common ones have a shortcut with the same parameters:
 
 | Status | Exception                          | Status | Exception                          |
 |--------|------------------------------------|--------|------------------------------------|
-| 400    | `BadRequestException`              | 413    | `PayloadTooLargeException`         |
-| 401    | `UnauthorizedException`            | 415    | `UnsupportedMediaTypeException`    |
-| 403    | `ForbiddenException`               | 422    | `UnprocessableEntityException`, `ValidationException` |
+| 400    | `BadRequestException`              | 415    | `UnsupportedMediaTypeException`    |
+| 401    | `UnauthorizedException`            | 422    | `UnprocessableContentException`, `ValidationException` |
+| 403    | `ForbiddenException`               | 428    | `PreconditionRequiredException`    |
 | 404    | `NotFoundException`                | 429    | `TooManyRequestsException(retryAfter:)` |
 | 405    | `MethodNotAllowedException(allowedMethods)` | 500 | `InternalServerErrorException`  |
 | 409    | `ConflictException`                | 503    | `ServiceUnavailableException(retryAfter:)` |
+| 412    | `PreconditionFailedException`      | 413    | `ContentTooLargeException`         |
+
+The reason phrases (the `title`) are those of RFC 9110: 413 is `Content Too Large` and 422
+`Unprocessable Content`.
 
 Most of them are `const`: `throw const NotFoundException()`.
 
@@ -123,7 +149,8 @@ throw ApiException(
   "type": "https://api.example.com/errors/email-taken",
   "title": "Conflict",
   "status": 409,
-  "detail": "The email is already registered"
+  "detail": "The email is already registered",
+  "instance": "/users"
 }
 ```
 
@@ -148,7 +175,13 @@ Anything that is not one of the errors above is a bug of the server. `SimpleExce
 logs it with its stack trace (`logger.error`, see `logUnhandledError`) and answers:
 
 ```json
-{ "type": "about:blank", "title": "Internal Server Error", "status": 500 }
+{
+  "requestId": "6f1c...",
+  "type": "about:blank",
+  "title": "Internal Server Error",
+  "status": 500,
+  "instance": "/orders"
+}
 ```
 
 The message of the error, its type and its stack trace never reach the client. If a custom
@@ -219,9 +252,9 @@ trace).
 ### A translated `detail`
 
 ```dart
-AppMessages get t => appMessages(requestLocale); // a getter, never a final
+AppMessages get intl => appMessages(requestLocale); // a getter, never a final
 
-throw NotFoundException(detail: t.orders.notFound(id: id));
+throw NotFoundException(detail: intl.orders.notFound(id: id));
 ```
 
 The response gets `Vary: Accept-Language` by itself, since it depends on the language.
@@ -246,6 +279,17 @@ final response = await client.get('/users/7');
 expect(response.statusCode, 404);
 expect(response.headers['content-type'], 'application/problem+json; charset=utf-8');
 expect((response.json as Map)['detail'], 'User 7 not found');
+```
+
+`ProblemDetails.fromJson` reads one back, from a test or from another API that follows RFC 9457
+(registered in the object mapper, so `as<ProblemDetails>()` and `om.deserialize<ProblemDetails>()`
+work). As the RFC asks, a standard member of the wrong type is ignored; only `status` is required:
+
+```dart
+final problem = response.as<ProblemDetails>();
+
+expect(problem.status, 404);
+expect(problem.instance, '/users/7');
 ```
 
 Compare the decoded JSON, never the text: the responses are indented by default

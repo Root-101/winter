@@ -32,12 +32,16 @@ final class WebSocketUpgrade {
   /// How often a ping goes to the client, or null for none
   final Duration? pingInterval;
 
+  /// The trace of the handshake, kept by the scope of the socket
+  final TraceContext? trace;
+
   /// An upgrade to [handler]
   const WebSocketUpgrade({
     required this.handler,
     required this.request,
     required this.protocols,
     required this.pingInterval,
+    this.trace,
   });
 
   /// The subprotocol to answer among the ones the client asked for: the first of [protocols]
@@ -70,6 +74,7 @@ RequestHandler webSocketRouteHandler({
       headers: {
         HttpHeader.upgrade: 'websocket',
         HttpHeader.connection: 'Upgrade',
+        HttpHeader.secWebSocketVersion: '13',
       },
     );
   }
@@ -90,15 +95,19 @@ RequestHandler webSocketRouteHandler({
       request: request,
       protocols: protocols,
       pingInterval: pingInterval,
+      trace: requestTrace,
     ),
   );
   return response;
 };
 
-/// A `GET` with `Upgrade: websocket` and `Connection: upgrade` (the version and the key are
-/// checked by `dart:io` when it upgrades)
+/// A `GET` with `Upgrade: websocket`, `Connection: upgrade`, a `Sec-WebSocket-Key` and
+/// `Sec-WebSocket-Version: 13`: what `dart:io` needs to upgrade it. Any other is a 426, never a
+/// 101 that `dart:io` would then send without upgrading.
 bool _isHandshake(RequestEntity request) =>
     request.method.toUpperCase() == 'GET' &&
+    (request.headers[HttpHeader.secWebSocketKey]?.isNotEmpty ?? false) &&
+    request.headers[HttpHeader.secWebSocketVersion]?.trim() == '13' &&
     request.headers[HttpHeader.upgrade]?.toLowerCase() == 'websocket' &&
     (request.headers[HttpHeader.connection]
             ?.toLowerCase()

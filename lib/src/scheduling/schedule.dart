@@ -214,9 +214,11 @@ class CronSchedule extends Schedule {
     // DateTime.weekday is 1 (Monday) to 7 (Sunday): % 7 gives cron's 0 for Sunday
     final bool dayOfWeek =
         _daysOfWeek[DateTime.utc(year, month, day).weekday % 7];
-    if (_anyDayOfMonth) return dayOfWeek;
-    if (_anyDayOfWeek) return dayOfMonth;
-    return dayOfMonth || dayOfWeek;
+    // As in cron: when one of them starts with `*` (`*`, `*/2`) both must match, so its step is
+    // kept; only two restricted fields are an OR
+    return _anyDayOfMonth || _anyDayOfWeek
+        ? dayOfMonth && dayOfWeek
+        : dayOfMonth || dayOfWeek;
   }
 
   DateTime _at(int year, int month, int day, int hour, int minute) => utc

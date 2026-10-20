@@ -271,7 +271,9 @@ class Env {
   static Duration? _parseDuration(String value) {
     final match = _duration.firstMatch(value.toLowerCase());
     if (match == null) return null;
-    final int amount = int.parse(match[1]!);
+    // A number too big for an int is not a duration (never a FormatException with the value)
+    final int? amount = int.tryParse(match[1]!);
+    if (amount == null) return null;
     return switch (match[2]) {
       'ms' => Duration(milliseconds: amount),
       's' => Duration(seconds: amount),

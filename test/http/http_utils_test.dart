@@ -11,7 +11,7 @@ void main() {
     });
 
     test('one constant per code, without the deprecated aliases', () {
-      expect(StatusCode.valueOf(413), StatusCode.payloadTooLarge);
+      expect(StatusCode.valueOf(413), StatusCode.contentTooLarge);
       expect(
         StatusCode.values.map((status) => status.value).toSet(),
         hasLength(StatusCode.values.length),

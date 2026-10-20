@@ -23,6 +23,7 @@ import 'package:winter/winter.dart';
 ///   Basic or a cookie scheme from its `challenge`, with its 401 (and its 403 when it has rules).
 /// - the errors, as Problem Details: a 400 and a 415 for a body, a 404 for a path param, a 422 for
 ///   a validated body, a 429 for a `RateLimiterFilter`.
+/// - `deprecated: true` for a route with a `DeprecationFilter` (or `RouteDocs(deprecated: true)`).
 ///
 /// The rest comes from the `RouteDocs` of each route: its summary and tags, its query params,
 /// and its bodies (examples and schemas). A route with `RouteDocs.none` is left out.
@@ -207,7 +208,7 @@ class _OpenApiBuilder {
       'description': ?docs.description,
       'operationId': ?docs.operationId,
       if (docs.tags.isNotEmpty) 'tags': docs.tags,
-      if (docs.deprecated) 'deprecated': true,
+      if (docs.deprecated || protection.deprecated) 'deprecated': true,
       if (pathParams.isNotEmpty || docs.query.isNotEmpty)
         'parameters': [
           ...pathParams,
@@ -296,8 +297,8 @@ class _OpenApiBuilder {
     }
   }
 
-  /// The `AuthFilter`s and `RateLimiterFilter`s that run for [route], found by running their
-  /// `shouldFilter` with a request to it
+  /// The `AuthFilter`s, `RateLimiterFilter`s and `DeprecationFilter`s that run for [route], found
+  /// by running their `shouldFilter` with a request to it
   _Protection _protection(Route route, List<Filter> globalFilters) {
     final RequestEntity request = RequestEntity(
       route.method?.name.toUpperCase() ?? 'GET',
@@ -327,6 +328,8 @@ class _OpenApiBuilder {
         );
       } else if (filter is RateLimiterFilter) {
         protection = protection.copyWith(rateLimited: true);
+      } else if (filter is DeprecationFilter) {
+        protection = protection.copyWith(deprecated: true);
       }
     }
     return protection;
@@ -372,6 +375,7 @@ class _OpenApiBuilder {
         'title': {'type': 'string', 'example': 'Not Found'},
         'status': {'type': 'integer', 'example': 404},
         'detail': {'type': 'string'},
+        'instance': {'type': 'string', 'example': '/users/42'},
         'requestId': {'type': 'string'},
       },
       'required': ['type', 'title', 'status'],
@@ -427,7 +431,25 @@ class _OpenApiBuilder {
       'The body has invalid fields',
       'ValidationProblem',
     ),
-    'TooManyRequests': _problem('Too many requests: wait for Retry-After'),
+    'TooManyRequests': {
+      ..._problem('Too many requests: wait for Retry-After'),
+      'headers': {
+        HttpHeader.retryAfter: _header('Seconds to wait before retrying'),
+        HttpHeader.rateLimitPolicy: _header(
+          'The quota policy (draft-ietf-httpapi-ratelimit-headers): '
+          '"default";q=100;w=60',
+        ),
+        HttpHeader.rateLimit: _header(
+          'The quota left (draft-ietf-httpapi-ratelimit-headers): '
+          '"default";r=0;t=17',
+        ),
+      },
+    },
+  };
+
+  static Map<String, Object?> _header(String description) => {
+    'description': description,
+    'schema': {'type': 'string'},
   };
 }
 
@@ -442,12 +464,14 @@ class _Protection {
   final bool authenticated;
   final bool rules;
   final bool rateLimited;
+  final bool deprecated;
   final String? scheme;
 
   const _Protection({
     this.authenticated = false,
     this.rules = false,
     this.rateLimited = false,
+    this.deprecated = false,
     this.scheme,
   });
 
@@ -455,11 +479,13 @@ class _Protection {
     bool? authenticated,
     bool? rules,
     bool? rateLimited,
+    bool? deprecated,
     String? scheme,
   }) => _Protection(
     authenticated: authenticated ?? this.authenticated,
     rules: (rules ?? false) || this.rules,
     rateLimited: rateLimited ?? this.rateLimited,
+    deprecated: deprecated ?? this.deprecated,
     scheme: scheme ?? this.scheme,
   );
 }

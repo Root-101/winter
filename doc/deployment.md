@@ -94,20 +94,18 @@ requests before the shutdown starts.
 
 ### Health checks
 
-Two routes, two questions:
+Two routes, two questions, both with `Route.health` (see [routing](routing.md#health-checks)):
 
 ```dart
-Route.get(path: '/health', handler: (request) => ResponseEntity.ok(body: {'status': 'up'})),
-Route.get(
-  path: '/ready',
-  handler: (request) async {
-    if (!await di.find<Database>().ping()) {
-      throw ServiceUnavailableException(detail: 'The database is not available', retryAfter: 5);
-    }
-    return ResponseEntity.ok(body: {'status': 'ready'});
-  },
+Route.health(path: '/health'),                       // liveness
+Route.health(
+  path: '/ready',                                    // readiness: a 503 "fail" when a check fails
+  checks: {'database': () => di.find<Database>().ping()},
 ),
 ```
+
+They answer `application/health+json` (`{"status": "pass"}`), the format monitors and gateways
+read; the probes of Kubernetes and Docker only look at the status code.
 
 - **Liveness** (`/health`): the process answers. If it fails, the platform restarts the container.
 - **Readiness** (`/ready`): its dependencies answer. If it fails (503), the instance leaves the load
@@ -122,8 +120,26 @@ In production a load balancer or a reverse proxy (nginx, an ingress) sits in fro
 - **HTTPS ends at the proxy**: the app serves HTTP inside the network, with
   `SecurityHeaders(hsts: true)` so browsers keep using HTTPS. To serve HTTPS from the app, see
   `ServerConfig.securityContext` in [configuration](configuration.md).
-- **The IP of the client** is in `X-Forwarded-For`: `request.clientIp(trustedProxies: 1)` (one entry
-  per proxy you control). Never trust it without a proxy: a client can send any value.
+- **The client is in the headers of the proxy**: its IP (`X-Forwarded-For`), and the scheme
+  and the host it used (`X-Forwarded-Proto`, `X-Forwarded-Host`). Tell the server how many proxies
+  you control, and it reads them for every request:
+
+  ```dart
+  await Winter.start(config: const ServerConfig(trustedProxies: TrustedProxies(1)));
+  ```
+
+  Then `request.clientIp` (and the default id of `RateLimiterFilter`) is the client, and
+  `request.requestedUri` is the public URL (`https://api.example.com/orders`, not
+  `http://10.0.0.5:8080/orders`), so are `Location`, the `instance` of the errors and OpenAPI.
+  A value that isn't an IP, a scheme other than `http`/`https`, or a host with a path, a user or
+  a query is ignored.
+- **`Forwarded` (RFC 7239)**, the standard header, if your proxy writes it instead:
+  `TrustedProxies(1, headers: ForwardedHeaders.forwarded)` reads its `for`, `proto` and `host`
+  (quoted values, IPv6 in brackets, ports). Only the kind you choose is read: a proxy that writes
+  `X-Forwarded-For` lets a fake `Forwarded` of the client through, and the other way around.
+- **Never trust them without a proxy**: a client can send any value, with a fake IP to bypass a
+  rate limiter or a fake host to poison a link. Without `trustedProxies` (the default) they are
+  ignored. Your proxies must set (or overwrite) the scheme and the host they forward.
 - **Compression**: usually the proxy does it; `ServerConfig(autoCompress: true)` does it in the app.
 
 ### Several isolates
@@ -159,8 +175,8 @@ database). Often it's simpler to run one isolate per container and let the platf
   platform, never in the image.
 - `JsonLogger`, and no bodies, tokens nor passwords in the logs.
 - `shutdownTimeout` below the grace period, and `onDispose` on every resource.
-- `/health` and `/ready`.
-- `trustedProxies` equal to the proxies in front, HSTS when TLS ends at the proxy, CORS with your
+- `Route.health` for `/health` and `/ready`.
+- `ServerConfig.trustedProxies` equal to the proxies in front, HSTS when TLS ends at the proxy, CORS with your
   origins.
 - `maxBodySize` as small as your biggest request.
 
@@ -168,5 +184,8 @@ database). Often it's simpler to run one isolate per container and let the platf
 
 - **`shutdownTimeout` longer than the grace period**: the process is killed in the middle.
 - **A rate limit or a cache in memory with several instances**: each one keeps its own.
-- **`trustedProxies` without a proxy**: any client chooses its IP.
+- **`trustedProxies` without a proxy**, or more than there are: any client chooses its IP and
+  its host.
+- **Trusting the wrong kind of header**: `ForwardedHeaders.forwarded` behind a proxy that only
+  writes `X-Forwarded-For` reads what the client sent.
 - **Copying `.env` into the image**: the production configuration comes from the platform.

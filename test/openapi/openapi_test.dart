@@ -398,6 +398,19 @@ void main() {
             ),
           ),
           Route.get(path: '/hidden', handler: _ok, docs: RouteDocs.none),
+          Route.parent(
+            path: '/internal',
+            docs: RouteDocs.none,
+            routes: [
+              Route.get(
+                path: '/stats',
+                handler: _ok,
+                docs: const RouteDocs(
+                  summary: 'Has docs, under a hidden parent',
+                ),
+              ),
+            ],
+          ),
           Route.get(path: '/files/.*', handler: _ok),
           Route.health(checks: {'database': () => true}),
           Route.websocket(path: '/ws', handler: (socket, request) {}),
@@ -412,6 +425,13 @@ void main() {
             ]),
           ),
           Route.get(path: '/public', handler: _ok),
+          Route.parent(
+            path: '/v1',
+            filterConfig: FilterConfig([
+              DeprecationFilter(deprecated: DateTime.utc(2026)),
+            ]),
+            routes: [Route.get(path: '/old', handler: _ok)],
+          ),
         ],
       );
       document = OpenApi(
@@ -453,6 +473,7 @@ void main() {
           '/health',
           '/limited',
           '/public',
+          '/v1/old',
         ]),
       );
       expect(
@@ -646,8 +667,13 @@ void main() {
         (operation('/health', 'get')['responses'] as Map).keys,
         containsAll(['200', '503']),
       );
+      final Map ok =
+          (operation('/health', 'get')['responses'] as Map)['200'] as Map;
+      expect((ok['content'] as Map).keys, ['application/health+json']);
       expect((document['paths'] as Map), isNot(contains('/ws')));
       expect((document['paths'] as Map), isNot(contains('/hidden')));
+      // A hidden parent hides its children, even with docs of their own
+      expect((document['paths'] as Map), isNot(contains('/internal/stats')));
     });
 
     test('an API key, another HTTP scheme, and a param without a regex', () {
@@ -684,10 +710,24 @@ void main() {
       });
     });
 
-    test('a RateLimiterFilter adds a 429', () {
+    test(
+      'a DeprecationFilter (inherited from a parent) marks it deprecated',
+      () {
+        expect(operation('/v1/old', 'get')['deprecated'], isTrue);
+        expect(operation('/public', 'get'), isNot(contains('deprecated')));
+      },
+    );
+
+    test('a RateLimiterFilter adds a 429 with its headers', () {
       expect((operation('/limited', 'get')['responses'] as Map)['429'], {
         r'$ref': '#/components/responses/TooManyRequests',
       });
+      final Map responses = (document['components'] as Map)['responses'] as Map;
+      expect(((responses['TooManyRequests'] as Map)['headers'] as Map).keys, [
+        'Retry-After',
+        'RateLimit-Policy',
+        'RateLimit',
+      ]);
     });
 
     test('the errors are Problem Details components', () {

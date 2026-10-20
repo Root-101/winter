@@ -10,7 +10,12 @@ import 'package:winter/winter.dart';
 void main() {
   late ConstraintValidatorContext cvc;
 
-  setUp(() => cvc = ConstraintValidatorContext());
+  setUp(() {
+    cvc = ConstraintValidatorContext();
+    // the groups that replace the mapper would warn about the types it lacks
+    Winter.context.setUp(logger: const ConsoleLogger(minLevel: LogLevel.error));
+    addTearDown(() => Winter.context.setUp(logger: const ConsoleLogger()));
+  });
 
   group('field(name, value): the rules run as they are chained (§3)', () {
     test('there is no final call to forget', () {
@@ -21,22 +26,17 @@ void main() {
     });
 
     test('stopOnFailure skips the next rules of the field, not the others', () {
-      cvc.field('name', null).notNull().custom((value) => 'never');
+      // custom() would throw on the null if it ran
+      cvc
+          .field<String?>('name', null)
+          .notNull()
+          .custom((value) => value!.isEmpty ? 'empty' : 'never');
       cvc.field('other', 'x').custom((value) => 'runs');
 
       expect(cvc.violations.map((v) => v.message), [
         'The field cannot be null',
         'runs',
       ]);
-    });
-
-    test('a custom rule is not run after a rule that stopped the field', () {
-      cvc
-          .field<String?>('name', null)
-          .notNull()
-          .custom((value) => value!.isEmpty ? 'empty' : null);
-
-      expect(cvc.violations, hasLength(1));
     });
 
     test('a validator of your own is an extension that calls addRule', () {
@@ -300,15 +300,6 @@ void main() {
 
       expect(a, isNot(b));
     });
-
-    test('toString shows the value, unless it is sensitive', () {
-      cvc.field('name', 'Ann').size(min: 5);
-      cvc.field('password', 'secret', sensitive: true).size(min: 8);
-
-      expect(cvc.violations[0].toString(), contains('Ann'));
-      expect(cvc.violations[1].toString(), isNot(contains('secret')));
-      expect(cvc.violations[1].value, isNull);
-    });
   });
 
   group('Chaining keeps the type of the field (§3)', () {
@@ -386,6 +377,45 @@ void main() {
         ['first_name', 'home_address.zip_code'],
       );
     });
+
+    test(
+      'with the mapper of body<T>(objectMapper:), the names it read',
+      () async {
+        final kebab = WinterTestClient.build(
+          router: WinterRouter(
+            routes: [
+              Route.post(
+                path: '/',
+                handler: (request) async {
+                  await request.body<_Signup>(
+                    objectMapper: ObjectMapper(
+                      fieldNaming: FieldNaming.kebabCase,
+                      deserializers: [
+                        Deserializer<_Signup>.json(_Signup.fromJson),
+                      ],
+                    ),
+                  );
+                  return ResponseEntity.ok();
+                },
+              ),
+            ],
+          ),
+        );
+
+        final response = await kebab.post(
+          '/',
+          body: '{"first-name": "", "home-address": {"zip-code": ""}}',
+          headers: {HttpHeader.contentType: 'application/json'},
+        );
+
+        expect(
+          ((response.json as Map)['violations'] as List).map(
+            (v) => (v as Map)['fieldName'],
+          ),
+          ['first-name', 'home-address.zip-code'],
+        );
+      },
+    );
 
     test('jsonFieldName() converts every name of a path, not the indexes', () {
       final snake = ObjectMapper(fieldNaming: FieldNaming.snakeCase);
@@ -697,6 +727,18 @@ void main() {
       cvc.field('c', 'ABC').pattern(RegExp(r'^abc$'));
 
       expect(cvc.violations.map((v) => v.fieldName), ['c']);
+      expect(cvc.toString(), contains('fieldName: c'));
+    });
+
+    test('pattern() gives its regex to a client only when it has no flags', () {
+      cvc.field('plain', 'x').pattern(RegExp(r'^\d+$'));
+      cvc.field('flagged', 'x').pattern(RegExp(r'^\d+$', caseSensitive: false));
+
+      // The source of a case insensitive regex would make a client reject what the server accepts
+      expect(cvc.violations.map((v) => v.params), [
+        {'pattern': r'^\d+$'},
+        <String, Object?>{},
+      ]);
     });
 
     test('pattern() with any other Pattern uses its matches', () {

@@ -76,8 +76,9 @@ end) or a list of them (`1,15,30`). Names are case insensitive. The macros `@yea
 (`@annually`), `@monthly`, `@weekly`, `@daily` (`@midnight`) and `@hourly` work too.
 
 - When both the day of the month and the day of the week are restricted, a day matches if
-  **either** matches, as in cron: `0 0 1 * MON` is the 1st of every month and every Monday. A
-  field that starts with `*` (`*/2`) counts as unrestricted.
+  **either** matches, as in cron: `0 0 1 * MON` is the 1st of every month and every Monday. When
+  one of them starts with `*` (`*`, `*/2`) both must match, so its step is kept: `0 0 */2 * *` is
+  every other day, and `0 0 */10 * MON` the Mondays that are the 1st, 11th, 21st or 31st.
 - The times are **local** by default (as in cron). With `utc: true` they are UTC, the same in any
   machine; containers usually run in UTC anyway.
 - An invalid expression is a `FormatException` when the task is added, which says which field is

@@ -5,10 +5,17 @@ import 'package:winter/winter.dart';
 /// `application/problem+json`:
 ///
 /// ```json
-/// { "type": "about:blank", "title": "Not Found", "status": 404, "detail": "User 42 not found" }
+/// {
+///   "type": "about:blank",
+///   "title": "Not Found",
+///   "status": 404,
+///   "detail": "User 42 not found",
+///   "instance": "/users/42"
+/// }
 /// ```
 ///
 /// The [extensions] are added as members of their own (`"violations": [...]` in a 422).
+/// [ProblemDetails.fromJson] reads one back (registered in the object mapper by default).
 ///
 /// {@category Errors}
 class ProblemDetails {
@@ -24,6 +31,10 @@ class ProblemDetails {
   /// What happened in this occurrence, for the client (never internal details)
   final String? detail;
 
+  /// A URI reference of this occurrence; the exception handler puts the path of the request
+  /// (without the query string) when it's null
+  final String? instance;
+
   /// More members of the problem. They never replace `type`, `title`, `status` nor `detail`.
   final Map<String, Object?> extensions;
 
@@ -33,6 +44,7 @@ class ProblemDetails {
     required this.title,
     this.type = 'about:blank',
     this.detail,
+    this.instance,
     this.extensions = const {},
   });
 
@@ -42,10 +54,48 @@ class ProblemDetails {
     String? type,
     String? title,
     this.detail,
+    this.instance,
     this.extensions = const {},
   }) : status = status.value,
        title = title ?? status.reasonPhrase,
        type = type ?? 'about:blank';
+
+  static const Set<String> _members = {
+    'type',
+    'title',
+    'status',
+    'detail',
+    'instance',
+  };
+
+  /// A problem read from its JSON. As RFC 9457 asks, a standard member of the wrong type is
+  /// ignored (`type` is then `about:blank` and `title` the reason phrase of the status); only
+  /// `status` is required. Any other member goes to [extensions].
+  factory ProblemDetails.fromJson(Map<String, Object?> json) {
+    final Object? status = json['status'];
+    if (status is! num || status % 1 != 0) {
+      throw DeserializationException(
+        status == null ? 'missing' : 'expected an integer',
+        path: r'$.status',
+      );
+    }
+    final int code = status.toInt();
+    String? text(String name) => switch (json[name]) {
+      final String value => value,
+      _ => null,
+    };
+    return ProblemDetails(
+      status: code,
+      title: text('title') ?? StatusCode.resolve(code)?.reasonPhrase ?? '',
+      type: text('type') ?? 'about:blank',
+      detail: text('detail'),
+      instance: text('instance'),
+      extensions: {
+        for (final MapEntry(:key, :value) in json.entries)
+          if (!_members.contains(key)) key: value,
+      },
+    );
+  }
 
   /// The JSON of the problem: the [extensions], then the standard members
   Map<String, Object?> toJson() => {
@@ -54,6 +104,7 @@ class ProblemDetails {
     'title': title,
     'status': status,
     if (detail != null) 'detail': detail,
+    if (instance != null) 'instance': instance,
   };
 
   /// A response with this problem as the body (`application/problem+json`)
@@ -84,7 +135,7 @@ class ResponseException implements Exception {
 /// ```
 ///
 /// The subclasses are shortcuts for the common statuses. The [detail] is sent to the client, so
-/// it must never contain internal details; write it in the language of the request (`t(...)`).
+/// it must never contain internal details; write it in the language of the request (`intl.users.notFound(id: id)`).
 ///
 /// {@category Errors}
 class ApiException implements Exception {
@@ -100,6 +151,9 @@ class ApiException implements Exception {
   /// The summary of the kind of problem (the reason phrase of [status] when null)
   final String? title;
 
+  /// A URI reference of this occurrence (the path of the request when null)
+  final String? instance;
+
   /// More members of the problem (`{'email': email}`)
   final Map<String, Object?> extensions;
 
@@ -112,6 +166,7 @@ class ApiException implements Exception {
     this.detail,
     this.type,
     this.title,
+    this.instance,
     this.extensions = const {},
     this.headers,
   });
@@ -125,6 +180,7 @@ class ApiException implements Exception {
     type: type,
     title: title,
     detail: detail,
+    instance: instance,
     extensions: extensions,
   );
 
@@ -143,6 +199,7 @@ class BadRequestException extends ApiException {
     super.detail,
     super.type,
     super.title,
+    super.instance,
     super.extensions,
     super.headers,
   }) : super(StatusCode.badRequest);
@@ -157,6 +214,7 @@ class UnauthorizedException extends ApiException {
     super.detail,
     super.type,
     super.title,
+    super.instance,
     super.extensions,
     super.headers,
   }) : super(StatusCode.unauthorized);
@@ -171,6 +229,7 @@ class ForbiddenException extends ApiException {
     super.detail,
     super.type,
     super.title,
+    super.instance,
     super.extensions,
     super.headers,
   }) : super(StatusCode.forbidden);
@@ -185,6 +244,7 @@ class NotFoundException extends ApiException {
     super.detail,
     super.type,
     super.title,
+    super.instance,
     super.extensions,
     super.headers,
   }) : super(StatusCode.notFound);
@@ -203,6 +263,7 @@ class MethodNotAllowedException extends ApiException {
     super.detail,
     super.type,
     super.title,
+    super.instance,
     super.extensions,
     Map<String, Object>? headers,
   }) : super(
@@ -220,6 +281,7 @@ class ConflictException extends ApiException {
     super.detail,
     super.type,
     super.title,
+    super.instance,
     super.extensions,
     super.headers,
   }) : super(StatusCode.conflict);
@@ -228,15 +290,16 @@ class ConflictException extends ApiException {
 /// 413: the body is bigger than `ServerConfig.maxBodySize`
 ///
 /// {@category Errors}
-class PayloadTooLargeException extends ApiException {
+class ContentTooLargeException extends ApiException {
   /// A 413
-  const PayloadTooLargeException({
+  const ContentTooLargeException({
     super.detail,
     super.type,
     super.title,
+    super.instance,
     super.extensions,
     super.headers,
-  }) : super(StatusCode.payloadTooLarge);
+  }) : super(StatusCode.contentTooLarge);
 }
 
 /// 415: the body is not in a format the endpoint understands
@@ -248,6 +311,7 @@ class UnsupportedMediaTypeException extends ApiException {
     super.detail,
     super.type,
     super.title,
+    super.instance,
     super.extensions,
     super.headers,
   }) : super(StatusCode.unsupportedMediaType);
@@ -256,21 +320,53 @@ class UnsupportedMediaTypeException extends ApiException {
 /// 422: the body has the right shape, but invalid values
 ///
 /// {@category Errors}
-class UnprocessableEntityException extends ApiException {
+class UnprocessableContentException extends ApiException {
   /// A 422
-  const UnprocessableEntityException({
+  const UnprocessableContentException({
     super.detail,
     super.type,
     super.title,
+    super.instance,
     super.extensions,
     super.headers,
-  }) : super(StatusCode.unprocessableEntity);
+  }) : super(StatusCode.unprocessableContent);
+}
+
+/// 412: a precondition of the request (`If-Match`, `If-Unmodified-Since`) failed: the resource
+/// changed since the client read it (see [RequestPreconditionsX.checkPreconditions])
+///
+/// {@category Errors}
+class PreconditionFailedException extends ApiException {
+  /// A 412
+  const PreconditionFailedException({
+    super.detail,
+    super.type,
+    super.title,
+    super.instance,
+    super.extensions,
+    super.headers,
+  }) : super(StatusCode.preconditionFailed);
+}
+
+/// 428 (RFC 6585): the change needs a precondition (`If-Match`) and the request had none
+///
+/// {@category Errors}
+class PreconditionRequiredException extends ApiException {
+  /// A 428
+  const PreconditionRequiredException({
+    super.detail,
+    super.type,
+    super.title,
+    super.instance,
+    super.extensions,
+    super.headers,
+  }) : super(StatusCode.preconditionRequired);
 }
 
 /// 422 with the [violations] of a validation, sent as the `violations` member of the problem
 ///
 /// {@category Errors}
-class ValidationException extends UnprocessableEntityException {
+class ValidationException extends UnprocessableContentException {
   /// What failed, field by field
   final List<ConstraintViolation> violations;
 
@@ -278,6 +374,7 @@ class ValidationException extends UnprocessableEntityException {
   const ValidationException({
     required this.violations,
     super.detail,
+    super.instance,
     super.headers,
   });
 
@@ -297,6 +394,7 @@ class TooManyRequestsException extends ApiException {
     super.detail,
     super.type,
     super.title,
+    super.instance,
     super.extensions,
     Map<String, Object>? headers,
   }) : super(
@@ -318,6 +416,7 @@ class InternalServerErrorException extends ApiException {
     super.detail,
     super.type,
     super.title,
+    super.instance,
     super.extensions,
     super.headers,
   }) : super(StatusCode.internalServerError);
@@ -334,6 +433,7 @@ class ServiceUnavailableException extends ApiException {
     super.detail,
     super.type,
     super.title,
+    super.instance,
     super.extensions,
     Map<String, Object>? headers,
   }) : super(

@@ -44,7 +44,7 @@ void main() {
 ### `WinterTestClient`
 
 `WinterTestClient.build` takes the same parameters as the server: `router`, `globalFilterConfig`,
-`securityConfig` and `maxBodySize`.
+`securityConfig`, `maxBodySize`, `requestTimeout` and `trustedProxies`.
 
 | Method                                     | Sends                                       |
 |--------------------------------------------|---------------------------------------------|
@@ -55,7 +55,7 @@ void main() {
 - A `body` that is a `String` or bytes (a `Uint8List`) is sent as it is; anything else, a
   `List<int>` included, is JSON (with the object mapper, and `Content-Type: application/json`).
 - `headers` take a `String` or a `List<String>` per name.
-- `connectionInfo` gives the request a client IP (for `clientIp()` and the rate limiter).
+- `connectionInfo` gives the request a client IP (for `clientIp` and the rate limiter).
 
 `TestResponse` has `statusCode`, `headers` (case insensitive), `headersAll` (every value: several
 `Set-Cookie`), `bodyBytes` (the body as it was sent: an image, a file; empty for a `HEAD`), `body`

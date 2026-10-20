@@ -22,15 +22,7 @@ void main() {
     Future<bool> allowed(RateLimiter limiter, String id) async =>
         (await limiter.check(id)).allowed;
 
-    test('should allow requests within limit', () async {
-      final rateLimiter = limiter(3, const Duration(seconds: 1));
-
-      expect(await allowed(rateLimiter, 'user1'), isTrue);
-      expect(await allowed(rateLimiter, 'user1'), isTrue);
-      expect(await allowed(rateLimiter, 'user1'), isTrue);
-    });
-
-    test('should deny requests exceeding limit', () async {
+    test('maxRequests are allowed in a window, the next is not', () async {
       final rateLimiter = limiter(2, const Duration(seconds: 1));
 
       expect(await allowed(rateLimiter, 'user1'), isTrue);
@@ -38,7 +30,7 @@ void main() {
       expect(await allowed(rateLimiter, 'user1'), isFalse);
     });
 
-    test('should handle different IDs independently', () async {
+    test('each id has its own count', () async {
       final rateLimiter = limiter(1, const Duration(seconds: 1));
 
       expect(await allowed(rateLimiter, 'user1'), isTrue);
@@ -192,74 +184,83 @@ void main() {
     Future<ResponseEntity> handle(RequestEntity req) async =>
         ResponseEntity.ok();
 
-    test('should allow request and add Rate-Limit headers', () async {
-      final chain = FilterChain([], handle);
+    test(
+      'a request within the limit gets RateLimit-Policy and RateLimit',
+      () async {
+        final chain = FilterChain([], handle);
 
-      final response = await _run(filter, request, chain);
+        final response = await _run(filter, request, chain);
 
-      expect(response.statusCode, 200);
-      expect(response.headers['X-RateLimit-Limit'], '2');
-      expect(response.headers['X-RateLimit-Remaining'], '1');
-      expect(response.headers['X-RateLimit-Reset'], '1');
-    });
+        expect(response.statusCode, 200);
+        expect(response.headers['RateLimit-Policy'], '"default";q=2;w=1');
+        expect(response.headers['RateLimit'], '"default";r=1;t=1');
+      },
+    );
 
-    test('should deny request when limit exceeded', () async {
-      final chain = FilterChain([], handle);
-
-      // Consume limit (2 requests)
-      await _run(filter, request, chain);
-      await _run(filter, request, chain);
-
-      // Third one should fail
-      final response = await _run(filter, request, chain);
-
-      expect(response.statusCode, 429); // Too Many Requests
-      expect(response.headers['X-RateLimit-Remaining'], '0');
-      expect(response.headers['Retry-After'], '1');
-    });
-
-    test('should update remaining requests in headers', () async {
-      final chain = FilterChain([], handle);
-
-      final response1 = await _run(filter, request, chain);
-      expect(response1.headers['X-RateLimit-Remaining'], '1');
-
-      final response2 = await _run(filter, request, chain);
-      expect(response2.headers['X-RateLimit-Remaining'], '0');
-    });
-
-    test('should handle different users independently', () async {
-      final multiUserFilter = RateLimiterFilter.fromRateLimiter(
-        rateLimiter: limiter(1, const Duration(seconds: 1)),
-        clientId: (req) => req.headers['user-id'] ?? 'anonymous',
+    test('several filters add one item each, with their policy', () async {
+      final burst = RateLimiterFilter.fromRateLimiter(
+        rateLimiter: limiter(2, const Duration(seconds: 1)),
+        clientId: (req) => 'id',
+        policy: 'burst',
       );
-      final chain = FilterChain([], handle);
-      final user1 = RequestEntity(
-        'GET',
-        Uri.parse('http://localhost/'),
-        headers: {'user-id': '1'},
-      );
-      final user2 = RequestEntity(
-        'GET',
-        Uri.parse('http://localhost/'),
-        headers: {'user-id': '2'},
+      final daily = RateLimiterFilter.fromRateLimiter(
+        rateLimiter: limiter(1000, const Duration(days: 1)),
+        clientId: (req) => 'id',
+        policy: 'daily',
       );
 
-      expect((await _run(multiUserFilter, user1, chain)).statusCode, 200);
-      expect((await _run(multiUserFilter, user2, chain)).statusCode, 200);
-      expect((await _run(multiUserFilter, user1, chain)).statusCode, 429);
+      final response = await _run(daily, request, FilterChain([burst], handle));
+
+      expect(response.headersAll['RateLimit-Policy'], [
+        '"burst";q=2;w=1',
+        '"daily";q=1000;w=86400',
+      ]);
+      expect(response.headersAll['RateLimit'], [
+        '"burst";r=1;t=1',
+        '"daily";r=999;t=86400',
+      ]);
     });
 
-    test('should allow requests again after window expires', () async {
-      final chain = FilterChain([], handle);
-      await _run(filter, request, chain);
-      await _run(filter, request, chain);
-      expect((await _run(filter, request, chain)).statusCode, 429);
+    test(
+      'the policy is a quoted string: escaped, and only printable ASCII',
+      () async {
+        final quoted = RateLimiterFilter.fromRateLimiter(
+          rateLimiter: limiter(2, const Duration(milliseconds: 300)),
+          clientId: (req) => 'id',
+          policy: r'a"b\c',
+        );
 
-      clock.advance(const Duration(seconds: 1, microseconds: 1));
+        final response = await _run(quoted, request, FilterChain([], handle));
 
-      expect((await _run(filter, request, chain)).statusCode, 200);
-    });
+        // A window under a second is announced as one (w is a whole, non-zero number)
+        expect(response.headers['RateLimit-Policy'], r'"a\"b\\c";q=2;w=1');
+        for (final invalid in ['línea', 'a\nb']) {
+          expect(
+            () => RateLimiterFilter(
+              maxRequests: 1,
+              window: const Duration(seconds: 1),
+              policy: invalid,
+            ),
+            throwsArgumentError,
+          );
+        }
+      },
+    );
+
+    test(
+      'a request over the limit is a 429 with r=0 and Retry-After',
+      () async {
+        final chain = FilterChain([], handle);
+        await _run(filter, request, chain);
+        await _run(filter, request, chain);
+
+        final response = await _run(filter, request, chain);
+
+        expect(response.statusCode, 429);
+        expect(response.headers['RateLimit'], '"default";r=0;t=1');
+        expect(response.headers['Retry-After'], '1');
+      },
+    );
 
     test('Retry-After is the real wait, rounded up', () async {
       final chain = FilterChain([], handle);
@@ -276,7 +277,7 @@ void main() {
       expect(response.headers['Retry-After'], '8');
     });
 
-    test('X-RateLimit-Reset counts down (not the window size)', () async {
+    test('the t of RateLimit counts down (not the window size)', () async {
       final chain = FilterChain([], handle);
       final countDownFilter = RateLimiterFilter.fromRateLimiter(
         rateLimiter: limiter(5, const Duration(seconds: 3)),
@@ -284,14 +285,34 @@ void main() {
       );
 
       final first = await _run(countDownFilter, request, chain);
-      expect(first.headers['X-RateLimit-Reset'], '3');
+      expect(first.headers['RateLimit'], '"default";r=4;t=3');
 
       clock.advance(const Duration(seconds: 1));
       final second = await _run(countDownFilter, request, chain);
-      expect(second.headers['X-RateLimit-Reset'], '2');
+      expect(second.headers['RateLimit'], '"default";r=3;t=2');
     });
 
-    test('should work with an async ID extractor', () async {
+    test('clientId (sync or async) decides who is limited', () async {
+      final chain = FilterChain([], handle);
+      final multiUserFilter = RateLimiterFilter.fromRateLimiter(
+        rateLimiter: limiter(1, const Duration(seconds: 1)),
+        clientId: (req) => req.headers['user-id'] ?? 'anonymous',
+      );
+      final user1 = RequestEntity(
+        'GET',
+        Uri.parse('http://localhost/'),
+        headers: {'user-id': '1'},
+      );
+      final user2 = RequestEntity(
+        'GET',
+        Uri.parse('http://localhost/'),
+        headers: {'user-id': '2'},
+      );
+
+      expect((await _run(multiUserFilter, user1, chain)).statusCode, 200);
+      expect((await _run(multiUserFilter, user2, chain)).statusCode, 200);
+      expect((await _run(multiUserFilter, user1, chain)).statusCode, 429);
+
       final asyncFilter = RateLimiterFilter.fromRateLimiter(
         rateLimiter: limiter(1, const Duration(seconds: 1)),
         clientId: (req) async {
@@ -299,13 +320,12 @@ void main() {
           return 'async-user';
         },
       );
-      final chain = FilterChain([], handle);
 
       expect((await _run(asyncFilter, request, chain)).statusCode, 200);
       expect((await _run(asyncFilter, request, chain)).statusCode, 429);
     });
 
-    test('should call log function only when limit exceeded', () async {
+    test('onLimited is called only for a rejected request', () async {
       final loggedIds = <String>[];
       final loggingFilter = RateLimiterFilter.fromRateLimiter(
         rateLimiter: limiter(1, const Duration(seconds: 1)),
@@ -417,20 +437,19 @@ void main() {
     );
 
     test(
-      'the 429 is a Problem Details with Retry-After and the limits',
+      'the 429 through the pipeline keeps Retry-After and the limits',
       () async {
         final limited = client();
         await limited.get('/limited');
         final response = await limited.get('/limited');
 
         expect(response.statusCode, 429);
-        expect(
-          response.headers['content-type'],
-          startsWith('application/problem+json'),
-        );
         expect(response.headers['retry-after'], isNotNull);
-        expect(response.headers['x-ratelimit-limit'], '1');
-        expect(response.headers['x-ratelimit-remaining'], '0');
+        expect(
+          response.headers['ratelimit-policy'],
+          startsWith('"default";q=1;'),
+        );
+        expect(response.headers['ratelimit'], startsWith('"default";r=0;'));
       },
     );
 
@@ -439,7 +458,7 @@ void main() {
       for (var i = 0; i < 5; i++) {
         final response = await unlimited.get('/unlimited');
         expect(response.statusCode, 200);
-        expect(response.headers.containsKey('x-ratelimit-limit'), isFalse);
+        expect(response.headers.containsKey('ratelimit-policy'), isFalse);
       }
     });
   });

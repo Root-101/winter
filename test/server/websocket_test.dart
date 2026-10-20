@@ -63,6 +63,7 @@ void main() {
             'fromRequest': request.principal<String>(),
             'fromScope': requestPrincipal<String>(),
             'requestId': requestId,
+            'trace': requestTrace?.traceId,
           });
         },
       ),
@@ -112,11 +113,14 @@ void main() {
   });
 
   test(
-    'the handler has the principal, in the request and in the scope',
+    'the handler has the principal, the id and the trace of the handshake',
     () async {
       final WebSocket socket = await WebSocket.connect(
         '$base/me',
-        headers: {'X-User': 'ann'},
+        headers: {
+          'X-User': 'ann',
+          'traceparent': '00-$_traceId-00f067aa0ba902b7-01',
+        },
       );
 
       final Map<String, Object?> message =
@@ -124,7 +128,8 @@ void main() {
 
       expect(message['fromRequest'], 'ann');
       expect(message['fromScope'], 'ann');
-      expect(message['requestId'], isNotEmpty);
+      expect(message['requestId'], _traceId);
+      expect(message['trace'], _traceId);
       await socket.close();
     },
   );
@@ -202,9 +207,26 @@ void main() {
 
     expect(response.statusCode, 426);
     expect(response.headers['upgrade'], 'websocket');
+    expect(response.headers['sec-websocket-version'], '13');
     expect(
       response.headers['content-type'],
       startsWith('application/problem+json'),
     );
+    // Without a key, or with another version: dart:io wouldn't upgrade it, so never a bare 101
+    for (final headers in [
+      {'Sec-WebSocket-Version': '13'},
+      {
+        'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==',
+        'Sec-WebSocket-Version': '8',
+      },
+    ]) {
+      final TestResponse almost = await client.get(
+        '/echo/lobby',
+        headers: {'Upgrade': 'websocket', 'Connection': 'Upgrade', ...headers},
+      );
+      expect(almost.statusCode, 426, reason: '$headers');
+    }
   });
 }
+
+const String _traceId = '4bf92f3577b34da6a3ce929d0e0e4736';

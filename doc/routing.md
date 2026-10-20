@@ -216,7 +216,8 @@ final router = MultiRouter([
 ```
 
 Or one router with a parent route per version, whose filters apply to that version only (the
-old one announcing its end with `Deprecation` and `Sunset`):
+old one announcing its end with a `DeprecationFilter`, see
+[versions](requests-and-responses.md#versions-of-an-api)):
 [`api_patterns/api_versioning.dart`](../example/api_patterns/lib/api_versioning.dart).
 
 ### Static files
@@ -235,7 +236,8 @@ WinterRouter(
   `index.html` (`index:`, `null` for none) after a 308 that adds the `/`, so its relative links work.
 - **Only that folder**: `..`, hidden files and folders (`.env`, `.git/`), `\`, `:` and links that
   lead out of it are a 404.
-- `ETag` and `Last-Modified` on every file, and a **304** for `If-None-Match`/`If-Modified-Since`.
+- `ETag` and `Last-Modified` on every file, and a **304** for `If-None-Match`/`If-Modified-Since`
+  (the server's conditional requests, as for any `GET`).
 - **`Range`** (video players, resumed downloads): one range is a **206**, a range out of the file a
   **416**, and `If-Range` sends the whole file when it changed. Several ranges send the whole file.
 - The `Content-Type` comes from the extension (`mimeTypes:` adds or overrides some), and the file
@@ -260,10 +262,25 @@ Route.health(
 ),
 ```
 
-- A 200 `{"status": "UP", "checks": {"database": "UP", "queue": "UP"}}` when every check passes.
-- A **503** `{"status": "DOWN", ...}` when one returns `false`, throws or takes longer than
-  `timeout`: the load balancer (or Kubernetes) takes the instance out. The reason is logged as a
-  warning, never sent, and the format is the same (not a Problem Details).
+- The format of the draft *Health Check Response Format for HTTP APIs*,
+  `application/health+json`, which Kubernetes tooling, gateways and monitors read:
+
+  ```json
+  {
+    "status": "pass",
+    "checks": {
+      "database": [{ "status": "pass" }],
+      "queue": [{ "status": "pass" }]
+    }
+  }
+  ```
+
+- A 200 `"status": "pass"` when every check passes. A **503** `"status": "fail"` (and `fail` in
+  the check) when one returns `false`, throws or takes longer than `timeout`: the load balancer
+  (or Kubernetes) takes the instance out. The reason is logged as a warning, never sent, and the
+  format is the same (not a Problem Details).
+- Each check is a list, as the draft says (a component may have several measurements); give a
+  name like `database:responseTime` to say what is measured.
 - The checks run at once; the response is never cached (`Cache-Control: no-store`), and `HEAD`
   works. Without checks it's a 200 while the server answers (path `/health` by default).
 - It's a normal route: add `filterConfig:` to protect it, or let `LoggingFilter.shouldFilter` skip
