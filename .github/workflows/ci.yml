@@ -1,10 +1,13 @@
-# The checks of CONTRIBUTING.md, on every push and pull request. The SDK is the lowest one the
-# package supports (pubspec.yaml: ^3.13.0), the one of .fvmrc.
+# The checks of CONTRIBUTING.md, on the branches that are merged into (develop and main) and the
+# pull requests to them; a feature branch runs them by hand until it's merged. The SDK is the
+# lowest one the package supports (pubspec.yaml: ^3.13.0), the one of .fvmrc.
 name: CI
 
 on:
   push:
+    branches: [develop, main]
   pull_request:
+    branches: [develop, main]
 
 concurrency:
   group: ci-${{ github.ref }}
