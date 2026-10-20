@@ -74,11 +74,6 @@ jobs:
         with:
           sdk: ${{ env.DART_SDK }}
       - run: dart pub get
-      - name: The messages of slang are up to date
-        run: |
-          dart run slang
-          (cd example/i18n && dart pub get && dart run slang)
-          git diff --exit-code -- lib/src/i18n example/i18n/lib/i18n
       - name: The snippets of the docs use the API right
         run: dart run tool/check_doc_snippets.dart
       - name: The object mapper works in an obfuscated AOT build
@@ -95,6 +90,21 @@ jobs:
             echo '::error::The package is bigger than 1 MB'
             exit 1
           fi
+
+  generated:
+    name: The messages of slang are up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ env.DART_SDK }}
+      # Generated with the lowest slang of pubspec.yaml (a new release changes its output, and the
+      # lock file isn't versioned); the tests check that it works with the newest one
+      - run: dart pub downgrade
+      - run: dart run slang
+      - run: cd example/i18n && dart pub downgrade && dart run slang
+      - run: git diff --exit-code -- lib/src/i18n example/i18n/lib/i18n
 
   pana:
     name: pana
