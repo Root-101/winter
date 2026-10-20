@@ -65,14 +65,17 @@ Guide: [`doc/object-mapper.md`](doc/object-mapper.md).
   `fromJson` (casts, `json.field`, generated code) without declaring the fields twice. Off by
   default: a client that sends more than the model knows (a newer version) keeps working.
 - **Strict primitives**: JSON has one number type, so `12.0` is an `int`; a string is never a
-  number nor a bool (`"12"` is a 400).
+  number nor a bool (`"12"` is a 400), and an integer beyond 64 bits is a 400, never clamped.
+- **Limits against a hostile body**: at most 128 objects inside each other (deeper is a 400), each
+  object renamed by `fieldNaming` once, and the cache of renamed keys bounded (the keys come from
+  the client).
 - **Errors say where, never what Dart said**: `$.items[1]: expected a string, got an integer`.
   The message never contains a Dart type (an internal, maybe obfuscated, name), a cast, a file path
   nor the value sent. Inside a `fromJson` the path is unknown: `$: invalid value`, with the original
   error in `cause` and its type logged at debug. A `fromJson` that deserializes its children loses
   their path; known limitation for 1.0.
-- **`DateTime` is written in UTC**: a local time without offset can't be read correctly in another
-  time zone.
+- **`DateTime` is written in UTC**, and one read without an offset is taken as UTC: a local time
+  can't be read correctly in another time zone, and the server's own would change the instant.
 - **Options apply to objects only**: `includeNulls` and `fieldNaming` touch the maps of `toJson()`,
   of a serializer and of `Deserializer.json`, never a `Map` used as data. `fieldNaming` renames the
   whole object given to `Deserializer.json` (a parent reads its children with Dart names), and is
