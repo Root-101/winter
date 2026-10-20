@@ -262,6 +262,14 @@ class HttpHeader {
   /// See [Section 7.1.3 of RFC 7231](https://tools.ietf.org/html/rfc7231#section-7.1.3).
   static const String retryAfter = 'Retry-After';
 
+  /// The `Sec-WebSocket-Key` header: the nonce of a WebSocket handshake.
+  /// See [RFC 6455](https://www.rfc-editor.org/rfc/rfc6455#section-11.3.1).
+  static const String secWebSocketKey = 'Sec-WebSocket-Key';
+
+  /// The `Sec-WebSocket-Version` header: the version of a WebSocket handshake (`13`).
+  /// See [RFC 6455](https://www.rfc-editor.org/rfc/rfc6455#section-11.3.5).
+  static const String secWebSocketVersion = 'Sec-WebSocket-Version';
+
   /// The HTTP `Server` header.
   /// See [Section 7.4.2 of RFC 7231](https://tools.ietf.org/html/rfc7231#section-7.4.2).
   static const String server = 'Server';

@@ -57,7 +57,8 @@ final class WebLink {
       ...params,
     }.entries) {
       if (!_printableAscii.hasMatch(value) || !_token.hasMatch(key)) {
-        throw ArgumentError.value(value, key, 'must be printable ASCII');
+        // Without the value: it may come from the client, and errors never carry one
+        throw ArgumentError('The $key of a link must be printable ASCII');
       }
     }
   }
