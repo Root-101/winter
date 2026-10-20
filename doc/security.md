@@ -290,7 +290,7 @@ RateLimit: "burst";r=9;t=1
 RateLimit: "daily";r=999;t=86400
 ```
 
-- The client is its IP, `request.clientIp()`: the address of the connection. Behind a proxy (a
+- The client is its IP, `request.clientIp`: the address of the connection. Behind a proxy (a
   load balancer, nginx) that's the proxy, unless the server trusts it:
   `ServerConfig(trustedProxies: TrustedProxies(1))` (the number of proxies in front of the app,
   see [deployment](deployment.md#behind-a-proxy)) makes it the IP the proxy forwarded. Never trust

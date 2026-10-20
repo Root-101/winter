@@ -290,16 +290,16 @@ class ConflictException extends ApiException {
 /// 413: the body is bigger than `ServerConfig.maxBodySize`
 ///
 /// {@category Errors}
-class PayloadTooLargeException extends ApiException {
+class ContentTooLargeException extends ApiException {
   /// A 413
-  const PayloadTooLargeException({
+  const ContentTooLargeException({
     super.detail,
     super.type,
     super.title,
     super.instance,
     super.extensions,
     super.headers,
-  }) : super(StatusCode.payloadTooLarge);
+  }) : super(StatusCode.contentTooLarge);
 }
 
 /// 415: the body is not in a format the endpoint understands
@@ -320,20 +320,20 @@ class UnsupportedMediaTypeException extends ApiException {
 /// 422: the body has the right shape, but invalid values
 ///
 /// {@category Errors}
-class UnprocessableEntityException extends ApiException {
+class UnprocessableContentException extends ApiException {
   /// A 422
-  const UnprocessableEntityException({
+  const UnprocessableContentException({
     super.detail,
     super.type,
     super.title,
     super.instance,
     super.extensions,
     super.headers,
-  }) : super(StatusCode.unprocessableEntity);
+  }) : super(StatusCode.unprocessableContent);
 }
 
 /// 412: a precondition of the request (`If-Match`, `If-Unmodified-Since`) failed: the resource
-/// changed since the client read it (see [ConditionalRequests.checkPreconditions])
+/// changed since the client read it (see [RequestPreconditionsX.checkPreconditions])
 ///
 /// {@category Errors}
 class PreconditionFailedException extends ApiException {
@@ -366,7 +366,7 @@ class PreconditionRequiredException extends ApiException {
 /// 422 with the [violations] of a validation, sent as the `violations` member of the problem
 ///
 /// {@category Errors}
-class ValidationException extends UnprocessableEntityException {
+class ValidationException extends UnprocessableContentException {
   /// What failed, field by field
   final List<ConstraintViolation> violations;
 

@@ -4,15 +4,15 @@ import 'package:collection/collection.dart';
 import 'package:winter/src/router/winter_router.dart' show noRouteResponse;
 import 'package:winter/winter.dart';
 
-///A router made of [routers]: a request goes to the first one that can handle it. Without one,
-///the 404/405 and the `Allow` header take the methods of every router.
+/// A router made of [routers]: a request goes to the first one that can handle it. Without one,
+/// the 404/405 and the `Allow` header take the methods of every router.
 ///
-///```dart
-///MultiRouter([
+/// ```dart
+/// MultiRouter([
 ///  WinterRouter(basePath: '/v1', routes: v1Routes),
 ///  WinterRouter(basePath: '/v2', routes: v2Routes),
-///])
-///```
+/// ])
+/// ```
 ///
 /// {@category Routing}
 class MultiRouter extends BaseRouter {
@@ -27,8 +27,8 @@ class MultiRouter extends BaseRouter {
     return routers.any((element) => element.canHandle(request));
   }
 
-  ///Delegate to the same router that [handler] will use,
-  ///so the route-level filters & path params of the inner routers are applied
+  /// Delegate to the same router that [handler] will use,
+  /// so the route-level filters & path params of the inner routers are applied
   @override
   Route? resolveRoute(RequestEntity request) {
     return routers
@@ -42,14 +42,14 @@ class MultiRouter extends BaseRouter {
       (element) => element.canHandle(request),
     );
     if (router == null) {
-      ///Same responses as WinterRouter: 204 for OPTIONS, 405 if the path exists but not for this
-      ///method, 404 otherwise
+      /// Same responses as WinterRouter: 204 for OPTIONS, 405 if the path exists but not for this
+      /// method, 404 otherwise
       return noRouteResponse(request, allowedMethods(request));
     }
     return router.handler(request);
   }
 
-  ///Methods allowed for the path of the request in any inner router (in any nesting level)
+  /// Methods allowed for the path of the request in any inner router (in any nesting level)
   Set<HttpMethod> allowedMethods(RequestEntity request) {
     return {
       for (final router in routers)

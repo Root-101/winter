@@ -120,7 +120,7 @@ class RateLimiterFilter extends Filter {
 ///
 /// {@category Security}
 void defaultLogRateLimiter(RequestEntity request, String clientId) {
-  ///Skipped before building the message: under an attack there is one per rejected request
+  /// Skipped before building the message: under an attack there is one per rejected request
   if (!logger.isEnabled(LogLevel.debug)) return;
   logger.debug(
     'Rate limit exceeded for id: $clientId in ${request.method} ${request.requestedUri.path}',
@@ -133,7 +133,7 @@ void defaultLogRateLimiter(RequestEntity request, String clientId) {
 ///
 /// {@category Security}
 String defaultClientId(RequestEntity request) {
-  final String? ip = request.clientIp();
+  final String? ip = request.clientIp;
   if (ip == null) return 'unknown';
   final InternetAddress? address = InternetAddress.tryParse(ip);
   if (address == null || address.type != InternetAddressType.IPv6) return ip;

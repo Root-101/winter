@@ -67,7 +67,7 @@ void main() async {
 | `queryParams`, `queryParamsAll`, `queryParam<T>()` | The query (the last value, or every value)     |
 | `mimeType`, `encoding`             | Of the `Content-Type` (`application/json`, its charset)        |
 | `contentLength`                    | The `Content-Length`, if it's known                            |
-| `clientIp()`, `connectionInfo`     | The client (see [security](security.md#rate-limiter))          |
+| `clientIp`, `connectionInfo`     | The client (see [security](security.md#rate-limiter))          |
 | `route`                            | The `Route` that answers it (its `key`, its `path`), null without one |
 | `context`                          | Data attached to the request, found by a typed `ContextKey` (see [below](#extending-a-request-the-context)) |
 | `locale`, `securityContext`, `principal<T>()` | Extensions of i18n and security                     |
@@ -198,7 +198,7 @@ The type of the body decides how it's written:
 The shortcuts: `ok`, `created`, `accepted`, `noContent`; the redirects `redirect` (302),
 `seeOther` (303), `temporaryRedirect` (307) and `permanentRedirect` (308), which take the
 `Location`; and `badRequest`, `unauthorized`, `forbidden`, `notFound`, `methodNotAllowed`,
-`conflict`, `unprocessableEntity`, `tooManyRequests`, `internalServerError`, `serviceUnavailable`
+`conflict`, `unprocessableContent`, `tooManyRequests`, `internalServerError`, `serviceUnavailable`
 (`retryAfter:` in seconds, like `tooManyRequests`). A browser follows a 302 or a 303 with a `GET`;
 a 307 or a 308 repeats the method and the body. For an error, throwing an `ApiException` gives a Problem Details (see [error handling](error-handling.md)).
 
@@ -362,7 +362,7 @@ on.
 
 ### How a response is written
 
-The status line has the reason phrase of `StatusCode` (`HTTP/1.1 422 Unprocessable Entity`).
+The status line has the reason phrase of `StatusCode` (`HTTP/1.1 422 Unprocessable Content`).
 `HEAD`, `204` and `304` responses never have a body (a `HEAD` keeps the `Content-Length` of its
 `GET`). Every response has a `Date`, and no `Server` nor `X-Powered-By` header. With
 `ServerConfig(autoCompress: true)` a response is gzipped for a client that accepts it.

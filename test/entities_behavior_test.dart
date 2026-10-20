@@ -112,7 +112,7 @@ void main() {
       );
 
       expect(copy.queryParams, {'page': '3'});
-      expect(copy.clientIp(), '10.0.0.1');
+      expect(copy.clientIp, '10.0.0.1');
       expect(original.queryParams, {'page': '2'});
       expect(() => copy.queryParams['x'] = 'y', throwsUnsupportedError);
       expect(copy.toString(), 'RequestEntity{GET /users}');

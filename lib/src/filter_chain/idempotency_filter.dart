@@ -124,7 +124,7 @@ class IdempotencyFilter extends Filter {
     );
     if (record != null) {
       if (record.fingerprint != fingerprint) {
-        throw const UnprocessableEntityException(
+        throw const UnprocessableContentException(
           detail: 'This Idempotency-Key was used with another request body',
         );
       }

@@ -278,10 +278,6 @@ class HttpHeader {
   /// See [Section 4.2.2 of RFC 2109](https://tools.ietf.org/html/rfc2109#section-4.2.2).
   static const String setCookie = 'Set-Cookie';
 
-  /// The HTTP `Set-Cookie2` header.
-  /// See [RFC 2965](https://tools.ietf.org/html/rfc2965).
-  static const String setCookie2 = 'Set-Cookie2';
-
   /// The HTTP `TE` header.
   /// See [Section 4.3 of RFC 7230](https://tools.ietf.org/html/rfc7230#section-4.3).
   static const String te = 'TE';
@@ -317,10 +313,6 @@ class HttpHeader {
   /// The `tracestate` header: the data of each tracing vendor, forwarded with `traceparent`.
   /// See [W3C Trace Context](https://www.w3.org/TR/trace-context/#tracestate-header).
   static const String tracestate = 'tracestate';
-
-  /// The HTTP `Warning` header.
-  /// See [Section 5.5 of RFC 7234](https://tools.ietf.org/html/rfc7234#section-5.5).
-  static const String warning = 'Warning';
 
   /// The HTTP `WWW-Authenticate` header.
   /// See [Section 4.1 of RFC 7235](https://tools.ietf.org/html/rfc7235#section-4.1).

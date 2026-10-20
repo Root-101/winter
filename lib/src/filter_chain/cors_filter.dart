@@ -52,7 +52,7 @@ class CorsFilter extends Filter {
   ) {
     final corsHeaders = _getCorsHeaders(request);
 
-    ///Merged with the `Vary` of the response (ex: `Cookie`), not replaced
+    /// Merged with the `Vary` of the response (ex: `Cookie`), not replaced
     final String? vary = corsHeaders.remove(HttpHeader.vary);
     final ResponseEntity withCors = corsHeaders.isEmpty
         ? response
@@ -76,8 +76,8 @@ class CorsFilter extends Filter {
 
     final origin = request.headers[HttpHeader.origin];
 
-    ///'Vary: Origin' for every response that depends on it, so a cache never gives a response
-    ///prepared for one origin to another (a disallowed one, or a request without Origin)
+    /// 'Vary: Origin' for every response that depends on it, so a cache never gives a response
+    /// prepared for one origin to another (a disallowed one, or a request without Origin)
     if (_dependsOnOrigin) headers[HttpHeader.vary] = HttpHeader.origin;
 
     if (origin == null) return headers;
@@ -87,8 +87,8 @@ class CorsFilter extends Filter {
     } else if ((config.allowedOrigins.contains('*') &&
             _origin.hasMatch(origin)) ||
         config.allowedOrigins.contains(origin)) {
-      ///Browsers reject '*' with credentials, so the origin is echoed instead
-      ///(and 'Vary: Origin' tells caches that the response depends on it)
+      /// Browsers reject '*' with credentials, so the origin is echoed instead
+      /// (and 'Vary: Origin' tells caches that the response depends on it)
       headers[HttpHeader.accessControlAllowOrigin] = origin;
     }
 
@@ -96,7 +96,7 @@ class CorsFilter extends Filter {
       headers[HttpHeader.accessControlAllowCredentials] = 'true';
     }
 
-    ///The id of the request is always readable, so a web client can report it
+    /// The id of the request is always readable, so a web client can report it
     headers[HttpHeader.accessControlExposeHeaders] = {
       HttpHeader.xRequestId,
       ...config.exposedHeaders,
