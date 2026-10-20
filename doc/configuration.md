@@ -137,6 +137,7 @@ adds yours on top of them (handy in tests).
 | `idleTimeout`     | 120 seconds    | How long an idle keep-alive connection stays open; `null` keeps them |
 | `securityContext` | —              | Serve HTTPS with this certificate and key                         |
 | `requestTimeout`  | —              | A response that takes longer is a 503; `null` (default) for no limit |
+| `trustedProxies`  | —              | The proxies in front of the app (`TrustedProxies(count, headers:)`): `clientIp` and `requestedUri` from their `X-Forwarded-*` or `Forwarded` ([deployment](deployment.md#behind-a-proxy)) |
 
 - It's `const`: `const ServerConfig(port: 9000)`.
 - `ServerConfig.fromEnv(env)` reads `PORT` and `HOST`, the variables that Cloud Run, Heroku,

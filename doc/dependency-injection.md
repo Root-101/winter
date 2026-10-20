@@ -163,7 +163,7 @@ logger.info('Dependencies:\n${di.registrations.join('\n')}');
 ```
 
 It's a read-only snapshot. Each `DependencyRegistration` has `type` (the type it was registered
-with), `tag`, `kind` (`DependencyKind.instance`, `lazy`, `factory` or `scoped`) and `created`.
+with), `tag`, `kind` (`DependencyKind.instance`, `lazy`, `lazyAsync`, `factory` or `scoped`) and `created`.
 
 ### Failing at start-up: `createAll`
 

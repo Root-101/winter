@@ -40,9 +40,9 @@ void main() async {
 `POST /orders` writes:
 
 ```json
-{"time":"2026-10-07T16:11:07.171Z","severity":"INFO","message":"REQUEST: POST /orders","requestId":"8f1c2a47-..."}
-{"orderId":42,"time":"2026-10-07T16:11:07.172Z","severity":"INFO","message":"Order created","requestId":"8f1c2a47-..."}
-{"time":"2026-10-07T16:11:07.175Z","severity":"INFO","message":"RESPONSE: POST /orders => 201 (3 ms)","requestId":"8f1c2a47-..."}
+{"time":"2026-10-07T16:11:07.171Z","severity":"INFO","message":"REQUEST: POST /orders","requestId":"8f1c2a47-...","traceId":"0af7651916cd43dd8448eb211c80319c","spanId":"b7ad6b7169203331"}
+{"orderId":42,"time":"2026-10-07T16:11:07.172Z","severity":"INFO","message":"Order created","requestId":"8f1c2a47-...","traceId":"0af7651916cd43dd8448eb211c80319c","spanId":"b7ad6b7169203331"}
+{"time":"2026-10-07T16:11:07.175Z","severity":"INFO","message":"RESPONSE: POST /orders => 201 (3 ms)","requestId":"8f1c2a47-...","traceId":"0af7651916cd43dd8448eb211c80319c","spanId":"b7ad6b7169203331"}
 ```
 
 ## How it works
@@ -95,7 +95,7 @@ Every request has an id, without adding anything:
   (also from services, after an `await`), and in the body of a 500:
 
   ```json
-  { "requestId": "8f1c2a47-...", "type": "about:blank", "title": "Internal Server Error", "status": 500 }
+  { "requestId": "8f1c2a47-...", "type": "about:blank", "title": "Internal Server Error", "status": 500, "instance": "/orders" }
   ```
 
 - Read it anywhere with `requestId` (null outside a request), for example to pass it to another

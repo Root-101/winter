@@ -209,7 +209,8 @@ Guide: [`doc/logging.md`](doc/logging.md).
 - **The logs never contain the data of a request**: no bodies, query strings, tokens, nor the
   message of a deserialization error (it may contain the value sent); only the type of the error.
 - **Every request has an id**, always: its `X-Request-Id` when it's valid (1–128 safe characters,
-  so a header can't inject lines into the logs), or a new UUID. It's in `requestId`, the response,
+  so a header can't inject lines into the logs), or the trace id of a valid `traceparent`, or a new
+  UUID. It's in `requestId`, the response,
   every log of the request and a 500. It turns "it failed at 10:31" into the logs of that request.
 - **W3C Trace Context, not a tracer**: a valid `traceparent` (strict parsing: lowercase hex, no
   ids of zeros, `ff` invalid, only one header) is continued with a new span id per request, and
@@ -279,7 +280,8 @@ Guide: [`doc/security.md`](doc/security.md).
 Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
 
 - **The route table is checked at start**: an invalid path or a duplicated route is a `StateError`
-  (`RouterConfig.fail()`), found at start instead of as a 404. A duplicate is the same key, or the
+  (`DefaultOnInvalidUrl.fail()`/`DefaultOnDuplicatedRoute.fail()`, the defaults of `RouterConfig`),
+  found at start instead of as a 404. A duplicate is the same key, or the
   same method and shape (`/users/{id}` and `/users/{name}`: the second could never be reached).
   Only the literal parts of a path are validated; params and regex can have any character.
 - **The resolved `Route` travels in the request** (`request.route`), not as text: the server
@@ -365,7 +367,7 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
   no cache mixes the answers.
 - **Winter serves with `dart:io` directly**, with its own request and response, without shelf: its
   public API doesn't depend on another package (nor on its breaking changes), and an empty endpoint
-  is close to the `dart:io` ceiling (~83 %, `benchmark/http_benchmark.dart`).
+  is close to the `dart:io` ceiling (~85 %, `benchmark/http_benchmark.dart`).
 - **The request is read-only** (headers, query and path params): a filter passes a copy to the
   chain. `headers` (one value, case insensitive) and `headersAll` (every value); the headers of
   `dart:io` are read as a view, not copied. The body is read once and shared by the copies;
@@ -435,7 +437,9 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
 - **One library**, `package:winter/winter.dart`. Internal helpers stay in `lib/src` and are hidden
   with `export ... hide`: `addVary`, `limitBodySize`, `isValidUri`, the router helpers,
   `writeResponse`, the construction from an `HttpRequest`, the multipart parser, Winter's own
-  translations and the console styles. Public on purpose: `internalServerErrorResponse` and `defaultLogUnhandledError`
+  translations, the console styles, the helpers of the trusted proxies and of the conditional
+  requests, `healthHandler`, the OpenAPI and Swagger handlers, the WebSocket upgrade and
+  `onServerClosing`. Public on purpose: `internalServerErrorResponse` and `defaultLogUnhandledError`
   (for an `ExceptionHandler` of the app), the defaults of the filters (`defaultLog*`,
   `defaultClientId`), and the shortcuts `di`, `om`, `eh`, `env`, `logger` (short on purpose; the
   long form is `Winter.context`).
