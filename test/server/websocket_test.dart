@@ -207,10 +207,25 @@ void main() {
 
     expect(response.statusCode, 426);
     expect(response.headers['upgrade'], 'websocket');
+    expect(response.headers['sec-websocket-version'], '13');
     expect(
       response.headers['content-type'],
       startsWith('application/problem+json'),
     );
+    // Without a key, or with another version: dart:io wouldn't upgrade it, so never a bare 101
+    for (final headers in [
+      {'Sec-WebSocket-Version': '13'},
+      {
+        'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==',
+        'Sec-WebSocket-Version': '8',
+      },
+    ]) {
+      final TestResponse almost = await client.get(
+        '/echo/lobby',
+        headers: {'Upgrade': 'websocket', 'Connection': 'Upgrade', ...headers},
+      );
+      expect(almost.statusCode, 426, reason: '$headers');
+    }
   });
 }
 

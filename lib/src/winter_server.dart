@@ -470,10 +470,12 @@ class Winter {
     );
   }
 
+  /// The same check `dart:io` makes before it compresses (an exact `gzip`): otherwise the length
+  /// would be left out of a response that is then sent uncompressed
   static bool _acceptsGzip(HttpRequest request) =>
       (request.headers[HttpHeaders.acceptEncodingHeader] ?? const <String>[])
           .expand((value) => value.split(','))
-          .any((encoding) => encoding.trim().toLowerCase().startsWith('gzip'));
+          .any((encoding) => encoding.trim().toLowerCase() == 'gzip');
 
   /// One request of the real server: run the pipeline and write its response
   static Future<void> _serve(
