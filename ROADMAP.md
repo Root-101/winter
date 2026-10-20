@@ -5,9 +5,9 @@ REST API. Not at the level of Spring, but with the basics complete, stable and d
 
 **Legend:** 🔴 blocks 1.0 · 🟡 should be in 1.0 · 🟢 after 1.0 (1.x) · ✅ done · ⏸️ on hold
 
-> **Now: `1.0.0-rc.1` is on pub.dev (2026-10-09)**, to be used in a real project before 1.0.0
-> (6.4). Phases 1 to 9 are done (8: the standards, after the rc; 9: the review after them). The CI
-> (6.1) comes after 1.0.
+> **Now: the release of `1.0.0-rc.2`** (6.4), after `1.0.0-rc.1` (2026-10-09) was used in a real
+> project. Phases 1 to 9 are done (8: the standards, after the rc; 9: the review after them). The
+> CI (6.1) comes after 1.0.
 
 The decisions behind each point are in `DECISIONS.md` (§ numbers below), the behavior in the
 tests, and the usage in `doc/`.
@@ -28,7 +28,8 @@ criteria:
    version: no migration guide from 0.x.
 4. Before each release the checks pass locally (format, analyze, tests, examples, publish dry run)
    with a good pana score. The CI comes after 1.0 (6.1).
-5. At least one release candidate (`1.0.0-rc.1`) was published and used in a real project.
+5. At least one release candidate (`1.0.0-rc.1`, then `1.0.0-rc.2`) was published and used in a
+   real project.
 
 ---
 
@@ -279,6 +280,9 @@ exists on pub.dev (0.0.7, the same repository), so each release is a new version
    1.0.0, and the installation commands name the version (pub only picks a prerelease when asked).
 2. [x] Use it in a real project for a few weeks (feather-io). Already in *Powered by Winter* in
    the README, with a teaser of Almond.
+3. [ ] **`1.0.0-rc.2`**, with phases 8 and 9: the [release review](#release-review-before-every-release)
+   ran as phase 9 (2026-10-19); `release/1.0.0-rc.2` merged into `main`, tag `v1.0.0-rc.2`, published
+   on pub.dev.
 
 ### 6.1 CI 🟢 (after 1.0)
 
