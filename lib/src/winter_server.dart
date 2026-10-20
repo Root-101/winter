@@ -274,6 +274,7 @@ class Winter {
         inFlightRequests,
         webSockets,
         compress: nonNullConfig.autoCompress,
+        secure: nonNullConfig.securityContext != null,
       ),
 
       ///A connection that fails before it's a request (a malformed one, a TLS handshake...).
@@ -473,12 +474,15 @@ class Winter {
     _InFlightRequests inFlightRequests,
     _WebSockets webSockets, {
     required bool compress,
+    required bool secure,
   }) async {
     inFlightRequests.start();
     try {
       ResponseEntity response;
       try {
-        response = await handler(requestFromHttpRequest(request));
+        response = await handler(
+          requestFromHttpRequest(request, secure: secure),
+        );
       } catch (error, stackTrace) {
         ///The pipeline never throws, unless the logger or a callback of the scope fails
         logger.error(

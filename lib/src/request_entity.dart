@@ -9,7 +9,8 @@ import 'package:winter/src/context/validation/validation.dart' show mapKeyPath;
 import 'package:winter/src/multipart.dart'
     show multipartBoundary, parseMultipart;
 import 'package:winter/src/router/path_template.dart';
-import 'package:winter/src/trusted_proxies.dart' show forwardedClientIpKey;
+import 'package:winter/src/trusted_proxies.dart'
+    show forwardedClientIpKey, parseHost;
 import 'package:winter/winter.dart';
 
 /// An HTTP request: what a handler and every filter receive.
@@ -665,16 +666,41 @@ String _decodePathParam(String value) {
 /// request built in memory. Internal: not exported by `winter.dart`.
 ///
 /// {@category Requests and responses}
-RequestEntity requestFromHttpRequest(HttpRequest request) =>
-    RequestEntity._copy(
-      method: request.method.toUpperCase(),
-      requestedUri: request.requestedUri,
-      protocolVersion: request.protocolVersion,
-      headersAll: ioHeaders(request.headers),
-      context: ContextMap(),
-      connectionInfo: request.connectionInfo,
-      body: _RequestBody(_discardedOnCancel(request)),
-    );
+RequestEntity requestFromHttpRequest(
+  HttpRequest request, {
+  bool secure = false,
+}) => RequestEntity._copy(
+  method: request.method.toUpperCase(),
+  requestedUri: _requestedUri(request, secure: secure),
+  protocolVersion: request.protocolVersion,
+  headersAll: ioHeaders(request.headers),
+  context: ContextMap(),
+  connectionInfo: request.connectionInfo,
+  body: _RequestBody(_discardedOnCancel(request)),
+);
+
+/// The URI the client asked for: the path and the query of the request target, the scheme of the
+/// server ([secure] is HTTPS) and its `Host` (`localhost` and the port of the connection when it
+/// isn't a valid `host[:port]`).
+///
+/// Never the `requestedUri` of `dart:io`: it takes the scheme and the host from
+/// `X-Forwarded-Proto` and `X-Forwarded-Host`, and glues them before the path, so any client could
+/// choose the host, the scheme and even the path that is routed (`X-Forwarded-Host: h/admin?`).
+/// Those headers are only read for trusted proxies (`applyTrustedProxies`).
+Uri _requestedUri(HttpRequest request, {required bool secure}) {
+  final String scheme = secure ? 'https' : 'http';
+  final Uri? host = parseHost(request.headers.value(HttpHeader.host));
+  final Uri target = request.uri;
+  return Uri(
+    scheme: scheme,
+    host: host?.host ?? 'localhost',
+    port: host == null
+        ? request.connectionInfo?.localPort
+        : (host.hasPort ? host.port : null),
+    path: target.path,
+    query: target.hasQuery ? target.query : null,
+  );
+}
 
 /// [body], but a reader that stops before its end (a 413 of `maxBodySize`, a malformed multipart
 /// body, a handler that reads only the start) doesn't cancel it: the rest is read and discarded.

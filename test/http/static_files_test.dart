@@ -150,6 +150,35 @@ void main() {
       },
     );
 
+    test(
+      'a hidden file is a 404 by its Windows short name too (ENV~1)',
+      () async {
+        // `dir /x` lists the 8.3 name; a volume may not generate them
+        final ProcessResult listing = await Process.run('cmd', [
+          '/c',
+          'dir',
+          '/x',
+          '/a',
+          // `dir` would read the `/` of `.../public` as a switch
+          public.path.replaceAll('/', r'\'),
+        ]);
+        final RegExpMatch? short = RegExp(
+          r'\s(\S+~\d)\s+\.env\s*$',
+          multiLine: true,
+        ).firstMatch(listing.stdout as String);
+        if (short == null) {
+          markTestSkipped('This volume has no short names');
+          return;
+        }
+
+        final TestResponse response = await client.get('/assets/${short[1]}');
+
+        expect(response.statusCode, 404);
+        expect(response.body, isNot(contains('TOKEN')));
+      },
+      testOn: 'windows',
+    );
+
     test('a link that leads out of the directory is a 404', () async {
       final Link link = Link('${public.path}/escape.txt');
       try {

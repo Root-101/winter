@@ -86,6 +86,14 @@ final class StaticFiles {
       throw const NotFoundException();
     }
     if (!_isInside(canonical)) throw const NotFoundException();
+    // The real names, checked again: Windows also reaches a file by an alias the segments of the
+    // request don't show (`ENV~1`, the 8.3 short name of `.env`)
+    if (canonical
+        .substring(_root.length)
+        .split(Platform.pathSeparator)
+        .any(_isForbidden)) {
+      throw const NotFoundException();
+    }
 
     return _respond(request, File(canonical), stat);
   }
@@ -98,14 +106,14 @@ final class StaticFiles {
       segment.contains(':') ||
       segment.contains('\x00');
 
-  bool _isInside(String canonical) {
-    final String root = directory.endsWith(Platform.pathSeparator)
-        ? directory
-        : '$directory${Platform.pathSeparator}';
-    return Platform.isWindows
-        ? canonical.toLowerCase().startsWith(root.toLowerCase())
-        : canonical.startsWith(root);
-  }
+  /// [directory] ending in a separator
+  String get _root => directory.endsWith(Platform.pathSeparator)
+      ? directory
+      : '$directory${Platform.pathSeparator}';
+
+  bool _isInside(String canonical) => Platform.isWindows
+      ? canonical.toLowerCase().startsWith(_root.toLowerCase())
+      : canonical.startsWith(_root);
 
   ResponseEntity _respond(RequestEntity request, File file, FileStat stat) {
     final int size = stat.size;

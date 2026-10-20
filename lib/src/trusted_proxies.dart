@@ -73,7 +73,7 @@ RequestEntity applyTrustedProxies(
   };
   final String? proto = hop.proto?.toLowerCase();
   final String? scheme = proto == 'http' || proto == 'https' ? proto : null;
-  final Uri? host = _host(hop.host);
+  final Uri? host = parseHost(hop.host);
   final RequestEntity forwarded = scheme == null && host == null
       ? request
       : request.copyWith(
@@ -105,8 +105,9 @@ Uri _forwardedUri(Uri uri, String? scheme, Uri? host) {
 
 final RegExp _hostChars = RegExp(r'^[A-Za-z0-9.\-\[\]:]+$');
 
-/// A forwarded `host[:port]`, or null when it isn't one (a path, a user, a query...)
-Uri? _host(String? value) {
+/// A `host[:port]` (of a `Host` header or a forwarded one), or null when it isn't one (a path, a
+/// user, a query...)
+Uri? parseHost(String? value) {
   if (value == null || !_hostChars.hasMatch(value)) return null;
   final Uri? uri = Uri.tryParse('http://$value');
   return uri == null || uri.host.isEmpty ? null : uri;

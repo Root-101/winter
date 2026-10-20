@@ -48,6 +48,11 @@ void main() {
         path: '/text',
         handler: (request) => ResponseEntity.ok(body: 'año'),
       ),
+      Route.get(
+        path: '/uri',
+        handler: (request) =>
+            ResponseEntity.ok(body: '${request.requestedUri}'),
+      ),
       Route.post(
         path: '/text',
         handler: (request) async =>
@@ -303,6 +308,42 @@ void main() {
         expect(answer, startsWith('HTTP/1.1 400'));
       },
     );
+
+    test('the URI comes from the request target and a valid Host, never X-Forwarded-*', () async {
+      Future<String> send(Map<String, String> headers) async {
+        final socket = await Socket.connect('localhost', port);
+        socket.write(
+          'GET /uri?page=2 HTTP/1.1\r\nConnection: close\r\n'
+          '${[for (final MapEntry(:key, :value) in headers.entries) '$key: $value\r\n'].join()}'
+          '\r\n',
+        );
+        final String answer = await utf8.decodeStream(socket);
+        socket.destroy();
+        return answer.substring(answer.indexOf('\r\n\r\n') + 4);
+      }
+
+      expect(
+        await send({'Host': 'api.example.com:8080'}),
+        'http://api.example.com:8080/uri?page=2',
+      );
+      // dart:io would take these into its requestedUri: the host, the scheme, even the path
+      expect(
+        await send({
+          'Host': 'localhost',
+          'X-Forwarded-Host': 'evil.example/text?',
+          'X-Forwarded-Proto': 'https',
+        }),
+        'http://localhost/uri?page=2',
+      );
+      // A Host with a path or a user is not a host: localhost and the port of the connection
+      for (final host in ['localhost/text?', 'user@evil.example', 'a b']) {
+        expect(
+          await send({'Host': host}),
+          'http://localhost:$port/uri?page=2',
+          reason: host,
+        );
+      }
+    });
 
     test(
       'a malformed request is answered by dart:io, the server goes on',
