@@ -562,7 +562,7 @@ Route.post(
 |-------------------------------------------------|----------------------------------------------------|
 | A new key                                       | Runs, and its response is kept for `expiry` (24 h) |
 | The same key and the same body                  | The kept response, with `Idempotent-Replayed: true`; the handler doesn't run |
-| The same key with another body                  | **422**                                            |
+| The same key with another body or query         | **422**                                            |
 | The same key while the first one still runs     | **409**                                            |
 | No key (unless `required: false`), or an invalid one | **400**                                       |
 
@@ -574,7 +574,9 @@ Route.post(
   otherwise two users with the same key and the same body get each other's response. Put the
   filter after the `AuthFilter`, so a 401 isn't kept.
 - The body is read with `bytes()` (cached, so the handler still reads it with `body<T>()`) and
-  compared by a fingerprint.
+  compared, with the query string, by a fingerprint.
+- `InMemoryIdempotencyStore(maxKeys:)` keeps at most 100 000 keys by default: a new one past it
+  forgets the oldest, so a client sending a new key with every request can't fill the memory.
 - The keys live in an `IdempotencyStore`: `InMemoryIdempotencyStore` by default (per isolate and
   per process, purged as it's used, `clock:` for the tests). Several instances need a shared one
   (a table, Redis) implementing `reserve` (atomic), `complete`, `release` and `clear`.

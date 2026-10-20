@@ -161,6 +161,86 @@ void main() {
     expect(runs, [10, 10, 10]);
   });
 
+  test(
+    'a space in a partition or a key never makes the id of another',
+    () async {
+      final payments = client(
+        partition: (request) => request.headers['x-user']!,
+      );
+      await pay(payments, 'x', headers: {'x-user': 'carol k2'});
+      final other = await pay(payments, 'k2 x', headers: {'x-user': 'carol'});
+
+      expect(other.headers, isNot(contains('idempotent-replayed')));
+      expect(runs, [10, 10]);
+    },
+  );
+
+  test('the same key with another query is a 422', () async {
+    final payments = client();
+    await pay(payments, 'k1', path: '/payments?account=1');
+
+    expect(
+      (await pay(payments, 'k1', path: '/payments?account=2')).statusCode,
+      422,
+    );
+  });
+
+  test(
+    'a typed response without body is kept, and replayed without one',
+    () async {
+      final typed = WinterTestClient.build(
+        router: WinterRouter(
+          routes: [
+            Route.post(
+              path: '/notes',
+              filterConfig: FilterConfig([IdempotencyFilter(store: store)]),
+              handler: (request) {
+                runs.add('note');
+                return ResponseEntity<String>(
+                  201,
+                  headers: {HttpHeader.location: '/notes/1'},
+                );
+              },
+            ),
+          ],
+        ),
+      );
+      final first = await pay(typed, 'k1', path: '/notes');
+      final retry = await pay(typed, 'k1', path: '/notes');
+
+      expect(first.statusCode, 201);
+      expect(retry.statusCode, 201);
+      expect(retry.headers['idempotent-replayed'], 'true');
+      expect(retry.headers, isNot(contains('content-type')));
+      expect(runs, ['note']);
+    },
+  );
+
+  test(
+    'the store keeps at most maxKeys: a new one forgets the oldest',
+    () async {
+      final small = InMemoryIdempotencyStore(maxKeys: 2);
+      for (final key in ['a', 'b', 'c']) {
+        await small.reserve(
+          key,
+          fingerprint: 'f',
+          expiry: const Duration(hours: 1),
+        );
+      }
+
+      expect(small.size, 2);
+      expect(
+        await small.reserve(
+          'a',
+          fingerprint: 'f',
+          expiry: const Duration(hours: 1),
+        ),
+        isNull,
+      );
+      expect(() => InMemoryIdempotencyStore(maxKeys: 0), throwsArgumentError);
+    },
+  );
+
   test('a GET is never filtered, and a stream is never kept', () async {
     final payments = client();
 
