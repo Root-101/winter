@@ -41,7 +41,7 @@ void main() {
     );
   });
 
-  test('Test /parent/child-1 (Both filters)', () async {
+  test('a child runs the filters of its parent and its own', () async {
     String urlToTest = '/parent/child-1';
     TestResponse response = await client.get(urlToTest);
 
@@ -53,7 +53,7 @@ void main() {
     expect(response.headers['x-child-filter'], 'child-1');
   });
 
-  test('Test /parent/child-2 (Only parent filter)', () async {
+  test('a child never runs the filters of a sibling', () async {
     String urlToTest = '/parent/child-2';
     TestResponse response = await client.get(urlToTest);
 

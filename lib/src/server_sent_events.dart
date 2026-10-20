@@ -115,12 +115,12 @@ Stream<List<int>> serverSentEventsBody(
   late final StreamController<List<int>> output;
   StreamSubscription<ServerSentEvent>? subscription;
   Timer? timer;
-  void Function() cancelClosing = () {};
+  void Function()? cancelClosing;
 
   /// Leaves the callbacks of the closing server, once
   void forgetClosing() {
-    cancelClosing();
-    cancelClosing = () {};
+    cancelClosing?.call();
+    cancelClosing = null;
   }
 
   List<int> bytes(ServerSentEvent event) => utf8.encode(event.encode());

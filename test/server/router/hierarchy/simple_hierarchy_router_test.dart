@@ -56,23 +56,19 @@ void main() {
     );
   });
 
-  test('Test /parent/child-1', () async {
-    String urlToTest = '/parent/child-1';
-    TestResponse response = await client.get(urlToTest);
+  test(
+    'each child of a parent without a handler has the joined path',
+    () async {
+      for (final String child in ['child-1', 'child-2']) {
+        final TestResponse response = await client.get('/parent/$child');
 
-    expect(response.statusCode, 200);
-    expect(response.body, 'Return from response /parent/child-1');
-  });
+        expect(response.statusCode, 200);
+        expect(response.body, 'Return from response /parent/$child');
+      }
+    },
+  );
 
-  test('Test /parent/child-2', () async {
-    String urlToTest = '/parent/child-2';
-    TestResponse response = await client.get(urlToTest);
-
-    expect(response.statusCode, 200);
-    expect(response.body, 'Return from response /parent/child-2');
-  });
-
-  test('Test /single-route', () async {
+  test('a route without children next to the parents', () async {
     String urlToTest = '/single-route';
     TestResponse response = await client.get(urlToTest);
 
@@ -80,7 +76,7 @@ void main() {
     expect(response.body, 'Return from response /single-route');
   });
 
-  test('Test /route-parent', () async {
+  test('a parent with a handler answers its own path', () async {
     String urlToTest = '/route-parent';
     TestResponse response = await client.get(urlToTest);
 
@@ -88,7 +84,7 @@ void main() {
     expect(response.body, 'Return from response /route-parent');
   });
 
-  test('Test /route-parent/child', () async {
+  test('the child of a parent with a handler has its own handler', () async {
     String urlToTest = '/route-parent/child';
     TestResponse response = await client.get(urlToTest);
 

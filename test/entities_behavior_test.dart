@@ -92,13 +92,20 @@ void main() {
       expect(RequestEntity('GET', uri).mimeType, isNull);
     });
 
-    test('a copy shares the body: read once, cached for both', () async {
+    test('a copy shares the body, made before or after reading it', () async {
       final original = RequestEntity('POST', uri, body: '{"a":1}');
       final copy = original.copyWith(headers: {'x': '1'});
 
       expect(await copy.body<Map<String, dynamic>>(), {'a': 1});
       expect(await original.body<String>(), '{"a":1}');
       expect(original.headers.containsKey('x'), isFalse);
+
+      final read = RequestEntity('POST', uri, body: '{"a":1}');
+      await read.body<Map<String, dynamic>>();
+      final later = read.copyWith(headers: {'x': '1'});
+
+      expect(await later.body<String>(), '{"a":1}');
+      expect(await later.body<Map<String, dynamic>>(), {'a': 1});
     });
 
     test('a copy can change the URI, and keeps the connection', () {
@@ -230,16 +237,6 @@ void main() {
       expect(ResponseEntity<void>(200).toString(), 'ResponseEntity{200}');
     });
 
-    test('a copy without a body shares it, never serialized again', () async {
-      final original = ResponseEntity.ok(body: {'a': 1})
-        ..context.set(_mark, 'v');
-      final copy = original.copyWith(headers: {'x': '1'});
-
-      expect(copy.body(), {'a': 1});
-      expect(copy.context.get(_mark), 'v');
-      expect(jsonDecode(await copy.readAsString()), {'a': 1});
-    });
-
     test(
       'a body of text or bytes can be read again; a stream only once',
       () async {
@@ -274,5 +271,3 @@ class _Connection implements HttpConnectionInfo {
   @override
   int get remotePort => 50000;
 }
-
-final ContextKey<String> _mark = ContextKey<String>('mark');

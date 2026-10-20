@@ -246,6 +246,21 @@ void main() {
       expect((await root.get('/%2e%2e/secret.txt')).statusCode, 404);
     });
 
+    test('a directory that ends with a separator still serves', () async {
+      final WinterTestClient trailing = WinterTestClient.build(
+        router: WinterRouter(
+          routes: [
+            Route.static(
+              path: '/s',
+              directory: public.path + Platform.pathSeparator,
+            ),
+          ],
+        ),
+      );
+
+      expect((await trailing.get('/s/hello.txt')).body, 'Hello, world!');
+    });
+
     test('a directory that does not exist is an ArgumentError', () {
       expect(
         () => Route.static(path: '/x', directory: '${temp.path}/missing'),
@@ -261,49 +276,26 @@ void main() {
   });
 
   group('Conditional requests', () {
-    late String etag;
-    late String lastModified;
+    // the rules of the 304 are tested in conditional_requests_test.dart
+    test('the validators of a static file give a 304', () async {
+      final TestResponse first = await client.get('/raw/hello.txt');
+      final String etag = first.headers['etag']!;
+      final String lastModified = first.headers['last-modified']!;
 
-    setUpAll(() async {
-      final TestResponse response = await client.get('/assets/hello.txt');
-      etag = response.headers['etag']!;
-      lastModified = response.headers['last-modified']!;
-    });
+      for (final Map<String, Object> headers in [
+        {'If-None-Match': etag},
+        {'If-Modified-Since': lastModified},
+      ]) {
+        final TestResponse response = await client.get(
+          '/raw/hello.txt',
+          headers: headers,
+        );
 
-    Future<TestResponse> get(Map<String, Object> headers, [String? path]) =>
-        client.get(path ?? '/raw/hello.txt', headers: headers);
-
-    test('If-None-Match with the ETag is a 304 without a body', () async {
-      for (final String value in [etag, 'W/$etag', '"other", $etag', '*']) {
-        final TestResponse response = await get({'If-None-Match': value});
-
-        expect(response.statusCode, 304, reason: value);
+        expect(response.statusCode, 304, reason: '$headers');
         expect(response.body, isEmpty);
         expect(response.headers['etag'], etag);
         expect(response.headers['cache-control'], 'public, max-age=60');
       }
-      expect((await get({'If-None-Match': '"other"'})).statusCode, 200);
-    });
-
-    test('If-Modified-Since', () async {
-      final String future = HttpDate.format(
-        DateTime.now().add(const Duration(days: 1)),
-      );
-      final String past = HttpDate.format(DateTime.utc(2000));
-
-      expect((await get({'If-Modified-Since': lastModified})).statusCode, 304);
-      expect((await get({'If-Modified-Since': future})).statusCode, 304);
-      expect((await get({'If-Modified-Since': past})).statusCode, 200);
-      expect((await get({'If-Modified-Since': 'not a date'})).statusCode, 200);
-    });
-
-    test('If-None-Match wins over If-Modified-Since', () async {
-      final TestResponse response = await get({
-        'If-None-Match': '"other"',
-        'If-Modified-Since': lastModified,
-      });
-
-      expect(response.statusCode, 200);
     });
   });
 
