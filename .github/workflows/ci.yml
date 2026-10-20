@@ -1,0 +1,103 @@
+# The checks of CONTRIBUTING.md, on every push and pull request. The SDK is the lowest one the
+# package supports (pubspec.yaml: ^3.13.0), the one of .fvmrc.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DART_SDK: 3.13.1
+
+jobs:
+  test:
+    name: Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ env.DART_SDK }}
+      - run: dart pub get
+      - name: Format
+        run: dart format --output=none --set-exit-if-changed .
+      - name: Analyze
+        run: dart analyze
+      - name: Test
+        run: dart test --coverage-path=coverage/lcov.info
+      - name: Examples
+        run: |
+          for example in example/*/ example/apps/*/; do
+            [ -f "$example/pubspec.yaml" ] || continue
+            echo "::group::$example"
+            (cd "$example" && dart pub get && dart analyze && dart test) || exit 1
+            echo "::endgroup::"
+          done
+      - name: Coverage
+        if: matrix.os == 'ubuntu-latest' && env.CODECOV_TOKEN != ''
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage/lcov.info
+          token: ${{ env.CODECOV_TOKEN }}
+
+  checks:
+    name: Generated code, docs, obfuscation and package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        # With pipefail: a failure before a `| tee` fails the step
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ env.DART_SDK }}
+      - run: dart pub get
+      - name: The messages of slang are up to date
+        run: |
+          dart run slang
+          (cd example/i18n && dart pub get && dart run slang)
+          git diff --exit-code -- lib/src/i18n example/i18n/lib/i18n
+      - name: The snippets of the docs use the API right
+        run: dart run tool/check_doc_snippets.dart
+      - name: The object mapper works in an obfuscated AOT build
+        run: |
+          mkdir -p build
+          dart compile exe tool/obfuscation/main.dart -o build/obfuscated \
+            --extra-gen-snapshot-options=--obfuscate
+          build/obfuscated --expect-obfuscated
+      - name: The package can be published, and it's small
+        run: |
+          dart pub publish --dry-run 2>&1 | tee "$RUNNER_TEMP/publish.txt"
+          # The package is ~0.5 MB: one of megabytes carries something by mistake (as 1.0.0-rc.2)
+          if grep -q 'Total compressed archive size: .* MB' "$RUNNER_TEMP/publish.txt"; then
+            echo '::error::The package is bigger than 1 MB'
+            exit 1
+          fi
+
+  pana:
+    name: pana
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - run: dart pub get
+      - run: dart pub global activate pana
+      # 160 points today; it fails below 150, so a new major version of a dependency (10 points)
+      # is a warning in the report and not a red build
+      - run: dart pub global run pana --no-warning --exit-code-threshold 10 .
