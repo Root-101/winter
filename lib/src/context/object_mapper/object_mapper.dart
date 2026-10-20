@@ -562,8 +562,14 @@ class ObjectMapper {
   /// The deserializers derived from [_deserializers] (`List<T>`, `T?`...), rebuilt on every change
   final Map<Type, Deserializer> _derivedDeserializers = {};
 
+  /// The renamed keys of [fieldNaming], up to [_maxCachedKeys] each: the keys of a body come from
+  /// the client, and a cache without a limit would grow with every new one
   final Map<String, String> _dartToJsonKeys = {};
   final Map<String, String> _jsonToDartKeys = {};
+  static const int _maxCachedKeys = 1024;
+
+  /// The maps [_jsonKeysToDart] built: a nested [Deserializer.json] doesn't rename them again
+  final Expando<bool> _renamed = Expando<bool>();
 
   /// A mapper with the default serializers and deserializers (`DateTime`, `Duration`, primitives),
   /// plus [serializers], [deserializers] and [adapters] (which replace a default of the same type).
@@ -641,14 +647,28 @@ class ObjectMapper {
     ),
     Deserializer<DateTime>._withMapper((data, _) {
       if (data is! String) throw _expected('an ISO-8601 date', data);
-      return DateTime.tryParse(data) ??
+      final DateTime date =
+          DateTime.tryParse(data) ??
           (throw DeserializationException(
             'expected an ISO-8601 date, got an invalid string',
           ));
+      // Without an offset it would be the local time of the server: UTC, the same anywhere
+      return date.isUtc
+          ? date
+          : DateTime.utc(
+              date.year,
+              date.month,
+              date.day,
+              date.hour,
+              date.minute,
+              date.second,
+              date.millisecond,
+              date.microsecond,
+            );
     }),
     Deserializer<Duration>._withMapper(
       (data, mapper) => switch (mapper.durationFormat) {
-        DurationFormat.milliseconds => Duration(milliseconds: _asInt(data)),
+        DurationFormat.milliseconds => _milliseconds(_asInt(data)),
         DurationFormat.iso8601 => _parseIsoDuration(data),
       },
     ),
@@ -777,7 +797,9 @@ class ObjectMapper {
   /// An empty [source] is `null` when [S] is nullable.
   /// Invalid JSON throws a [DeserializationFormatException] (400).
   S decode<S>(String source) {
-    if (source.trim().isEmpty) {
+    // A byte order mark is not part of the JSON (decodeBytes skips it too)
+    if (source.startsWith('﻿')) source = source.substring(1);
+    if (source.codeUnits.every(_isJsonWhitespace)) {
       if (null is S) return null as S;
       throw DeserializationFormatException('The body is empty');
     }
@@ -824,12 +846,24 @@ class ObjectMapper {
   /// synchronous, so a static is enough)
   static ObjectMapper? _current;
 
+  /// How many [Deserializer.json] are running inside each other now
+  static int _depth = 0;
+
+  /// The most objects inside each other a body may have: deeper ones (`{"child": {"child": ...}}`
+  /// a thousand times) would cost the server seconds per request, or a stack overflow
+  static const int _maxDepth = 128;
+
   R _reading<R>(R Function() body) {
+    if (_depth >= _maxDepth) {
+      throw DeserializationException('the objects are nested too deeply');
+    }
     final ObjectMapper? previous = _current;
     _current = this;
+    _depth++;
     try {
       return body();
     } finally {
+      _depth--;
       _current = previous;
     }
   }
@@ -996,27 +1030,43 @@ class ObjectMapper {
 
   String _dartKeyToJson(String key) => switch (fieldNaming) {
     FieldNaming.none => key,
-    FieldNaming.snakeCase => _dartToJsonKeys[key] ??= _separateWords(key, '_'),
-    FieldNaming.kebabCase => _dartToJsonKeys[key] ??= _separateWords(key, '-'),
+    FieldNaming.snakeCase => _cached(_dartToJsonKeys, key, _separateWords, '_'),
+    FieldNaming.kebabCase => _cached(_dartToJsonKeys, key, _separateWords, '-'),
   };
 
   String _jsonKeyToDart(String key) => switch (fieldNaming) {
     FieldNaming.none => key,
-    FieldNaming.snakeCase => _jsonToDartKeys[key] ??= _joinWords(key, '_'),
-    FieldNaming.kebabCase => _jsonToDartKeys[key] ??= _joinWords(key, '-'),
+    FieldNaming.snakeCase => _cached(_jsonToDartKeys, key, _joinWords, '_'),
+    FieldNaming.kebabCase => _cached(_jsonToDartKeys, key, _joinWords, '-'),
   };
 
-  /// Renames the keys of [json] and of every map inside it to their Dart names
+  static String _cached(
+    Map<String, String> cache,
+    String key,
+    String Function(String name, String separator) rename,
+    String separator,
+  ) =>
+      cache[key] ??
+      (cache.length < _maxCachedKeys
+          ? cache[key] = rename(key, separator)
+          : rename(key, separator));
+
+  /// Renames the keys of [json] and of every map inside it to their Dart names (once: a map it
+  /// already renamed, the child read by a nested [Deserializer.json], is kept as it is)
   Map<String, dynamic> _jsonKeysToDart(Map<String, dynamic> json) {
-    if (fieldNaming == FieldNaming.none) return json;
-    Object? rename(Object? data) => switch (data) {
-      Map() => <String, dynamic>{
-        for (final MapEntry(:key, :value) in data.entries)
-          _jsonKeyToDart(key.toString()): rename(value),
-      },
-      List() => [for (final e in data) rename(e)],
-      _ => data,
-    };
+    if (fieldNaming == FieldNaming.none || _renamed[json] == true) return json;
+    Object? rename(Object? data) {
+      if (data is Map) {
+        final Map<String, dynamic> renamed = {
+          for (final MapEntry(:key, :value) in data.entries)
+            _jsonKeyToDart(key.toString()): rename(value),
+        };
+        _renamed[renamed] = true;
+        return renamed;
+      }
+      return data is List ? [for (final e in data) rename(e)] : data;
+    }
+
     return rename(json) as Map<String, dynamic>;
   }
 }
@@ -1039,14 +1089,28 @@ String _joinWords(String name, String separator) => name.replaceAllMapped(
   (m) => m[1]!.toUpperCase(),
 );
 
-/// A number without decimals: `12` or `12.0`, never `"12"` nor `12.5`
+/// A number without decimals: `12` or `12.0`, never `"12"` nor `12.5`. One beyond the 64 bits of
+/// an `int` (`1e19`) is a 400, never clamped to the biggest one.
 int _asInt(Object? data) {
   if (data is int) return data;
   if (data is double && data.isFinite && data == data.truncateToDouble()) {
+    if (data.abs() >= 9223372036854775807.0) {
+      throw DeserializationException(
+        'expected an integer, got a number too big',
+      );
+    }
     return data.toInt();
   }
   throw _expected('an integer', data);
 }
+
+/// A [Duration] of [milliseconds], or a 400 when they don't fit in it (they would wrap around to a
+/// negative one)
+Duration _milliseconds(int milliseconds) =>
+    milliseconds.abs() >
+        9223372036854775807 ~/ Duration.microsecondsPerMillisecond
+    ? throw DeserializationException('the duration is too long')
+    : Duration(milliseconds: milliseconds);
 
 final RegExp _isoDuration = RegExp(
   r'^(-)?P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:[.,](\d{1,6}))?S)?)?$',

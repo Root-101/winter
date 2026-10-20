@@ -120,6 +120,13 @@ Deserializers are found by the exact `Type` you ask for. These are registered by
 Types are **strict**: `"12"` is not an `int` and `"true"` is not a `bool` (400). JSON has a single
 number type, so `12.0` is a valid `int` and `1` a valid `double`.
 
+- An integer beyond the 64 bits of an `int` (`1e19`) is a 400, never clamped; so is a `Duration`
+  that doesn't fit.
+- A `DateTime` without an offset (`"2024-01-01T10:00:00"`) is read as UTC, never as the local time
+  of the server, so it's the same instant in any machine.
+- Objects nested more than 128 levels (`{"child": {"child": ...}}`) are a 400: a hostile body
+  could otherwise cost the server seconds.
+
 #### Registering a deserializer
 
 | Written in JSON as | Constructor                          | Example                                                       |
