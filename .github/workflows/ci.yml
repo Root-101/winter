@@ -101,9 +101,10 @@ jobs:
           sdk: ${{ env.DART_SDK }}
       # Generated with the lowest slang of pubspec.yaml (a new release changes its output, and the
       # lock file isn't versioned); the tests check that it works with the newest one
-      - run: dart pub downgrade
+      # Only slang: a downgrade of everything brings packages that don't build on this SDK
+      - run: dart pub get && dart pub downgrade slang
       - run: dart run slang
-      - run: cd example/i18n && dart pub downgrade && dart run slang
+      - run: cd example/i18n && dart pub get && dart pub downgrade slang && dart run slang
       - run: git diff --exit-code -- lib/src/i18n example/i18n/lib/i18n
 
   pana:
