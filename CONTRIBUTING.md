@@ -27,7 +27,8 @@ Every topic of `example/` (and every app of `example/apps/`) is a package of its
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every push and pull request:
+`.github/workflows/ci.yml` runs on a push to `develop` or `main` and on a pull request to them (not
+on every push of a `feature/*` branch: run the checks of above by hand there):
 
 - **Tests**, on Linux and Windows: the format, the analysis, the tests (with coverage, sent to
   Codecov when the repository has the `CODECOV_TOKEN` secret) and the analysis and tests of every

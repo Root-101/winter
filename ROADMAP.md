@@ -27,7 +27,7 @@ criteria:
 3. Every module has its own guide in `doc/`, and the whole public API has dartdoc. 1.0 is a first
    version: no migration guide from 0.x.
 4. Before each release the checks pass locally (format, analyze, tests, examples, publish dry run)
-   with a good pana score, and the CI (6.1) runs them on every push.
+   with a good pana score, and the CI (6.1) runs them on `develop` and `main`.
 5. At least one release candidate (`1.0.0-rc.1`, then `1.0.0-rc.3`) was published and used in a
    real project.
 
@@ -290,7 +290,8 @@ exists on pub.dev (0.0.7, the same repository), so each release is a new version
 
 ### 6.1 CI ✅
 
-`.github/workflows/ci.yml`, on every push and pull request (`CONTRIBUTING.md`):
+`.github/workflows/ci.yml`, on a push to `develop` or `main` and on the pull requests to them, not
+on every push of a feature branch (`CONTRIBUTING.md`):
 
 - [x] GitHub Actions: `dart format --set-exit-if-changed`, `dart analyze`, `dart test` with
   coverage (Codecov when the repository has `CODECOV_TOKEN`), and the analysis and tests of every
