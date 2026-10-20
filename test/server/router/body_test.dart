@@ -74,18 +74,19 @@ void main() {
     expect((await client.post('/map', body: body)).json, body);
   });
 
-  test('a DateTime, written back in UTC', () async {
-    final DateTime now = DateTime.now();
+  test(
+    'a DateTime, written back in UTC (one without offset is read as UTC)',
+    () async {
+      Future<String> echo(String date) async =>
+          (await client.post('/date', body: jsonEncode(date))).json as String;
 
-    final response = await client.post(
-      '/date',
-      body: jsonEncode(now.toIso8601String()),
-    );
-
-    final String echoed = response.json as String;
-    expect(echoed, endsWith('Z'));
-    expect(DateTime.parse(echoed).isAtSameMomentAs(now), isTrue);
-  });
+      expect(
+        await echo('2026-10-01T12:30:00.000+02:00'),
+        '2026-10-01T10:30:00.000Z',
+      );
+      expect(await echo('2026-10-01T12:30:00'), '2026-10-01T12:30:00.000Z');
+    },
+  );
 
   test('invalid JSON is a 400; a type without deserializer a 500', () async {
     expect((await client.post('/square', body: 'not-json')).statusCode, 400);

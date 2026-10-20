@@ -148,17 +148,17 @@ class DefaultOnLoadedRoutes {
         // Pad using the max length found
         final formattedMethod = methodText
             .padRight(maxMethodLen + defaultPad)
-            .stylize(bold: true);
+            .bold;
         final formattedKey = element.key.padRight(maxKeyLen + defaultPad);
         final formattedPath = element.path.padRight(maxPathLen + defaultPad);
         final formattedFilters = '${element.filterConfig}';
 
         log
-          ..writeln('Key: ${formattedKey.stylize(bold: true)}')
-          ..writeln('Method: ${formattedMethod.stylize(bold: true)}')
-          ..writeln('Path: ${formattedPath.stylize(bold: true)}')
+          ..writeln('Key: ${formattedKey.bold}')
+          ..writeln('Method: ${formattedMethod.bold}')
+          ..writeln('Path: ${formattedPath.bold}')
           ..writeln('Filters:')
-          ..writeln(formattedFilters.stylize(bold: true))
+          ..writeln(formattedFilters.bold)
           ..writeln('');
       }
 
