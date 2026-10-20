@@ -130,7 +130,7 @@ In production a load balancer or a reverse proxy (nginx, an ingress) sits in fro
   await Winter.start(config: const ServerConfig(trustedProxies: TrustedProxies(1)));
   ```
 
-  Then `request.clientIp()` (and the default id of `RateLimiterFilter`) is the client, and
+  Then `request.clientIp` (and the default id of `RateLimiterFilter`) is the client, and
   `request.requestedUri` is the public URL (`https://api.example.com/orders`, not
   `http://10.0.0.5:8080/orders`), so are `Location`, the `instance` of the errors and OpenAPI.
   A value that isn't an IP, a scheme other than `http`/`https`, or a host with a path, a user or

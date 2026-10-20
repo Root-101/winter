@@ -88,7 +88,7 @@ class ResponseEntity<T> {
     required this.context,
   });
 
-  ///200: [body], as JSON for an object (see the class)
+  /// 200: [body], as JSON for an object (see the class)
   ResponseEntity.ok({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
@@ -102,7 +102,7 @@ class ResponseEntity<T> {
          ),
        );
 
-  ///201: [body] was created at [location] (the `Location` header)
+  /// 201: [body] was created at [location] (the `Location` header)
   ResponseEntity.created({
     String? location,
     T? body,
@@ -117,7 +117,7 @@ class ResponseEntity<T> {
          ),
        );
 
-  ///202: the request was accepted, and will be processed later
+  /// 202: the request was accepted, and will be processed later
   ResponseEntity.accepted({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
@@ -131,7 +131,7 @@ class ResponseEntity<T> {
          ),
        );
 
-  ///204: done, without a body
+  /// 204: done, without a body
   ResponseEntity.noContent({
     Map<String, /* String | List<String> */ Object>? headers,
     List<Cookie>? cookies,
@@ -143,15 +143,15 @@ class ResponseEntity<T> {
          ),
        );
 
-  ///302: the resource is temporarily at [location]. A browser follows it with a `GET`, even
-  ///after a `POST`: use [ResponseEntity.temporaryRedirect] to keep the method.
+  /// 302: the resource is temporarily at [location]. A browser follows it with a `GET`, even
+  /// after a `POST`: use [ResponseEntity.temporaryRedirect] to keep the method.
   ResponseEntity.redirect(
     String location, {
     Map<String, /* String | List<String> */ Object>? headers,
     List<Cookie>? cookies,
   }) : this._from(_redirect<T>(StatusCode.found, location, headers, cookies));
 
-  ///303: the result is at [location], read it with a `GET` (the answer to a form sent with `POST`)
+  /// 303: the result is at [location], read it with a `GET` (the answer to a form sent with `POST`)
   ResponseEntity.seeOther(
     String location, {
     Map<String, /* String | List<String> */ Object>? headers,
@@ -160,7 +160,7 @@ class ResponseEntity<T> {
          _redirect<T>(StatusCode.seeOther, location, headers, cookies),
        );
 
-  ///307: the resource is temporarily at [location], requested again with the same method and body
+  /// 307: the resource is temporarily at [location], requested again with the same method and body
   ResponseEntity.temporaryRedirect(
     String location, {
     Map<String, /* String | List<String> */ Object>? headers,
@@ -169,7 +169,7 @@ class ResponseEntity<T> {
          _redirect<T>(StatusCode.temporaryRedirect, location, headers, cookies),
        );
 
-  ///308: the resource moved to [location] for good, requested again with the same method and body
+  /// 308: the resource moved to [location] for good, requested again with the same method and body
   ResponseEntity.permanentRedirect(
     String location, {
     Map<String, /* String | List<String> */ Object>? headers,
@@ -178,52 +178,52 @@ class ResponseEntity<T> {
          _redirect<T>(StatusCode.permanentRedirect, location, headers, cookies),
        );
 
-  ///400: the request is invalid.
+  /// 400: the request is invalid.
   ///
-  ///For an error, throwing an [ApiException] (`throw const BadRequestException()`) gives a
-  ///Problem Details; this and the other error shortcuts build the response by hand.
+  /// For an error, throwing an [ApiException] (`throw const BadRequestException()`) gives a
+  /// Problem Details; this and the other error shortcuts build the response by hand.
   ResponseEntity.badRequest({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this._from(_status<T>(StatusCode.badRequest, body, headers));
 
-  ///401: nobody is authenticated
+  /// 401: nobody is authenticated
   ResponseEntity.unauthorized({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this._from(_status<T>(StatusCode.unauthorized, body, headers));
 
-  ///403: authenticated, but not allowed
+  /// 403: authenticated, but not allowed
   ResponseEntity.forbidden({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this._from(_status<T>(StatusCode.forbidden, body, headers));
 
-  ///404: the resource doesn't exist
+  /// 404: the resource doesn't exist
   ResponseEntity.notFound({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this._from(_status<T>(StatusCode.notFound, body, headers));
 
-  ///405: the path exists, but not for this method
+  /// 405: the path exists, but not for this method
   ResponseEntity.methodNotAllowed({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this._from(_status<T>(StatusCode.methodNotAllowed, body, headers));
 
-  ///409: the request conflicts with the state of the resource
+  /// 409: the request conflicts with the state of the resource
   ResponseEntity.conflict({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this._from(_status<T>(StatusCode.conflict, body, headers));
 
-  ///422: the body is well formed, but invalid
-  ResponseEntity.unprocessableEntity({
+  /// 422: the body is well formed, but invalid
+  ResponseEntity.unprocessableContent({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
-  }) : this._from(_status<T>(StatusCode.unprocessableEntity, body, headers));
+  }) : this._from(_status<T>(StatusCode.unprocessableContent, body, headers));
 
-  ///429: too many requests; [retryAfter] is in seconds (`Retry-After`)
+  /// 429: too many requests; [retryAfter] is in seconds (`Retry-After`)
   ResponseEntity.tooManyRequests({
     T? body,
     int? retryAfter,
@@ -235,13 +235,13 @@ class ResponseEntity<T> {
          }),
        );
 
-  ///500: the server failed
+  /// 500: the server failed
   ResponseEntity.internalServerError({
     T? body,
     Map<String, /* String | List<String> */ Object>? headers,
   }) : this._from(_status<T>(StatusCode.internalServerError, body, headers));
 
-  ///503: the server can't answer now; [retryAfter] is in seconds (`Retry-After`)
+  /// 503: the server can't answer now; [retryAfter] is in seconds (`Retry-After`)
   ResponseEntity.serviceUnavailable({
     T? body,
     int? retryAfter,
@@ -253,21 +253,21 @@ class ResponseEntity<T> {
          }),
        );
 
-  ///200 with a stream of Server-Sent Events (`text/event-stream`): every event is sent as it comes.
+  /// 200 with a stream of Server-Sent Events (`text/event-stream`): every event is sent as it comes.
   ///
-  ///```dart
-  ///Route.get(path: '/orders/events', handler: (request) => ResponseEntity.sse(
+  /// ```dart
+  /// Route.get(path: '/orders/events', handler: (request) => ResponseEntity.sse(
   ///  orders.changes.map((order) => ServerSentEvent.json(order, event: 'order')),
-  ///));
-  ///```
+  /// ));
+  /// ```
   ///
-  ///- A comment is sent first, so the client gets the headers at once, and another one every
+  /// - A comment is sent first, so the client gets the headers at once, and another one every
   ///  [keepAlive] without events (proxies close idle connections); `null` sends none.
-  ///- The stream ends when [events] ends, and when the server starts closing (a browser
+  /// - The stream ends when [events] ends, and when the server starts closing (a browser
   ///  reconnects by itself), so it never holds a graceful shutdown.
-  ///- When the client leaves, the subscription to [events] is cancelled: free what it uses in its
+  /// - When the client leaves, the subscription to [events] is cancelled: free what it uses in its
   ///  `onCancel`. An error of [events] is logged and ends the stream.
-  ///- `Cache-Control: no-cache` and `X-Accel-Buffering: no` (nginx doesn't buffer it).
+  /// - `Cache-Control: no-cache` and `X-Accel-Buffering: no` (nginx doesn't buffer it).
   static ResponseEntity<Stream<List<int>>> sse(
     Stream<ServerSentEvent> events, {
     Duration? keepAlive = const Duration(seconds: 15),
@@ -487,7 +487,7 @@ class _ResponseBody {
 }
 
 /// Write [response] to the [HttpResponse] of `dart:io` (what the server does with every
-/// response; internal, not exported by `winter.dart`): its status with the reason phrase of [StatusCode] (`422 Unprocessable Entity`;
+/// response; internal, not exported by `winter.dart`): its status with the reason phrase of [StatusCode] (`422 Unprocessable Content`;
 /// `dart:io` alone sends `422 Status 422`), its headers, a `Date`, and its body, with a `Content-Length` or
 /// chunked for a stream (sent as it's produced, for Server-Sent Events). A HEAD request, a 204
 /// and a 304 get no body.
@@ -534,8 +534,8 @@ Future<void> writeResponse(
       return;
     }
 
-    ///Every chunk is sent as it's produced. dart:io sends the headers with the first chunk, so
-    ///a stream of events usually starts with one (or a comment, `: ok`)
+    /// Every chunk is sent as it's produced. dart:io sends the headers with the first chunk, so
+    /// a stream of events usually starts with one (or a comment, `: ok`)
     output.bufferOutput = false;
     await output.addStream(body.read());
     await output.close();
@@ -544,7 +544,7 @@ Future<void> writeResponse(
     try {
       await output.close();
     } catch (_) {
-      ///The connection is already gone
+      /// The connection is already gone
     }
   }
 }

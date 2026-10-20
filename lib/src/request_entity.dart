@@ -151,23 +151,23 @@ class RequestEntity {
   /// (`request.route?.key == 'health'`).
   Route? get route => _route;
 
-  ///IP address of the client (null if unknown, ex: a request built in a test).
+  /// IP address of the client (null if unknown, ex: a request built in a test).
   ///
-  ///The address of the connection, unless the server trusts the proxies in front of it
-  ///([ServerConfig.trustedProxies]): then the address they forwarded (`X-Forwarded-For` or
-  ///`Forwarded`). Without that, those headers are ignored, because any client can send them
-  ///with a fake IP (ex: to bypass a rate limiter).
-  String? clientIp() =>
+  /// The address of the connection, unless the server trusts the proxies in front of it
+  /// ([ServerConfig.trustedProxies]): then the address they forwarded (`X-Forwarded-For` or
+  /// `Forwarded`). Without that, those headers are ignored, because any client can send them
+  /// with a fake IP (ex: to bypass a rate limiter).
+  String? get clientIp =>
       context.get(forwardedClientIpKey) ??
       connectionInfo?.remoteAddress.address;
 
-  ///The query params, with the last value of a repeated param (`?tag=a&tag=b` => `{tag: b}`).
-  ///Use [queryParamsAll] to get every value.
+  /// The query params, with the last value of a repeated param (`?tag=a&tag=b` => `{tag: b}`).
+  /// Use [queryParamsAll] to get every value.
   late final Map<String, String> queryParams = Map.unmodifiable(
     requestedUri.queryParameters,
   );
 
-  ///Every value of each query param, in order (`?tag=a&tag=b` => `{tag: [a, b]}`)
+  /// Every value of each query param, in order (`?tag=a&tag=b` => `{tag: [a, b]}`)
   late final Map<String, List<String>> queryParamsAll = Map.unmodifiable({
     for (final entry in requestedUri.queryParametersAll.entries)
       entry.key: List<String>.unmodifiable(entry.value),
@@ -780,7 +780,7 @@ void attachRoute(RequestEntity request, Route route) {
 }
 
 /// Limits the body of [request] to [maxBytes] (`ServerConfig.maxBodySize`): reading a bigger one is
-/// a [PayloadTooLargeException] (413); a body nobody reads is never rejected. Internal.
+/// a [ContentTooLargeException] (413); a body nobody reads is never rejected. Internal.
 ///
 /// {@category Requests and responses}
 void limitRequestBody(RequestEntity request, int maxBytes) {
@@ -792,7 +792,7 @@ void limitRequestBody(RequestEntity request, int maxBytes) {
   );
 }
 
-/// Fail (with a [PayloadTooLargeException], a 413) when the body is bigger than [maxBytes].
+/// Fail (with a [ContentTooLargeException], a 413) when the body is bigger than [maxBytes].
 ///
 /// The check is done while the body is read, so a request is only rejected if its body is used,
 /// and the body is never fully loaded in memory:
@@ -806,14 +806,14 @@ Stream<List<int>> limitBodySize(
   int? contentLength,
 }) async* {
   if (contentLength != null && contentLength > maxBytes) {
-    throw const PayloadTooLargeException();
+    throw const ContentTooLargeException();
   }
 
   int readBytes = 0;
   await for (final chunk in body) {
     readBytes += chunk.length;
     if (readBytes > maxBytes) {
-      throw const PayloadTooLargeException();
+      throw const ContentTooLargeException();
     }
     yield chunk;
   }

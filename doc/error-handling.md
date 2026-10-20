@@ -121,9 +121,9 @@ the names you give them.
 
 | Status | Exception                          | Status | Exception                          |
 |--------|------------------------------------|--------|------------------------------------|
-| 400    | `BadRequestException`              | 413    | `PayloadTooLargeException`         |
+| 400    | `BadRequestException`              | 413    | `ContentTooLargeException`         |
 | 401    | `UnauthorizedException`            | 415    | `UnsupportedMediaTypeException`    |
-| 403    | `ForbiddenException`               | 422    | `UnprocessableEntityException`, `ValidationException` |
+| 403    | `ForbiddenException`               | 422    | `UnprocessableContentException`, `ValidationException` |
 | 404    | `NotFoundException`                | 429    | `TooManyRequestsException(retryAfter:)` |
 | 405    | `MethodNotAllowedException(allowedMethods)` | 500 | `InternalServerErrorException`  |
 | 409    | `ConflictException`                | 503    | `ServiceUnavailableException(retryAfter:)` |

@@ -69,7 +69,7 @@ void main() async {
     { "fieldName": "age", "message": "The minimum is 18", "code": "min.inclusive", "params": { "value": 18 } }
   ],
   "type": "about:blank",
-  "title": "Unprocessable Entity",
+  "title": "Unprocessable Content",
   "status": 422
 }
 ```

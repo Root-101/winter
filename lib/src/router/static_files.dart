@@ -9,7 +9,7 @@ import 'package:winter/winter.dart';
 /// - Only the files inside [directory]: a path with `..`, a hidden file or folder (`.env`,
 ///   `.git/`), a `\`, a `:`, or a link that leads out of it is a 404.
 /// - `ETag` and `Last-Modified`, so the server answers a 304 for `If-None-Match` and
-///   `If-Modified-Since` (see [ConditionalRequests]).
+///   `If-Modified-Since` (see [RequestPreconditionsX]).
 /// - `Range` requests (one range: a 206, or a 416 when it's out of the file), as video players and
 ///   resumed downloads send them, checked with `If-Range`.
 /// - The file is streamed, never read whole into memory.

@@ -487,7 +487,7 @@ void main() {
           ResponseEntity<void>.notFound(),
           ResponseEntity<void>.methodNotAllowed(),
           ResponseEntity<void>.conflict(),
-          ResponseEntity<void>.unprocessableEntity(),
+          ResponseEntity<void>.unprocessableContent(),
           ResponseEntity<void>.tooManyRequests(),
           ResponseEntity<void>.internalServerError(),
           ResponseEntity<void>.serviceUnavailable(),

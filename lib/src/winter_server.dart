@@ -12,27 +12,27 @@ import 'package:winter/src/websocket.dart'
     show WebSocketUpgrade, webSocketUpgradeKey;
 import 'package:winter/winter.dart';
 
-///Dependency Injection: easy access to the current dependency injection instance
+/// Dependency Injection: easy access to the current dependency injection instance
 ///
 /// {@category Server}
 DependencyInjection get di => Winter.context.dependencyInjection;
 
-///Dependency Injection: easy access to the current object mapper instance
+/// Dependency Injection: easy access to the current object mapper instance
 ///
 /// {@category Server}
 ObjectMapper get om => Winter.context.objectMapper;
 
-///Exception Handler: easy access to the current exception handler instance
+/// Exception Handler: easy access to the current exception handler instance
 ///
 /// {@category Server}
 ExceptionHandler get eh => Winter.context.exceptionHandler;
 
-///Env: easy access to the configuration of the current context (see [Env])
+/// Env: easy access to the configuration of the current context (see [Env])
 ///
 /// {@category Server}
 Env get env => Winter.context.env;
 
-///Logger: easy access to the current logger instance
+/// Logger: easy access to the current logger instance
 ///
 /// {@category Server}
 WinterLogger get logger => Winter.context.logger;
@@ -94,26 +94,26 @@ class Winter {
 
   final HttpServer _rawServer;
 
-  ///Requests being handled right now, to wait for them on a graceful close
+  /// Requests being handled right now, to wait for them on a graceful close
   final _InFlightRequests _inFlightRequests;
 
-  ///The WebSockets open now: they are closed (1001, going away) when the server closes
+  /// The WebSockets open now: they are closed (1001, going away) when the server closes
   final _WebSockets _webSockets;
 
-  ///Restore the dependencies registered by [start] to its previous state
+  /// Restore the dependencies registered by [start] to its previous state
   final void Function() _restoreDependencies;
 
   /// When this server started
   final DateTime startedAt;
 
-  ///Subscriptions to SIGINT/SIGTERM (see [ServerConfig.handleSignals])
+  /// Subscriptions to SIGINT/SIGTERM (see [ServerConfig.handleSignals])
   List<StreamSubscription<ProcessSignal>> _signalSubscriptions = [];
 
   bool _shuttingDown = false;
 
-  ///Called when the server starts closing: the streams of Server-Sent Events end then, so they
-  ///don't hold the graceful shutdown (see [onServerClosing]). Each one leaves the set when its
-  ///client does, so the set never grows with the connections that are gone.
+  /// Called when the server starts closing: the streams of Server-Sent Events end then, so they
+  /// don't hold the graceful shutdown (see [onServerClosing]). Each one leaves the set when its
+  /// client does, so the set never grows with the connections that are gone.
   final Set<void Function()> _closingCallbacks = {};
   bool _closing = false;
 
@@ -130,7 +130,7 @@ class Winter {
     required this._restoreDependencies,
   }) : startedAt = DateTime.now();
 
-  ///Register [value] in [injection] and return a function that restores the previous value (or deletes it if there was none)
+  /// Register [value] in [injection] and return a function that restores the previous value (or deletes it if there was none)
   static void Function() _putRestorable<S>(
     DependencyInjection injection,
     S value,
@@ -176,7 +176,7 @@ class Winter {
       _context = context;
     }
 
-    ///Everything registered here is restored on [close], so nothing leaks to the next server
+    /// Everything registered here is restored on [close], so nothing leaks to the next server
     final DependencyInjection injection = di;
     final List<void Function()> restores = [];
     void restoreDependencies() {
@@ -188,12 +188,12 @@ class Winter {
     ServerConfig nonNullConfig =
         config ?? injection.tryFind<ServerConfig>() ?? const ServerConfig();
 
-    ///Before registering anything or opening the port: a const constructor can't check its values
+    /// Before registering anything or opening the port: a const constructor can't check its values
     nonNullConfig.validate();
     restores.add(_putRestorable<ServerConfig>(injection, nonNullConfig));
 
-    ///Found with the same type it's registered with (any router, ex: a MultiRouter),
-    ///or as a WinterRouter (`di.put(WinterRouter(...))` infers that type)
+    /// Found with the same type it's registered with (any router, ex: a MultiRouter),
+    /// or as a WinterRouter (`di.put(WinterRouter(...))` infers that type)
     BaseRouter nonNullRouter =
         router ??
         injection.tryFind<BaseRouter>() ??
@@ -221,7 +221,7 @@ class Winter {
       nonNullConfig.requestTimeout,
     );
 
-    ///The asynchronous dependencies (putLazyAsync) are created before the first request
+    /// The asynchronous dependencies (putLazyAsync) are created before the first request
     try {
       await injection.ready();
     } catch (_) {
@@ -247,16 +247,16 @@ class Winter {
               shared: nonNullConfig.shared,
             );
     } catch (_) {
-      ///The server never started (ex: port in use), don't leave its dependencies behind
+      /// The server never started (ex: port in use), don't leave its dependencies behind
       restoreDependencies();
       rethrow;
     }
 
-    ///dart:io adds its own headers to every response: `Content-Type: text/plain` (a response
-    ///without body has no type), `X-Frame-Options`, `X-Content-Type-Options` and the obsolete
-    ///`X-XSS-Protection`. They are removed: Winter adds its security headers itself
-    ///(`_securityHeaders`), so the server and `WinterTestClient` answer the same.
-    ///No `Server` nor `X-Powered-By`: an API doesn't announce its framework (OWASP).
+    /// dart:io adds its own headers to every response: `Content-Type: text/plain` (a response
+    /// without body has no type), `X-Frame-Options`, `X-Content-Type-Options` and the obsolete
+    /// `X-XSS-Protection`. They are removed: Winter adds its security headers itself
+    /// (`_securityHeaders`), so the server and `WinterTestClient` answer the same.
+    /// No `Server` nor `X-Powered-By`: an API doesn't announce its framework (OWASP).
     rawServer
       ..autoCompress = nonNullConfig.autoCompress
       ..idleTimeout = nonNullConfig.idleTimeout
@@ -279,8 +279,8 @@ class Winter {
         secure: nonNullConfig.securityContext != null,
       ),
 
-      ///A connection that fails before it's a request (a malformed one, a TLS handshake...).
-      ///Debug: anyone can send them
+      /// A connection that fails before it's a request (a malformed one, a TLS handshake...).
+      /// Debug: anyone can send them
       onError: (Object error, StackTrace stackTrace) =>
           logger.debug('A connection failed before its request', error: error),
     );
@@ -306,7 +306,7 @@ class Winter {
 
     warnLocalesWithoutWinterMessages(_context.localeConfig);
 
-    ///After the port is open: a task never runs for a server that failed to start
+    /// After the port is open: a task never runs for a server that failed to start
     nullableScheduler?.start();
 
     final endTime = DateTime.now();
@@ -316,10 +316,10 @@ class Winter {
     return nextRunningServer;
   }
 
-  ///Close the server.
+  /// Close the server.
   ///
-  ///If [force] is false, the server stops accepting connections and waits for the
-  ///requests in progress. With a [timeout], the remaining connections are closed after it.
+  /// If [force] is false, the server stops accepting connections and waits for the
+  /// requests in progress. With a [timeout], the remaining connections are closed after it.
   static Future<void> close({
     bool force = false,
     Duration? timeout,
@@ -335,22 +335,22 @@ class Winter {
         current._closingCallbacks.clear();
       }
 
-      ///An upgraded connection is not the server's any more: close the WebSockets ourselves
+      /// An upgraded connection is not the server's any more: close the WebSockets ourselves
       current._webSockets.closeAll();
 
-      ///No new runs from now on; the ones in progress are waited for like the requests
+      /// No new runs from now on; the ones in progress are waited for like the requests
       final Future<void>? tasksDone = current.scheduler?.stop(
         timeout: force ? Duration.zero : timeout,
       );
 
       if (force) {
-        ///Not awaited: if the server is already closing, this future never completes
-        ///(the active connections are destroyed synchronously anyway)
+        /// Not awaited: if the server is already closing, this future never completes
+        /// (the active connections are destroyed synchronously anyway)
         unawaited(current._rawServer.close(force: true));
         current._inFlightRequests.stopWaiting();
       } else {
-        ///Stop accepting connections. It does NOT wait for the requests in progress,
-        ///that's why they are tracked by [_inFlightRequests]
+        /// Stop accepting connections. It does NOT wait for the requests in progress,
+        /// that's why they are tracked by [_inFlightRequests]
         await current._rawServer.close();
         final Future<void> idle = current._inFlightRequests.whenIdle();
         if (timeout == null) {
@@ -384,13 +384,13 @@ class Winter {
     }
   }
 
-  ///Graceful shutdown, called on SIGINT/SIGTERM (see [ServerConfig.handleSignals]):
-  ///waits for the requests and the scheduled tasks in progress (up to [ServerConfig.shutdownTimeout]),
-  ///then calls [ServerConfig.onShutdown], and then disposes the dependencies
-  ///(`di.disposeAll()`, their `onDispose` in reverse order of registration).
+  /// Graceful shutdown, called on SIGINT/SIGTERM (see [ServerConfig.handleSignals]):
+  /// waits for the requests and the scheduled tasks in progress (up to [ServerConfig.shutdownTimeout]),
+  /// then calls [ServerConfig.onShutdown], and then disposes the dependencies
+  /// (`di.disposeAll()`, their `onDispose` in reverse order of registration).
   ///
-  ///Calling it again while it's shutting down (ex: a second Ctrl+C) forces the close.
-  ///It never calls `exit`: once the signals are released, a new signal has its default behavior.
+  /// Calling it again while it's shutting down (ex: a second Ctrl+C) forces the close.
+  /// It never calls `exit`: once the signals are released, a new signal has its default behavior.
   static Future<void> shutdown() async {
     if (!isRunning) return;
     final Winter current = server;
@@ -408,7 +408,7 @@ class Winter {
     await close(timeout: current.config.shutdownTimeout);
     await current.config.onShutdown?.call();
 
-    ///The `onDispose` of the dependencies (close the database...), after the requests and onShutdown
+    /// The `onDispose` of the dependencies (close the database...), after the requests and onShutdown
     await di.disposeAll();
     logger.info('Server stopped');
   }
@@ -422,7 +422,7 @@ class Winter {
       try {
         subscriptions.add(signal.watch().listen((_) => shutdown()));
       } on SignalException {
-        ///Not supported in this platform
+        /// Not supported in this platform
       }
     }
     return subscriptions;
@@ -494,7 +494,7 @@ class Winter {
           requestFromHttpRequest(request, secure: secure),
         );
       } catch (error, stackTrace) {
-        ///The pipeline never throws, unless the logger or a callback of the scope fails
+        /// The pipeline never throws, unless the logger or a callback of the scope fails
         logger.error(
           'The request ${request.method} ${request.uri.path} failed outside the pipeline',
           error: error,
@@ -546,7 +546,7 @@ class Winter {
             : upgrade.selectProtocol,
       );
     } catch (error) {
-      ///A handshake that dart:io refuses (a version it doesn't speak, no subprotocol in common)
+      /// A handshake that dart:io refuses (a version it doesn't speak, no subprotocol in common)
       logger.debug('A WebSocket upgrade failed', error: error);
       return;
     }
@@ -607,18 +607,18 @@ class Winter {
     required int? maxBodySize,
     required TrustedProxies? trustedProxies,
   }) async {
-    ///The request as the client sent it to the proxies (its IP, scheme and host), before
-    ///anything reads it
+    /// The request as the client sent it to the proxies (its IP, scheme and host), before
+    /// anything reads it
     final RequestEntity requestEntity = trustedProxies == null
         ? request
         : applyTrustedProxies(request, trustedProxies);
     if (maxBodySize != null) limitRequestBody(requestEntity, maxBodySize);
 
-    ///Created now and not lazily, so the request, its changes (`change` copies the context)
-    ///and the scope share the same security context and locale.
-    ///(Outside the zone yet: reading `request.locale` here doesn't mark the scope)
-    ///Without a valid `X-Request-Id`, the id of the trace of the caller: one id for the logs of
-    ///every service of that trace
+    /// Created now and not lazily, so the request, its changes (`change` copies the context)
+    /// and the scope share the same security context and locale.
+    /// (Outside the zone yet: reading `request.locale` here doesn't mark the scope)
+    /// Without a valid `X-Request-Id`, the id of the trace of the caller: one id for the logs of
+    /// every service of that trace
     final String? sentId = requestEntity.headers[HttpHeader.xRequestId];
     final TraceContext? trace = TraceContext.fromRequest(requestEntity);
     final RequestScope scope = RequestScope(
@@ -639,20 +639,20 @@ class Winter {
             globalFilterConfig: globalFilterConfig,
           );
 
-          ///A GET whose version the client already has is a 304 (RFC 9110 §13)
+          /// A GET whose version the client already has is a 304 (RFC 9110 §13)
           return notModifiedResponse(
             requestEntity,
             _checkHeaders(requestEntity, response),
           );
         } finally {
-          ///The callbacks of `scope.onComplete` (the scoped dependencies are disposed there)
+          /// The callbacks of `scope.onComplete` (the scoped dependencies are disposed there)
           await scope.complete();
         }
       },
     );
 
-    ///The id of the request goes back to the client (and the next proxy), to find its logs,
-    ///with the basic security headers (unless the response set them)
+    /// The id of the request goes back to the client (and the next proxy), to find its logs,
+    /// with the basic security headers (unless the response set them)
     final ResponseEntity response = pipelineResponse.copyWith(
       headers: {
         HttpHeader.xRequestId: scope.requestId,
@@ -661,14 +661,14 @@ class Winter {
       },
     );
 
-    ///Some code used the language of the request, so the response depends on it
-    ///(only if the app answers in more than one language)
+    /// Some code used the language of the request, so the response depends on it
+    /// (only if the app answers in more than one language)
     final ResponseEntity varied =
         scope.localeRead && Winter.context.localeConfig.supported.length > 1
         ? addVary(response, HttpHeader.acceptLanguage)
         : response;
 
-    ///Some code read the preferences: the response may change with them (RFC 7240 §2)
+    /// Some code read the preferences: the response may change with them (RFC 7240 §2)
     return scope.preferencesRead ? addVary(varied, HttpHeader.prefer) : varied;
   }
 
@@ -730,14 +730,14 @@ class Winter {
     required FilterConfig globalFilterConfig,
   }) async {
     try {
-      ///The route is resolved before the filters, so the route filters run and the path params
-      ///are ready; the chain ends in its handler. Without a route, the router answers (a 404, a
-      ///405, an OPTIONS, or a ServeRouter)
+      /// The route is resolved before the filters, so the route filters run and the path params
+      /// are ready; the chain ends in its handler. Without a route, the router answers (a 404, a
+      /// 405, an OPTIONS, or a ServeRouter)
       final Route? route = router.resolveRoute(requestEntity);
       if (route != null) attachRoute(requestEntity, route);
 
-      ///The exception handler goes inside the chain, so every filter
-      ///(CORS, logs, rate limiter...) also sees the error responses
+      /// The exception handler goes inside the chain, so every filter
+      /// (CORS, logs, rate limiter...) also sees the error responses
       FilterChain filterChain = FilterChain(
         [...globalFilterConfig.filters, ...?route?.filterConfig.filters],
         route?.handler ?? router.handler,
@@ -746,7 +746,7 @@ class Winter {
 
       return await filterChain.doFilter(requestEntity);
     } catch (error, stackTrace) {
-      ///Errors outside the chain (like routing)
+      /// Errors outside the chain (like routing)
       return _handleError(requestEntity, error, stackTrace);
     }
   }

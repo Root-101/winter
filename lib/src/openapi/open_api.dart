@@ -434,12 +434,12 @@ class _OpenApiBuilder {
     'TooManyRequests': {
       ..._problem('Too many requests: wait for Retry-After'),
       'headers': {
-        'Retry-After': _header('Seconds to wait before retrying'),
-        'RateLimit-Policy': _header(
+        HttpHeader.retryAfter: _header('Seconds to wait before retrying'),
+        HttpHeader.rateLimitPolicy: _header(
           'The quota policy (draft-ietf-httpapi-ratelimit-headers): '
           '"default";q=100;w=60',
         ),
-        'RateLimit': _header(
+        HttpHeader.rateLimit: _header(
           'The quota left (draft-ietf-httpapi-ratelimit-headers): '
           '"default";r=0;t=17',
         ),

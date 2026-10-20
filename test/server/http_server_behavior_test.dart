@@ -275,11 +275,11 @@ void main() {
       }
 
       // dart:io alone sends `422 Status 422`
-      expect(await statusLine(422), 'HTTP/1.1 422 Unprocessable Entity');
+      expect(await statusLine(422), 'HTTP/1.1 422 Unprocessable Content');
       expect(await statusLine(429), 'HTTP/1.1 429 Too Many Requests');
       expect(await statusLine(418), "HTTP/1.1 418 I'm a teapot");
       // A code with a deprecated twin: the current phrase
-      expect(await statusLine(413), 'HTTP/1.1 413 Payload Too Large');
+      expect(await statusLine(413), 'HTTP/1.1 413 Content Too Large');
       expect(await statusLine(200), 'HTTP/1.1 200 OK');
       // A code that StatusCode doesn't know keeps the one of dart:io
       expect(await statusLine(799), 'HTTP/1.1 799 Status 799');

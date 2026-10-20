@@ -46,7 +46,7 @@ void main() {
 
   group('clientIp without trusted proxies', () {
     test('is the address of the connection', () {
-      expect(_request().clientIp(), '10.0.0.1');
+      expect(_request().clientIp, '10.0.0.1');
     });
 
     test('X-Forwarded-For and Forwarded are ignored (they can be faked)', () {
@@ -54,11 +54,11 @@ void main() {
         headers: {'X-Forwarded-For': '1.1.1.1', 'Forwarded': 'for=1.1.1.1'},
       );
 
-      expect(request.clientIp(), '10.0.0.1');
+      expect(request.clientIp, '10.0.0.1');
     });
 
     test('null when the connection is unknown', () {
-      expect(RequestEntity('GET', Uri.parse('http://x/')).clientIp(), isNull);
+      expect(RequestEntity('GET', Uri.parse('http://x/')).clientIp, isNull);
     });
   });
 
@@ -68,7 +68,7 @@ void main() {
         'X-Forwarded-For': 'fake-by-client, 203.0.113.7',
       });
 
-      expect(request.clientIp(), '203.0.113.7');
+      expect(request.clientIp, '203.0.113.7');
     });
 
     test('with 2 proxies, the entry added by the outer one, on any line', () {
@@ -76,21 +76,21 @@ void main() {
         'X-Forwarded-For': ['198.51.100.1, 203.0.113.7', '192.168.0.5'],
       });
 
-      expect(request.clientIp(), '203.0.113.7');
+      expect(request.clientIp, '203.0.113.7');
     });
 
     test('fewer entries than proxies, or not an IP: the connection', () {
       expect(
         _behind(const TrustedProxies(2), {
           'X-Forwarded-For': '203.0.113.7',
-        }).clientIp(),
+        }).clientIp,
         '10.0.0.1',
       );
       expect(
-        _behind(one, {'X-Forwarded-For': 'not-an-ip'}).clientIp(),
+        _behind(one, {'X-Forwarded-For': 'not-an-ip'}).clientIp,
         '10.0.0.1',
       );
-      expect(_behind(one, {}).clientIp(), '10.0.0.1');
+      expect(_behind(one, {}).clientIp, '10.0.0.1');
     });
 
     test('the scheme and the host of the client in requestedUri', () {
@@ -140,7 +140,7 @@ void main() {
     test('Forwarded is ignored: the proxies write X-Forwarded-*', () {
       final request = _behind(one, {'Forwarded': 'for=1.1.1.1;host=evil.com'});
 
-      expect(request.clientIp(), '10.0.0.1');
+      expect(request.clientIp, '10.0.0.1');
       expect(request.requestedUri.host, 'localhost');
     });
   });
@@ -151,7 +151,7 @@ void main() {
         'Forwarded': 'for=203.0.113.7;proto=https;host=api.example.com',
       });
 
-      expect(request.clientIp(), '203.0.113.7');
+      expect(request.clientIp, '203.0.113.7');
       expect(
         '${request.requestedUri}',
         'https://api.example.com/orders?page=2',
@@ -170,14 +170,14 @@ void main() {
         },
       );
 
-      expect(request.clientIp(), '2001:db8:cafe::17');
+      expect(request.clientIp, '2001:db8:cafe::17');
       expect(request.requestedUri.host, 'api.example.com');
       expect(
-        _behind(forwarded, {'Forwarded': 'for=192.0.2.43:47011'}).clientIp(),
+        _behind(forwarded, {'Forwarded': 'for=192.0.2.43:47011'}).clientIp,
         '192.0.2.43',
       );
       expect(
-        _behind(forwarded, {'Forwarded': r'for="\203.0.113.7"'}).clientIp(),
+        _behind(forwarded, {'Forwarded': r'for="\203.0.113.7"'}).clientIp,
         '203.0.113.7',
       );
     });
@@ -185,7 +185,7 @@ void main() {
     test('unknown or an obfuscated node is not an IP: the connection', () {
       for (final node in ['unknown', '_hidden', '"[2001:db8::1"']) {
         expect(
-          _behind(forwarded, {'Forwarded': 'for=$node'}).clientIp(),
+          _behind(forwarded, {'Forwarded': 'for=$node'}).clientIp,
           '10.0.0.1',
           reason: node,
         );
@@ -194,7 +194,7 @@ void main() {
 
     test('X-Forwarded-For is ignored: the proxies write Forwarded', () {
       expect(
-        _behind(forwarded, {'X-Forwarded-For': '1.1.1.1'}).clientIp(),
+        _behind(forwarded, {'X-Forwarded-For': '1.1.1.1'}).clientIp,
         '10.0.0.1',
       );
     });
@@ -242,7 +242,7 @@ void main() {
               path: '/whoami',
               handler: (request) => ResponseEntity.ok(
                 body: {
-                  'ip': request.clientIp(),
+                  'ip': request.clientIp,
                   'uri': '${request.requestedUri}',
                 },
               ),
@@ -287,7 +287,7 @@ void main() {
             Route.get(
               path: '/ip',
               handler: (request) =>
-                  ResponseEntity.ok(body: request.clientIp() ?? 'unknown'),
+                  ResponseEntity.ok(body: request.clientIp ?? 'unknown'),
               filterConfig: FilterConfig([
                 RateLimiterFilter(
                   maxRequests: 2,

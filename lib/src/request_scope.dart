@@ -171,14 +171,14 @@ String? get requestId => RequestScope.current?.requestId;
 /// Security context of the request in progress, or null outside a request.
 /// The same object as `request.securityContext`.
 ///
-/// {@category Server}
+/// {@category Security}
 RequestSecurityContext? get requestSecurityContext =>
     RequestScope.current?.securityContext;
 
 /// Locale of the request in progress (the same as `request.locale`),
 /// or the fallback of `Winter.context.localeConfig` outside a request.
 ///
-/// {@category Server}
+/// {@category i18n}
 WinterLocale get requestLocale =>
     RequestScope.current?.locale ?? Winter.context.localeConfig.fallback;
 
@@ -188,7 +188,7 @@ WinterLocale get requestLocale =>
 /// Work started by a request (even an `unawaited` one that ends after the response)
 /// keeps seeing this user.
 ///
-/// {@category Server}
+/// {@category Security}
 Authentication? get requestAuthentication =>
     requestSecurityContext?.authentication;
 
@@ -221,7 +221,7 @@ final ContextKey<WinterLocale> _localeKey = ContextKey<WinterLocale>(
 
 /// The language of a request (`request.locale`)
 ///
-/// {@category Server}
+/// {@category i18n}
 extension RequestLocaleX on RequestEntity {
   /// Locale of this request, chosen from its `Accept-Language` with `Winter.context.localeConfig`.
   /// Calculated the first time and cached in the request context.
