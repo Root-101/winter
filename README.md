@@ -6,9 +6,9 @@ Winter is a backend framework for Dart, inspired by **Spring**, **ASP.NET Core**
 It gives you routing, filters, dependency injection, JSON mapping, validation, security and
 consistent errors, on top of `dart:io` and without code generation.
 
-> ⚠️ **Winter is an experimental project**, built in our spare time. `1.0.0-rc.1` is a release
+> ⚠️ **Winter is an experimental project**, built in our spare time. `1.0.0-rc.2` is a release
 > candidate: the API is the one we intend to keep in 1.0, but it may still change before it, and
-> the framework has not yet been used by a real application in production. Try it, build with it,
+> the framework has been used by one real application so far ([feather-io](https://github.com/Root-101/feather-io)). Try it, build with it,
 > and [tell us](https://github.com/Root-101/winter/issues) what breaks; use it in production at
 > your own discretion.
 
@@ -39,7 +39,7 @@ You need the Dart SDK 3.13 or newer ([get Dart](https://dart.dev/get-dart)) and 
 (`dart create my_api`). Then add Winter:
 
 ```bash
-dart pub add winter:^1.0.0-rc.1
+dart pub add winter:^1.0.0-rc.2
 ```
 
 The version is needed while 1.0.0 is a release candidate: `dart pub add winter` alone only picks
