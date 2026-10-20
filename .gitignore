@@ -14,3 +14,6 @@ brag-output/
 doc/api/
 
 coverage/lcov.info
+
+# The executables of the benchmarks (doc/benchmarks.md)
+build/
