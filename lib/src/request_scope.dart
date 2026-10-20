@@ -116,7 +116,16 @@ class RequestScope {
   /// Runs the [onComplete] callbacks (once: they are removed). A callback that fails is logged and
   /// the others still run. The server calls it for every request; call it yourself after
   /// [run] in a test that registers callbacks (or uses scoped dependencies).
+  ///
+  /// With work held by [holdUntil] still running, it returns at once and the callbacks run when
+  /// that work ends.
   Future<void> complete() async {
+    if (_held.isNotEmpty) {
+      final List<Future<void>> held = [..._held];
+      _held.clear();
+      unawaited(Future.wait(held).whenComplete(complete));
+      return;
+    }
     _completed = true;
     final callbacks = _onComplete.reversed.toList();
     _onComplete.clear();
@@ -132,6 +141,15 @@ class RequestScope {
       }
     }
   }
+
+  final List<Future<void>> _held = [];
+
+  /// Holds the end of the request until [work] ends: [complete] runs the [onComplete] callbacks
+  /// (the dispose of its scoped dependencies) after it. The server holds it for a handler still
+  /// running after its request timed out (`ServerConfig.requestTimeout`), so nothing it uses is
+  /// disposed under it. An error of [work] is ignored here.
+  void holdUntil(Future<void> work) =>
+      _held.add(work.then((_) {}, onError: (Object _) {}));
 
   /// The scope of the request in progress, or null outside a request
   static RequestScope? get current => Zone.current[_zoneKey] as RequestScope?;

@@ -80,7 +80,7 @@ class ServerConfig {
   ///Max time to build the response of a request (the filters and the handler, reading its body
   ///included). After it the client gets a 503 and the request no longer holds a graceful
   ///shutdown; the handler can't be stopped, so it goes on in the background and its result is
-  ///ignored. Sending the response is not timed (a stream, like Server-Sent Events, can go on).
+  ///ignored (its scoped dependencies are disposed when it ends). Sending the response is not timed (a stream, like Server-Sent Events, can go on).
   ///Default `null`: no limit. Leave room for the slow uploads of the app.
   final Duration? requestTimeout;
 
