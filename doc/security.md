@@ -417,7 +417,8 @@ RateLimiterFilter.fromRateLimiter(
   slow clients that send their headers byte by byte, the size of the headers (`dart:io` accepts
   tens of KB, 20 000 headers were accepted in the probe), the number of connections per client,
   a body that never ends (a rejected body is read to its end and discarded, so the client gets
-  the 413), and a request with both `Content-Length` and `Transfer-Encoding` (`dart:io` reads it
+  the 413; `dart:io` sends any answer, even a 405 that never reads the body, only once the whole
+  declared body has arrived, so a client that stops sending holds its connection), and a request with both `Content-Length` and `Transfer-Encoding` (`dart:io` reads it
   as chunked; a proxy that reads the other one is open to request smuggling).
 - `ServerConfig.requestTimeout` so a slow upload or a stuck handler can't hold a request forever.
 - `allowedOrigins` on every `Route.websocket` of an app with a session in a cookie: browsers send
