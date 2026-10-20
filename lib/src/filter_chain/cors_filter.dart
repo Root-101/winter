@@ -60,6 +60,17 @@ class CorsFilter extends Filter {
     return vary == null ? withCors : addVary(withCors, vary);
   }
 
+  /// Header names separated by commas (`content-type, x-api-key`)
+  static final RegExp _tokenList = RegExp(
+    r"^\s*[!#$%&'*+.^_`|~0-9A-Za-z-]+(\s*,\s*[!#$%&'*+.^_`|~0-9A-Za-z-]+)*\s*$",
+  );
+
+  /// An origin as browsers send it (`https://app.example.com:8443`, or `null`): echoed for `'*'`
+  /// with credentials, so it must be one
+  static final RegExp _origin = RegExp(
+    r'^([A-Za-z][A-Za-z0-9+.-]*://[A-Za-z0-9.\-\[\]:]+|null)$',
+  );
+
   Map<String, String> _getCorsHeaders(RequestEntity request) {
     final headers = <String, String>{};
 
@@ -73,7 +84,8 @@ class CorsFilter extends Filter {
 
     if (config.allowedOrigins.contains('*') && !config.allowCredentials) {
       headers[HttpHeader.accessControlAllowOrigin] = '*';
-    } else if (config.allowedOrigins.contains('*') ||
+    } else if ((config.allowedOrigins.contains('*') &&
+            _origin.hasMatch(origin)) ||
         config.allowedOrigins.contains(origin)) {
       ///Browsers reject '*' with credentials, so the origin is echoed instead
       ///(and 'Vary: Origin' tells caches that the response depends on it)
@@ -97,7 +109,9 @@ class CorsFilter extends Filter {
       final requestedHeaders =
           request.headers[HttpHeader.accessControlRequestHeaders];
       if (config.allowedHeaders.contains('*')) {
-        if (requestedHeaders != null) {
+        // Echoed only when it's a list of header names: anything else (a byte that isn't ASCII)
+        // would make the response unsendable, a 500 any client could ask for
+        if (requestedHeaders != null && _tokenList.hasMatch(requestedHeaders)) {
           headers[HttpHeader.accessControlAllowHeaders] = requestedHeaders;
         }
       } else if (config.allowedHeaders.isNotEmpty) {
