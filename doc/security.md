@@ -86,7 +86,7 @@ The full app, with login, hashed passwords and expiring JWTs, is
 - `authenticated`: `true` by default. `Authentication.anonymous()` is the one with `false`.
 
 It's saved in the `RequestSecurityContext` of the request (`request.securityContext`), which the
-server creates before the filters, so every filter, the handler and the `change()` copies of the
+server creates before the filters, so every filter, the handler and the `copyWith()` copies of the
 request share it.
 
 Your filter calls `setAuthentication(...)` when the credentials are valid, and does nothing

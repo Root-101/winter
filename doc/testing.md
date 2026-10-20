@@ -44,7 +44,7 @@ void main() {
 ### `WinterTestClient`
 
 `WinterTestClient.build` takes the same parameters as the server: `router`, `globalFilterConfig`,
-`securityConfig` and `maxBodySize`.
+`securityConfig`, `maxBodySize`, `requestTimeout` and `trustedProxies`.
 
 | Method                                     | Sends                                       |
 |--------------------------------------------|---------------------------------------------|

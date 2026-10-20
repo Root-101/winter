@@ -422,7 +422,7 @@ POST /users
 {"name": "Ann", "email": "ann@example.com", "is_admin": true}
 
 HTTP/1.1 400 Bad Request
-{"type": "about:blank", "title": "Bad Request", "status": 400, "detail": "$.is_admin: unknown field"}
+{"type": "about:blank", "title": "Bad Request", "status": 400, "detail": "$.is_admin: unknown field", "instance": "/users"}
 ```
 
 - A field is known when the `fromJson` **reads** it, whatever the way: `json['name']`,

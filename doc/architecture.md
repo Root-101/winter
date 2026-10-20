@@ -10,22 +10,26 @@ per isolate. Read it to know where to plug your code, or before contributing.
  HttpRequest (dart:io)                       WinterTestClient (in memory)
         │                                              │
         └──────────────► RequestEntity ◄───────────────┘
+                              │  the URI from the request target and a valid Host
+                              │  the trusted proxies (ServerConfig.trustedProxies): client IP, scheme, host
                               │  the body limit (ServerConfig.maxBodySize → 413 when read)
                               ▼
-               RequestScope (a Zone): request id, security context, language
+               RequestScope (a Zone): request id, W3C trace, security context, language
                               │
                               ▼
                router.resolveRoute(request) → Route: its filters and path params
                               │
                               ▼
                FilterChain, sorted by `order`:
-                 CorsFilter (-100) → SecurityHeadersFilter (-99)
+                 CorsFilter (-100) → SecurityHeadersFilter (-99) → request timeout (-98)
                    → global filters → route filters (parents first) → handler
                               │
      anything thrown on the way ──► ExceptionHandler ──► a Problem Details response,
                               │                          where it was thrown
                               ▼
-               ResponseEntity + X-Request-Id + nosniff/DENY (+ Vary: Accept-Language)
+               headers checked, the 304 of a GET whose ETag/Last-Modified the client has
+                              │
+               ResponseEntity + X-Request-Id + nosniff/DENY (+ Vary: Accept-Language, Prefer)
                               │
                scope.complete(): onComplete callbacks, scoped dependencies disposed
                               │
@@ -34,10 +38,13 @@ per isolate. Read it to know where to plug your code, or before contributing.
 ```
 
 1. **The request.** The server turns each `HttpRequest` of `dart:io` into a `RequestEntity` (its
-   headers are read as a view, not copied). `WinterTestClient` builds the same `RequestEntity` in
+   headers are read as a view, not copied; its URI from the request target, the scheme of the
+   server and a valid `Host`, never from `X-Forwarded-*`). With `ServerConfig.trustedProxies`, the
+   client IP, the scheme and the host the proxies forwarded are applied first. `WinterTestClient` builds the same `RequestEntity` in
    memory and calls the same function, `Winter.buildHandler`: tests run the real pipeline.
 2. **The scope.** Each request runs in its own `Zone` with a `RequestScope`: its id (the
-   `X-Request-Id` sent, if valid, or a new UUID), its security context and its language. Any code
+   `X-Request-Id` sent, if valid, else the trace id of a valid `traceparent`, else a new UUID), its
+   W3C trace (`requestTrace`), its security context and its language. Any code
    reads them (`requestId`, `requestPrincipal<T>()`, `requestLocale`) without receiving the request,
    and concurrent requests never mix.
 3. **The route.** The router resolves the `Route` before the filters run, so the route filters
@@ -50,8 +57,10 @@ per isolate. Read it to know where to plug your code, or before contributing.
    into a response at the point where it was thrown, so every outer filter (CORS, logs, the rate
    limiter) receives a response, never the exception. Every error is a Problem Details, and a 500
    never shows its cause.
-6. **The response.** The server adds the request id and the basic security headers, and
-   `Vary: Accept-Language` if something read the language. Then the scope completes (scoped
+6. **The response.** The server checks its headers (a value `dart:io` would refuse is a 500),
+   answers a 304 to a `GET` whose `ETag` or `Last-Modified` the client already has, adds the
+   request id and the basic security headers, and `Vary: Accept-Language` or `Vary: Prefer` if
+   something read the language or the preferences. Then the scope completes (scoped
    dependencies are disposed) and the response is written.
 
 ## The context: `WinterContext`
@@ -92,6 +101,11 @@ isolate has its own memory, so:
 |-------------------|-------------------------------|-----------------------------------------------|
 | Server, lifecycle | `winter_server.dart`, `server_config.dart` | [configuration](configuration.md), [deployment](deployment.md) |
 | Request, response | `request_entity.dart`, `response_entity.dart` | [requests and responses](requests-and-responses.md) |
+| HTTP              | `http/` (headers, status codes, conditional requests, `Prefer`, `WebLink`) | [requests and responses](requests-and-responses.md) |
+| Trusted proxies   | `trusted_proxies.dart`        | [deployment](deployment.md#behind-a-proxy)    |
+| WebSockets, SSE   | `websocket.dart`, `server_sent_events.dart` | [requests and responses](requests-and-responses.md) |
+| OpenAPI           | `openapi/`                    | [openapi](openapi.md)                         |
+| Scheduled tasks   | `scheduling/`                 | [scheduling](scheduling.md)                   |
 | Router            | `router/`                     | [routing](routing.md)                         |
 | Filters           | `filter_chain/`               | [filters](filters.md)                         |
 | Object mapper     | `context/object_mapper/`      | [object mapper](object-mapper.md)             |
@@ -99,7 +113,7 @@ isolate has its own memory, so:
 | Errors            | `context/exception/`          | [error handling](error-handling.md)           |
 | DI                | `context/dependency_injection/` | [dependency injection](dependency-injection.md) |
 | Configuration     | `env/`, `winter_context.dart` | [configuration](configuration.md)             |
-| Logging           | `logging/`                    | [logging](logging.md)                         |
+| Logging           | `logging/` (logger, W3C trace) | [logging](logging.md)                        |
 | Security          | `security/`                   | [security](security.md)                       |
 | i18n              | `i18n/`, `request_scope.dart` | [i18n](i18n.md)                               |
 | Testing           | `testing/`                    | [testing](testing.md)                         |

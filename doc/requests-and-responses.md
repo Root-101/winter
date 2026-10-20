@@ -70,7 +70,7 @@ void main() async {
 | `clientIp`, `connectionInfo`     | The client (see [security](security.md#rate-limiter))          |
 | `route`                            | The `Route` that answers it (its `key`, its `path`), null without one |
 | `context`                          | Data attached to the request, found by a typed `ContextKey` (see [below](#extending-a-request-the-context)) |
-| `locale`, `securityContext`, `principal<T>()` | Extensions of i18n and security                     |
+| `locale`, `preferences`, `securityContext`, `principal<T>()`, `checkPreconditions()` | Extensions of i18n, HTTP and security |
 
 Every map is read-only: a filter that needs to change the request passes a copy to the chain (see
 [`copyWith`](#copywith)).
@@ -183,7 +183,7 @@ The type of the body decides how it's written:
 | `String`             | Text                       | `text/plain; charset=utf-8`                  |
 | `Uint8List`          | Bytes                      | `application/octet-stream`                   |
 | `Stream<List<int>>`  | As it's produced (chunked) | `application/octet-stream`                   |
-| Anything else        | JSON (the object mapper)   | `application/json; charset=utf-8` (`application/problem+json` from 400) |
+| Anything else        | JSON (the object mapper)   | `application/json; charset=utf-8` (`application/problem+json` for a `ProblemDetails`) |
 
 - A `Content-Type` in `headers` wins: `headers: {'content-type': 'text/html'}`.
 - `Content-Length` is added for everything but a stream.
