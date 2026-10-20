@@ -5,8 +5,8 @@ REST API. Not at the level of Spring, but with the basics complete, stable and d
 
 **Legend:** 🔴 blocks 1.0 · 🟡 should be in 1.0 · 🟢 after 1.0 (1.x) · ✅ done · ⏸️ on hold
 
-> **Now: the release of `1.0.0-rc.3`** (6.4), after `1.0.0-rc.1` (2026-10-09) was used in a real
-> project and `1.0.0-rc.2` was retracted. Phases 1 to 9 are done (8: the standards, after the rc; 9: the review after them). The
+> **Now: `1.0.0-rc.3` is on pub.dev (2026-10-20)**, after `1.0.0-rc.1` (2026-10-09) was used in a
+> real project and `1.0.0-rc.2` was retracted. Next: `1.0.0` (6.5). Phases 1 to 9 are done (8: the standards, after the rc; 9: the review after them). The
 > CI (6.1) comes after 1.0.
 
 The decisions behind each point are in `DECISIONS.md` (§ numbers below), the behavior in the
@@ -284,8 +284,9 @@ exists on pub.dev (0.0.7, the same repository), so each release is a new version
    [release review](#release-review-before-every-release) ran as phase 9, 2026-10-19), tag
    `v1.0.0-rc.2`. Its package carried the executables of the benchmarks (`build/`, added to the
    release commit by mistake): 12 MB instead of 0.5 MB. `build/` is ignored by git and pub now.
-4. [ ] **`1.0.0-rc.3`**: the same code without them; `release/1.0.0-rc.3` merged into `main`, tag
-   `v1.0.0-rc.3`, published on pub.dev (check the size of the archive in the dry run first).
+4. [x] **`1.0.0-rc.3` published on pub.dev on 2026-10-20**: the same code without them (489 KB),
+   `release/1.0.0-rc.3` merged into `main`, tag `v1.0.0-rc.3`. Check the size of the archive in
+   the dry run before every release.
 
 ### 6.1 CI 🟢 (after 1.0)
 

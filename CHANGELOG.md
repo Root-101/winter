@@ -1,5 +1,5 @@
 * 1.0.0-rc.3:
-    * **DATE** :date: : Unreleased.
+    * **DATE** :date: : 2026-10-20.
     * The same code as `1.0.0-rc.2`, which is retracted: its package carried the executables of the benchmarks by mistake (12 MB instead of 0.5 MB).
 
 * 1.0.0-rc.2:
