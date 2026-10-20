@@ -6,7 +6,8 @@ REST API. Not at the level of Spring, but with the basics complete, stable and d
 **Legend:** 🔴 blocks 1.0 · 🟡 should be in 1.0 · 🟢 after 1.0 (1.x) · ✅ done · ⏸️ on hold
 
 > **Now: `1.0.0-rc.1` is on pub.dev (2026-10-09)**, to be used in a real project before 1.0.0
-> (6.4). Phases 1 to 8 are done (8: the standards, after the rc). The CI (6.1) comes after 1.0.
+> (6.4). Phases 1 to 9 are done (8: the standards, after the rc; 9: the review after them). The CI
+> (6.1) comes after 1.0.
 
 The decisions behind each point are in `DECISIONS.md` (§ numbers below), the behavior in the
 tests, and the usage in `doc/`.
@@ -186,6 +187,45 @@ example case and tests.
 - **Idempotency keys (§9):** `IdempotencyFilter` over an `IdempotencyStore` (IETF draft).
 - **`Prefer` (§10):** `request.preferences` (RFC 7240), `Vary: Prefer` by itself.
 - **Health (§9):** `Route.health` answers `application/health+json` (`pass`/`fail`).
+
+### Phase 9: third full review ✅
+
+The [release review](#release-review-before-every-release) after phase 8 (2026-10-19), with a
+quality audit of the whole code: five reviews at once (the server, the context modules, security
+against a real server, the tests, the docs and the API), then every finding fixed with its test.
+
+- **Security (real server):** the URI of a request came from `dart:io`'s `requestedUri`, which
+  takes `X-Forwarded-Host`/`-Proto` from any client and glues them before the path: a client chose
+  the host, the scheme and even the routed path (`X-Forwarded-Host: h/static/ENV~1?` read a
+  `.env`). Now it's the request target, the scheme of the server and a valid `Host`. Static files
+  on Windows served hidden files by their 8.3 short name (`ENV~1`): the real names are checked
+  too. Two idempotency partitions could share an id through a space; CORS echoed any
+  `Access-Control-Request-Headers` (a 500 on demand); `Prefer` had no size limit.
+- **Bugs:** cron `*/2` in the day of the month ran every day; a typed response without body broke
+  `IdempotencyFilter` and locked its key; the query string wasn't part of an idempotent request;
+  a request that timed out disposed its scoped dependencies under the handler still running; every
+  SSE connection left a listener until shutdown; typed params took `NaN`, `Infinity` and hex; the
+  422 named the fields with the global mapper when `body<T>()` had its own; integers beyond 64 bits
+  were clamped; a date without offset was read in the server's time zone; a hidden parent didn't
+  hide its children in OpenAPI.
+- **Limits:** objects nested more than 128 levels are a 400 (they cost seconds), the cache of
+  renamed keys is bounded, `InMemoryIdempotencyStore` keeps at most `maxKeys`, an IPv6 client
+  counts by its /64 in the rate limiter.
+- **API:** `clientIp` is a getter, `RequestPreconditionsX`, the reason phrases of RFC 9110
+  (`ContentTooLargeException`, `UnprocessableContentException`, 421), no `Set-Cookie2`, `Warning`
+  nor 509, the categories of the request getters, `Scheduler.cron(runOnStart:)`.
+- **Tests:** from 1237 to 1215, without overlaps, without the real clock, coverage 99.7 % (the
+  rest: other platforms, races and unreachable code, listed in `CLAUDE.md`).
+- **Docs:** 21 outdated sentences (Problem Details without `instance`, hand-written health checks,
+  `change()`, the pipeline of `architecture.md`...), every snippet analyzed against the API (none
+  broken), no broken link.
+- **Checks:** format, analyze, tests, every example, `dart doc`, the publish dry run, `pana`
+  **160/160** on Linux (Docker), `messages*.g.dart` up to date, `dart pub outdated` only minor
+  updates. Benchmarks without a regression: 81–85 % of `dart:io` (noisy machine), the router
+  ~225 000 req/s, the mapper as before.
+- **Not done, on purpose:** `fieldNaming` renames the whole object given to `Deserializer.json`
+  (map fields included) but writes only the top of a `toJson()`, a known limitation (§2). A cycle
+  of async dependencies found concurrently waits forever (`ready()` is safe; documented).
 
 ---
 

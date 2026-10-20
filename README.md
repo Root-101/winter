@@ -18,7 +18,7 @@ consistent errors, on top of `dart:io` and without code generation.
   configuration, logs, scheduled tasks, OpenAPI, WebSockets and Server-Sent Events.
 - **Small and explicit**: no reflection, no annotations, no code generation; what you register is
   what runs.
-- **Tested and documented**: about 1150 tests (99.7 % of the lines), a guide per module and an
+- **Tested and documented**: about 1200 tests (99.7 % of the lines), a guide per module and an
   example for every feature.
 
 **What Winter is not (yet):**
