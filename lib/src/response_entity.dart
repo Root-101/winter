@@ -5,7 +5,7 @@ import 'dart:typed_data';
 
 import 'package:winter/src/http/headers.dart';
 import 'package:winter/src/server_sent_events.dart' show serverSentEventsBody;
-import 'package:winter/src/winter_server.dart' show serverClosing;
+import 'package:winter/src/winter_server.dart' show onServerClosing;
 import 'package:winter/winter.dart';
 
 /// An HTTP response: what a handler returns, and what every filter can change with [copyWith].
@@ -278,7 +278,7 @@ class ResponseEntity<T> {
     body: serverSentEventsBody(
       events,
       keepAlive: keepAlive,
-      closing: serverClosing,
+      onClosing: onServerClosing,
     ),
     headers: {
       HttpHeader.contentType:

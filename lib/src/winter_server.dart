@@ -111,9 +111,11 @@ class Winter {
 
   bool _shuttingDown = false;
 
-  ///Completed when the server starts closing: the streams of Server-Sent Events end then, so they
-  ///don't hold the graceful shutdown (see [serverClosing])
-  final Completer<void> _closing = Completer<void>();
+  ///Called when the server starts closing: the streams of Server-Sent Events end then, so they
+  ///don't hold the graceful shutdown (see [onServerClosing]). Each one leaves the set when its
+  ///client does, so the set never grows with the connections that are gone.
+  final Set<void Function()> _closingCallbacks = {};
+  bool _closing = false;
 
   Winter._({
     required this.serverContext,
@@ -325,7 +327,13 @@ class Winter {
   }) async {
     if (isRunning) {
       final Winter current = server;
-      if (!current._closing.isCompleted) current._closing.complete();
+      if (!current._closing) {
+        current._closing = true;
+        for (final void Function() callback in [...current._closingCallbacks]) {
+          callback();
+        }
+        current._closingCallbacks.clear();
+      }
 
       ///An upgraded connection is not the server's any more: close the WebSockets ourselves
       current._webSockets.closeAll();
@@ -758,10 +766,15 @@ class Winter {
   }
 }
 
-/// Completes when the running server starts closing (`Winter.close`, `Winter.shutdown`); never
-/// without a server (`WinterTestClient`). Internal: the streams of Server-Sent Events end with it.
-Future<void> get serverClosing =>
-    Winter._server?._closing.future ?? Completer<void>().future;
+/// Runs [callback] when the running server starts closing (`Winter.close`, `Winter.shutdown`), and
+/// returns the function that cancels it; never without a server (`WinterTestClient`). Internal: the
+/// streams of Server-Sent Events end with it, and cancel it when their client leaves.
+void Function() onServerClosing(void Function() callback) {
+  final Winter? server = Winter._server;
+  if (server == null || server._closing) return () {};
+  server._closingCallbacks.add(callback);
+  return () => server._closingCallbacks.remove(callback);
+}
 
 /// Add [header] to the `Vary` of [response] (a comma separated list), unless it's already there or `*`
 ///
