@@ -17,6 +17,7 @@ brag-output/
 slang.yaml
 benchmark/
 build/
+tool/
 coverage/
 doc/api/
 todo.md
