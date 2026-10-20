@@ -31,7 +31,15 @@ jobs:
       - uses: dart-lang/setup-dart@v1
         with:
           sdk: ${{ env.DART_SDK }}
-      - run: dart pub get
+      - name: Get the package and its examples
+        # Each example is a package of its own (sdk ^3.12.0): without its pub get the formatter
+        # wouldn't know its language version and would format it in another style
+        run: |
+          dart pub get
+          for example in example/*/ example/apps/*/; do
+            [ -f "$example/pubspec.yaml" ] || continue
+            (cd "$example" && dart pub get)
+          done
       - name: Format
         run: dart format --output=none --set-exit-if-changed .
       - name: Analyze
@@ -43,7 +51,7 @@ jobs:
           for example in example/*/ example/apps/*/; do
             [ -f "$example/pubspec.yaml" ] || continue
             echo "::group::$example"
-            (cd "$example" && dart pub get && dart analyze && dart test) || exit 1
+            (cd "$example" && dart analyze && dart test) || exit 1
             echo "::endgroup::"
           done
       - name: Coverage
