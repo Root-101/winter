@@ -178,7 +178,8 @@ database). Often it's simpler to run one isolate per container and let the platf
 - `Route.health` for `/health` and `/ready`.
 - `ServerConfig.trustedProxies` equal to the proxies in front, HSTS when TLS ends at the proxy, CORS with your
   origins.
-- `maxBodySize` as small as your biggest request.
+- `maxBodySize` as small as your biggest request, and a `requestTimeout` (off by default) a bit
+  above your slowest route.
 
 ## Typical mistakes and limitations
 

@@ -424,8 +424,8 @@ RateLimiterFilter.fromRateLimiter(
   the 413; `dart:io` sends any answer, even a 405 that never reads the body, only once the whole
   declared body has arrived, so a client that stops sending holds its connection), and a request with both `Content-Length` and `Transfer-Encoding` (`dart:io` reads it
   as chunked; a proxy that reads the other one is open to request smuggling).
-- `ServerConfig.requestTimeout` (30 seconds by default) so a slow upload or a stuck handler can't
-  hold a request forever: raise it for the routes of large uploads.
+- `ServerConfig.requestTimeout` (off by default: turn it on, 30 seconds for example) so a slow
+  client or a stuck handler can't hold a request forever; leave room for the large uploads.
 - `allowedOrigins` on a `Route.websocket` whose pages are on another host: browsers send the
   cookie to a WebSocket of any website and CORS doesn't apply to them, so without it only a page
   of the same host may connect.
