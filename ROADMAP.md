@@ -344,8 +344,8 @@ Quality:
 
 9. [x] `body<T>(objectMapper:)` renamed the fields of a 422 twice (its mapper, then the global
    `om`). Now `ValidationException(objectMapper:)` carries the mapper that names them, once.
-10. [ ] The router matches the regex of every route on each request, up to three times on a 404:
-    a map for the static routes, the path normalized once.
+10. [x] The router matched the regex of every route on each request, up to three times on a 404.
+    Now the static routes are found by their path (router benchmark ~62 000 → 165 000+ req/s).
 11. [ ] The fingerprint of `IdempotencyFilter` copies the whole body into a `List<int>` (~80 MB
     for 10 MB): hash the bytes in place.
 12. [ ] With `autoCompress`, a stream response (static files, 206) loses its `Content-Length`
