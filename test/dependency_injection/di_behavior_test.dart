@@ -292,6 +292,31 @@ void main() {
   });
 
   group('Scoped dependencies and the lifetime of the request (§5)', () {
+    test(
+      'a singleton never keeps the scope of the request that creates it',
+      () async {
+        RequestScope? seenByLazy = RequestScope();
+        RequestScope? seenByAsync = RequestScope();
+        di
+          ..putLazy<_UnitOfWork>(() {
+            seenByLazy = RequestScope.current;
+            return _UnitOfWork();
+          })
+          ..putLazyAsync<_OrderService>(() async {
+            seenByAsync = RequestScope.current;
+            return _OrderService(_UnitOfWork());
+          });
+
+        await RequestScope.run(RequestScope(requestId: 'first'), () async {
+          di.find<_UnitOfWork>();
+          await di.findAsync<_OrderService>();
+        });
+
+        expect(seenByLazy, isNull);
+        expect(seenByAsync, isNull);
+      },
+    );
+
     test('a lazy singleton that depends on a scoped one is a StateError', () {
       di
         ..putScoped<_UnitOfWork>(_UnitOfWork.new)

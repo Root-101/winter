@@ -162,6 +162,12 @@ class RequestScope {
       runZoned(body, zoneValues: {_zoneKey: scope});
 }
 
+/// Runs [body] with no request scope, even inside a request: for an object that outlives the
+/// request that creates it (a singleton), so the listeners and timers it starts never see that
+/// request. Internal.
+R runOutsideRequestScope<R>(R Function() body) =>
+    runZoned(body, zoneValues: {RequestScope._zoneKey: null});
+
 /// The id of the request in progress (see [RequestScope.requestId]), or null outside a request.
 /// The loggers of Winter add it to every log.
 ///
