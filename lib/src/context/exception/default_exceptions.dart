@@ -370,12 +370,17 @@ class ValidationException extends UnprocessableContentException {
   /// What failed, field by field
   final List<ConstraintViolation> violations;
 
+  /// The mapper that read the body, whose `fieldNaming` names the fields in the answer (the
+  /// global `om` when null): the client sees the names it sent
+  final ObjectMapper? objectMapper;
+
   /// A 422 with [violations]
   const ValidationException({
     required this.violations,
     super.detail,
     super.instance,
     super.headers,
+    this.objectMapper,
   });
 
   @override

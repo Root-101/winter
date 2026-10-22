@@ -348,19 +348,14 @@ class RequestEntity {
         // Only after the synchronous rules passed: a wrong value never reaches a query
         await _validateAsync(body);
       } on ValidationException catch (error) {
-        // The exception handler names the fields with the global mapper: with another one, the
-        // client must see the names it sent to this one
+        // The exception handler names the fields with this mapper: the client sent its names
         if (objectMapper == null) rethrow;
         throw ValidationException(
-          violations: [
-            for (final ConstraintViolation violation in error.violations)
-              violation.copyWith(
-                fieldName: objectMapper.jsonFieldName(violation.fieldName),
-              ),
-          ],
+          violations: error.violations,
           detail: error.detail,
           instance: error.instance,
           headers: error.headers,
+          objectMapper: objectMapper,
         );
       }
     }

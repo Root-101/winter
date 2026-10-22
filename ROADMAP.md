@@ -342,8 +342,8 @@ Security, by severity:
 
 Quality:
 
-9. [ ] `body<T>(objectMapper:)` renames the fields of a 422 twice (its mapper, then the global
-   `om`): with a `snakeCase` `om`, `userName` comes back as `user_name`.
+9. [x] `body<T>(objectMapper:)` renamed the fields of a 422 twice (its mapper, then the global
+   `om`). Now `ValidationException(objectMapper:)` carries the mapper that names them, once.
 10. [ ] The router matches the regex of every route on each request, up to three times on a 404:
     a map for the static routes, the path normalized once.
 11. [ ] The fingerprint of `IdempotencyFilter` copies the whole body into a `List<int>` (~80 MB
