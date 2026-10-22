@@ -123,7 +123,7 @@ jobs:
         with:
           sdk: stable
       - run: dart pub get
-      - run: dart pub global activate pana
+      - run: dart pub global activate pana 0.23.19
       # 160 points today; it fails below 150, so a new major version of a dependency (10 points)
       # is a warning in the report and not a red build
       - run: dart pub global run pana --no-warning --exit-code-threshold 10 .

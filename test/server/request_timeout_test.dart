@@ -207,6 +207,9 @@ void main() {
         );
       }
       const ServerConfig(requestTimeout: Duration(milliseconds: 1)).validate();
+      // 30 seconds by default, null for no limit
+      expect(const ServerConfig().requestTimeout, const Duration(seconds: 30));
+      expect(const ServerConfig(requestTimeout: null).requestTimeout, isNull);
       expect(
         ServerConfig.fromEnv(
           Env(env: const {}),
