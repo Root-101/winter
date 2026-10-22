@@ -13,6 +13,7 @@ headers, `ApiException`). One file per case, each a server of its own: `dart run
 | Client preferences | [`prefer_return.dart`](lib/prefer_return.dart) | `Prefer: return=minimal` (RFC 7240): a 201 without body and `Preference-Applied`; `Vary: Prefer` added by itself |
 | Long-running jobs | [`async_jobs.dart`](lib/async_jobs.dart) | `202 Accepted` + `Location` of the job, polling with `Retry-After`, `303 See Other` to the result |
 | Idempotency keys | [`idempotency_keys.dart`](lib/idempotency_keys.dart) | `IdempotencyFilter` on the route: the first answer of a retried POST replayed (`Idempotency-Key`), 422 for another body, 409 while running, 400 without a key |
+| Request timeout | [`request_timeout.dart`](lib/request_timeout.dart) | `ServerConfig(requestTimeout:)`, off by default: a route slower than the limit is a 503, a fast one answers as always; tested with timers that fire at once |
 | API versioning | [`api_versioning.dart`](lib/api_versioning.dart) | `/v1` and `/v2` as parent routes, a `DeprecationFilter` in the old version: `Deprecation`/`Sunset`/`Link` on its responses and `deprecated` in OpenAPI |
 
 Guides: [requests and responses](../../doc/requests-and-responses.md), [filters](../../doc/filters.md),
