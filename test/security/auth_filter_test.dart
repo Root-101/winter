@@ -64,6 +64,16 @@ void main() {
               headers: {HttpHeader.cacheControl: 'no-store'},
             ),
           ),
+          Route.get(
+            path: '/none',
+            filterConfig: FilterConfig([AuthFilter(cacheControl: null)]),
+            handler: (request) => ResponseEntity.ok(),
+          ),
+          Route.get(
+            path: '/other',
+            filterConfig: FilterConfig([AuthFilter(cacheControl: 'no-store')]),
+            handler: (request) => ResponseEntity.ok(),
+          ),
         ],
       ),
     );
@@ -99,7 +109,13 @@ void main() {
 
     test('a protected response is private, unless it says otherwise', () async {
       final Map<String, String?> seen = {
-        for (final path in ['/authenticated', '/no-store', '/public'])
+        for (final path in [
+          '/authenticated',
+          '/no-store',
+          '/public',
+          '/none',
+          '/other',
+        ])
           path: (await client.get(
             path,
             headers: as['admin'],
@@ -110,6 +126,9 @@ void main() {
         '/authenticated': 'private',
         '/no-store': 'no-store',
         '/public': null,
+        // AuthFilter(cacheControl: null) adds nothing, and another directive replaces private
+        '/none': null,
+        '/other': 'no-store',
       });
     });
   });

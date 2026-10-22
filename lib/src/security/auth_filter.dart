@@ -27,6 +27,14 @@ class AuthFilter extends Filter {
   /// `Basic realm="api"` for basic authentication
   final String challenge;
 
+  /// The `Cache-Control` added to a response it lets through when the response has none:
+  /// `private` by default (it depends on who asked, so a shared cache must never give it to
+  /// someone else), another directive (`no-store`), or null to add nothing. Null fits a protocol
+  /// whose responses carry only the `Cache-Control` the app stored (an S3 object), or a public
+  /// resource a CDN should cache; a shared cache already never keeps the answer to a request with
+  /// `Authorization` (RFC 9111 §3.5), so `private` matters most with a cookie session.
+  final String? cacheControl;
+
   /// A filter that needs an authenticated user passing [rules]; the requests where
   /// `shouldFilter` returns false skip it
   AuthFilter({
@@ -34,6 +42,7 @@ class AuthFilter extends Filter {
     this.rules,
     this._shouldFilter,
     this.challenge = 'Bearer',
+    this.cacheControl = 'private',
   });
 
   UnauthorizedException get _unauthorized =>
@@ -63,10 +72,12 @@ class AuthFilter extends Filter {
     }
 
     final ResponseEntity response = await chain.doFilter(request);
+    final String? directive = cacheControl;
     // It depends on who asked: a shared cache (a CDN, a proxy) must not give it to someone else
-    return response.headersAll.containsKey(HttpHeader.cacheControl)
+    return directive == null ||
+            response.headersAll.containsKey(HttpHeader.cacheControl)
         ? response
-        : response.copyWith(headers: {HttpHeader.cacheControl: 'private'});
+        : response.copyWith(headers: {HttpHeader.cacheControl: directive});
   }
 
   @override
