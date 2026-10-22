@@ -362,43 +362,57 @@ void main() {
   group('ServerConfig of dart:io', () {
     tearDown(() => Winter.close(force: true));
 
-    test(
-      'autoCompress gzips the responses for a client that accepts it',
-      () async {
-        await Winter.start(
-          config: const ServerConfig(
-            port: port + 1,
-            handleSignals: false,
-            autoCompress: true,
-          ),
-          router: WinterRouter(
-            routes: [
-              Route.get(
-                path: '/big',
-                handler: (request) => ResponseEntity.ok(body: 'winter ' * 500),
+    test('autoCompress gzips the responses for a client that accepts it, not a stream', () async {
+      await Winter.start(
+        config: const ServerConfig(
+          port: port + 1,
+          handleSignals: false,
+          autoCompress: true,
+        ),
+        router: WinterRouter(
+          routes: [
+            Route.get(
+              path: '/big',
+              handler: (request) => ResponseEntity.ok(body: 'winter ' * 500),
+            ),
+            // Like a file: a stream with its length
+            Route.get(
+              path: '/file',
+              handler: (request) => ResponseEntity<Stream<List<int>>>(
+                200,
+                body: Stream.value(utf8.encode('winter ' * 500)),
+                headers: {HttpHeader.contentLength: '3500'},
               ),
-            ],
-          ),
-        );
-        final client = HttpClient()..autoUncompress = false;
+            ),
+          ],
+        ),
+      );
+      final client = HttpClient()..autoUncompress = false;
+      Future<(HttpClientResponse, List<int>)> get(String path) async {
         final request = await client.getUrl(
-          Uri.parse('http://localhost:${port + 1}/big'),
+          Uri.parse('http://localhost:${port + 1}$path'),
         );
         request.headers.set(HttpHeaders.acceptEncodingHeader, 'gzip');
         final response = await request.close();
-        final bytes = await response.fold<List<int>>(
-          [],
-          (all, chunk) => all..addAll(chunk),
+        return (
+          response,
+          await response.fold<List<int>>(
+            [],
+            (all, chunk) => all..addAll(chunk),
+          ),
         );
-        client.close();
+      }
 
-        expect(
-          response.headers.value(HttpHeaders.contentEncodingHeader),
-          'gzip',
-        );
-        expect(utf8.decode(gzip.decode(bytes)), 'winter ' * 500);
-      },
-    );
+      final (response, bytes) = await get('/big');
+      final (file, fileBytes) = await get('/file');
+      client.close();
+
+      expect(response.headers.value(HttpHeaders.contentEncodingHeader), 'gzip');
+      expect(utf8.decode(gzip.decode(bytes)), 'winter ' * 500);
+      expect(file.headers.value(HttpHeaders.contentEncodingHeader), isNull);
+      expect(file.contentLength, 3500);
+      expect(fileBytes, hasLength(3500));
+    });
 
     test('HTTPS with a securityContext', () async {
       final certificate = File('test/fixtures/localhost_cert.pem')
