@@ -3,7 +3,8 @@
 What is missing to publish `winter` 1.0.0: an HTTP framework that covers the main use cases of a
 REST API. Not at the level of Spring, but with the basics complete, stable and documented.
 
-> **Now: `1.0.0-rc.4` is on pub.dev (2026-10-22)**, with the fixes of two audits after `1.0.0-rc.3`. Everything
+> **Now: `1.0.0-rc.5` (2026-10-22)**: `1.0.0-rc.4` (the fixes of two audits) plus
+> `AuthFilter(cacheControl:)`, asked for by its first real use. Everything
 > planned up to 1.0 is done (the summary is below). Next: use it for a while, then `1.0.0`.
 
 The decisions behind each point are in `DECISIONS.md` (§ numbers below), the behavior in the
@@ -71,7 +72,9 @@ asked for one option: `AuthFilter(cacheControl:)`, so an S3 object answers only 
 
 1. [x] `AuthFilter(cacheControl:)`: `'private'` by default (as in rc.4), another directive, or
    `null` for none; its test, `doc/security.md`, `DECISIONS.md` §8.
-2. [ ] The release review (only this changed since rc.4), `release/1.0.0-rc.5`, `main`, the tag.
+2. [x] The release review (2026-10-22; only this changed since rc.4): format, analyze, 1225
+   tests, the tests of every example, `dart doc`, the doc snippets, `pana` **160/160** (Docker,
+   clean clone), the dry run. `release/1.0.0-rc.5` merged into `main`, tag `v1.0.0-rc.5`.
 3. [ ] Publish from the terminal of the maintainer.
 
 ### Release `1.0.0-rc.4`
@@ -99,7 +102,8 @@ host. That's why a new rc goes first, not `1.0.0`.
 
 ### Release `1.0.0`
 
-1. [ ] Use `1.0.0-rc.4` for a while (the two changes above in a real client).
+1. [ ] Use `1.0.0-rc.5` for a while (the client-visible changes of rc.4 in a real client;
+   feather-io already runs on rc.4).
 2. [ ] The release review again, fix what comes up, and publish `1.0.0`: tag `v1.0.0`, the version
    in `pubspec.yaml`, the CHANGELOG with the date, announcement (r/dartlang, Dart Discord, X).
 
@@ -148,7 +152,7 @@ The details of each step are in `CHANGELOG.md`, `DECISIONS.md` and the git histo
   conditional requests, `Deprecation`/`Sunset`, `Link`, idempotency keys, `Prefer`, health format.
 - **Releases:** `1.0.0-rc.1` (2026-10-09, used in feather-io), `1.0.0-rc.2` (2026-10-20,
   retracted: it carried `build/`), `1.0.0-rc.3` (2026-10-20), `1.0.0-rc.4` (2026-10-22, the
-  audits, on pub.dev).
+  audits, on pub.dev), `1.0.0-rc.5` (2026-10-22, `AuthFilter(cacheControl:)`).
 - **Audits (2026-10-21/22, in `develop`):** a security audit (8 findings: a quadratic route
   lookup, WebSocket compression, CSRF through `text/plain`, `Forwarded` parsing, singletons in a
   request scope, idempotency memory, `Infinity`, a lost update in the docs) and a quality audit
