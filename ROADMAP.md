@@ -308,6 +308,54 @@ on every push of a feature branch (`CONTRIBUTING.md`):
   obfuscated names.
 - [x] The publish dry run without warnings and an archive under 1 MB (after `1.0.0-rc.2`).
 
+### 10. Security and quality audits (2026-10-21)
+
+A security audit (`security-audit`: 31 coverage units, every finding reproduced in a sandbox with
+no network and checked by two independent verifiers) and a quality audit (`ponytail-audit`) of
+`develop` @ `e8707db`. One commit per item in `feature/audit-fixes`, each with its regression test;
+the public API keeps working (only new optional parameters).
+
+Security, by severity:
+
+1. [ ] **High.** `normalizePath` removes trailing slashes with one `substring` per slash, once
+   per route, before any filter: `GET /x` + 40 000 `/` blocks the isolate ~3 s with 5 routes,
+   unauthenticated. A single pass.
+2. [ ] **Medium.** WebSockets negotiate permessage-deflate by default and have no message limit:
+   8 KB on the wire became 8 MiB in the handler, past `maxBodySize`. Compression off by default
+   (opt-in per route) and a message limit.
+3. [ ] `body<T>()` reads JSON from `text/plain` or without `Content-Type`, what a cross-site page
+   sends without a CORS preflight (CSRF on cookie sessions). A 415 for a typed body.
+4. [ ] An unterminated quoted string in a client's `Forwarded` swallows the element the proxy
+   appends on the same line: the client chooses `clientIp`, host and scheme. A malformed line is
+   ignored.
+5. [ ] A `putLazy`/`putLazyAsync` singleton is created inside the zone of the first request that
+   finds it: its listeners and timers see that request's authentication and id forever. Create it
+   outside any `RequestScope`.
+6. [ ] `InMemoryIdempotencyStore` bounds the keys, not the bytes: 16-byte requests keep 512 KiB
+   responses (up to tens of GiB at 100 000 keys). A byte limit, total and per response.
+7. [ ] `Deserializer<double>`/`<num>` take `1e400` as `Infinity`: it passes the validators and
+   every later response that serializes it is a 500. `isFinite`, as `int` and the params do.
+8. [ ] The guide and the `api_patterns` example `await` the body between `checkPreconditions`
+   and the save: two writers with the same `If-Match` both pass (lost update). Read the body first.
+
+Quality:
+
+9. [ ] `body<T>(objectMapper:)` renames the fields of a 422 twice (its mapper, then the global
+   `om`): with a `snakeCase` `om`, `userName` comes back as `user_name`.
+10. [ ] The router matches the regex of every route on each request, up to three times on a 404:
+    a map for the static routes, the path normalized once.
+11. [ ] The fingerprint of `IdempotencyFilter` copies the whole body into a `List<int>` (~80 MB
+    for 10 MB): hash the bytes in place.
+12. [ ] With `autoCompress`, a stream response (static files, 206) loses its `Content-Length`
+    although `dart:io` never compresses it.
+13. [ ] Small ones: request/trace ids byte by byte from `Random.secure()` (one helper), the filter
+    chain sorted per request, a new SSE `Timer` per event, three copies of `_typeOf`.
+
+Hardening (no finding, only if cheap): `Route.websocket(allowedOrigins:)` open by default,
+Swagger UI from unpkg without SRI, `permissions:` and actions pinned by SHA in the CI,
+`Cache-Control: private` on protected responses. Already decided, not redone: `fieldNaming`
+renames the map fields of an object given to `Deserializer.json` (phase 9, §2).
+
 ### 6.5 Release `1.0.0`
 
 1. [ ] Fix what comes up in 6.4 and publish `1.0.0`: tag `v1.0.0`, the version in `pubspec.yaml`,
