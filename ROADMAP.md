@@ -317,12 +317,13 @@ the public API keeps working (only new optional parameters).
 
 Security, by severity:
 
-1. [ ] **High.** `normalizePath` removes trailing slashes with one `substring` per slash, once
-   per route, before any filter: `GET /x` + 40 000 `/` blocks the isolate ~3 s with 5 routes,
-   unauthenticated. A single pass.
-2. [ ] **Medium.** WebSockets negotiate permessage-deflate by default and have no message limit:
-   8 KB on the wire became 8 MiB in the handler, past `maxBodySize`. Compression off by default
-   (opt-in per route) and a message limit.
+1. [x] **High.** `normalizePath` removed trailing slashes with one `substring` per slash, once
+   per route, before any filter: `GET /x` + 40 000 `/` blocked the isolate ~3 s with 5 routes,
+   unauthenticated. Now a single pass.
+2. [x] **Medium.** WebSockets negotiated permessage-deflate by default, and `dart:io` keeps each
+   whole message with no limit: 8 KB on the wire became 8 MiB in the handler, past `maxBodySize`.
+   Now off unless the route asks for it (`Route.websocket(compression:)`). `dart:io` has no
+   message limit to set; documented.
 3. [ ] `body<T>()` reads JSON from `text/plain` or without `Content-Type`, what a cross-site page
    sends without a CORS preflight (CSRF on cookie sessions). A 415 for a typed body.
 4. [ ] An unterminated quoted string in a client's `Forwarded` swallows the element the proxy
