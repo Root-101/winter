@@ -244,6 +244,9 @@ Guide: [`doc/security.md`](doc/security.md).
   answers **401** with a `WWW-Authenticate` challenge (RFC 9110; `Bearer` by default) when nobody is
   authenticated, and **403** when the rules fail. What it lets through gets `Cache-Control:
   private` (unless the response has one): a shared cache must never hand it to another user.
+  `cacheControl:` changes the directive or, with `null`, adds nothing: an S3-like API answers only
+  the `Cache-Control` stored with each object (a client would copy a `private` it never set), and
+  a request with `Authorization` is never kept by a shared cache anyway (RFC 9111 §3.5).
 - **Roles and permissions**, nothing else: an "authority" is `hasRole(x) | hasPermission(x)`.
 - **Rules see the request** (`evaluate(authentication, request)`, `rule((auth, request) => ...)`),
   so "only the owner" lives in the rule. `describe()` gives the readable form of any rule.
