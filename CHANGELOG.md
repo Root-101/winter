@@ -1,3 +1,6 @@
+* Unreleased:
+    * **Security** :lock: : `AuthFilter(cacheControl:)` chooses the `Cache-Control` it adds to what it lets through: `'private'` by default, another directive (`no-store`), or `null` for none, for an S3-like API whose objects answer only the `Cache-Control` they were stored with, or a public resource a CDN should cache.
+
 * 1.0.0-rc.4:
     * **DATE** :date: : 2026-10-22.
     * The fixes of a security audit (every finding reproduced in a sandbox and checked by two independent verifiers) and a quality audit.
