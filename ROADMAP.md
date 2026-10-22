@@ -369,7 +369,10 @@ Hardening (no finding), in `feature/hardening`:
     is a `String` or a number is the partition, and another kind logs a warning once.
 19. [x] `ConsoleLogger` wrote control characters as they came: now escaped (`\n`, `\x1b`), so a
     value of the client can't forge a log line nor send terminal codes.
-20. [x] `ServerConfig.requestTimeout` had no limit by default: now 30 seconds (`null` for none).
+20. [x] `ServerConfig.requestTimeout` had no limit by default. It was 30 seconds for a while, but
+    its timer costs ~4 % of an empty endpoint (24), so it stays off by default and each app turns
+    it on: documented in the guides, the production checklist and an example
+    (`api_patterns/request_timeout.dart`).
 21. [x] The package carried `test/` (with the TLS key of the tests as a "false secret"): now left
     out (483 KB to 320 KB).
 22. [x] The CI installed the latest `pana`, so a new release could change the score by itself: now
@@ -379,8 +382,7 @@ Hardening (no finding), in `feature/hardening`:
     `Infinity`. Now a 400 with its path (`$.items[1].price`), whatever the type.
 24. [x] Benchmarks again (2026-10-22, `doc/benchmarks.md`): the pipeline in memory ~510 000 →
     ~630 000 req/s, the router ~189 000 → ~430 000, the mapper the same; over HTTP Winter is as fast
-    as before the audits except for the default `requestTimeout`, which costs ~4 % of an empty
-    endpoint (`null` removes it).
+    as before the audits; turning `requestTimeout` on costs ~4 % of an empty endpoint.
 
 Already decided, not redone: `fieldNaming` renames the map fields of an object given to
 `Deserializer.json` (phase 9, §2).
