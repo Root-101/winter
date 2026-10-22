@@ -1005,7 +1005,11 @@ class ObjectMapper {
   /// (500: it's a bug of the server, not of the client).
   S deserialize<S>(Object? data) {
     if (data is S) {
-      if (data is double && !data.isFinite) _asNumber(data);
+      // Kept as it came (a Map, a List, dynamic): a number in it must still be finite
+      if (data is double || data is Map || data is List) {
+        final String? path = _nonFinite(data);
+        if (path != null) throw DeserializationException(_tooBig, path: path);
+      }
       return data;
     }
 
@@ -1105,10 +1109,28 @@ int _asInt(Object? data) {
 /// validator rejects and no response can write back
 num _asNumber(Object? data) {
   if (data is num && data.isFinite) return data;
-  if (data is double) {
-    throw DeserializationException('expected a number, got a number too big');
-  }
+  if (data is double) throw DeserializationException(_tooBig);
   throw _expected('a number', data);
+}
+
+const String _tooBig = 'expected a number, got a number too big';
+
+/// The path (`$.items[1].price`) of the first number that isn't finite in a JSON value, or null.
+/// One pass, without a closure per value: an untyped body can be large
+String? _nonFinite(Object? data) {
+  if (data is double) return data.isFinite ? null : r'$';
+  if (data is Map) {
+    for (final MapEntry(:key, :value) in data.entries) {
+      final String? path = _nonFinite(value);
+      if (path != null) return '\$${_keySegment('$key')}${path.substring(1)}';
+    }
+  } else if (data is List) {
+    for (var i = 0; i < data.length; i++) {
+      final String? path = _nonFinite(data[i]);
+      if (path != null) return '\$[$i]${path.substring(1)}';
+    }
+  }
+  return null;
 }
 
 /// A [Duration] of [milliseconds], or a 400 when they don't fit in it (they would wrap around to a

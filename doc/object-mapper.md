@@ -118,7 +118,9 @@ Deserializers are found by the exact `Type` you ask for. These are registered by
 | `List<dynamic>`              | A JSON array, as it is                                        |
 
 Types are **strict**: `"12"` is not an `int` and `"true"` is not a `bool` (400). JSON has a single
-number type, so `12.0` is a valid `int` and `1` a valid `double`.
+number type, so `12.0` is a valid `int` and `1` a valid `double`. A number too big for a `double`
+(`1e400`) is a 400 wherever it is, even inside a `Map<String, dynamic>` read as it came: it would be
+`Infinity`, which no response can write back.
 
 - An integer beyond the 64 bits of an `int` (`1e19`) is a 400, never clamped; so is a `Duration`
   that doesn't fit.

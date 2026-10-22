@@ -670,6 +670,24 @@ void main() {
           withMessage(r'$: expected a number, got a number too big'),
         );
       }
+      // Also inside a body kept as it came (Map, List, dynamic), with its path
+      for (final (json, path) in [
+        ('{"price":1e400}', r'$.price'),
+        ('[1, [2, -1e400]]', r'$[1][1]'),
+        ('{"a b":{"items":[1e400]}}', r'$["a b"].items[0]'),
+      ]) {
+        for (final read in [
+          mapper.decode<Object?>,
+          if (json.startsWith('{')) mapper.decode<Map<String, dynamic>>,
+          if (json.startsWith('[')) mapper.decode<List<dynamic>>,
+        ]) {
+          expect(
+            () => read(json),
+            withMessage('$path: expected a number, got a number too big'),
+          );
+        }
+      }
+      expect(mapper.decode<Map<String, dynamic>>('{"p":1.5}'), {'p': 1.5});
       expect(
         () => mapper.decode<_Flag>('"true"'),
         withMessage(r'$: expected a boolean, got a string'),
