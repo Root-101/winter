@@ -663,6 +663,13 @@ void main() {
         () => mapper.decode<_Ratio>('"0.5"'),
         withMessage(r'$: expected a number, got a string'),
       );
+      // The JSON decoder reads 1e400 as Infinity: it could never be written back
+      for (final read in [mapper.decode<double>, mapper.decode<num>]) {
+        expect(
+          () => read('1e400'),
+          withMessage(r'$: expected a number, got a number too big'),
+        );
+      }
       expect(
         () => mapper.decode<_Flag>('"true"'),
         withMessage(r'$: expected a boolean, got a string'),

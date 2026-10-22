@@ -335,8 +335,8 @@ Security, by severity:
    created outside any `RequestScope`.
 6. [ ] `InMemoryIdempotencyStore` bounds the keys, not the bytes: 16-byte requests keep 512 KiB
    responses (up to tens of GiB at 100 000 keys). A byte limit, total and per response.
-7. [ ] `Deserializer<double>`/`<num>` take `1e400` as `Infinity`: it passes the validators and
-   every later response that serializes it is a 500. `isFinite`, as `int` and the params do.
+7. [x] A `double`/`num` took `1e400` as `Infinity`: it passed the validators and every later
+   response that serialized it was a 500. Now a 400 (`got a number too big`), as for `int`.
 8. [ ] The guide and the `api_patterns` example `await` the body between `checkPreconditions`
    and the save: two writers with the same `If-Match` both pass (lost update). Read the body first.
 
