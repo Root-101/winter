@@ -133,6 +133,23 @@ A response that goes through `AuthFilter` gets `Cache-Control: private` unless i
 `Cache-Control` of its own: it depends on who asked, so a shared cache (a CDN, a proxy) must never
 give it to someone else. A browser may still keep it (use `no-store` for that).
 
+`cacheControl:` changes it per filter:
+
+```dart
+AuthFilter(rules: hasRole('admin'), cacheControl: 'no-store') // not even the browser keeps it
+
+// An S3-like API: an object answers only the Cache-Control it was stored with, and a public
+// prefix must stay cacheable by a CDN
+AuthFilter(
+  rules: hasPermission('get-object') | hasPermission('anonymous.get-object'),
+  cacheControl: null, // adds nothing
+)
+```
+
+Turning it off is safe when the requests carry `Authorization` (a token, a signature): a shared
+cache never keeps their answer (RFC 9111 §3.5), and a presigned URL has its signature in the URL,
+which is the key of the cache. With a session in a cookie, keep it.
+
 `AuthFilter(authenticated: false, rules: ...)` only checks the rules (an anonymous
 `Authentication` evaluates them). A rule turns into a filter with `.toFilter()` or into a whole
 `FilterConfig` with `.toFilterConfig()`.

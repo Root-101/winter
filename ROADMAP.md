@@ -63,6 +63,17 @@ case per feature in `example/`):
 
 ## Pending
 
+### Release `1.0.0-rc.5`
+
+The first real use of rc.4 (feather-io, an S3 server: 546 tests, AWS CLI and rclone passing)
+asked for one option: `AuthFilter(cacheControl:)`, so an S3 object answers only the
+`Cache-Control` it was stored with and a public prefix stays cacheable by a CDN.
+
+1. [x] `AuthFilter(cacheControl:)`: `'private'` by default (as in rc.4), another directive, or
+   `null` for none; its test, `doc/security.md`, `DECISIONS.md` §8.
+2. [ ] The release review (only this changed since rc.4), `release/1.0.0-rc.5`, `main`, the tag.
+3. [ ] Publish from the terminal of the maintainer.
+
 ### Release `1.0.0-rc.4`
 
 `develop` has, since `1.0.0-rc.3`, the fixes of a security audit and a quality audit, the
