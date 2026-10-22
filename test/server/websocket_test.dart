@@ -77,6 +77,11 @@ void main() {
         handler: (socket, request) => throw StateError('bug'),
       ),
       Route.websocket(path: '/idle', handler: (socket, request) {}),
+      Route.websocket(
+        path: '/deflate',
+        compression: CompressionOptions.compressionDefault,
+        handler: (socket, request) {},
+      ),
     ],
   );
 
@@ -133,6 +138,21 @@ void main() {
       await socket.close();
     },
   );
+
+  test('without allowedOrigins, only a page of the same host', () async {
+    await expectLater(
+      WebSocket.connect(
+        '$base/echo/lobby',
+        headers: {'Origin': 'https://evil.example.com'},
+      ),
+      throwsA(isA<WebSocketException>()),
+    );
+    final WebSocket sameHost = await WebSocket.connect(
+      '$base/echo/lobby',
+      headers: {'Origin': 'https://localhost'},
+    );
+    await sameHost.close();
+  });
 
   test(
     'allowedOrigins: another origin is refused, no origin is let in',
@@ -199,6 +219,32 @@ void main() {
       expect(socket.closeCode, WebSocketStatus.goingAway);
     },
   );
+
+  test('permessage-deflate only on a route that turns it on', () async {
+    Future<String?> extensions(String path) async {
+      final HttpClient client = HttpClient();
+      final HttpClientRequest request = await client.get(
+        'localhost',
+        port,
+        path,
+      );
+      request.headers
+        ..set('Upgrade', 'websocket')
+        ..set('Connection', 'Upgrade')
+        ..set('Sec-WebSocket-Key', 'dGhlIHNhbXBsZSBub25jZQ==')
+        ..set('Sec-WebSocket-Version', '13')
+        ..set('Sec-WebSocket-Extensions', 'permessage-deflate');
+      final HttpClientResponse response = await request.close();
+      expect(response.statusCode, 101);
+      final String? value = response.headers.value('sec-websocket-extensions');
+      (await response.detachSocket()).destroy();
+      client.close(force: true);
+      return value;
+    }
+
+    expect(await extensions('/idle'), isNull);
+    expect(await extensions('/deflate'), contains('permessage-deflate'));
+  });
 
   test('a request that is not a handshake is a 426', () async {
     final WinterTestClient client = WinterTestClient.build(router: router);

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:winter/winter.dart';
 
@@ -56,26 +57,19 @@ class RequestScope {
   static bool isValidRequestId(String? id) =>
       id != null && _validRequestId.hasMatch(id);
 
-  static final Random _random = Random.secure();
-
   /// A random UUID (version 4)
   static String newRequestId() {
+    final Uint8List bytes = secureRandomBytes(16);
     final StringBuffer id = StringBuffer();
     for (var i = 0; i < 16; i++) {
-      var byte = _random.nextInt(256);
+      var byte = bytes[i];
       if (i == 6) byte = (byte & 0x0f) | 0x40;
       if (i == 8) byte = (byte & 0x3f) | 0x80;
       if (i == 4 || i == 6 || i == 8 || i == 10) id.write('-');
-      id.write(_hex[byte]);
+      id.write(hexBytes[byte]);
     }
     return id.toString();
   }
-
-  /// `00` to `ff`, so an id is built without formatting every byte
-  static final List<String> _hex = [
-    for (var byte = 0; byte < 256; byte++)
-      byte.toRadixString(16).padLeft(2, '0'),
-  ];
 
   /// The same as `request.locale`: chosen from the `Accept-Language` of the request.
   /// Reading it marks the response as dependent on the language ([localeRead]).
@@ -161,6 +155,32 @@ class RequestScope {
   static R run<R>(RequestScope scope, R Function() body) =>
       runZoned(body, zoneValues: {_zoneKey: scope});
 }
+
+final Random _secureRandom = Random.secure();
+
+/// [length] random bytes of the secure generator, asked 4 at a time (one call per byte cost a
+/// microsecond per id). Internal.
+Uint8List secureRandomBytes(int length) {
+  final Uint8List bytes = Uint8List(length);
+  for (var i = 0; i < length; i += 4) {
+    var word = _secureRandom.nextInt(1 << 32);
+    for (var j = i; j < i + 4 && j < length; j++, word >>= 8) {
+      bytes[j] = word & 0xff;
+    }
+  }
+  return bytes;
+}
+
+/// `00` to `ff`, so an id is built without formatting every byte. Internal.
+final List<String> hexBytes = [
+  for (var byte = 0; byte < 256; byte++) byte.toRadixString(16).padLeft(2, '0'),
+];
+
+/// Runs [body] with no request scope, even inside a request: for an object that outlives the
+/// request that creates it (a singleton), so the listeners and timers it starts never see that
+/// request. Internal.
+R runOutsideRequestScope<R>(R Function() body) =>
+    runZoned(body, zoneValues: {RequestScope._zoneKey: null});
 
 /// The id of the request in progress (see [RequestScope.requestId]), or null outside a request.
 /// The loggers of Winter add it to every log.

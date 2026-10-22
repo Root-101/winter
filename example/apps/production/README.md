@@ -11,7 +11,7 @@ JSON logs with the request id, it has health checks for the platform, it shuts d
     the variables of the process: in the container the platform sets them, and its secrets never go
     in a file.
 *   `env.requireAll([...])` names every missing variable at once.
-*   Typed values: `RATE_LIMIT` (int), `HSTS` (bool), `CORS_ORIGINS` (a list), `SHUTDOWN_TIMEOUT`
+*   Typed values: `RATE_LIMIT` (int), `HSTS` (bool), `CORS_ORIGINS` (a list), `SHUTDOWN_TIMEOUT` and `REQUEST_TIMEOUT`
     (`25s`), `LOG_LEVEL` (an enum).
 *   `ServerConfig.fromEnv(env)` reads `PORT` and `HOST`, the variables that Cloud Run, Heroku and
     Kubernetes set.

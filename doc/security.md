@@ -129,6 +129,10 @@ The `WWW-Authenticate` of the 401 (required by RFC 9110) is `Bearer`; change it 
 AuthFilter(challenge: 'Basic realm="api"')
 ```
 
+A response that goes through `AuthFilter` gets `Cache-Control: private` unless it has a
+`Cache-Control` of its own: it depends on who asked, so a shared cache (a CDN, a proxy) must never
+give it to someone else. A browser may still keep it (use `no-store` for that).
+
 `AuthFilter(authenticated: false, rules: ...)` only checks the rules (an anonymous
 `Authentication` evaluates them). A rule turns into a filter with `.toFilter()` or into a whole
 `FilterConfig` with `.toFilterConfig()`.
@@ -420,9 +424,11 @@ RateLimiterFilter.fromRateLimiter(
   the 413; `dart:io` sends any answer, even a 405 that never reads the body, only once the whole
   declared body has arrived, so a client that stops sending holds its connection), and a request with both `Content-Length` and `Transfer-Encoding` (`dart:io` reads it
   as chunked; a proxy that reads the other one is open to request smuggling).
-- `ServerConfig.requestTimeout` so a slow upload or a stuck handler can't hold a request forever.
-- `allowedOrigins` on every `Route.websocket` of an app with a session in a cookie: browsers send
-  the cookie to a WebSocket of any website, and CORS doesn't apply to them.
+- `ServerConfig.requestTimeout` (off by default: turn it on, 30 seconds for example) so a slow
+  client or a stuck handler can't hold a request forever; leave room for the large uploads.
+- `allowedOrigins` on a `Route.websocket` whose pages are on another host: browsers send the
+  cookie to a WebSocket of any website and CORS doesn't apply to them, so without it only a page
+  of the same host may connect.
 - Never redirect to a URL taken from the request (`?next=https://evil.example`) without checking
   it is one of yours: `ResponseEntity.seeOther(next)` sends the user anywhere (an open redirect).
 - A path param is URL-decoded, `%2F` included: `/files/{name}` gets `a/b` for `/files/a%2Fb`.
@@ -439,6 +445,9 @@ RateLimiterFilter.fromRateLimiter(
 - **Rules that need `await`.** A rule is synchronous; do that check in the service.
 - **One rate limit for several instances.** The default store is per process; use a shared store.
 - There are no sessions, CSRF protection nor OAuth flows: they belong to your app or a package.
+  `body<T>()` helps: it only reads `application/json` (or `+json`), which a page of another site
+  can't send without a CORS preflight; a form or `text/plain` is a 415. A handler that reads a
+  form (`formData()`) or acts on a `GET` with a session cookie still needs its own token.
 - Only roles and permissions: an "authority" is `hasRole(x) | hasPermission(x)`.
 - **A response header with a line break or a character that isn't ASCII** (a `Location` or a
   `Content-Disposition` built from the request) is a 500: `dart:io` can't send it, and a line break

@@ -544,6 +544,7 @@ class Winter {
         protocolSelector: upgrade.protocols.isEmpty
             ? null
             : upgrade.selectProtocol,
+        compression: upgrade.compression,
       );
     } catch (error) {
       /// A handshake that dart:io refuses (a version it doesn't speak, no subprotocol in common)

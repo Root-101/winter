@@ -99,8 +99,9 @@ final Uint8List image = await request.bytes();                 // binary, any Co
 
 - `body<T>()` decodes the JSON with the object mapper and validates a `Validatable` (see
   [object mapper](object-mapper.md) and [validation](validation.md)). Its `Content-Type` must be
-  JSON, `text/plain` or none (a 415 otherwise), except for `body<String>()` and
-  `body<Uint8List>()`, which read any body.
+  JSON (`application/json` or `+json`): `text/plain`, any other, or none on a body that isn't
+  empty is a 415, because a page of another site can send those without a CORS preflight. Except
+  `body<String>()` and `body<Uint8List>()`, which read any body.
 - `body<T>()`, `bytes()` and `formData()` read the body once and cache it: call them as many times
   as you want, even several of them.
 - The text is decoded with the charset of the `Content-Type` (UTF-8 without one); bytes that are not
@@ -475,15 +476,18 @@ Cache-Control: no-cache
 ```
 
 **A change checks its preconditions before it's made**, against the version stored now, with
-`request.checkPreconditions(etag:, lastModified:)`:
+`request.checkPreconditions(etag:, lastModified:)`. Read the body first, and then check and save
+with no `await` between them: another request with the same version could pass the check while
+this one waits (with a database, a conditional update `WHERE version = ?`):
 
 ```dart
 Route.put(
   path: '/documents/{id}',
   handler: (request) async {
     final int id = request.pathParam<int>('id');
+    final DocumentChanges changes = await request.body<DocumentChanges>();
     request.checkPreconditions(etag: store.find(id).etag, required: true);
-    final Document saved = store.save(id, await request.body<DocumentChanges>());
+    final Document saved = store.save(id, changes);
     return ResponseEntity.ok(body: saved, headers: {HttpHeader.etag: saved.etag});
   },
 ),
@@ -570,13 +574,17 @@ Route.post(
   1 to 255 printable ASCII characters.
 - A response of 500 or more, a 408, a 425 or a 429 is not kept, so the client can retry with the
   same key; neither is a stream. A `GET`, `HEAD` or `OPTIONS` is never filtered.
-- **A key is unique per method and path.** With users, give `partition:` (the user, the API key):
-  otherwise two users with the same key and the same body get each other's response. Put the
-  filter after the `AuthFilter`, so a 401 isn't kept.
+- **A key is unique per method and path, and per user.** Without `partition:`, a request whose
+  principal is a `String` or a number (an id) gets keys of its own. With another principal (a
+  `User` object), give `partition:` (its id, or the API key): otherwise its users share their keys
+  (two with the same key and the same body would get each other's response), and a warning says
+  so once. Put the filter after the `AuthFilter`, so a 401 isn't kept.
 - The body is read with `bytes()` (cached, so the handler still reads it with `body<T>()`) and
   compared, with the query string, by a fingerprint.
-- `InMemoryIdempotencyStore(maxKeys:)` keeps at most 100 000 keys by default: a new one past it
-  forgets the oldest, so a client sending a new key with every request can't fill the memory.
+- `InMemoryIdempotencyStore(maxKeys:, maxBytes:)` keeps at most 100 000 keys and 64 MB of
+  responses by default: a new one past either forgets the oldest, and a response bigger than
+  `maxBytes` isn't kept (its retry runs again). So a client sending a new key with every request
+  can't fill the memory, even with large responses.
 - The keys live in an `IdempotencyStore`: `InMemoryIdempotencyStore` by default (per isolate and
   per process, purged as it's used, `clock:` for the tests). Several instances need a shared one
   (a table, Redis) implementing `reserve` (atomic), `complete`, `release` and `clear`.

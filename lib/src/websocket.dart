@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show WebSocket;
+import 'dart:io' show CompressionOptions, WebSocket;
 
 import 'package:winter/winter.dart';
 
@@ -35,6 +35,9 @@ final class WebSocketUpgrade {
   /// The trace of the handshake, kept by the scope of the socket
   final TraceContext? trace;
 
+  /// The permessage-deflate the route accepts (none by default)
+  final CompressionOptions compression;
+
   /// An upgrade to [handler]
   const WebSocketUpgrade({
     required this.handler,
@@ -42,6 +45,7 @@ final class WebSocketUpgrade {
     required this.protocols,
     required this.pingInterval,
     this.trace,
+    this.compression = CompressionOptions.compressionOff,
   });
 
   /// The subprotocol to answer among the ones the client asked for: the first of [protocols]
@@ -66,6 +70,7 @@ RequestHandler webSocketRouteHandler({
   required List<String> protocols,
   required Duration? pingInterval,
   required List<String>? allowedOrigins,
+  CompressionOptions compression = CompressionOptions.compressionOff,
 }) => (request) {
   if (!_isHandshake(request)) {
     throw const ApiException(
@@ -79,10 +84,10 @@ RequestHandler webSocketRouteHandler({
     );
   }
   final String? origin = request.headers[HttpHeader.origin];
-  if (allowedOrigins != null &&
-      origin != null &&
-      !allowedOrigins.contains('*') &&
-      !allowedOrigins.contains(origin)) {
+  if (origin != null &&
+      !(allowedOrigins == null
+          ? _sameHost(origin, request)
+          : allowedOrigins.contains('*') || allowedOrigins.contains(origin))) {
     throw const ForbiddenException(detail: 'The origin is not allowed');
   }
   final ResponseEntity<void> response = ResponseEntity<void>(
@@ -96,10 +101,17 @@ RequestHandler webSocketRouteHandler({
       protocols: protocols,
       pingInterval: pingInterval,
       trace: requestTrace,
+      compression: compression,
     ),
   );
   return response;
 };
+
+/// Whether a page at [origin] is on the host of [request]: the default of a WebSocket without
+/// `allowedOrigins` (the host only: behind a proxy the scheme and port the server sees differ)
+bool _sameHost(String origin, RequestEntity request) =>
+    Uri.tryParse(origin)?.host.toLowerCase() ==
+    request.requestedUri.host.toLowerCase();
 
 /// A `GET` with `Upgrade: websocket`, `Connection: upgrade`, a `Sec-WebSocket-Key` and
 /// `Sec-WebSocket-Version: 13`: what `dart:io` needs to upgrade it. Any other is a 426, never a

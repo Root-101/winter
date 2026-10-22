@@ -20,6 +20,7 @@ void main() {
   );
 
   late WinterTestClient client;
+  const Map<String, Object> json = {'content-type': 'application/json'};
 
   setUpAll(() {
     Winter.context.setUp(objectMapper: mapper);
@@ -61,7 +62,7 @@ void main() {
   });
 
   test('a primitive and a list of primitives', () async {
-    expect((await client.post('/square', body: '5')).json, 25);
+    expect((await client.post('/square', body: '5', headers: json)).json, 25);
     expect((await client.post('/squares', body: [5, 6, 7])).json, [25, 36, 49]);
   });
 
@@ -78,7 +79,12 @@ void main() {
     'a DateTime, written back in UTC (one without offset is read as UTC)',
     () async {
       Future<String> echo(String date) async =>
-          (await client.post('/date', body: jsonEncode(date))).json as String;
+          (await client.post(
+                '/date',
+                body: jsonEncode(date),
+                headers: json,
+              )).json
+              as String;
 
       expect(
         await echo('2026-10-01T12:30:00.000+02:00'),
@@ -89,7 +95,14 @@ void main() {
   );
 
   test('invalid JSON is a 400; a type without deserializer a 500', () async {
-    expect((await client.post('/square', body: 'not-json')).statusCode, 400);
+    expect(
+      (await client.post(
+        '/square',
+        body: 'not-json',
+        headers: json,
+      )).statusCode,
+      400,
+    );
     expect(
       (await client.post('/unregistered', body: {'name': 'x'})).statusCode,
       500,

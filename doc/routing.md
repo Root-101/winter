@@ -318,13 +318,18 @@ socket.send('Hello');
   to send to it later (a broadcast, see `example/apps/files_gallery`).
 - **A request that isn't a WebSocket handshake** (a plain `GET`) is a **426 Upgrade Required**.
 - **`allowedOrigins`**: browsers don't apply CORS to WebSockets and send the cookies of the user to
-  a socket of any website. With a session in a cookie, list the origins of your pages, or any
-  website can open the socket as the user (cross-site WebSocket hijacking). A client without
-  `Origin` (not a browser) is let in; `'*'` allows any.
+  a socket of any website (cross-site WebSocket hijacking). Without `allowedOrigins`, only a page
+  of the same host as the request may connect (a 403 for any other); list the origins of your
+  pages when they are on another host (`https://app.example.com` for `api.example.com`). A client
+  without `Origin` (not a browser) is let in; `'*'` allows any.
 - **`protocols`**: the subprotocols the route speaks (`['graphql-ws']`), in order of preference;
   the first one the client asks for is chosen, and a client that asks only for others is refused.
 - **`pingInterval`**: a ping every 30 seconds by default, so a client that disappeared without
   closing is found and closed; `null` for none.
+- **`compression`**: off by default. `dart:io` inflates and keeps each whole message before the
+  handler gets it, with no size limit: with permessage-deflate a few KB from a client become MB in
+  memory, past `maxBodySize`. `CompressionOptions.compressionDefault` turns it on, only for
+  trusted clients.
 - **The handler runs in a request scope of its own**: `requestPrincipal()`, `requestId` and
   `requestLocale` work, and the scoped dependencies live as long as the socket.
 - **An error of the handler** is logged and closes the socket with 1011.

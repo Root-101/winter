@@ -153,6 +153,11 @@ class ProductionApp {
             config.find<Duration>('SHUTDOWN_TIMEOUT') ??
             const Duration(seconds: 25),
         onShutdown: () => logger.info('Stopped accepting requests'),
+
+        /// Off by default in Winter: a stuck dependency answers a 503 instead of holding the request
+        requestTimeout:
+            config.find<Duration>('REQUEST_TIMEOUT') ??
+            const Duration(seconds: 30),
         trustedProxies: trustedProxies(config),
       ),
       router: router(),

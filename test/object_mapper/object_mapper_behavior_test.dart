@@ -540,28 +540,29 @@ void main() {
       }
     });
 
-    test('a form body for a JSON type is a 415', () async {
-      final response = await post(
-        'NAME=A',
-        contentType: 'application/x-www-form-urlencoded',
-      );
-
-      expect(response.statusCode, 415);
-      expect(response.body, contains('application/json'));
-    });
-
-    test('JSON, +json, text/plain and no Content-Type are accepted', () async {
-      // package:http and fetch() send text/plain for a String body
+    test('a body that is not JSON for a JSON type is a 415', () async {
+      // text/plain and no type: what another site sends without a CORS preflight (CSRF)
       for (final contentType in [
-        'application/json',
-        'application/json; charset=utf-8',
-        'application/merge-patch+json',
+        'application/x-www-form-urlencoded',
         'text/plain; charset=utf-8',
         null,
       ]) {
         final response = await post('{"NAME":"A"}', contentType: contentType);
 
-        expect(response.statusCode, 200, reason: '$contentType');
+        expect(response.statusCode, 415, reason: '$contentType');
+        expect(response.body, contains('application/json'));
+      }
+    });
+
+    test('JSON and +json are accepted', () async {
+      for (final contentType in [
+        'application/json',
+        'application/json; charset=utf-8',
+        'application/merge-patch+json',
+      ]) {
+        final response = await post('{"NAME":"A"}', contentType: contentType);
+
+        expect(response.statusCode, 200, reason: contentType);
         expect(response.body, 'A');
       }
     });
@@ -662,6 +663,31 @@ void main() {
         () => mapper.decode<_Ratio>('"0.5"'),
         withMessage(r'$: expected a number, got a string'),
       );
+      // The JSON decoder reads 1e400 as Infinity: it could never be written back
+      for (final read in [mapper.decode<double>, mapper.decode<num>]) {
+        expect(
+          () => read('1e400'),
+          withMessage(r'$: expected a number, got a number too big'),
+        );
+      }
+      // Also inside a body kept as it came (Map, List, dynamic), with its path
+      for (final (json, path) in [
+        ('{"price":1e400}', r'$.price'),
+        ('[1, [2, -1e400]]', r'$[1][1]'),
+        ('{"a b":{"items":[1e400]}}', r'$["a b"].items[0]'),
+      ]) {
+        for (final read in [
+          mapper.decode<Object?>,
+          if (json.startsWith('{')) mapper.decode<Map<String, dynamic>>,
+          if (json.startsWith('[')) mapper.decode<List<dynamic>>,
+        ]) {
+          expect(
+            () => read(json),
+            withMessage('$path: expected a number, got a number too big'),
+          );
+        }
+      }
+      expect(mapper.decode<Map<String, dynamic>>('{"p":1.5}'), {'p': 1.5});
       expect(
         () => mapper.decode<_Flag>('"true"'),
         withMessage(r'$: expected a boolean, got a string'),

@@ -138,8 +138,7 @@ class Deserializer<T> extends _MapperEntity<T> {
 
   /// Deserializer of a type written as a JSON number, see [Deserializer.string]
   Deserializer.number(T Function(num value) fromNumber)
-    : _deserialize = ((data, _) =>
-          fromNumber(data is num ? data : throw _expected('a number', data)));
+    : _deserialize = ((data, _) => fromNumber(_asNumber(data)));
 
   /// Deserializer of a type written as a JSON boolean, see [Deserializer.string]
   Deserializer.boolean(T Function(bool value) fromBool)
@@ -637,14 +636,9 @@ class ObjectMapper {
     Deserializer<bool>._withMapper(
       (data, _) => data is bool ? data : throw _expected('a boolean', data),
     ),
-    Deserializer<num>._withMapper(
-      (data, _) => data is num ? data : throw _expected('a number', data),
-    ),
+    Deserializer<num>._withMapper((data, _) => _asNumber(data)),
     Deserializer<int>._withMapper((data, _) => _asInt(data)),
-    Deserializer<double>._withMapper(
-      (data, _) =>
-          data is num ? data.toDouble() : throw _expected('a number', data),
-    ),
+    Deserializer<double>._withMapper((data, _) => _asNumber(data).toDouble()),
     Deserializer<DateTime>._withMapper((data, _) {
       if (data is! String) throw _expected('an ISO-8601 date', data);
       final DateTime date =
@@ -1010,7 +1004,14 @@ class ObjectMapper {
   /// failed (`$.items[1].name`). A type without a deserializer throws a [MissingDeserializerError]
   /// (500: it's a bug of the server, not of the client).
   S deserialize<S>(Object? data) {
-    if (data is S) return data;
+    if (data is S) {
+      // Kept as it came (a Map, a List, dynamic): a number in it must still be finite
+      if (data is double || data is Map || data is List) {
+        final String? path = _nonFinite(data);
+        if (path != null) throw DeserializationException(_tooBig, path: path);
+      }
+      return data;
+    }
 
     final Deserializer? deserializer =
         _deserializers[S] ?? _derivedDeserializers[S];
@@ -1102,6 +1103,34 @@ int _asInt(Object? data) {
     return data.toInt();
   }
   throw _expected('an integer', data);
+}
+
+/// A finite number: the JSON decoder turns a literal too big (`1e400`) into `Infinity`, which no
+/// validator rejects and no response can write back
+num _asNumber(Object? data) {
+  if (data is num && data.isFinite) return data;
+  if (data is double) throw DeserializationException(_tooBig);
+  throw _expected('a number', data);
+}
+
+const String _tooBig = 'expected a number, got a number too big';
+
+/// The path (`$.items[1].price`) of the first number that isn't finite in a JSON value, or null.
+/// One pass, without a closure per value: an untyped body can be large
+String? _nonFinite(Object? data) {
+  if (data is double) return data.isFinite ? null : r'$';
+  if (data is Map) {
+    for (final MapEntry(:key, :value) in data.entries) {
+      final String? path = _nonFinite(value);
+      if (path != null) return '\$${_keySegment('$key')}${path.substring(1)}';
+    }
+  } else if (data is List) {
+    for (var i = 0; i < data.length; i++) {
+      final String? path = _nonFinite(data[i]);
+      if (path != null) return '\$[$i]${path.substring(1)}';
+    }
+  }
+  return null;
 }
 
 /// A [Duration] of [milliseconds], or a 400 when they don't fit in it (they would wrap around to a

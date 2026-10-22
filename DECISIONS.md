@@ -66,6 +66,8 @@ Guide: [`doc/object-mapper.md`](doc/object-mapper.md).
   default: a client that sends more than the model knows (a newer version) keeps working.
 - **Strict primitives**: JSON has one number type, so `12.0` is an `int`; a string is never a
   number nor a bool (`"12"` is a 400), and an integer beyond 64 bits is a 400, never clamped.
+  A number too big for a `double` (`1e400`, which the JSON decoder reads as `Infinity`) is a 400 at
+  any depth, also in a body kept as it came (`Map<String, dynamic>`): it could never be written back.
 - **Limits against a hostile body**: at most 128 objects inside each other (deeper is a 400), each
   object renamed by `fieldNaming` once, and the cache of renamed keys bounded (the keys come from
   the client).
@@ -87,9 +89,12 @@ Guide: [`doc/object-mapper.md`](doc/object-mapper.md).
 - **Enums** are written by `name` and read with `Deserializer<E>.enumByName(E.values)` (Dart can't
   list an enum from its type); the 400 lists the valid names. `.string`, `.integer`, `.number` and
   `.boolean` check the JSON type before converting, so the 400 says what was expected.
-- **`body<T>()`** reads JSON when the `Content-Type` is JSON (`*/*+json` included), `text/plain`
-  (what `package:http` and `fetch()` send for a String) or none; any other is a 415 that names the
-  expected type. `body<String>()` decodes a JSON string only when the body is JSON.
+- **`body<T>()`** reads JSON only when the `Content-Type` is JSON (`*/*+json` included); any other,
+  or none, is a 415 that names the expected type. `text/plain` and a missing type are what a page
+  of another site can send without a CORS preflight: accepting them (as `package:http` and
+  `fetch()` send a String without a header) would let it reach a cookie-authenticated handler
+  (CSRF), like Spring and Express refuse them. `body<String>()` decodes a JSON string only when the
+  body is JSON, and reads any other body as text.
 
 ## 3. Validation
 
@@ -163,7 +168,10 @@ Guide: [`doc/dependency-injection.md`](doc/dependency-injection.md).
   its `RequestScope`). The functions are synchronous, except `putLazyAsync`: created by
   `ready()`, which `Winter.start` awaits before opening the port, so `find` stays synchronous
   everywhere (an async `find` would turn every handler and constructor into a `Future`). A cycle
-  between async ones is detected through a `Zone`: with `await` it would wait forever.
+  between async ones is detected through a `Zone`: with `await` it would wait forever. A singleton
+  (`putLazy`, `putLazyAsync`) is created outside the `RequestScope` of the request that finds it
+  first: the listeners and timers it starts would otherwise see that request (its user, its id)
+  forever.
 - **Child containers** (`di.child()`) take the recipes of their parent, not its instances (only
   the instances given with `put` are shared): a lazy singleton of the parent gets its own instance
   in the child, so it's built with the fakes of a test and the parent never changes (sharing the
@@ -225,7 +233,7 @@ Guide: [`doc/logging.md`](doc/logging.md).
   expensive message (the framework's debug logs use it, so an attack doesn't cost a string per
   rejected request).
 - `ConsoleLogger` for development (UTC time, the request id, `key=value` fields; warning and error
-  to stderr) and `JsonLogger` for production (one object per line with the keys Cloud Logging
+  to stderr; control characters escaped, so a value of the client can't forge a line) and `JsonLogger` for production (one object per line with the keys Cloud Logging
   reads; fields never replace them).
 
 ## 8. Security
@@ -234,7 +242,8 @@ Guide: [`doc/security.md`](doc/security.md).
 
 - **Authentication is the app's filter**: it sets the `Authentication` of the request; `AuthFilter`
   answers **401** with a `WWW-Authenticate` challenge (RFC 9110; `Bearer` by default) when nobody is
-  authenticated, and **403** when the rules fail.
+  authenticated, and **403** when the rules fail. What it lets through gets `Cache-Control:
+  private` (unless the response has one): a shared cache must never hand it to another user.
 - **Roles and permissions**, nothing else: an "authority" is `hasRole(x) | hasPermission(x)`.
 - **Rules see the request** (`evaluate(authentication, request)`, `rule((auth, request) => ...)`),
   so "only the owner" lives in the rule. `describe()` gives the readable form of any rule.
@@ -327,10 +336,12 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
   same key with another body or query, a 409 while it runs, the kept answer for a retry, success or error),
   reads the key quoted or bare, and keeps neither a failure of the server nor a temporary one
   (408, 425, 429) nor a stream, so a retry can still succeed. The key is scoped by method, path
-  and an optional `partition` (the user), never global: a key alone would hand one user's answer
-  to another; the parts are a JSON list, so a space in a key or a partition can't forge the id of
-  another. The in-memory store keeps at most `maxKeys` (the oldest go first). The body and the
-  query are compared by a 64-bit FNV-1a fingerprint, not a cryptographic hash: there
+  and a `partition` (the user), never global: a key alone would hand one user's answer to another.
+  Without `partition`, a principal that is a `String` or a number is the partition (any other has
+  no stable text: a warning asks for one); the parts are a JSON list, so a space in a key or a partition can't forge the id of
+  another. The in-memory store keeps at most `maxKeys` and `maxBytes` of responses (the oldest go
+  first): a key count alone let large responses fill the memory. The body and the query are
+  compared by a 64-bit FNV-1a fingerprint, not a cryptographic hash: there
   is no `crypto` dependency, and a collision only matters between two bodies of the same client
   with the same key. `Idempotent-Replayed: true` (not in the draft) tells a replay apart.
 - **Deprecation is a filter** (`DeprecationFilter`), not a field of `Route`: a parent deprecates a
@@ -426,11 +437,14 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
   limit, logs) and the request scope apply before the upgrade. Its handler answers a 101 that
   carries the upgrade in its context; the server recognizes it before writing and hands the
   `HttpRequest` to `WebSocketTransformer.upgrade`. The socket is the `WebSocket` of `dart:io`
-  (no wrapper to learn), plus `sendJson`. `allowedOrigins` is explicit because CORS doesn't cover
-  WebSockets and a browser sends the cookies to any of them (cross-site WebSocket hijacking). The
+  (no wrapper to learn), plus `sendJson`. CORS doesn't cover WebSockets and a browser sends the
+  cookies to any of them (cross-site WebSocket hijacking), so without `allowedOrigins` only a page
+  of the same host connects (the host only: behind a proxy the scheme and port differ). The
   handler runs in a request scope of its own, completed when the socket closes; it isn't awaited
   as a request in progress, so the server closes the sockets itself (1001) when it shuts down,
-  also the ones that finish their upgrade while it's closing.
+  also the ones that finish their upgrade while it's closing. Compression (permessage-deflate) is
+  off unless the route asks for it: `dart:io` inflates and keeps each whole message with no size
+  limit, so a few KB of a client would become MB in memory, past `maxBodySize`.
 
 ## 11. The public API
 
@@ -474,8 +488,8 @@ Guide: [`doc/openapi.md`](doc/openapi.md).
 - **OpenAPI 3.1** (JSON Schema 2020-12: `nullable` is a type list). `Route.static` and
   `Route.websocket` are hidden by default (not operations of an API), `Route.health` documents
   itself. Swagger UI comes from a CDN at a pinned version (`swagger-ui-dist` 5.17.14, written in
-  `doc/openapi.md`), allowed by the CSP of its page: not configurable, so the page never changes
-  by itself.
+  `doc/openapi.md`), with Subresource Integrity and a CSP that allows only its two files: not
+  configurable, so the page never changes by itself, and a compromised CDN can't run its code.
 
 ## 13. Scheduled tasks
 

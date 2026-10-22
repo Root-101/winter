@@ -30,9 +30,11 @@ import 'package:winter/winter.dart';
 /// same key. Neither is a stream (Server-Sent Events). A `GET`, `HEAD` or `OPTIONS` is never
 /// filtered: they are idempotent already.
 ///
-/// The key is unique per method and path; with users, [partition] it by user too, or two users
-/// sending the same key and the same body would get each other's response. Put the filter after
-/// the `AuthFilter`, so a 401 isn't kept.
+/// The key is unique per method and path, and per user: without [partition], an authenticated
+/// request whose principal is a `String` or a number (an id) gets its own keys, so two users
+/// sending the same key and the same body never get each other's response. With another principal
+/// (an object), give [partition] (a warning is logged once). Put the filter after the
+/// `AuthFilter`, so a 401 isn't kept.
 ///
 /// {@category Filters}
 class IdempotencyFilter extends Filter {
@@ -47,8 +49,11 @@ class IdempotencyFilter extends Filter {
   /// as if there was no filter
   final bool required;
 
-  /// Who the key belongs to, besides the method and the path (the user, the API key...), or null
+  /// Who the key belongs to, besides the method and the path (the user, the API key...). Null:
+  /// the principal of the request when it's a `String` or a number
   final FutureOr<String> Function(RequestEntity request)? partition;
+
+  var _warnedShared = false;
 
   /// A filter that keeps the responses in [store] for [expiry]
   IdempotencyFilter({
@@ -102,7 +107,9 @@ class IdempotencyFilter extends Filter {
         detail: 'This operation needs an Idempotency-Key header',
       );
     }
-    final String? owner = await partition?.call(request);
+    final String? owner = partition == null
+        ? _principalOf(request)
+        : await partition!(request);
     // A JSON list, not the parts joined: a key or a partition with a space can't make the id of
     // another one (`carol` + `k2 x` and `carol k2` + `x`)
     final String id = jsonEncode([
@@ -181,16 +188,34 @@ class IdempotencyFilter extends Filter {
         !response.isStreamed;
   }
 
+  /// The principal of an authenticated request when it's an id (a `String` or a number). Any other
+  /// has no stable text to tell users apart: their keys are shared, and a warning says so once.
+  String? _principalOf(RequestEntity request) {
+    final RequestSecurityContext context = request.securityContext;
+    if (!context.isAuthenticated) return null;
+    final Object? principal = context.authentication?.principal;
+    if (principal is String || principal is num) return '$principal';
+    if (!_warnedShared) {
+      _warnedShared = true;
+      logger.warning(
+        'IdempotencyFilter without partition: the principal is a ${principal.runtimeType}, so '
+        'its users share their keys; give partition: (request) => <the id of the user>',
+      );
+    }
+    return null;
+  }
+
   /// FNV-1a of 64 bits of the [query] and the [bytes] of the body, with their length: enough to
   /// tell two requests of the same client apart (it's not a cryptographic hash, and it doesn't
   /// need to be)
   static String _fingerprint(String query, Uint8List bytes) {
     var hash = 0xcbf29ce484222325;
-    // The query, then a byte no UTF-8 text has, then the body
-    for (final int byte in [...utf8.encode(query), 0xFF, ...bytes]) {
-      // The ints of the VM have 64 bits and wrap around, as FNV needs
-      hash = (hash ^ byte) * 0x100000001b3;
-    }
+    // The ints of the VM have 64 bits and wrap around, as FNV needs
+    void add(int byte) => hash = (hash ^ byte) * 0x100000001b3;
+    // The query, then a byte no UTF-8 text has, then the body: in place, never a copy of the body
+    utf8.encode(query).forEach(add);
+    add(0xFF);
+    bytes.forEach(add);
     return '${bytes.length}:${hash.toUnsigned(64).toRadixString(16)}';
   }
 }
@@ -267,19 +292,38 @@ class InMemoryIdempotencyStore implements IdempotencyStore {
   /// every request can't grow the memory without end
   final int maxKeys;
 
+  /// The most bytes of responses kept (bodies and headers, 64 MB by default): a new one past it
+  /// forgets the oldest, and a response bigger than all of it isn't kept (a retry runs again).
+  /// [maxKeys] alone would let large responses (or ones that echo the request) fill the memory.
+  final int maxBytes;
+
   /// In the order they were reserved: the first is the oldest
   final Map<String, (IdempotencyRecord, DateTime expires)> _keys = {};
+
+  /// The size of every kept response, by key
+  final Map<String, int> _sizes = {};
+  int _bytes = 0;
   DateTime? _lastPurge;
 
-  /// An empty store of at most [maxKeys]
-  InMemoryIdempotencyStore({this.clock = DateTime.now, this.maxKeys = 100000}) {
+  /// An empty store of at most [maxKeys] and [maxBytes]
+  InMemoryIdempotencyStore({
+    this.clock = DateTime.now,
+    this.maxKeys = 100000,
+    this.maxBytes = 64 * 1024 * 1024,
+  }) {
     if (maxKeys < 1) {
       throw ArgumentError.value(maxKeys, 'maxKeys', 'Must be at least 1');
+    }
+    if (maxBytes < 1) {
+      throw ArgumentError.value(maxBytes, 'maxBytes', 'Must be at least 1');
     }
   }
 
   /// How many keys are kept (to watch the memory)
   int get size => _keys.length;
+
+  /// How many bytes of responses are kept (to watch the memory)
+  int get bytes => _bytes;
 
   @override
   Future<IdempotencyRecord?> reserve(
@@ -291,8 +335,8 @@ class InMemoryIdempotencyStore implements IdempotencyStore {
     _purge(now);
     final (IdempotencyRecord, DateTime)? entry = _keys[key];
     if (entry != null && now.isBefore(entry.$2)) return entry.$1;
-    _keys.remove(key);
-    if (_keys.length >= maxKeys) _keys.remove(_keys.keys.first);
+    _remove(key);
+    if (_keys.length >= maxKeys) _remove(_keys.keys.first);
     _keys[key] = (IdempotencyRecord(fingerprint: fingerprint), now.add(expiry));
     return null;
   }
@@ -301,17 +345,44 @@ class InMemoryIdempotencyStore implements IdempotencyStore {
   Future<void> complete(String key, IdempotentResponse response) async {
     final (IdempotencyRecord, DateTime)? entry = _keys[key];
     if (entry == null) return;
+    final int size =
+        response.body.length +
+        response.headers.entries.fold(
+          0,
+          (total, header) =>
+              total +
+              header.key.length +
+              header.value.fold(0, (sum, value) => sum + value.length),
+        );
+    if (size > maxBytes) {
+      _remove(key);
+      return;
+    }
     _keys[key] = (
       IdempotencyRecord(fingerprint: entry.$1.fingerprint, response: response),
       entry.$2,
     );
+    _sizes[key] = size;
+    _bytes += size;
+    while (_bytes > maxBytes) {
+      _remove(_sizes.keys.first);
+    }
   }
 
   @override
-  Future<void> release(String key) async => _keys.remove(key);
+  Future<void> release(String key) async => _remove(key);
 
   @override
-  Future<void> clear() async => _keys.clear();
+  Future<void> clear() async {
+    _keys.clear();
+    _sizes.clear();
+    _bytes = 0;
+  }
+
+  void _remove(String key) {
+    _keys.remove(key);
+    _bytes -= _sizes.remove(key) ?? 0;
+  }
 
   void _purge(DateTime now) {
     final DateTime? last = _lastPurge;
@@ -319,6 +390,9 @@ class InMemoryIdempotencyStore implements IdempotencyStore {
       return;
     }
     _lastPurge = now;
-    _keys.removeWhere((_, entry) => !now.isBefore(entry.$2));
+    [
+      for (final MapEntry(:key, :value) in _keys.entries)
+        if (!now.isBefore(value.$2)) key,
+    ].forEach(_remove);
   }
 }

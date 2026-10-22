@@ -1,6 +1,6 @@
 name: winter
 description: A Spring-inspired backend framework for Dart on dart:io - routing, filters, DI, JSON mapping, validation, security and consistent errors.
-version: 1.0.0-rc.3
+version: 1.0.0-rc.4
 repository: https://github.com/Root-101/winter
 issue_tracker: https://github.com/Root-101/winter/issues
 documentation: https://github.com/Root-101/winter/tree/main/doc
@@ -10,10 +10,6 @@ topics:
   - backend
   - rest
   - api
-
-# The self-signed certificate of localhost for the HTTPS tests: not a secret
-false_secrets:
-  - /test/fixtures/localhost_key.pem
 
 environment:
   sdk: ^3.13.0
