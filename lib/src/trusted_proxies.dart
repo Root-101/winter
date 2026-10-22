@@ -144,11 +144,13 @@ _Hop _xForwardedHop(RequestEntity request, int count) {
 /// The element of `Forwarded` that the first of the [count] proxies added (RFC 7239: one per
 /// proxy, appended), with its `for`, `proto` and `host`
 _Hop _forwardedHop(RequestEntity request, int count) {
-  final List<Map<String, String>> elements = [
-    for (final String line
-        in request.headersAll[HttpHeader.forwarded] ?? const <String>[])
-      ..._forwardedElements(line),
-  ];
+  final List<Map<String, String>> elements = [];
+  for (final String line
+      in request.headersAll[HttpHeader.forwarded] ?? const <String>[]) {
+    final List<Map<String, String>>? parsed = _forwardedElements(line);
+    if (parsed == null) return _noHop;
+    elements.addAll(parsed);
+  }
   final int index = elements.length - count;
   if (index < 0) return _noHop;
   final Map<String, String> element = elements[index];
@@ -160,8 +162,9 @@ _Hop _forwardedHop(RequestEntity request, int count) {
 }
 
 /// The elements of a `Forwarded` line: `name=value` pairs split by `;`, elements by `,`; a value
-/// is a token or a quoted string (with `\` escapes)
-List<Map<String, String>> _forwardedElements(String line) {
+/// is a token or a quoted string (with `\` escapes). Null for a line that ends inside a quoted
+/// string: it would swallow the elements after it, the one of the proxy included.
+List<Map<String, String>>? _forwardedElements(String line) {
   final List<Map<String, String>> elements = [{}];
   final StringBuffer name = StringBuffer();
   final StringBuffer value = StringBuffer();
@@ -198,6 +201,7 @@ List<Map<String, String>> _forwardedElements(String line) {
       (inValue ? value : name).write(char);
     }
   }
+  if (quoted) return null;
   endPair();
   return elements;
 }

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:collection/collection.dart';
+import 'package:winter/src/utils/type_of.dart';
 
 /// The environment variables of the app, read with their type:
 ///
@@ -260,9 +261,9 @@ class Env {
     });
     return {
       T: scalar,
-      _typeOf<T?>(): scalar,
+      typeOf<T?>(): scalar,
       List<T>: list,
-      _typeOf<List<T>?>(): list,
+      typeOf<List<T>?>(): list,
     };
   }
 
@@ -283,8 +284,6 @@ class Env {
     };
   }
 }
-
-Type _typeOf<T>() => T;
 
 class _Parser {
   /// What a valid value is, for the error

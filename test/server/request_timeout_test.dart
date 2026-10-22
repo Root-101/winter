@@ -207,6 +207,8 @@ void main() {
         );
       }
       const ServerConfig(requestTimeout: Duration(milliseconds: 1)).validate();
+      // Off by default: each app turns it on
+      expect(const ServerConfig().requestTimeout, isNull);
       expect(
         ServerConfig.fromEnv(
           Env(env: const {}),

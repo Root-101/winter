@@ -772,7 +772,12 @@ void main() {
         expect(page.body, contains('Ping &lt;docs&gt;'));
         expect(
           page.headers['content-security-policy'],
-          contains('https://unpkg.com'),
+          contains('https://unpkg.com/swagger-ui-dist@'),
+        );
+        // Subresource Integrity: the browser refuses another file from the CDN
+        expect(
+          RegExp(r'integrity="sha384-[A-Za-z0-9+/]{64}"').allMatches(page.body),
+          hasLength(2),
         );
       },
     );

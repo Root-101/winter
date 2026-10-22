@@ -57,11 +57,11 @@ WinterRouter router(DocumentStore store) => WinterRouter(
       path: '/documents/{id|[0-9]+}',
       handler: (request) async {
         final int id = request.pathParam<int>('id');
-        // 428 without If-Match, 412 when it isn't the version stored now
-        request.checkPreconditions(etag: store.find(id).etag, required: true);
-
         final Map<String, dynamic> changes = await request
             .body<Map<String, dynamic>>();
+        // 428 without If-Match, 412 when it isn't the version stored now. No await between the
+        // check and the save: two edits of the same version can't both pass
+        request.checkPreconditions(etag: store.find(id).etag, required: true);
         final Document saved = store.save(id, changes['text'] as String);
         return ResponseEntity.ok(
           body: saved,

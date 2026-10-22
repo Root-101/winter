@@ -125,12 +125,15 @@ Stream<List<int>> serverSentEventsBody(
 
   List<int> bytes(ServerSentEvent event) => utf8.encode(event.encode());
 
-  void restartKeepAlive() {
-    timer?.cancel();
+  /// One timer for the whole stream (not one per event): a tick sends a comment only when no
+  /// event went out since the last one
+  var sentSinceTick = false;
+  void startKeepAlive() {
     final Duration? interval = keepAlive;
     if (interval == null) return;
     timer = Timer.periodic(interval, (_) {
-      if (!output.isClosed) output.add(utf8.encode(':\n\n'));
+      if (!sentSinceTick && !output.isClosed) output.add(utf8.encode(':\n\n'));
+      sentSinceTick = false;
     });
   }
 
@@ -144,11 +147,11 @@ Stream<List<int>> serverSentEventsBody(
   output = StreamController<List<int>>(
     onListen: () {
       output.add(utf8.encode(':\n\n'));
-      restartKeepAlive();
+      startKeepAlive();
       subscription = events.listen(
         (event) {
           output.add(bytes(event));
-          restartKeepAlive();
+          sentSinceTick = true;
         },
         onError: (Object error, StackTrace stackTrace) {
           logger.error(

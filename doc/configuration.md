@@ -152,7 +152,23 @@ adds yours on top of them (handy in tests).
   shutdown. Dart can't stop the handler: it goes on in the background, its result is ignored and
   a late error is logged. Its scoped dependencies (`putScoped`) are disposed when it ends, not at
   the 503, so a connection it holds isn't given to another request. Leave room for the slowest
-  upload of the app.
+  upload of the app (`requestTimeout: Duration(minutes: 5)` for large files).
+  It is off by default and each app turns it on: it costs a timer per request, about 4 % of an
+  empty endpoint ([benchmarks](benchmarks.md)), nothing next to a real handler. In production,
+  turn it on:
+
+  ```dart
+  await Winter.start(
+    config: ServerConfig.fromEnv(
+      env,
+      requestTimeout: env.find<Duration>('REQUEST_TIMEOUT') ?? const Duration(seconds: 30),
+    ),
+    router: router,
+  );
+  ```
+
+  The case [`request_timeout.dart`](../example/api_patterns/lib/request_timeout.dart) shows the
+  503 and how to test it without waiting for the limit.
   `WinterTestClient.build(requestTimeout: ...)` takes it too.
 - HTTPS: usually the proxy in front of the app terminates TLS. To serve it from the app:
 

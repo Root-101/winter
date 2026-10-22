@@ -93,7 +93,11 @@ void main() {
   });
 
   test('a JSON of the wrong shape is a 400', () async {
-    final notAnObject = await client.post('/orders', body: '[1]');
+    final notAnObject = await client.post(
+      '/orders',
+      body: '[1]',
+      headers: {'content-type': 'application/json'},
+    );
     final badEnum = await client.post(
       '/orders',
       body: {...validOrder(), 'shipping': 'teleport'},

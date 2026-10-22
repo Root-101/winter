@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show CompressionOptions;
 
 import 'package:collection/collection.dart';
 import 'package:winter/src/openapi/open_api.dart'
@@ -116,6 +117,12 @@ class WinterRouter extends BaseRouter {
 
   final List<Route> _routes;
 
+  /// The static routes by their path, in the order they were declared: found without a regex
+  final Map<String, List<Route>> _staticRoutes = {};
+
+  /// The other routes, in the order they were declared: each one is tried with its regex
+  final List<Route> _dynamicRoutes = [];
+
   /// The routes of this router, flattened (read-only: add them with [addRoute])
   List<Route> get routes => UnmodifiableListView(_routes);
 
@@ -123,7 +130,13 @@ class WinterRouter extends BaseRouter {
     required List<Route> routes,
     required this.basePath,
     required this.config,
-  }) : _routes = routes; // ignore: prefer_initializing_formals
+  }) : _routes = routes {
+    routes.forEach(_index);
+  }
+
+  void _index(Route route) => route.isStatic
+      ? (_staticRoutes[route.path] ??= []).add(route)
+      : _dynamicRoutes.add(route);
 
   /// A router with [routes] under [basePath]: they're flattened (a child joins the path of its
   /// parent and inherits its filters) and checked by [config] now.
@@ -222,7 +235,10 @@ class WinterRouter extends BaseRouter {
   /// Routes that match the path of the request (ignoring the method)
   List<Route> _routesMatchingPath(RequestEntity request) {
     String urlPath = request.requestedUri.path;
-    return routes.where((element) => element.match(urlPath)).toList();
+    return [
+      ...?_staticRoutes[normalizePath(urlPath)],
+      ..._dynamicRoutes.where((element) => element.match(urlPath)),
+    ];
   }
 
   /// Return the route that will handle the request
@@ -245,15 +261,14 @@ class WinterRouter extends BaseRouter {
             : null);
   }
 
-  Route? _findRoute(HttpMethod method, String urlPath) {
-    /// Filter by method first, it's much cheaper than matching the path regex
-    List<Route> candidates = routes
-        .where((element) => element.method == method && element.match(urlPath))
-        .toList();
-
-    return candidates.firstWhereOrNull((element) => element.isStatic) ??
-        candidates.firstOrNull;
-  }
+  Route? _findRoute(HttpMethod method, String urlPath) =>
+      _staticRoutes[normalizePath(urlPath)]?.firstWhereOrNull(
+        (element) => element.method == method,
+      ) ??
+      /// The method first: it's much cheaper than matching the path regex
+      _dynamicRoutes.firstWhereOrNull(
+        (element) => element.method == method && element.match(urlPath),
+      );
 
   /// Methods allowed for the path of the request (empty if no route match the path)
   /// HEAD is allowed wherever GET is, and OPTIONS wherever the path exists
@@ -298,6 +313,7 @@ class WinterRouter extends BaseRouter {
         config.onDuplicatedRoute(newRoute);
       } else {
         _routes.add(newRoute);
+        _index(newRoute);
       }
     }
   }
@@ -662,12 +678,16 @@ class Route {
   ///
   /// - A request that isn't a WebSocket handshake is a 426 (`Upgrade Required`).
   /// - [allowedOrigins]: the `Origin` a browser may connect from (a 403 otherwise; `'*'` for any).
-  ///  Browsers don't apply CORS to WebSockets, so without it any website can open the socket with
-  ///  the cookies of its user (cross-site WebSocket hijacking). A client without `Origin` (not a
-  ///  browser) is let in.
+  ///  Without it, only a page of the same host as the request. Browsers don't apply CORS to
+  ///  WebSockets, so an open socket lets any website use it with the cookies of its user
+  ///  (cross-site WebSocket hijacking). A client without `Origin` (not a browser) is let in.
   /// - [protocols]: the subprotocols spoken, in order of preference; the first one the client
   ///  asks for is chosen, and a client that asks only for others is refused.
   /// - [pingInterval]: a ping every 30 seconds by default, so a dead client is found and closed.
+  /// - [compression]: off by default. `dart:io` inflates and keeps each whole message before the
+  ///  handler gets it, with no size limit, so with permessage-deflate a few KB from the client
+  ///  become MB in memory, past `maxBodySize`. Turn it on (`CompressionOptions.compressionDefault`)
+  ///  only for trusted clients.
   /// - The handler runs in a request scope of its own (`requestPrincipal`, `requestId`); an error
   ///  in it is logged and closes the socket (1011). The server closes every socket (1001) when it
   ///  shuts down.
@@ -677,6 +697,7 @@ class Route {
     List<String>? allowedOrigins,
     List<String> protocols = const [],
     Duration? pingInterval = const Duration(seconds: 30),
+    CompressionOptions compression = CompressionOptions.compressionOff,
     String? key,
     FilterConfig? filterConfig,
     RouteDocs? docs,
@@ -687,6 +708,7 @@ class Route {
       protocols: protocols,
       pingInterval: pingInterval,
       allowedOrigins: allowedOrigins,
+      compression: compression,
     ),
     key: key,
     filterConfig: filterConfig,

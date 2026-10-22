@@ -103,6 +103,13 @@ void main() {
 
       expect(response.body, 'user 42');
     });
+
+    test('Many trailing slashes cost linear time', () async {
+      // 1 MiB of slashes: quadratic it took minutes, linear it is milliseconds
+      final response = await client.get('/users${'/' * (1 << 20)}');
+
+      expect(response.body, 'users');
+    });
   });
 
   group('Literal dots', () {

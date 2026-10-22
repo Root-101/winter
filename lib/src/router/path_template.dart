@@ -88,9 +88,10 @@ class PathTemplate {
 ///
 /// {@category Routing}
 String normalizePath(String path) {
-  String normalized = path;
-  while (normalized.length > 1 && normalized.endsWith('/')) {
-    normalized = normalized.substring(0, normalized.length - 1);
+  /// One pass: a substring per slash is quadratic, and a client chooses how many it sends
+  int end = path.length;
+  while (end > 1 && path.codeUnitAt(end - 1) == 0x2F) {
+    end--;
   }
-  return normalized;
+  return end == path.length ? path : path.substring(0, end);
 }

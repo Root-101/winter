@@ -23,7 +23,7 @@ class AppMessagesEs
          overrides == null,
          'Set "translation_overrides: true" in order to enable this feature.',
        ),
-       _meta =
+       $meta =
            meta ??
            TranslationMetadata(
              locale: AppLocale.es,
@@ -31,17 +31,16 @@ class AppMessagesEs
              cardinalResolver: cardinalResolver,
              ordinalResolver: ordinalResolver,
            ) {
-    _meta.setFlatMapFunction(_flatMapFunction);
+    $meta.setFlatMapFunction(_flatMapFunction);
   }
 
   /// Metadata for the translations of <es>.
-  final TranslationMetadata<AppLocale, AppMessages> _meta;
   @override
-  TranslationMetadata<AppLocale, AppMessages> get $meta => _meta;
+  final TranslationMetadata<AppLocale, AppMessages> $meta;
 
   /// Access flat map
   @override
-  dynamic operator [](String key) => _meta.getTranslation(key);
+  dynamic operator [](String key) => $meta.getTranslation(key);
 
   late final AppMessagesEs _root = this; // ignore: unused_field
 

@@ -57,6 +57,13 @@ void main() {
               body: request.securityContext.authentication?.principal,
             ),
           ),
+          Route.get(
+            path: '/no-store',
+            filterConfig: FilterConfig([AuthFilter()]),
+            handler: (request) => ResponseEntity.ok(
+              headers: {HttpHeader.cacheControl: 'no-store'},
+            ),
+          ),
         ],
       ),
     );
@@ -88,6 +95,22 @@ void main() {
     test('the handler sees the principal, or none', () async {
       expect((await client.get('/public', headers: as['admin'])).body, 'admin');
       expect((await client.get('/public')).body, '');
+    });
+
+    test('a protected response is private, unless it says otherwise', () async {
+      final Map<String, String?> seen = {
+        for (final path in ['/authenticated', '/no-store', '/public'])
+          path: (await client.get(
+            path,
+            headers: as['admin'],
+          )).headers['cache-control'],
+      };
+
+      expect(seen, {
+        '/authenticated': 'private',
+        '/no-store': 'no-store',
+        '/public': null,
+      });
     });
   });
 

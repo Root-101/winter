@@ -1,12 +1,14 @@
 # Winter ❄️
 
+[![CI](https://github.com/Root-101/winter/actions/workflows/ci.yml/badge.svg)](https://github.com/Root-101/winter/actions/workflows/ci.yml)
+
 ### A backend framework for the Dart enthusiasts
 
 Winter is a backend framework for Dart, inspired by **Spring**, **ASP.NET Core** and **NestJS**.
 It gives you routing, filters, dependency injection, JSON mapping, validation, security and
 consistent errors, on top of `dart:io` and without code generation.
 
-> ⚠️ **Winter is an experimental project**, built in our spare time. `1.0.0-rc.3` is a release
+> ⚠️ **Winter is an experimental project**, built in our spare time. `1.0.0-rc.4` is a release
 > candidate: the API is the one we intend to keep in 1.0, but it may still change before it, and
 > the framework has been used by one real application so far ([feather-io](https://github.com/Root-101/feather-io)). Try it, build with it,
 > and [tell us](https://github.com/Root-101/winter/issues) what breaks; use it in production at
@@ -39,7 +41,7 @@ You need the Dart SDK 3.13 or newer ([get Dart](https://dart.dev/get-dart)) and 
 (`dart create my_api`). Then add Winter:
 
 ```bash
-dart pub add winter:^1.0.0-rc.3
+dart pub add winter:^1.0.0-rc.4
 ```
 
 The version is needed while 1.0.0 is a release candidate: `dart pub add winter` alone only picks
@@ -237,7 +239,7 @@ case with its test, and complete apps.
 | [object_mapper](example/object_mapper), [validation](example/validation)                                         | Field naming, adapters, `PATCH`, sealed classes; nested objects, custom and async rules                         |
 | [errors](example/errors), [filters](example/filters)                                                             | Exceptions of the domain, a handler of your own; tenants, maintenance mode, a response cache                    |
 | [security](example/security), [di](example/di)                                                                   | API keys, Basic auth, webhook signatures, login throttling; scoped services, async startup                      |
-| [api_patterns](example/api_patterns)                                                                             | Pagination, ETag and `If-Match`, content negotiation, downloads, `202` jobs, idempotency keys, `Prefer`, versioning |
+| [api_patterns](example/api_patterns)                                                                             | Pagination, ETag and `If-Match`, content negotiation, downloads, `202` jobs, idempotency keys, `Prefer`, versioning, request timeout |
 | [openapi](example/openapi), [realtime](example/realtime), [scheduling](example/scheduling), [i18n](example/i18n) | Swagger UI, Server-Sent Events, a WebSocket chat, cron tasks, translated messages                               |
 | [apps](example/apps)                                                                                             | Authentication with JWT, an orders API, a photo gallery with uploads and a chat, a production setup with Docker |
 
@@ -264,7 +266,7 @@ second. The icon by an absolute URL, so it shows on pub.dev too:
 - [Winter and other frameworks](doc/comparison.md): where its ideas come from (Spring, ASP.NET Core,
   Ktor, NestJS...) and how it compares with the Dart frameworks.
 - [`CHANGELOG.md`](CHANGELOG.md) and [`ROADMAP.md`](ROADMAP.md).
-- [Benchmarks](doc/benchmarks.md): Winter serves ~85 % of the requests per second of raw
+- [Benchmarks](doc/benchmarks.md): Winter serves ~79 % of the requests per second of raw
   `dart:io`, and the object mapper costs about a tenth more than JSON written by hand.
 
 ## Contributing
