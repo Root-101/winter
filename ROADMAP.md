@@ -346,8 +346,8 @@ Quality:
    `om`). Now `ValidationException(objectMapper:)` carries the mapper that names them, once.
 10. [x] The router matched the regex of every route on each request, up to three times on a 404.
     Now the static routes are found by their path (router benchmark ~62 000 → 165 000+ req/s).
-11. [ ] The fingerprint of `IdempotencyFilter` copies the whole body into a `List<int>` (~80 MB
-    for 10 MB): hash the bytes in place.
+11. [x] The fingerprint of `IdempotencyFilter` copied the whole body into a `List<int>` (~80 MB
+    for 10 MB). Now it hashes the bytes in place (same hash).
 12. [ ] With `autoCompress`, a stream response (static files, 206) loses its `Content-Length`
     although `dart:io` never compresses it.
 13. [ ] Small ones: request/trace ids byte by byte from `Random.secure()` (one helper), the filter

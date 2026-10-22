@@ -186,11 +186,12 @@ class IdempotencyFilter extends Filter {
   /// need to be)
   static String _fingerprint(String query, Uint8List bytes) {
     var hash = 0xcbf29ce484222325;
-    // The query, then a byte no UTF-8 text has, then the body
-    for (final int byte in [...utf8.encode(query), 0xFF, ...bytes]) {
-      // The ints of the VM have 64 bits and wrap around, as FNV needs
-      hash = (hash ^ byte) * 0x100000001b3;
-    }
+    // The ints of the VM have 64 bits and wrap around, as FNV needs
+    void add(int byte) => hash = (hash ^ byte) * 0x100000001b3;
+    // The query, then a byte no UTF-8 text has, then the body: in place, never a copy of the body
+    utf8.encode(query).forEach(add);
+    add(0xFF);
+    bytes.forEach(add);
     return '${bytes.length}:${hash.toUnsigned(64).toRadixString(16)}';
   }
 }
