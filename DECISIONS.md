@@ -166,7 +166,10 @@ Guide: [`doc/dependency-injection.md`](doc/dependency-injection.md).
   its `RequestScope`). The functions are synchronous, except `putLazyAsync`: created by
   `ready()`, which `Winter.start` awaits before opening the port, so `find` stays synchronous
   everywhere (an async `find` would turn every handler and constructor into a `Future`). A cycle
-  between async ones is detected through a `Zone`: with `await` it would wait forever.
+  between async ones is detected through a `Zone`: with `await` it would wait forever. A singleton
+  (`putLazy`, `putLazyAsync`) is created outside the `RequestScope` of the request that finds it
+  first: the listeners and timers it starts would otherwise see that request (its user, its id)
+  forever.
 - **Child containers** (`di.child()`) take the recipes of their parent, not its instances (only
   the instances given with `put` are shared): a lazy singleton of the parent gets its own instance
   in the child, so it's built with the fakes of a test and the parent never changes (sharing the

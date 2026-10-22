@@ -330,9 +330,9 @@ Security, by severity:
 4. [x] An unterminated quoted string in a client's `Forwarded` swallowed the element the proxy
    appends on the same line: the client chose `clientIp`, host and scheme. Now such a line makes
    the whole header ignored (the connection address).
-5. [ ] A `putLazy`/`putLazyAsync` singleton is created inside the zone of the first request that
-   finds it: its listeners and timers see that request's authentication and id forever. Create it
-   outside any `RequestScope`.
+5. [x] A `putLazy`/`putLazyAsync` singleton was created inside the zone of the first request that
+   finds it: its listeners and timers saw that request's authentication and id forever. Now it is
+   created outside any `RequestScope`.
 6. [ ] `InMemoryIdempotencyStore` bounds the keys, not the bytes: 16-byte requests keep 512 KiB
    responses (up to tens of GiB at 100 000 keys). A byte limit, total and per response.
 7. [ ] `Deserializer<double>`/`<num>` take `1e400` as `Infinity`: it passes the validators and
