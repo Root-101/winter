@@ -475,15 +475,18 @@ Cache-Control: no-cache
 ```
 
 **A change checks its preconditions before it's made**, against the version stored now, with
-`request.checkPreconditions(etag:, lastModified:)`:
+`request.checkPreconditions(etag:, lastModified:)`. Read the body first, and then check and save
+with no `await` between them: another request with the same version could pass the check while
+this one waits (with a database, a conditional update `WHERE version = ?`):
 
 ```dart
 Route.put(
   path: '/documents/{id}',
   handler: (request) async {
     final int id = request.pathParam<int>('id');
+    final DocumentChanges changes = await request.body<DocumentChanges>();
     request.checkPreconditions(etag: store.find(id).etag, required: true);
-    final Document saved = store.save(id, await request.body<DocumentChanges>());
+    final Document saved = store.save(id, changes);
     return ResponseEntity.ok(body: saved, headers: {HttpHeader.etag: saved.etag});
   },
 ),

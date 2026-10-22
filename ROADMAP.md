@@ -337,8 +337,8 @@ Security, by severity:
    responses (up to tens of GiB at 100 000 keys). Now `maxBytes` too (64 MB by default).
 7. [x] A `double`/`num` took `1e400` as `Infinity`: it passed the validators and every later
    response that serialized it was a 500. Now a 400 (`got a number too big`), as for `int`.
-8. [ ] The guide and the `api_patterns` example `await` the body between `checkPreconditions`
-   and the save: two writers with the same `If-Match` both pass (lost update). Read the body first.
+8. [x] The guide and the `api_patterns` example awaited the body between `checkPreconditions`
+   and the save: two writers with the same `If-Match` both passed (lost update). Now the body first.
 
 Quality:
 
