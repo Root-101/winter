@@ -327,9 +327,9 @@ Security, by severity:
 3. [x] `body<T>()` read JSON from `text/plain` or without `Content-Type`, what a cross-site page
    sends without a CORS preflight (CSRF on cookie sessions). Now a 415 for a typed body (an empty
    one without type is still `null`); clients send `Content-Type: application/json`.
-4. [ ] An unterminated quoted string in a client's `Forwarded` swallows the element the proxy
-   appends on the same line: the client chooses `clientIp`, host and scheme. A malformed line is
-   ignored.
+4. [x] An unterminated quoted string in a client's `Forwarded` swallowed the element the proxy
+   appends on the same line: the client chose `clientIp`, host and scheme. Now such a line makes
+   the whole header ignored (the connection address).
 5. [ ] A `putLazy`/`putLazyAsync` singleton is created inside the zone of the first request that
    finds it: its listeners and timers see that request's authentication and id forever. Create it
    outside any `RequestScope`.
