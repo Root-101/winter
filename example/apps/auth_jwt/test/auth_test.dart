@@ -191,6 +191,7 @@ void main() {
         // Delete a user created by this test, so the other tests don't depend on the order
         final registered = await http.post(
           Uri.parse('$baseUrl/register'),
+          headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'name': 'To Delete',
             'email': 'to-delete@example.com',
@@ -253,6 +254,7 @@ void main() {
       test('Login with an unknown email fails like a wrong password', () async {
         final response = await http.post(
           Uri.parse('$baseUrl/login'),
+          headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'email': 'nobody@example.com', 'password': 'x'}),
         );
 

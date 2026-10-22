@@ -225,13 +225,23 @@ the client can fix. Its message (only in the logs) says how to register it.
 
 ### The `Content-Type` of the request
 
-`body<T>()` reads the body as JSON when the `Content-Type` is `application/json`, any `*/*+json`
-(`application/merge-patch+json`), `text/plain` or missing. Any other one (a form, multipart,
-XML...) is a **415**.
+`body<T>()` reads the body as JSON only when the `Content-Type` is `application/json` or any
+`*/*+json` (`application/merge-patch+json`). Any other one (`text/plain`, a form, multipart,
+XML...), or none on a body that isn't empty, is a **415**. An empty request without a type is fine:
+`body<T?>()` is `null`.
 
-`text/plain` is accepted because `package:http` and the browser's `fetch()` send it for a String
-body when no header is given. `curl -d` sends `application/x-www-form-urlencoded`, so call it with
-`-H 'Content-Type: application/json'`.
+`text/plain` and a missing type are refused because they are what a page of another site can send
+without a CORS preflight: accepting them would let it reach a handler with the cookies of its user
+(CSRF). So a client sets the header itself: `package:http`, the browser's `fetch()` and `curl -d`
+don't send `application/json` on their own.
+
+```dart
+await http.post(
+  Uri.parse('https://api.example.com/users'),
+  headers: {'Content-Type': 'application/json'},
+  body: jsonEncode({'name': 'Ann'}),
+);
+```
 
 `body<String>()` is different: it decodes a JSON string (`"hello"` → `hello`) only when the
 `Content-Type` is JSON, and returns the text as it is otherwise. It never answers 415.

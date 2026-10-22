@@ -299,9 +299,11 @@ class RequestEntity {
   /// Get the body of the request, decoded as JSON with [objectMapper] (default: the global `om`,
   /// see [ObjectMapper.decode]).
   ///
-  /// - The `Content-Type` must be JSON (`application/json` or `*/*+json`), `text/plain` or none:
-  ///   any other is a 415 ([UnsupportedMediaTypeException]). `text/plain` is accepted because
-  ///   `package:http` and `fetch()` send it for a String body when no header is given.
+  /// - The `Content-Type` must be JSON (`application/json` or `*/*+json`): any other, or none on a
+  ///   body that isn't empty, is a 415 ([UnsupportedMediaTypeException]). `text/plain` and a
+  ///   missing type are what a page of another site can send without a CORS preflight, so
+  ///   accepting them would let it reach a handler with the cookies of its user (CSRF). A client
+  ///   must send `Content-Type: application/json` (`package:http` and `fetch()` don't add it).
   /// - `body<String>()` decodes a JSON string (`"hello"` → `hello`) when the `Content-Type` is
   ///   JSON, and returns the text as it is otherwise (any `Content-Type`: XML, HTML, CSV...); bytes
   ///   that are not text in the charset of the request are a 400.
@@ -327,12 +329,12 @@ class RequestEntity {
           throw _notText(encoding);
         }
       }
-    } else if (mimeType != null &&
-        !json &&
-        mimeType != MediaType.textPlain.mimeType) {
+    } else if (!json &&
+        (mimeType != null || (await _body.bytes()).isNotEmpty)) {
+      // No body needs no type: an optional body (`body<T?>()`) of an empty request is null
       throw UnsupportedMediaTypeException(
         detail:
-            'Unsupported Content-Type ${_shown(mimeType)}, '
+            'Unsupported Content-Type ${_shown(mimeType ?? 'none')}, '
             'expected ${MediaType.applicationJson.mimeType}',
       );
     }

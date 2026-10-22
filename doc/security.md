@@ -439,6 +439,9 @@ RateLimiterFilter.fromRateLimiter(
 - **Rules that need `await`.** A rule is synchronous; do that check in the service.
 - **One rate limit for several instances.** The default store is per process; use a shared store.
 - There are no sessions, CSRF protection nor OAuth flows: they belong to your app or a package.
+  `body<T>()` helps: it only reads `application/json` (or `+json`), which a page of another site
+  can't send without a CORS preflight; a form or `text/plain` is a 415. A handler that reads a
+  form (`formData()`) or acts on a `GET` with a session cookie still needs its own token.
 - Only roles and permissions: an "authority" is `hasRole(x) | hasPermission(x)`.
 - **A response header with a line break or a character that isn't ASCII** (a `Location` or a
   `Content-Disposition` built from the request) is a 500: `dart:io` can't send it, and a line break

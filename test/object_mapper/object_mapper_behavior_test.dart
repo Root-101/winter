@@ -540,28 +540,29 @@ void main() {
       }
     });
 
-    test('a form body for a JSON type is a 415', () async {
-      final response = await post(
-        'NAME=A',
-        contentType: 'application/x-www-form-urlencoded',
-      );
-
-      expect(response.statusCode, 415);
-      expect(response.body, contains('application/json'));
-    });
-
-    test('JSON, +json, text/plain and no Content-Type are accepted', () async {
-      // package:http and fetch() send text/plain for a String body
+    test('a body that is not JSON for a JSON type is a 415', () async {
+      // text/plain and no type: what another site sends without a CORS preflight (CSRF)
       for (final contentType in [
-        'application/json',
-        'application/json; charset=utf-8',
-        'application/merge-patch+json',
+        'application/x-www-form-urlencoded',
         'text/plain; charset=utf-8',
         null,
       ]) {
         final response = await post('{"NAME":"A"}', contentType: contentType);
 
-        expect(response.statusCode, 200, reason: '$contentType');
+        expect(response.statusCode, 415, reason: '$contentType');
+        expect(response.body, contains('application/json'));
+      }
+    });
+
+    test('JSON and +json are accepted', () async {
+      for (final contentType in [
+        'application/json',
+        'application/json; charset=utf-8',
+        'application/merge-patch+json',
+      ]) {
+        final response = await post('{"NAME":"A"}', contentType: contentType);
+
+        expect(response.statusCode, 200, reason: contentType);
         expect(response.body, 'A');
       }
     });

@@ -93,18 +93,28 @@ void main() {
     });
 
     test('a copy shares the body, made before or after reading it', () async {
-      final original = RequestEntity('POST', uri, body: '{"a":1}');
+      final original = RequestEntity(
+        'POST',
+        uri,
+        headers: {'content-type': 'application/json'},
+        body: '{"a":1}',
+      );
       final copy = original.copyWith(headers: {'x': '1'});
 
       expect(await copy.body<Map<String, dynamic>>(), {'a': 1});
-      expect(await original.body<String>(), '{"a":1}');
+      expect(utf8.decode(await original.bytes()), '{"a":1}');
       expect(original.headers.containsKey('x'), isFalse);
 
-      final read = RequestEntity('POST', uri, body: '{"a":1}');
+      final read = RequestEntity(
+        'POST',
+        uri,
+        headers: {'content-type': 'application/json'},
+        body: '{"a":1}',
+      );
       await read.body<Map<String, dynamic>>();
       final later = read.copyWith(headers: {'x': '1'});
 
-      expect(await later.body<String>(), '{"a":1}');
+      expect(utf8.decode(await later.bytes()), '{"a":1}');
       expect(await later.body<Map<String, dynamic>>(), {'a': 1});
     });
 
