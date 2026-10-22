@@ -374,6 +374,9 @@ Hardening (no finding), in `feature/hardening`:
     out (483 KB to 320 KB).
 22. [x] The CI installed the latest `pana`, so a new release could change the score by itself: now
     a fixed version.
+23. [x] The confirmation audit (run-2: the 8 findings closed) found a variant of 7: a body kept as
+    it came (`body<Map<String, dynamic>>()`, `List`, `dynamic`) still let a nested `1e400` in as
+    `Infinity`. Now a 400 with its path (`$.items[1].price`), whatever the type.
 
 Already decided, not redone: `fieldNaming` renames the map fields of an object given to
 `Deserializer.json` (phase 9, §2).
