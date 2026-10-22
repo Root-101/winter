@@ -240,7 +240,8 @@ Guide: [`doc/security.md`](doc/security.md).
 
 - **Authentication is the app's filter**: it sets the `Authentication` of the request; `AuthFilter`
   answers **401** with a `WWW-Authenticate` challenge (RFC 9110; `Bearer` by default) when nobody is
-  authenticated, and **403** when the rules fail.
+  authenticated, and **403** when the rules fail. What it lets through gets `Cache-Control:
+  private` (unless the response has one): a shared cache must never hand it to another user.
 - **Roles and permissions**, nothing else: an "authority" is `hasRole(x) | hasPermission(x)`.
 - **Rules see the request** (`evaluate(authentication, request)`, `rule((auth, request) => ...)`),
   so "only the owner" lives in the rule. `describe()` gives the readable form of any rule.
@@ -433,8 +434,9 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
   limit, logs) and the request scope apply before the upgrade. Its handler answers a 101 that
   carries the upgrade in its context; the server recognizes it before writing and hands the
   `HttpRequest` to `WebSocketTransformer.upgrade`. The socket is the `WebSocket` of `dart:io`
-  (no wrapper to learn), plus `sendJson`. `allowedOrigins` is explicit because CORS doesn't cover
-  WebSockets and a browser sends the cookies to any of them (cross-site WebSocket hijacking). The
+  (no wrapper to learn), plus `sendJson`. CORS doesn't cover WebSockets and a browser sends the
+  cookies to any of them (cross-site WebSocket hijacking), so without `allowedOrigins` only a page
+  of the same host connects (the host only: behind a proxy the scheme and port differ). The
   handler runs in a request scope of its own, completed when the socket closes; it isn't awaited
   as a request in progress, so the server closes the sockets itself (1001) when it shuts down,
   also the ones that finish their upgrade while it's closing. Compression (permessage-deflate) is
@@ -483,8 +485,8 @@ Guide: [`doc/openapi.md`](doc/openapi.md).
 - **OpenAPI 3.1** (JSON Schema 2020-12: `nullable` is a type list). `Route.static` and
   `Route.websocket` are hidden by default (not operations of an API), `Route.health` documents
   itself. Swagger UI comes from a CDN at a pinned version (`swagger-ui-dist` 5.17.14, written in
-  `doc/openapi.md`), allowed by the CSP of its page: not configurable, so the page never changes
-  by itself.
+  `doc/openapi.md`), with Subresource Integrity and a CSP that allows only its two files: not
+  configurable, so the page never changes by itself, and a compromised CDN can't run its code.
 
 ## 13. Scheduled tasks
 
