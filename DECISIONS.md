@@ -231,7 +231,7 @@ Guide: [`doc/logging.md`](doc/logging.md).
   expensive message (the framework's debug logs use it, so an attack doesn't cost a string per
   rejected request).
 - `ConsoleLogger` for development (UTC time, the request id, `key=value` fields; warning and error
-  to stderr) and `JsonLogger` for production (one object per line with the keys Cloud Logging
+  to stderr; control characters escaped, so a value of the client can't forge a line) and `JsonLogger` for production (one object per line with the keys Cloud Logging
   reads; fields never replace them).
 
 ## 8. Security
@@ -334,8 +334,9 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
   same key with another body or query, a 409 while it runs, the kept answer for a retry, success or error),
   reads the key quoted or bare, and keeps neither a failure of the server nor a temporary one
   (408, 425, 429) nor a stream, so a retry can still succeed. The key is scoped by method, path
-  and an optional `partition` (the user), never global: a key alone would hand one user's answer
-  to another; the parts are a JSON list, so a space in a key or a partition can't forge the id of
+  and a `partition` (the user), never global: a key alone would hand one user's answer to another.
+  Without `partition`, a principal that is a `String` or a number is the partition (any other has
+  no stable text: a warning asks for one); the parts are a JSON list, so a space in a key or a partition can't forge the id of
   another. The in-memory store keeps at most `maxKeys` and `maxBytes` of responses (the oldest go
   first): a key count alone let large responses fill the memory. The body and the query are
   compared by a 64-bit FNV-1a fingerprint, not a cryptographic hash: there
