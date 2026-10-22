@@ -162,7 +162,9 @@ class SimpleExceptionHandler extends ExceptionHandler {
             'violations': [
               for (final violation in error.violations)
                 violation.copyWith(
-                  fieldName: om.jsonFieldName(violation.fieldName),
+                  fieldName: (error.objectMapper ?? om).jsonFieldName(
+                    violation.fieldName,
+                  ),
                 ),
             ],
           },
