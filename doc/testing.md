@@ -44,7 +44,10 @@ void main() {
 ### `WinterTestClient`
 
 `WinterTestClient.build` takes the same parameters as the server: `router`, `globalFilterConfig`,
-`securityConfig`, `maxBodySize`, `requestTimeout` and `trustedProxies`.
+`securityConfig`, `maxBodySize`, `requestTimeout` and `trustedProxies`. Two differences with
+`Winter.start`: there is no `requestTimeout` unless you give one (the server has 30 seconds by
+default), and every request is to `http://localhost`, whatever its `Host` header (so a WebSocket
+without `allowedOrigins`, which only accepts a page of the same host, is tested with a real server).
 
 | Method                                     | Sends                                       |
 |--------------------------------------------|---------------------------------------------|
