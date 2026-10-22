@@ -136,7 +136,7 @@ adds yours on top of them (handy in tests).
 | `autoCompress`    | `false`        | gzip the responses for a client that accepts it (a stream is never compressed) |
 | `idleTimeout`     | 120 seconds    | How long an idle keep-alive connection stays open; `null` keeps them |
 | `securityContext` | —              | Serve HTTPS with this certificate and key                         |
-| `requestTimeout`  | —              | A response that takes longer is a 503; `null` (default) for no limit |
+| `requestTimeout`  | 30 seconds     | A response that takes longer is a 503; `null` for no limit       |
 | `trustedProxies`  | —              | The proxies in front of the app (`TrustedProxies(count, headers:)`): `clientIp` and `requestedUri` from their `X-Forwarded-*` or `Forwarded` ([deployment](deployment.md#behind-a-proxy)) |
 
 - It's `const`: `const ServerConfig(port: 9000)`.
@@ -152,7 +152,7 @@ adds yours on top of them (handy in tests).
   shutdown. Dart can't stop the handler: it goes on in the background, its result is ignored and
   a late error is logged. Its scoped dependencies (`putScoped`) are disposed when it ends, not at
   the 503, so a connection it holds isn't given to another request. Leave room for the slowest
-  upload of the app.
+  upload of the app (`requestTimeout: Duration(minutes: 5)` for large files), or `null` for none.
   `WinterTestClient.build(requestTimeout: ...)` takes it too.
 - HTTPS: usually the proxy in front of the app terminates TLS. To serve it from the app:
 

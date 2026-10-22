@@ -11,10 +11,6 @@ topics:
   - rest
   - api
 
-# The self-signed certificate of localhost for the HTTPS tests: not a secret
-false_secrets:
-  - /test/fixtures/localhost_key.pem
-
 environment:
   sdk: ^3.13.0
 
