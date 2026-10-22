@@ -369,6 +369,11 @@ Hardening (no finding), in `feature/hardening`:
     is a `String` or a number is the partition, and another kind logs a warning once.
 19. [x] `ConsoleLogger` wrote control characters as they came: now escaped (`\n`, `\x1b`), so a
     value of the client can't forge a log line nor send terminal codes.
+20. [x] `ServerConfig.requestTimeout` had no limit by default: now 30 seconds (`null` for none).
+21. [x] The package carried `test/` (with the TLS key of the tests as a "false secret"): now left
+    out (483 KB to 320 KB).
+22. [x] The CI installed the latest `pana`, so a new release could change the score by itself: now
+    a fixed version.
 
 Already decided, not redone: `fieldNaming` renames the map fields of an object given to
 `Deserializer.json` (phase 9, §2).
