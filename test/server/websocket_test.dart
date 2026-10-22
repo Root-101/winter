@@ -139,6 +139,21 @@ void main() {
     },
   );
 
+  test('without allowedOrigins, only a page of the same host', () async {
+    await expectLater(
+      WebSocket.connect(
+        '$base/echo/lobby',
+        headers: {'Origin': 'https://evil.example.com'},
+      ),
+      throwsA(isA<WebSocketException>()),
+    );
+    final WebSocket sameHost = await WebSocket.connect(
+      '$base/echo/lobby',
+      headers: {'Origin': 'https://localhost'},
+    );
+    await sameHost.close();
+  });
+
   test(
     'allowedOrigins: another origin is refused, no origin is let in',
     () async {

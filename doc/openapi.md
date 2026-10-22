@@ -209,8 +209,9 @@ router
 - Swagger UI is loaded by the browser from a CDN: `swagger-ui-dist` **5.17.14** from unpkg. The
   version is fixed on purpose, so the page never changes by itself (a new release, or a
   compromised package, never reaches your app without a new version of Winter), and it is not
-  configurable; its page allows that CDN in its `Content-Security-Policy`. Protect both routes
-  with `filterConfig:` if the document is not public.
+  configurable; its page loads the two files with Subresource Integrity (the browser refuses
+  anything else the CDN might serve) and its `Content-Security-Policy` allows only them. Protect
+  both routes with `filterConfig:` if the document is not public.
 - `OpenApi(...).toJson()` gives the document as a `Map`: write it to a file for a client generator.
 
 ## Common cases
