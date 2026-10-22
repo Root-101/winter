@@ -11,7 +11,7 @@ be. A real handler (a database, JSON of some KB) makes it a small share of each 
   `dart run` is JIT, slower and noisier.
 - Absolute numbers change from one day to another on the same machine (load, power plan); compare
   the ratios, which hold. The numbers below are of 2026-10-22 (after the security and quality
-  audits, roadmap 10), each one the range of several runs.
+  audits of 2026-10-21), each one the range of several runs.
 
 ```bash
 dart compile exe benchmark/http_benchmark.dart -o build/http_bench.exe
@@ -56,7 +56,7 @@ No network: what Winter does for a request, measured in a loop.
 | `router_benchmark.dart`: 31 routes, path params, JSON body |  ~415 000 - 445 000 |
 
 Before the audits: ~490 000 - 530 000 and ~189 000. The router finds a static route by its path
-in a map instead of trying the regex of every route (roadmap 10.10), and the ids of a request take
+in a map instead of trying the regex of every route, and the ids of a request take
 4 random bytes per call instead of one.
 
 `server_benchmark.dart` also runs a real server with a client in the same process (sequential and
