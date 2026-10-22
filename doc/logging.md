@@ -77,7 +77,9 @@ if (logger.isEnabled(LogLevel.debug)) {
 - Both take `minLevel` (default `LogLevel.info`): `ConsoleLogger(minLevel: LogLevel.debug)`.
 - The time is always UTC.
 - `ConsoleLogger` writes debug and info to stdout, warning and error to stderr, with the error and
-  the stack trace in the next lines.
+  the stack trace in the next lines. A control character in the message, the fields or the error
+  is written as an escape (`\n`, `\x1b`): a value of the client can't start a fake log line nor
+  send codes to the terminal.
 - `JsonLogger` writes everything to stdout, one line per log. `time`, `severity` and `message`
   are the keys that Cloud Logging reads by itself (Datadog and Loki map them easily); `requestId`,
   `traceId` and `spanId` (the W3C trace, below) are there inside a request; `error` and `stackTrace` are strings. The `fields` are members of

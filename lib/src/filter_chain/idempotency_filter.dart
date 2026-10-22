@@ -30,9 +30,11 @@ import 'package:winter/winter.dart';
 /// same key. Neither is a stream (Server-Sent Events). A `GET`, `HEAD` or `OPTIONS` is never
 /// filtered: they are idempotent already.
 ///
-/// The key is unique per method and path; with users, [partition] it by user too, or two users
-/// sending the same key and the same body would get each other's response. Put the filter after
-/// the `AuthFilter`, so a 401 isn't kept.
+/// The key is unique per method and path, and per user: without [partition], an authenticated
+/// request whose principal is a `String` or a number (an id) gets its own keys, so two users
+/// sending the same key and the same body never get each other's response. With another principal
+/// (an object), give [partition] (a warning is logged once). Put the filter after the
+/// `AuthFilter`, so a 401 isn't kept.
 ///
 /// {@category Filters}
 class IdempotencyFilter extends Filter {
@@ -47,8 +49,11 @@ class IdempotencyFilter extends Filter {
   /// as if there was no filter
   final bool required;
 
-  /// Who the key belongs to, besides the method and the path (the user, the API key...), or null
+  /// Who the key belongs to, besides the method and the path (the user, the API key...). Null:
+  /// the principal of the request when it's a `String` or a number
   final FutureOr<String> Function(RequestEntity request)? partition;
+
+  var _warnedShared = false;
 
   /// A filter that keeps the responses in [store] for [expiry]
   IdempotencyFilter({
@@ -102,7 +107,9 @@ class IdempotencyFilter extends Filter {
         detail: 'This operation needs an Idempotency-Key header',
       );
     }
-    final String? owner = await partition?.call(request);
+    final String? owner = partition == null
+        ? _principalOf(request)
+        : await partition!(request);
     // A JSON list, not the parts joined: a key or a partition with a space can't make the id of
     // another one (`carol` + `k2 x` and `carol k2` + `x`)
     final String id = jsonEncode([
@@ -179,6 +186,23 @@ class IdempotencyFilter extends Filter {
         status != 425 &&
         status != 429 &&
         !response.isStreamed;
+  }
+
+  /// The principal of an authenticated request when it's an id (a `String` or a number). Any other
+  /// has no stable text to tell users apart: their keys are shared, and a warning says so once.
+  String? _principalOf(RequestEntity request) {
+    final RequestSecurityContext context = request.securityContext;
+    if (!context.isAuthenticated) return null;
+    final Object? principal = context.authentication?.principal;
+    if (principal is String || principal is num) return '$principal';
+    if (!_warnedShared) {
+      _warnedShared = true;
+      logger.warning(
+        'IdempotencyFilter without partition: the principal is a ${principal.runtimeType}, so '
+        'its users share their keys; give partition: (request) => <the id of the user>',
+      );
+    }
+    return null;
   }
 
   /// FNV-1a of 64 bits of the [query] and the [bytes] of the body, with their length: enough to
