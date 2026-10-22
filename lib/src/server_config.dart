@@ -82,9 +82,9 @@ class ServerConfig {
   /// shutdown; the handler can't be stopped, so it goes on in the background and its result is
   /// ignored (its scoped dependencies are disposed when it ends). Sending the response is not
   /// timed (a stream, like Server-Sent Events, can go on).
-  /// Default 30 seconds, so a slow client or a stuck handler can't hold a request forever; `null`
-  /// for no limit. Leave room for the slow uploads of the app (a route of large files may need
-  /// minutes).
+  /// Default `null`: no limit. Turn it on in production (`Duration(seconds: 30)`, say), so a slow
+  /// client or a stuck dependency can't hold a request forever; leave room for the slowest route
+  /// of the app (a large upload may need minutes). It costs a timer per request.
   final Duration? requestTimeout;
 
   /// The reverse proxies in front of the app whose headers about the client are trusted (the
@@ -103,7 +103,7 @@ class ServerConfig {
     this.autoCompress = false,
     this.idleTimeout = const Duration(seconds: 120),
     this.securityContext,
-    this.requestTimeout = const Duration(seconds: 30),
+    this.requestTimeout,
     this.trustedProxies,
   });
 
@@ -121,7 +121,7 @@ class ServerConfig {
     bool autoCompress = false,
     Duration? idleTimeout = const Duration(seconds: 120),
     SecurityContext? securityContext,
-    Duration? requestTimeout = const Duration(seconds: 30),
+    Duration? requestTimeout,
     TrustedProxies? trustedProxies,
   }) => ServerConfig(
     host: env.find<String>('HOST')?.trim() ?? host,
