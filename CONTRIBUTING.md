@@ -42,7 +42,7 @@ on every push of a `feature/*` branch: run the checks of above by hand there):
   classes with the same name and a failing `fromJson` work, and the errors have no obfuscated
   names.
 - **Package**: `dart pub publish --dry-run` without warnings, and an archive under 1 MB.
-- **pana**: on Linux (it fails on Windows), red below 150 of its 160 points.
+- **pana**: on Linux (it fails on Windows), at a fixed version, red below 150 of its 160 points.
 
 ## How the code is written
 
