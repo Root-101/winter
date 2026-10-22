@@ -3,9 +3,8 @@
 What is missing to publish `winter` 1.0.0: an HTTP framework that covers the main use cases of a
 REST API. Not at the level of Spring, but with the basics complete, stable and documented.
 
-> **Now: `1.0.0-rc.3` is on pub.dev (2026-10-20).** Everything planned up to 1.0 is done (the
-> summary is below); `develop` adds the fixes of two audits since. Next: `1.0.0-rc.4`, then
-> `1.0.0`.
+> **Now: `1.0.0-rc.4` (2026-10-22)**, with the fixes of two audits after `1.0.0-rc.3`. Everything
+> planned up to 1.0 is done (the summary is below). Next: use it for a while, then `1.0.0`.
 
 The decisions behind each point are in `DECISIONS.md` (§ numbers below), the behavior in the
 tests, the usage in `doc/`, and what each version has in `CHANGELOG.md`.
@@ -36,29 +35,29 @@ criteria:
 What `develop` has, module by module (the guide in `doc/`, the decisions in `DECISIONS.md`, and a
 case per feature in `example/`):
 
-| Module | What it covers | Guide | Decisions |
-|--------|----------------|-------|-----------|
-| HTTP engine | `dart:io` directly (~79 % of it on an empty endpoint), HTTPS, gzip, `idleTimeout`, `maxBodySize`, an optional `requestTimeout` (503), graceful shutdown | `configuration.md`, `deployment.md` | §10 |
-| Requests and responses | Winter's own `RequestEntity`/`ResponseEntity`: multi-value headers, cookies, `copyWith`, every kind of body (JSON, text, bytes, forms, multipart streamed or whole), `clientIp`, `Prefer`, `Link` | `requests-and-responses.md` | §10 |
-| Pipeline | Global and route filters by `order`, the request scope (`Zone`: user, locale, id and trace from any code), an exception handler inside the chain | `architecture.md`, `filters.md` | §9, §10 |
-| Router | Nested routes, regex params, static routes by a map, 404/405 with `Allow`, automatic HEAD/OPTIONS, `QUERY`, a route table checked at start, `MultiRouter`, `ServeRouter` | `routing.md` | §9 |
-| Static files and health | `Route.static` (ETag, 304, `Range`, no traversal, Windows short names), `Route.health` (`application/health+json`) | `routing.md` | §9 |
-| Object mapper | JSON ↔ objects without codegen (`toJson()`, `Serializer`/`Deserializer`, `JsonAdapter`), generic types, enums, strict primitives, `fieldNaming`, `rejectUnknownFields`, `PatchValue`, errors with the path of the value, UTF-8 bytes directly | `object-mapper.md` | §2 |
-| Validation | Typed validators chained per field, nested objects/lists/maps, async rules, `sensitive` fields, a 422 with `code` and `params` per violation | `validation.md` | §3 |
-| Errors | Problem Details (RFC 9457) for every error, `ApiException` and its shortcuts, `SimpleExceptionHandler.on<T>()`, a 500 that never shows its cause | `error-handling.md` | §4 |
-| Dependency injection | `put`, `putLazy`, `putLazyAsync` (+ `ready()`), `putFactory`, `putScoped` (per request), tags, `onDispose`, child containers for tests | `dependency-injection.md` | §5 |
-| Configuration | `Env` (typed values, `.env` files and profiles, errors without values), `ServerConfig` (`const`, validated, `fromEnv`) | `configuration.md` | §6 |
-| Logging and tracing | `ConsoleLogger`/`JsonLogger`, structured fields, a request id in every log and response, W3C Trace Context, never a value of the client | `logging.md` | §7 |
-| Security | `AuthFilter` with composable rules, typed principal, CORS, security headers (+ `nosniff`, `DENY` on every response), `Cache-Control: private` behind auth, rate limiter with RateLimit headers, trusted proxies, response headers checked before sending | `security.md` | §8 |
-| API patterns | Conditional requests (304, 412/428), idempotency keys (per user), deprecation (`Deprecation`/`Sunset`), pagination (`WebLink.pages`), `Prefer` | `requests-and-responses.md`, `filters.md` | §9, §10 |
-| WebSockets and Server-Sent Events | `Route.websocket` (filters on the handshake, same-host origin by default, compression opt-in), `ResponseEntity.sse` (keep-alive, ends on shutdown) | `routing.md`, `requests-and-responses.md` | §10 |
-| OpenAPI | `Route.openApi` (3.1, from the routes, the filters and the validation rules), `Route.swaggerUi` (pinned, SRI) | `openapi.md` | §12 |
-| Scheduled tasks | `Scheduler` with `every`/`cron`, each run in a request scope, waited on shutdown | `scheduling.md` | §13 |
-| i18n | The validation messages in the language of the request (English, Spanish), `requestLocale`, `Vary` by itself | `i18n.md` | §1 |
-| Testing | `WinterTestClient`: the whole pipeline in memory, no ports, in parallel | `testing.md` | §10 |
-| Quality | ~1225 tests, coverage ~99.7 %, two security audits (the last one with every finding closed), benchmarks | `benchmarks.md` | |
-| Examples | 13 topics with one case and its test each (`routing`, `bodies`, `validation`, `object_mapper`, `errors`, `filters`, `security`, `di`, `api_patterns`, `openapi`, `realtime`, `scheduling`, `i18n`), and the apps `auth_jwt`, `orders`, `files_gallery`, `production` | `example/README.md` | |
-| CI and package | GitHub Actions on Linux and Windows (format, analyze, tests, examples, slang, doc snippets, an obfuscated build, the dry run, pana), actions pinned, a package of 320 KB | `CONTRIBUTING.md` | |
+| Module                            | What it covers                                                                                                                                                                                                                                                       | Guide                                     | Decisions |
+|-----------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------|-----------|
+| HTTP engine                       | `dart:io` directly (~79 % of it on an empty endpoint), HTTPS, gzip, `idleTimeout`, `maxBodySize`, an optional `requestTimeout` (503), graceful shutdown                                                                                                              | `configuration.md`, `deployment.md`       | §10       |
+| Requests and responses            | Winter's own `RequestEntity`/`ResponseEntity`: multi-value headers, cookies, `copyWith`, every kind of body (JSON, text, bytes, forms, multipart streamed or whole), `clientIp`, `Prefer`, `Link`                                                                    | `requests-and-responses.md`               | §10       |
+| Pipeline                          | Global and route filters by `order`, the request scope (`Zone`: user, locale, id and trace from any code), an exception handler inside the chain                                                                                                                     | `architecture.md`, `filters.md`           | §9, §10   |
+| Router                            | Nested routes, regex params, static routes by a map, 404/405 with `Allow`, automatic HEAD/OPTIONS, `QUERY`, a route table checked at start, `MultiRouter`, `ServeRouter`                                                                                             | `routing.md`                              | §9        |
+| Static files and health           | `Route.static` (ETag, 304, `Range`, no traversal, Windows short names), `Route.health` (`application/health+json`)                                                                                                                                                   | `routing.md`                              | §9        |
+| Object mapper                     | JSON ↔ objects without codegen (`toJson()`, `Serializer`/`Deserializer`, `JsonAdapter`), generic types, enums, strict primitives, `fieldNaming`, `rejectUnknownFields`, `PatchValue`, errors with the path of the value, UTF-8 bytes directly                        | `object-mapper.md`                        | §2        |
+| Validation                        | Typed validators chained per field, nested objects/lists/maps, async rules, `sensitive` fields, a 422 with `code` and `params` per violation                                                                                                                         | `validation.md`                           | §3        |
+| Errors                            | Problem Details (RFC 9457) for every error, `ApiException` and its shortcuts, `SimpleExceptionHandler.on<T>()`, a 500 that never shows its cause                                                                                                                     | `error-handling.md`                       | §4        |
+| Dependency injection              | `put`, `putLazy`, `putLazyAsync` (+ `ready()`), `putFactory`, `putScoped` (per request), tags, `onDispose`, child containers for tests                                                                                                                               | `dependency-injection.md`                 | §5        |
+| Configuration                     | `Env` (typed values, `.env` files and profiles, errors without values), `ServerConfig` (`const`, validated, `fromEnv`)                                                                                                                                               | `configuration.md`                        | §6        |
+| Logging and tracing               | `ConsoleLogger`/`JsonLogger`, structured fields, a request id in every log and response, W3C Trace Context, never a value of the client                                                                                                                              | `logging.md`                              | §7        |
+| Security                          | `AuthFilter` with composable rules, typed principal, CORS, security headers (+ `nosniff`, `DENY` on every response), `Cache-Control: private` behind auth, rate limiter with RateLimit headers, trusted proxies, response headers checked before sending             | `security.md`                             | §8        |
+| API patterns                      | Conditional requests (304, 412/428), idempotency keys (per user), deprecation (`Deprecation`/`Sunset`), pagination (`WebLink.pages`), `Prefer`                                                                                                                       | `requests-and-responses.md`, `filters.md` | §9, §10   |
+| WebSockets and Server-Sent Events | `Route.websocket` (filters on the handshake, same-host origin by default, compression opt-in), `ResponseEntity.sse` (keep-alive, ends on shutdown)                                                                                                                   | `routing.md`, `requests-and-responses.md` | §10       |
+| OpenAPI                           | `Route.openApi` (3.1, from the routes, the filters and the validation rules), `Route.swaggerUi` (pinned, SRI)                                                                                                                                                        | `openapi.md`                              | §12       |
+| Scheduled tasks                   | `Scheduler` with `every`/`cron`, each run in a request scope, waited on shutdown                                                                                                                                                                                     | `scheduling.md`                           | §13       |
+| i18n                              | The validation messages in the language of the request (English, Spanish), `requestLocale`, `Vary` by itself                                                                                                                                                         | `i18n.md`                                 | §1        |
+| Testing                           | `WinterTestClient`: the whole pipeline in memory, no ports, in parallel                                                                                                                                                                                              | `testing.md`                              | §10       |
+| Quality                           | ~1225 tests, coverage ~99.7 %, two security audits (the last one with every finding closed), benchmarks                                                                                                                                                              | `benchmarks.md`                           |           |
+| Examples                          | 13 topics with one case and its test each (`routing`, `bodies`, `validation`, `object_mapper`, `errors`, `filters`, `security`, `di`, `api_patterns`, `openapi`, `realtime`, `scheduling`, `i18n`), and the apps `auth_jwt`, `orders`, `files_gallery`, `production` | `example/README.md`                       |           |
+| CI and package                    | GitHub Actions on Linux and Windows (format, analyze, tests, examples, slang, doc snippets, an obfuscated build, the dry run, pana), actions pinned, a package of 320 KB                                                                                             | `CONTRIBUTING.md`                         |           |
 
 ---
 
@@ -72,17 +71,19 @@ Two of them change what a client sees: a typed `body<T>()` needs `Content-Type: 
 (415 otherwise), and a `Route.websocket` without `allowedOrigins` only accepts a page of the same
 host. That's why a new rc goes first, not `1.0.0`.
 
-1. [ ] The [release review](#release-review-before-every-release). Already done in the audits:
-   security (two audits, the last one confirmed every finding closed), tests and examples passing,
-   docs and CHANGELOG up to date, `dart doc`, the snippets, the publish dry run (320 KB) and the
-   benchmarks. Left: the public API added since rc.3 (`compression:`, `maxBytes`/`bytes`,
-   `ValidationException.objectMapper`) and the exports of `lib/winter.dart`; `dart pub outdated`
-   and the advisories of pub.dev; the coverage and its uncovered lines, tests that overlap; every
-   example run with `dart run`; a last read of the README and `CONTRIBUTING.md`; `pana` on Linux;
-   `messages*.g.dart` regenerated with the lowest slang.
-2. [ ] `release/1.0.0-rc.4` from `develop`: the version in `pubspec.yaml`, the `Unreleased` entry of
-   the CHANGELOG as `1.0.0-rc.4` with its date, the dry run (size and file list).
-3. [ ] Merge into `main`, tag `v1.0.0-rc.4`, merge back into `develop`.
+1. [x] The [release review](#release-review-before-every-release) (2026-10-22). Found and fixed:
+   two stale lines of the README (Winter at ~85 % of `dart:io`, now ~79 %; the request timeout case
+   missing from `api_patterns`). Checked: the API added since rc.3 (`Route.websocket(compression:)`,
+   `InMemoryIdempotencyStore.maxBytes`/`bytes`, `ValidationException.objectMapper`) is consistent
+   and documented, and the new helpers are hidden from `lib/winter.dart`; `dart pub outdated` only
+   minor updates inside the constraints, no advisory on pub.dev; 1225 tests, coverage 99.73 % (the
+   12 uncovered lines are the known ones of `CLAUDE.md`); `pana` **160/160** (Docker, clean clone);
+   `messages*.g.dart` equal to the lowest slang; `dart doc` without warnings, the doc snippets, the
+   tests of every example; every example started with `dart run` (38 on port 8080, the other 25
+   on 18080 because another local service had 8080); the benchmarks of the same day.
+2. [x] `release/1.0.0-rc.4` from `develop`: the version in `pubspec.yaml`, the CHANGELOG entry
+   with its date, the dry run (size and file list).
+3. [x] Merge into `main`, tag `v1.0.0-rc.4`, merge back into `develop`.
 4. [ ] Publish from the terminal of the maintainer (`dart pub publish` asks for a confirmation).
 
 ### Release `1.0.0`
@@ -135,7 +136,8 @@ The details of each step are in `CHANGELOG.md`, `DECISIONS.md` and the git histo
 - **Phase 8, standards:** RFC 9457, RateLimit headers, W3C Trace Context, trusted proxies,
   conditional requests, `Deprecation`/`Sunset`, `Link`, idempotency keys, `Prefer`, health format.
 - **Releases:** `1.0.0-rc.1` (2026-10-09, used in feather-io), `1.0.0-rc.2` (2026-10-20,
-  retracted: it carried `build/`), `1.0.0-rc.3` (2026-10-20).
+  retracted: it carried `build/`), `1.0.0-rc.3` (2026-10-20), `1.0.0-rc.4` (2026-10-22, the
+  audits).
 - **Audits (2026-10-21/22, in `develop`):** a security audit (8 findings: a quadratic route
   lookup, WebSocket compression, CSRF through `text/plain`, `Forwarded` parsing, singletons in a
   request scope, idempotency memory, `Infinity`, a lost update in the docs) and a quality audit
