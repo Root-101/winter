@@ -678,9 +678,9 @@ class Route {
   ///
   /// - A request that isn't a WebSocket handshake is a 426 (`Upgrade Required`).
   /// - [allowedOrigins]: the `Origin` a browser may connect from (a 403 otherwise; `'*'` for any).
-  ///  Browsers don't apply CORS to WebSockets, so without it any website can open the socket with
-  ///  the cookies of its user (cross-site WebSocket hijacking). A client without `Origin` (not a
-  ///  browser) is let in.
+  ///  Without it, only a page of the same host as the request. Browsers don't apply CORS to
+  ///  WebSockets, so an open socket lets any website use it with the cookies of its user
+  ///  (cross-site WebSocket hijacking). A client without `Origin` (not a browser) is let in.
   /// - [protocols]: the subprotocols spoken, in order of preference; the first one the client
   ///  asks for is chosen, and a client that asks only for others is refused.
   /// - [pingInterval]: a ping every 30 seconds by default, so a dead client is found and closed.

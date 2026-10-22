@@ -355,10 +355,18 @@ Quality:
     the filters of each request (3-6 of them, a stable sort; caching it costs more code than it
     saves).
 
-Hardening (no finding, only if cheap): `Route.websocket(allowedOrigins:)` open by default,
-Swagger UI from unpkg without SRI, `permissions:` and actions pinned by SHA in the CI,
-`Cache-Control: private` on protected responses. Already decided, not redone: `fieldNaming`
-renames the map fields of an object given to `Deserializer.json` (phase 9, §2).
+Hardening (no finding), in `feature/hardening`:
+
+14. [x] `Route.websocket` without `allowedOrigins` accepted any `Origin`: now only a page of the
+    same host (the host only, as behind a proxy the scheme and port differ).
+15. [x] Swagger UI loaded its two files from unpkg without Subresource Integrity, under a CSP that
+    allowed all of unpkg: now `integrity` (SHA-384) and a CSP with only those two files.
+16. [x] The CI ran with the default token and actions by tag: now `permissions: contents: read` and
+    every action pinned by commit.
+17. [x] A response behind `AuthFilter` had no `Cache-Control`: now `private` unless it has one.
+
+Already decided, not redone: `fieldNaming` renames the map fields of an object given to
+`Deserializer.json` (phase 9, §2).
 
 ### 6.5 Release `1.0.0`
 

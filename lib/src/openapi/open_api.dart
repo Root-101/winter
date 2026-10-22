@@ -506,10 +506,10 @@ RequestHandler swaggerUiHandler({
     body: page,
     headers: {
       HttpHeader.contentType: 'text/html; charset=utf-8',
-      // Swagger UI comes from a CDN and starts with an inline script
+      // Swagger UI comes from a CDN (only its two files) and starts with an inline script
       HttpHeader.contentSecurityPolicy:
-          "default-src 'none'; script-src 'unsafe-inline' https://unpkg.com; "
-          "style-src 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://unpkg.com; "
+          "default-src 'none'; script-src 'unsafe-inline' $_swaggerUiJs; "
+          "style-src 'unsafe-inline' $_swaggerUiCss; img-src 'self' data: https://unpkg.com; "
           "connect-src 'self'",
       HttpHeader.xFrameOptions: 'DENY',
     },
@@ -520,6 +520,19 @@ RequestHandler swaggerUiHandler({
 /// equal to the one named in `doc/openapi.md` and in the dartdoc of `Route.swaggerUi`
 const String _swaggerUiVersion = '5.17.14';
 
+const String _swaggerUiCss =
+    'https://unpkg.com/swagger-ui-dist@$_swaggerUiVersion/swagger-ui.css';
+const String _swaggerUiJs =
+    'https://unpkg.com/swagger-ui-dist@$_swaggerUiVersion/swagger-ui-bundle.js';
+
+/// The SHA-384 of those two files (Subresource Integrity): the browser refuses them if the CDN
+/// serves anything else. A new [_swaggerUiVersion] needs new ones:
+/// `curl -sL <url> | openssl dgst -sha384 -binary | openssl base64 -A`
+const String _swaggerUiCssIntegrity =
+    'sha384-wxLW6kwyHktdDGr6Pv1zgm/VGJh99lfUbzSn6HNHBENZlCN7W602k9VkGdxuFvPn';
+const String _swaggerUiJsIntegrity =
+    'sha384-wmyclcVGX/WhUkdkATwhaK1X1JtiNrr2EoYJ+diV3vj4v6OC5yCeSu+yW13SYJep';
+
 String _swaggerPage(String specUrl, String title) =>
     '''
 <!doctype html>
@@ -528,11 +541,11 @@ String _swaggerPage(String specUrl, String title) =>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${const HtmlEscape().convert(title)}</title>
-  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@$_swaggerUiVersion/swagger-ui.css">
+  <link rel="stylesheet" href="$_swaggerUiCss" integrity="$_swaggerUiCssIntegrity" crossorigin="anonymous">
 </head>
 <body>
   <div id="swagger-ui"></div>
-  <script src="https://unpkg.com/swagger-ui-dist@$_swaggerUiVersion/swagger-ui-bundle.js"></script>
+  <script src="$_swaggerUiJs" integrity="$_swaggerUiJsIntegrity" crossorigin="anonymous"></script>
   <script>
     SwaggerUIBundle({url: ${jsonEncode(specUrl)}, dom_id: '#swagger-ui', deepLinking: true});
   </script>

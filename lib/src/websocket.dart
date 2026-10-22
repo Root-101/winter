@@ -84,10 +84,10 @@ RequestHandler webSocketRouteHandler({
     );
   }
   final String? origin = request.headers[HttpHeader.origin];
-  if (allowedOrigins != null &&
-      origin != null &&
-      !allowedOrigins.contains('*') &&
-      !allowedOrigins.contains(origin)) {
+  if (origin != null &&
+      !(allowedOrigins == null
+          ? _sameHost(origin, request)
+          : allowedOrigins.contains('*') || allowedOrigins.contains(origin))) {
     throw const ForbiddenException(detail: 'The origin is not allowed');
   }
   final ResponseEntity<void> response = ResponseEntity<void>(
@@ -106,6 +106,12 @@ RequestHandler webSocketRouteHandler({
   );
   return response;
 };
+
+/// Whether a page at [origin] is on the host of [request]: the default of a WebSocket without
+/// `allowedOrigins` (the host only: behind a proxy the scheme and port the server sees differ)
+bool _sameHost(String origin, RequestEntity request) =>
+    Uri.tryParse(origin)?.host.toLowerCase() ==
+    request.requestedUri.host.toLowerCase();
 
 /// A `GET` with `Upgrade: websocket`, `Connection: upgrade`, a `Sec-WebSocket-Key` and
 /// `Sec-WebSocket-Version: 13`: what `dart:io` needs to upgrade it. Any other is a 426, never a

@@ -62,7 +62,11 @@ class AuthFilter extends Filter {
       }
     }
 
-    return chain.doFilter(request);
+    final ResponseEntity response = await chain.doFilter(request);
+    // It depends on who asked: a shared cache (a CDN, a proxy) must not give it to someone else
+    return response.headersAll.containsKey(HttpHeader.cacheControl)
+        ? response
+        : response.copyWith(headers: {HttpHeader.cacheControl: 'private'});
   }
 
   @override
