@@ -335,8 +335,9 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
   (408, 425, 429) nor a stream, so a retry can still succeed. The key is scoped by method, path
   and an optional `partition` (the user), never global: a key alone would hand one user's answer
   to another; the parts are a JSON list, so a space in a key or a partition can't forge the id of
-  another. The in-memory store keeps at most `maxKeys` (the oldest go first). The body and the
-  query are compared by a 64-bit FNV-1a fingerprint, not a cryptographic hash: there
+  another. The in-memory store keeps at most `maxKeys` and `maxBytes` of responses (the oldest go
+  first): a key count alone let large responses fill the memory. The body and the query are
+  compared by a 64-bit FNV-1a fingerprint, not a cryptographic hash: there
   is no `crypto` dependency, and a collision only matters between two bodies of the same client
   with the same key. `Idempotent-Replayed: true` (not in the draft) tells a replay apart.
 - **Deprecation is a filter** (`DeprecationFilter`), not a field of `Route`: a parent deprecates a

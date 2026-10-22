@@ -267,19 +267,38 @@ class InMemoryIdempotencyStore implements IdempotencyStore {
   /// every request can't grow the memory without end
   final int maxKeys;
 
+  /// The most bytes of responses kept (bodies and headers, 64 MB by default): a new one past it
+  /// forgets the oldest, and a response bigger than all of it isn't kept (a retry runs again).
+  /// [maxKeys] alone would let large responses (or ones that echo the request) fill the memory.
+  final int maxBytes;
+
   /// In the order they were reserved: the first is the oldest
   final Map<String, (IdempotencyRecord, DateTime expires)> _keys = {};
+
+  /// The size of every kept response, by key
+  final Map<String, int> _sizes = {};
+  int _bytes = 0;
   DateTime? _lastPurge;
 
-  /// An empty store of at most [maxKeys]
-  InMemoryIdempotencyStore({this.clock = DateTime.now, this.maxKeys = 100000}) {
+  /// An empty store of at most [maxKeys] and [maxBytes]
+  InMemoryIdempotencyStore({
+    this.clock = DateTime.now,
+    this.maxKeys = 100000,
+    this.maxBytes = 64 * 1024 * 1024,
+  }) {
     if (maxKeys < 1) {
       throw ArgumentError.value(maxKeys, 'maxKeys', 'Must be at least 1');
+    }
+    if (maxBytes < 1) {
+      throw ArgumentError.value(maxBytes, 'maxBytes', 'Must be at least 1');
     }
   }
 
   /// How many keys are kept (to watch the memory)
   int get size => _keys.length;
+
+  /// How many bytes of responses are kept (to watch the memory)
+  int get bytes => _bytes;
 
   @override
   Future<IdempotencyRecord?> reserve(
@@ -291,8 +310,8 @@ class InMemoryIdempotencyStore implements IdempotencyStore {
     _purge(now);
     final (IdempotencyRecord, DateTime)? entry = _keys[key];
     if (entry != null && now.isBefore(entry.$2)) return entry.$1;
-    _keys.remove(key);
-    if (_keys.length >= maxKeys) _keys.remove(_keys.keys.first);
+    _remove(key);
+    if (_keys.length >= maxKeys) _remove(_keys.keys.first);
     _keys[key] = (IdempotencyRecord(fingerprint: fingerprint), now.add(expiry));
     return null;
   }
@@ -301,17 +320,44 @@ class InMemoryIdempotencyStore implements IdempotencyStore {
   Future<void> complete(String key, IdempotentResponse response) async {
     final (IdempotencyRecord, DateTime)? entry = _keys[key];
     if (entry == null) return;
+    final int size =
+        response.body.length +
+        response.headers.entries.fold(
+          0,
+          (total, header) =>
+              total +
+              header.key.length +
+              header.value.fold(0, (sum, value) => sum + value.length),
+        );
+    if (size > maxBytes) {
+      _remove(key);
+      return;
+    }
     _keys[key] = (
       IdempotencyRecord(fingerprint: entry.$1.fingerprint, response: response),
       entry.$2,
     );
+    _sizes[key] = size;
+    _bytes += size;
+    while (_bytes > maxBytes) {
+      _remove(_sizes.keys.first);
+    }
   }
 
   @override
-  Future<void> release(String key) async => _keys.remove(key);
+  Future<void> release(String key) async => _remove(key);
 
   @override
-  Future<void> clear() async => _keys.clear();
+  Future<void> clear() async {
+    _keys.clear();
+    _sizes.clear();
+    _bytes = 0;
+  }
+
+  void _remove(String key) {
+    _keys.remove(key);
+    _bytes -= _sizes.remove(key) ?? 0;
+  }
 
   void _purge(DateTime now) {
     final DateTime? last = _lastPurge;
@@ -319,6 +365,9 @@ class InMemoryIdempotencyStore implements IdempotencyStore {
       return;
     }
     _lastPurge = now;
-    _keys.removeWhere((_, entry) => !now.isBefore(entry.$2));
+    [
+      for (final MapEntry(:key, :value) in _keys.entries)
+        if (!now.isBefore(value.$2)) key,
+    ].forEach(_remove);
   }
 }
