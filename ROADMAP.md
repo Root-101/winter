@@ -308,6 +308,58 @@ on every push of a feature branch (`CONTRIBUTING.md`):
   obfuscated names.
 - [x] The publish dry run without warnings and an archive under 1 MB (after `1.0.0-rc.2`).
 
+### 10. Security and quality audits (2026-10-21)
+
+A security audit (`security-audit`: 31 coverage units, every finding reproduced in a sandbox with
+no network and checked by two independent verifiers) and a quality audit (`ponytail-audit`) of
+`develop` @ `e8707db`. One commit per item in `feature/audit-fixes`, each with its regression test;
+the public API keeps working (only new optional parameters).
+
+Security, by severity:
+
+1. [x] **High.** `normalizePath` removed trailing slashes with one `substring` per slash, once
+   per route, before any filter: `GET /x` + 40 000 `/` blocked the isolate ~3 s with 5 routes,
+   unauthenticated. Now a single pass.
+2. [x] **Medium.** WebSockets negotiated permessage-deflate by default, and `dart:io` keeps each
+   whole message with no limit: 8 KB on the wire became 8 MiB in the handler, past `maxBodySize`.
+   Now off unless the route asks for it (`Route.websocket(compression:)`). `dart:io` has no
+   message limit to set; documented.
+3. [x] `body<T>()` read JSON from `text/plain` or without `Content-Type`, what a cross-site page
+   sends without a CORS preflight (CSRF on cookie sessions). Now a 415 for a typed body (an empty
+   one without type is still `null`); clients send `Content-Type: application/json`.
+4. [x] An unterminated quoted string in a client's `Forwarded` swallowed the element the proxy
+   appends on the same line: the client chose `clientIp`, host and scheme. Now such a line makes
+   the whole header ignored (the connection address).
+5. [x] A `putLazy`/`putLazyAsync` singleton was created inside the zone of the first request that
+   finds it: its listeners and timers saw that request's authentication and id forever. Now it is
+   created outside any `RequestScope`.
+6. [x] `InMemoryIdempotencyStore` bounded the keys, not the bytes: 16-byte requests kept 512 KiB
+   responses (up to tens of GiB at 100 000 keys). Now `maxBytes` too (64 MB by default).
+7. [x] A `double`/`num` took `1e400` as `Infinity`: it passed the validators and every later
+   response that serialized it was a 500. Now a 400 (`got a number too big`), as for `int`.
+8. [x] The guide and the `api_patterns` example awaited the body between `checkPreconditions`
+   and the save: two writers with the same `If-Match` both passed (lost update). Now the body first.
+
+Quality:
+
+9. [x] `body<T>(objectMapper:)` renamed the fields of a 422 twice (its mapper, then the global
+   `om`). Now `ValidationException(objectMapper:)` carries the mapper that names them, once.
+10. [x] The router matched the regex of every route on each request, up to three times on a 404.
+    Now the static routes are found by their path (router benchmark ~62 000 → 165 000+ req/s).
+11. [x] The fingerprint of `IdempotencyFilter` copied the whole body into a `List<int>` (~80 MB
+    for 10 MB). Now it hashes the bytes in place (same hash).
+12. [x] With `autoCompress`, a stream response (static files, 206) lost its `Content-Length`
+    although `dart:io` never compresses it. Now only a body of bytes leaves it out.
+13. [x] Small ones: request/trace ids from one helper, 4 random bytes per call (they took one per
+    byte); one SSE `Timer` per stream, not per event; one `typeOf`, not three. Not done: sorting
+    the filters of each request (3-6 of them, a stable sort; caching it costs more code than it
+    saves).
+
+Hardening (no finding, only if cheap): `Route.websocket(allowedOrigins:)` open by default,
+Swagger UI from unpkg without SRI, `permissions:` and actions pinned by SHA in the CI,
+`Cache-Control: private` on protected responses. Already decided, not redone: `fieldNaming`
+renames the map fields of an object given to `Deserializer.json` (phase 9, §2).
+
 ### 6.5 Release `1.0.0`
 
 1. [ ] Fix what comes up in 6.4 and publish `1.0.0`: tag `v1.0.0`, the version in `pubspec.yaml`,

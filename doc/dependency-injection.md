@@ -122,6 +122,10 @@ di
 A cycle (`A` needs `B`, which needs `A`) is a `StateError` with the chain:
 `Circular dependency: OrderService -> PaymentClient -> OrderService`.
 
+A singleton is created outside the request that finds it first: inside its function (and in the
+listeners and timers it starts) `requestPrincipal`, `requestId` and the other request values are
+null, never the ones of that request.
+
 ### Asynchronous initialization: `putLazyAsync`
 
 A dependency that needs an `await` to exist (a connection opened, a file read) is registered with

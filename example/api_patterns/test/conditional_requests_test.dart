@@ -33,24 +33,26 @@ void main() {
     expect(response.headers['etag'], '"2"');
   });
 
-  test('two edits of the same version: the second one is a 412', () async {
-    await client.put(
-      '/documents/1',
-      headers: {'if-match': '"1"'},
-      body: {'text': 'from Ann'},
-    );
-    final late = await client.put(
-      '/documents/1',
-      headers: {'if-match': '"1"'},
-      body: {'text': 'from Bob'},
-    );
+  test(
+    'two edits of the same version at once: the second one is a 412',
+    () async {
+      final [first, late] = await Future.wait([
+        for (final String text in ['from Ann', 'from Bob'])
+          client.put(
+            '/documents/1',
+            headers: {'if-match': '"1"'},
+            body: {'text': text},
+          ),
+      ]);
 
-    expect(late.statusCode, 412);
-    expect(
-      ((await client.get('/documents/1')).json as Map)['text'],
-      'from Ann',
-    );
-  });
+      expect(first.statusCode, 200);
+      expect(late.statusCode, 412);
+      expect(
+        ((await client.get('/documents/1')).json as Map)['text'],
+        'from Ann',
+      );
+    },
+  );
 
   test('a PUT without If-Match is a 428', () async {
     final response = await client.put('/documents/1', body: {'text': 'x'});

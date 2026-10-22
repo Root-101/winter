@@ -192,6 +192,18 @@ void main() {
       }
     });
 
+    test('a quoted string never closed ignores the header', () {
+      // The client's unclosed quote would swallow the element the proxy appends
+      final request = _behind(forwarded, {
+        'Forwarded':
+            'for=6.6.6.6;host=evil.example;x="'
+            ', for=203.0.113.7;host=api.example.com;proto=https',
+      });
+
+      expect(request.clientIp, '10.0.0.1');
+      expect(request.requestedUri.host, isNot('evil.example'));
+    });
+
     test('X-Forwarded-For is ignored: the proxies write Forwarded', () {
       expect(
         _behind(forwarded, {'X-Forwarded-For': '1.1.1.1'}).clientIp,

@@ -9,6 +9,7 @@ import 'package:winter/src/context/validation/validation.dart' show mapKeyPath;
 import 'package:winter/src/multipart.dart'
     show multipartBoundary, parseMultipart;
 import 'package:winter/src/router/path_template.dart';
+import 'package:winter/src/utils/type_of.dart';
 import 'package:winter/src/trusted_proxies.dart'
     show forwardedClientIpKey, parseHost;
 import 'package:winter/winter.dart';
@@ -299,9 +300,11 @@ class RequestEntity {
   /// Get the body of the request, decoded as JSON with [objectMapper] (default: the global `om`,
   /// see [ObjectMapper.decode]).
   ///
-  /// - The `Content-Type` must be JSON (`application/json` or `*/*+json`), `text/plain` or none:
-  ///   any other is a 415 ([UnsupportedMediaTypeException]). `text/plain` is accepted because
-  ///   `package:http` and `fetch()` send it for a String body when no header is given.
+  /// - The `Content-Type` must be JSON (`application/json` or `*/*+json`): any other, or none on a
+  ///   body that isn't empty, is a 415 ([UnsupportedMediaTypeException]). `text/plain` and a
+  ///   missing type are what a page of another site can send without a CORS preflight, so
+  ///   accepting them would let it reach a handler with the cookies of its user (CSRF). A client
+  ///   must send `Content-Type: application/json` (`package:http` and `fetch()` don't add it).
   /// - `body<String>()` decodes a JSON string (`"hello"` → `hello`) when the `Content-Type` is
   ///   JSON, and returns the text as it is otherwise (any `Content-Type`: XML, HTML, CSV...); bytes
   ///   that are not text in the charset of the request are a 400.
@@ -318,8 +321,8 @@ class RequestEntity {
     final ObjectMapper mapper = objectMapper ?? Winter.context.objectMapper;
     final Encoding encoding = this.encoding ?? utf8;
     final bool json = _isJson(mimeType);
-    if (T == Uint8List || T == _typeOf<Uint8List?>()) return await bytes() as T;
-    if (T == String || T == _typeOf<String?>()) {
+    if (T == Uint8List || T == typeOf<Uint8List?>()) return await bytes() as T;
+    if (T == String || T == typeOf<String?>()) {
       if (!json) {
         try {
           return await _body.text(encoding) as T;
@@ -327,12 +330,12 @@ class RequestEntity {
           throw _notText(encoding);
         }
       }
-    } else if (mimeType != null &&
-        !json &&
-        mimeType != MediaType.textPlain.mimeType) {
+    } else if (!json &&
+        (mimeType != null || (await _body.bytes()).isNotEmpty)) {
+      // No body needs no type: an optional body (`body<T?>()`) of an empty request is null
       throw UnsupportedMediaTypeException(
         detail:
-            'Unsupported Content-Type ${_shown(mimeType)}, '
+            'Unsupported Content-Type ${_shown(mimeType ?? 'none')}, '
             'expected ${MediaType.applicationJson.mimeType}',
       );
     }
@@ -346,19 +349,14 @@ class RequestEntity {
         // Only after the synchronous rules passed: a wrong value never reaches a query
         await _validateAsync(body);
       } on ValidationException catch (error) {
-        // The exception handler names the fields with the global mapper: with another one, the
-        // client must see the names it sent to this one
+        // The exception handler names the fields with this mapper: the client sent its names
         if (objectMapper == null) rethrow;
         throw ValidationException(
-          violations: [
-            for (final ConstraintViolation violation in error.violations)
-              violation.copyWith(
-                fieldName: objectMapper.jsonFieldName(violation.fieldName),
-              ),
-          ],
+          violations: error.violations,
           detail: error.detail,
           instance: error.instance,
           headers: error.headers,
+          objectMapper: objectMapper,
         );
       }
     }
@@ -493,8 +491,6 @@ class RequestEntity {
   static bool _isJson(String? mimeType) =>
       mimeType == MediaType.applicationJson.mimeType ||
       (mimeType != null && mimeType.endsWith('+json'));
-
-  static Type _typeOf<X>() => X;
 
   /// A copy of this request for the next filters:
   ///

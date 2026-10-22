@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show WebSocket;
+import 'dart:io' show CompressionOptions, WebSocket;
 
 import 'package:winter/winter.dart';
 
@@ -35,6 +35,9 @@ final class WebSocketUpgrade {
   /// The trace of the handshake, kept by the scope of the socket
   final TraceContext? trace;
 
+  /// The permessage-deflate the route accepts (none by default)
+  final CompressionOptions compression;
+
   /// An upgrade to [handler]
   const WebSocketUpgrade({
     required this.handler,
@@ -42,6 +45,7 @@ final class WebSocketUpgrade {
     required this.protocols,
     required this.pingInterval,
     this.trace,
+    this.compression = CompressionOptions.compressionOff,
   });
 
   /// The subprotocol to answer among the ones the client asked for: the first of [protocols]
@@ -66,6 +70,7 @@ RequestHandler webSocketRouteHandler({
   required List<String> protocols,
   required Duration? pingInterval,
   required List<String>? allowedOrigins,
+  CompressionOptions compression = CompressionOptions.compressionOff,
 }) => (request) {
   if (!_isHandshake(request)) {
     throw const ApiException(
@@ -96,6 +101,7 @@ RequestHandler webSocketRouteHandler({
       protocols: protocols,
       pingInterval: pingInterval,
       trace: requestTrace,
+      compression: compression,
     ),
   );
   return response;

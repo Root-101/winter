@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:winter/src/request_scope.dart' show runOutsideRequestScope;
+import 'package:winter/src/utils/type_of.dart';
 import 'package:winter/winter.dart';
 
 /// A service locator: dependencies registered and found by their type (and an optional tag).
@@ -317,7 +319,10 @@ class DependencyInjection {
         return registration.value;
       case DependencyKind.lazy:
         if (!registration.hasValue) {
-          registration.value = _create(key, registration);
+          // A singleton outlives the request that finds it first: it never keeps its scope
+          registration.value = runOutsideRequestScope(
+            () => _create(key, registration),
+          );
         }
         return registration.value;
       case DependencyKind.lazyAsync:
@@ -422,8 +427,9 @@ class DependencyInjection {
     final Future<Object?> creation = runZoned(
       () async {
         try {
-          final Object? value =
-              await (registration.create!() as Future<Object?>);
+          final Object? value = await runOutsideRequestScope(
+            () => registration.create!() as Future<Object?>,
+          );
           registration.value = value;
           return value;
         } finally {
@@ -468,10 +474,8 @@ class DependencyInjection {
   /// (`di.put(maybeService)`, registered as `<Service?>`) is found as `<Service>` too.
   /// The [Type] itself is used (not its name), so two classes with the same name in different
   /// libraries don't collide.
-  static _Key _key<S>(String? tag) => (_typeOf<S?>(), tag);
+  static _Key _key<S>(String? tag) => (typeOf<S?>(), tag);
 }
-
-Type _typeOf<T>() => T;
 
 typedef _Key = (Type type, String? tag);
 

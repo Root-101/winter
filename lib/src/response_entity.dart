@@ -522,7 +522,8 @@ Future<void> writeResponse(
       output.headers.set(HttpHeader.date, _HttpDateCache.now());
     }
     if (status != 204 && status != 304) {
-      output.contentLength = compress && withBody
+      // A stream is never gzipped (bufferOutput is false): it keeps its length (a file, a range)
+      output.contentLength = compress && withBody && body._bytes != null
           ? -1
           : response.contentLength ?? -1;
     }
