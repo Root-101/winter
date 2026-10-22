@@ -99,8 +99,9 @@ final Uint8List image = await request.bytes();                 // binary, any Co
 
 - `body<T>()` decodes the JSON with the object mapper and validates a `Validatable` (see
   [object mapper](object-mapper.md) and [validation](validation.md)). Its `Content-Type` must be
-  JSON, `text/plain` or none (a 415 otherwise), except for `body<String>()` and
-  `body<Uint8List>()`, which read any body.
+  JSON (`application/json` or `+json`): `text/plain`, any other, or none on a body that isn't
+  empty is a 415, because a page of another site can send those without a CORS preflight. Except
+  `body<String>()` and `body<Uint8List>()`, which read any body.
 - `body<T>()`, `bytes()` and `formData()` read the body once and cache it: call them as many times
   as you want, even several of them.
 - The text is decoded with the charset of the `Content-Type` (UTF-8 without one); bytes that are not
