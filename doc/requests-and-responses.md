@@ -475,15 +475,18 @@ Cache-Control: no-cache
 ```
 
 **A change checks its preconditions before it's made**, against the version stored now, with
-`request.checkPreconditions(etag:, lastModified:)`:
+`request.checkPreconditions(etag:, lastModified:)`. Read the body first, and then check and save
+with no `await` between them: another request with the same version could pass the check while
+this one waits (with a database, a conditional update `WHERE version = ?`):
 
 ```dart
 Route.put(
   path: '/documents/{id}',
   handler: (request) async {
     final int id = request.pathParam<int>('id');
+    final DocumentChanges changes = await request.body<DocumentChanges>();
     request.checkPreconditions(etag: store.find(id).etag, required: true);
-    final Document saved = store.save(id, await request.body<DocumentChanges>());
+    final Document saved = store.save(id, changes);
     return ResponseEntity.ok(body: saved, headers: {HttpHeader.etag: saved.etag});
   },
 ),
@@ -575,8 +578,10 @@ Route.post(
   filter after the `AuthFilter`, so a 401 isn't kept.
 - The body is read with `bytes()` (cached, so the handler still reads it with `body<T>()`) and
   compared, with the query string, by a fingerprint.
-- `InMemoryIdempotencyStore(maxKeys:)` keeps at most 100 000 keys by default: a new one past it
-  forgets the oldest, so a client sending a new key with every request can't fill the memory.
+- `InMemoryIdempotencyStore(maxKeys:, maxBytes:)` keeps at most 100 000 keys and 64 MB of
+  responses by default: a new one past either forgets the oldest, and a response bigger than
+  `maxBytes` isn't kept (its retry runs again). So a client sending a new key with every request
+  can't fill the memory, even with large responses.
 - The keys live in an `IdempotencyStore`: `InMemoryIdempotencyStore` by default (per isolate and
   per process, purged as it's used, `clock:` for the tests). Several instances need a shared one
   (a table, Redis) implementing `reserve` (atomic), `complete`, `release` and `clear`.

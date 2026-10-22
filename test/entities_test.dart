@@ -93,6 +93,7 @@ void main() {
     RequestEntity jsonRequest() => RequestEntity(
       'POST',
       Uri.parse('http://localhost/'),
+      headers: {'content-type': 'application/json'},
       body: '{"name":"Adam","age":30}',
     );
 
@@ -100,7 +101,7 @@ void main() {
       final request = jsonRequest();
 
       final map = await request.body<Map<String, dynamic>>();
-      final raw = await request.body<String>();
+      final raw = utf8.decode(await request.bytes());
       final mapAgain = await request.body<Map<String, dynamic>>();
 
       expect(map, {'name': 'Adam', 'age': 30});
@@ -112,8 +113,8 @@ void main() {
       final request = jsonRequest();
 
       final results = await Future.wait([
-        request.body<String>(),
-        request.body<String>(),
+        request.body<Map<String, dynamic>>(),
+        request.body<Map<String, dynamic>>(),
       ]);
 
       expect(results[0], results[1]);

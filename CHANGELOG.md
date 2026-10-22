@@ -1,3 +1,10 @@
+* Unreleased:
+    * The fixes of a security audit (every finding reproduced in a sandbox and checked by two independent verifiers) and a quality audit (roadmap 10).
+    * **Security** :lock: : `body<T>()` reads only a JSON `Content-Type` (`application/json` or `+json`): `text/plain` or none on a body that isn't empty is a 415, because a page of another site can send them without a CORS preflight (CSRF on a cookie session). WebSockets don't negotiate permessage-deflate unless the route asks for it (`Route.websocket(compression:)`): `dart:io` inflates whole messages with no limit. A `Forwarded` line with a quoted string never closed is ignored, so a client can't swallow the element of its proxy. A singleton (`putLazy`, `putLazyAsync`) is created outside the request that finds it first, so its listeners never see that user.
+    * **Limits** :shield: : Trailing slashes are removed in one pass (they cost quadratic time per route, before any filter). `InMemoryIdempotencyStore(maxBytes:)` bounds the responses it keeps in bytes (64 MB by default), not only in keys. A JSON number too big for a `double` (`1e400`) is a 400, never `Infinity`.
+    * **Performance** :zap: : static routes are found by their path, without trying the regex of every route; the idempotency fingerprint hashes the body in place; one keep-alive timer per Server-Sent Events stream; random ids take 4 bytes per call.
+    * **Fixes** :wrench: : the 422 of `body<T>(objectMapper:)` names the fields once, with that mapper (`ValidationException(objectMapper:)`); with `autoCompress`, a stream keeps its `Content-Length`; the guide and the example of `checkPreconditions` read the body before the check, so two edits of the same version can't both pass.
+
 * 1.0.0-rc.3:
     * **DATE** :date: : 2026-10-20.
     * The same code as `1.0.0-rc.2`, which is retracted: its package carried the executables of the benchmarks by mistake (12 MB instead of 0.5 MB).

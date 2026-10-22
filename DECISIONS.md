@@ -87,9 +87,12 @@ Guide: [`doc/object-mapper.md`](doc/object-mapper.md).
 - **Enums** are written by `name` and read with `Deserializer<E>.enumByName(E.values)` (Dart can't
   list an enum from its type); the 400 lists the valid names. `.string`, `.integer`, `.number` and
   `.boolean` check the JSON type before converting, so the 400 says what was expected.
-- **`body<T>()`** reads JSON when the `Content-Type` is JSON (`*/*+json` included), `text/plain`
-  (what `package:http` and `fetch()` send for a String) or none; any other is a 415 that names the
-  expected type. `body<String>()` decodes a JSON string only when the body is JSON.
+- **`body<T>()`** reads JSON only when the `Content-Type` is JSON (`*/*+json` included); any other,
+  or none, is a 415 that names the expected type. `text/plain` and a missing type are what a page
+  of another site can send without a CORS preflight: accepting them (as `package:http` and
+  `fetch()` send a String without a header) would let it reach a cookie-authenticated handler
+  (CSRF), like Spring and Express refuse them. `body<String>()` decodes a JSON string only when the
+  body is JSON, and reads any other body as text.
 
 ## 3. Validation
 
@@ -163,7 +166,10 @@ Guide: [`doc/dependency-injection.md`](doc/dependency-injection.md).
   its `RequestScope`). The functions are synchronous, except `putLazyAsync`: created by
   `ready()`, which `Winter.start` awaits before opening the port, so `find` stays synchronous
   everywhere (an async `find` would turn every handler and constructor into a `Future`). A cycle
-  between async ones is detected through a `Zone`: with `await` it would wait forever.
+  between async ones is detected through a `Zone`: with `await` it would wait forever. A singleton
+  (`putLazy`, `putLazyAsync`) is created outside the `RequestScope` of the request that finds it
+  first: the listeners and timers it starts would otherwise see that request (its user, its id)
+  forever.
 - **Child containers** (`di.child()`) take the recipes of their parent, not its instances (only
   the instances given with `put` are shared): a lazy singleton of the parent gets its own instance
   in the child, so it's built with the fakes of a test and the parent never changes (sharing the
@@ -329,8 +335,9 @@ Guides: [`doc/routing.md`](doc/routing.md), [`doc/filters.md`](doc/filters.md).
   (408, 425, 429) nor a stream, so a retry can still succeed. The key is scoped by method, path
   and an optional `partition` (the user), never global: a key alone would hand one user's answer
   to another; the parts are a JSON list, so a space in a key or a partition can't forge the id of
-  another. The in-memory store keeps at most `maxKeys` (the oldest go first). The body and the
-  query are compared by a 64-bit FNV-1a fingerprint, not a cryptographic hash: there
+  another. The in-memory store keeps at most `maxKeys` and `maxBytes` of responses (the oldest go
+  first): a key count alone let large responses fill the memory. The body and the query are
+  compared by a 64-bit FNV-1a fingerprint, not a cryptographic hash: there
   is no `crypto` dependency, and a collision only matters between two bodies of the same client
   with the same key. `Idempotent-Replayed: true` (not in the draft) tells a replay apart.
 - **Deprecation is a filter** (`DeprecationFilter`), not a field of `Route`: a parent deprecates a
@@ -430,7 +437,9 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
   WebSockets and a browser sends the cookies to any of them (cross-site WebSocket hijacking). The
   handler runs in a request scope of its own, completed when the socket closes; it isn't awaited
   as a request in progress, so the server closes the sockets itself (1001) when it shuts down,
-  also the ones that finish their upgrade while it's closing.
+  also the ones that finish their upgrade while it's closing. Compression (permessage-deflate) is
+  off unless the route asks for it: `dart:io` inflates and keeps each whole message with no size
+  limit, so a few KB of a client would become MB in memory, past `maxBodySize`.
 
 ## 11. The public API
 

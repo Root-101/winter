@@ -8,7 +8,8 @@ import 'package:winter/winter.dart';
 /// A `GET` needs nothing: the server answers a **304** by itself when its response has an
 /// `ETag` or a `Last-Modified` that the client already has. A change (`PUT`, `PATCH`, `DELETE`)
 /// checks them before it's made, with the version the resource has now, so two clients editing
-/// it don't overwrite each other:
+/// it don't overwrite each other. No `await` between the check and the save (read the body
+/// before), or another request with the same version passes the check meanwhile:
 ///
 /// ```dart
 /// final Document current = store.find(id);

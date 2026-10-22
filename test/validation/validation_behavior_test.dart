@@ -381,39 +381,54 @@ void main() {
     test(
       'with the mapper of body<T>(objectMapper:), the names it read',
       () async {
-        final kebab = WinterTestClient.build(
-          router: WinterRouter(
-            routes: [
-              Route.post(
-                path: '/',
-                handler: (request) async {
-                  await request.body<_Signup>(
-                    objectMapper: ObjectMapper(
-                      fieldNaming: FieldNaming.kebabCase,
-                      deserializers: [
-                        Deserializer<_Signup>.json(_Signup.fromJson),
-                      ],
-                    ),
-                  );
-                  return ResponseEntity.ok();
-                },
-              ),
-            ],
+        // The global om is snakeCase: its names never apply on top of the ones of the mapper
+        for (final (naming, body, names) in [
+          (
+            FieldNaming.kebabCase,
+            '{"first-name": "", "home-address": {"zip-code": ""}}',
+            ['first-name', 'home-address.zip-code'],
           ),
-        );
-
-        final response = await kebab.post(
-          '/',
-          body: '{"first-name": "", "home-address": {"zip-code": ""}}',
-          headers: {HttpHeader.contentType: 'application/json'},
-        );
-
-        expect(
-          ((response.json as Map)['violations'] as List).map(
-            (v) => (v as Map)['fieldName'],
+          (
+            FieldNaming.none,
+            '{"firstName": "", "homeAddress": {"zipCode": ""}}',
+            ['firstName', 'homeAddress.zipCode'],
           ),
-          ['first-name', 'home-address.zip-code'],
-        );
+        ]) {
+          final client = WinterTestClient.build(
+            router: WinterRouter(
+              routes: [
+                Route.post(
+                  path: '/',
+                  handler: (request) async {
+                    await request.body<_Signup>(
+                      objectMapper: ObjectMapper(
+                        fieldNaming: naming,
+                        deserializers: [
+                          Deserializer<_Signup>.json(_Signup.fromJson),
+                        ],
+                      ),
+                    );
+                    return ResponseEntity.ok();
+                  },
+                ),
+              ],
+            ),
+          );
+
+          final response = await client.post(
+            '/',
+            body: body,
+            headers: {HttpHeader.contentType: 'application/json'},
+          );
+
+          expect(
+            ((response.json as Map)['violations'] as List).map(
+              (v) => (v as Map)['fieldName'],
+            ),
+            names,
+            reason: '$naming',
+          );
+        }
       },
     );
 

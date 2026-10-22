@@ -1,5 +1,4 @@
-import 'dart:math';
-
+import 'package:winter/src/request_scope.dart' show hexBytes, secureRandomBytes;
 import 'package:winter/winter.dart';
 
 /// The distributed trace a request belongs to, as the W3C *Trace Context* recommendation defines
@@ -106,15 +105,12 @@ final class TraceContext {
     HttpHeader.tracestate: ?traceState,
   };
 
-  static final Random _random = Random.secure();
-
   static String _randomHex(int bytes) {
     final StringBuffer hex = StringBuffer();
     var zeros = true;
-    for (var i = 0; i < bytes; i++) {
-      final int byte = _random.nextInt(256);
+    for (final int byte in secureRandomBytes(bytes)) {
       if (byte != 0) zeros = false;
-      hex.write(byte.toRadixString(16).padLeft(2, '0'));
+      hex.write(hexBytes[byte]);
     }
     // An id of only zeros is invalid; one in 2^64 at worst, so just try again
     return zeros ? _randomHex(bytes) : hex.toString();

@@ -325,6 +325,10 @@ socket.send('Hello');
   the first one the client asks for is chosen, and a client that asks only for others is refused.
 - **`pingInterval`**: a ping every 30 seconds by default, so a client that disappeared without
   closing is found and closed; `null` for none.
+- **`compression`**: off by default. `dart:io` inflates and keeps each whole message before the
+  handler gets it, with no size limit: with permessage-deflate a few KB from a client become MB in
+  memory, past `maxBodySize`. `CompressionOptions.compressionDefault` turns it on, only for
+  trusted clients.
 - **The handler runs in a request scope of its own**: `requestPrincipal()`, `requestId` and
   `requestLocale` work, and the scoped dependencies live as long as the socket.
 - **An error of the handler** is logged and closes the socket with 1011.
