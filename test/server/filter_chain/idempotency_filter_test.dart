@@ -16,6 +16,7 @@ void main() {
     bool required = true,
     FutureOr<String> Function(RequestEntity request)? partition,
   }) => WinterTestClient.build(
+    globalFilterConfig: FilterConfig([_Login()]),
     router: WinterRouter(
       routes: [
         for (final path in ['/payments', '/refunds'])
@@ -159,6 +160,34 @@ void main() {
     await pay(payments, 'k1', headers: {'x-user': 'ann'}, path: '/refunds');
 
     expect(runs, [10, 10, 10]);
+  });
+
+  test(
+    'without partition, the key is per user (a principal that is an id)',
+    () async {
+      final payments = client();
+      await pay(payments, 'k1', headers: {'x-user': 'ann'});
+      final bob = await pay(payments, 'k1', headers: {'x-user': 'bob'});
+      final annAgain = await pay(payments, 'k1', headers: {'x-user': 'ann'});
+
+      expect(bob.headers, isNot(contains('idempotent-replayed')));
+      expect(annAgain.headers['idempotent-replayed'], 'true');
+      expect(runs, [10, 10]);
+    },
+  );
+
+  test('another principal shares the keys, with a warning once', () async {
+    final List<String> warnings = [];
+    Winter.context.setUp(logger: _Warnings(warnings));
+    addTearDown(() => Winter.context.setUp(logger: const ConsoleLogger()));
+    final payments = client();
+
+    await pay(payments, 'k1', headers: {'x-user-object': 'ann'});
+    final bob = await pay(payments, 'k1', headers: {'x-user-object': 'bob'});
+
+    expect(bob.headers['idempotent-replayed'], 'true');
+    expect(warnings, hasLength(1));
+    expect(warnings.single, contains('partition'));
   });
 
   test(
@@ -332,4 +361,45 @@ void main() {
   test('an expiry that is not positive is an ArgumentError', () {
     expect(() => IdempotencyFilter(expiry: Duration.zero), throwsArgumentError);
   });
+}
+
+/// Logs in `x-user` (a String principal) or `x-user-object` (an object principal)
+class _Login extends Filter {
+  @override
+  Future<ResponseEntity> doFilter(
+    RequestEntity request,
+    FilterChain chain,
+  ) async {
+    final String? id = request.headers['x-user'];
+    final String? object = request.headers['x-user-object'];
+    if (id != null || object != null) {
+      request.securityContext.setAuthentication(
+        Authentication(principal: id ?? _User(object!)),
+      );
+    }
+    return chain.doFilter(request);
+  }
+}
+
+class _User {
+  final String name;
+
+  _User(this.name);
+}
+
+class _Warnings extends WinterLogger {
+  final List<String> warnings;
+
+  _Warnings(this.warnings);
+
+  @override
+  void log(
+    LogLevel level,
+    String message, {
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, Object?> fields = const {},
+  }) {
+    if (level == LogLevel.warning) warnings.add(message);
+  }
 }

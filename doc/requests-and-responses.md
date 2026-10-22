@@ -573,9 +573,11 @@ Route.post(
   1 to 255 printable ASCII characters.
 - A response of 500 or more, a 408, a 425 or a 429 is not kept, so the client can retry with the
   same key; neither is a stream. A `GET`, `HEAD` or `OPTIONS` is never filtered.
-- **A key is unique per method and path.** With users, give `partition:` (the user, the API key):
-  otherwise two users with the same key and the same body get each other's response. Put the
-  filter after the `AuthFilter`, so a 401 isn't kept.
+- **A key is unique per method and path, and per user.** Without `partition:`, a request whose
+  principal is a `String` or a number (an id) gets keys of its own. With another principal (a
+  `User` object), give `partition:` (its id, or the API key): otherwise its users share their keys
+  (two with the same key and the same body would get each other's response), and a warning says
+  so once. Put the filter after the `AuthFilter`, so a 401 isn't kept.
 - The body is read with `bytes()` (cached, so the handler still reads it with `body<T>()`) and
   compared, with the query string, by a fingerprint.
 - `InMemoryIdempotencyStore(maxKeys:, maxBytes:)` keeps at most 100 000 keys and 64 MB of
