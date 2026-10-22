@@ -87,9 +87,12 @@ Guide: [`doc/object-mapper.md`](doc/object-mapper.md).
 - **Enums** are written by `name` and read with `Deserializer<E>.enumByName(E.values)` (Dart can't
   list an enum from its type); the 400 lists the valid names. `.string`, `.integer`, `.number` and
   `.boolean` check the JSON type before converting, so the 400 says what was expected.
-- **`body<T>()`** reads JSON when the `Content-Type` is JSON (`*/*+json` included), `text/plain`
-  (what `package:http` and `fetch()` send for a String) or none; any other is a 415 that names the
-  expected type. `body<String>()` decodes a JSON string only when the body is JSON.
+- **`body<T>()`** reads JSON only when the `Content-Type` is JSON (`*/*+json` included); any other,
+  or none, is a 415 that names the expected type. `text/plain` and a missing type are what a page
+  of another site can send without a CORS preflight: accepting them (as `package:http` and
+  `fetch()` send a String without a header) would let it reach a cookie-authenticated handler
+  (CSRF), like Spring and Express refuse them. `body<String>()` decodes a JSON string only when the
+  body is JSON, and reads any other body as text.
 
 ## 3. Validation
 

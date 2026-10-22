@@ -324,8 +324,9 @@ Security, by severity:
    whole message with no limit: 8 KB on the wire became 8 MiB in the handler, past `maxBodySize`.
    Now off unless the route asks for it (`Route.websocket(compression:)`). `dart:io` has no
    message limit to set; documented.
-3. [ ] `body<T>()` reads JSON from `text/plain` or without `Content-Type`, what a cross-site page
-   sends without a CORS preflight (CSRF on cookie sessions). A 415 for a typed body.
+3. [x] `body<T>()` read JSON from `text/plain` or without `Content-Type`, what a cross-site page
+   sends without a CORS preflight (CSRF on cookie sessions). Now a 415 for a typed body (an empty
+   one without type is still `null`); clients send `Content-Type: application/json`.
 4. [ ] An unterminated quoted string in a client's `Forwarded` swallows the element the proxy
    appends on the same line: the client chooses `clientIp`, host and scheme. A malformed line is
    ignored.
