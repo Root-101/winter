@@ -377,6 +377,10 @@ Hardening (no finding), in `feature/hardening`:
 23. [x] The confirmation audit (run-2: the 8 findings closed) found a variant of 7: a body kept as
     it came (`body<Map<String, dynamic>>()`, `List`, `dynamic`) still let a nested `1e400` in as
     `Infinity`. Now a 400 with its path (`$.items[1].price`), whatever the type.
+24. [x] Benchmarks again (2026-10-22, `doc/benchmarks.md`): the pipeline in memory ~510 000 →
+    ~630 000 req/s, the router ~189 000 → ~430 000, the mapper the same; over HTTP Winter is as fast
+    as before the audits except for the default `requestTimeout`, which costs ~4 % of an empty
+    endpoint (`null` removes it).
 
 Already decided, not redone: `fieldNaming` renames the map fields of an object given to
 `Deserializer.json` (phase 9, §2).
