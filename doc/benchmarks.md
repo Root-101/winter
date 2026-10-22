@@ -26,14 +26,14 @@ build/http_bench.exe
 | Server                                                        | Requests per second | Of `dart:io` |
 |---------------------------------------------------------------|--------------------:|-------------:|
 | `dart:io` alone (`HttpServer`), the ceiling                    |      16 000 - 17 200 |        100 % |
-| Winter (`Winter.start`, whole pipeline, `requestTimeout` 30 s) |      12 450 - 13 150 |     ~76 %    |
-| Winter with `requestTimeout: null`                             |      12 400 - 14 000 |     ~79 %    |
+| Winter (`Winter.start`, whole pipeline, the defaults)          |      12 400 - 14 000 |     ~79 %    |
+| Winter with `requestTimeout: Duration(seconds: 30)`            |      12 450 - 13 150 |     ~76 %    |
 
 The same day, the code before the audits (`e8707db`) gave ~13 500 req/s (~80 %), alternating the
 two executables six times. The audits left the pipeline as fast as before (the router and the ids
-got faster, the new checks cost nothing measurable), except for the `requestTimeout` of 30 seconds
-that `ServerConfig` has by default since then: a timer per request, about **4 %** of an empty
-endpoint, nothing next to a real handler. `requestTimeout: null` removes it.
+got faster, the new checks cost nothing measurable). Turning on `requestTimeout` costs a timer per
+request, about **4 %** of an empty endpoint, nothing next to a real handler; that's why it is off
+by default and each app turns it on.
 
 The ratio is lower than in earlier measures (~85 %) because `dart:io` alone measured higher that
 day; Winter's absolute numbers are the same or better.
@@ -102,5 +102,5 @@ JSON by hand.
 Measure before and after with `http_benchmark.dart`, alternating the two executables a few times
 (the noise between runs is a few percent). The check of the response headers, for example, was
 first written with regular expressions (about 2 % slower) and then as a loop over the characters
-(within the noise). The default `requestTimeout` was measured the same way: three alternated
-pairs show little, six show its ~4 %.
+(within the noise). `requestTimeout` was measured the same way: three alternated pairs show
+little, six show its ~4 %.
