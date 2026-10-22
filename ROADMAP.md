@@ -3,7 +3,7 @@
 What is missing to publish `winter` 1.0.0: an HTTP framework that covers the main use cases of a
 REST API. Not at the level of Spring, but with the basics complete, stable and documented.
 
-> **Now: `1.0.0-rc.4` (2026-10-22)**, with the fixes of two audits after `1.0.0-rc.3`. Everything
+> **Now: `1.0.0-rc.4` is on pub.dev (2026-10-22)**, with the fixes of two audits after `1.0.0-rc.3`. Everything
 > planned up to 1.0 is done (the summary is below). Next: use it for a while, then `1.0.0`.
 
 The decisions behind each point are in `DECISIONS.md` (§ numbers below), the behavior in the
@@ -84,7 +84,7 @@ host. That's why a new rc goes first, not `1.0.0`.
 2. [x] `release/1.0.0-rc.4` from `develop`: the version in `pubspec.yaml`, the CHANGELOG entry
    with its date, the dry run (size and file list).
 3. [x] Merge into `main`, tag `v1.0.0-rc.4`, merge back into `develop`.
-4. [ ] Publish from the terminal of the maintainer (`dart pub publish` asks for a confirmation).
+4. [x] **Published on pub.dev on 2026-10-22** (322 KB, 0 warnings in the dry run).
 
 ### Release `1.0.0`
 
@@ -137,7 +137,7 @@ The details of each step are in `CHANGELOG.md`, `DECISIONS.md` and the git histo
   conditional requests, `Deprecation`/`Sunset`, `Link`, idempotency keys, `Prefer`, health format.
 - **Releases:** `1.0.0-rc.1` (2026-10-09, used in feather-io), `1.0.0-rc.2` (2026-10-20,
   retracted: it carried `build/`), `1.0.0-rc.3` (2026-10-20), `1.0.0-rc.4` (2026-10-22, the
-  audits).
+  audits, on pub.dev).
 - **Audits (2026-10-21/22, in `develop`):** a security audit (8 findings: a quadratic route
   lookup, WebSocket compression, CSRF through `text/plain`, `Forwarded` parsing, singletons in a
   request scope, idempotency memory, `Infinity`, a lost update in the docs) and a quality audit
