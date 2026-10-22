@@ -147,12 +147,27 @@ class ConsoleLogger extends WinterLogger {
       '${DateTime.now().toUtc().toIso8601String()} '
       '[${level.name.toUpperCase()}] '
       '${id == null ? '' : '[$id] '}'
-      '$message${extra.isEmpty ? '' : ' $extra'}',
+      '${_escape(message)}${extra.isEmpty ? '' : ' ${_escape(extra)}'}',
     );
-    if (error != null) output.writeln(error);
+    if (error != null) output.writeln(_escape('$error'));
     if (stackTrace != null) output.writeln(stackTrace);
   }
 }
+
+/// The control characters of [text] as escapes (`\n`, `\x1b`): a value of the client in a message
+/// can't start a fake line nor send terminal escapes (the stack trace keeps its lines)
+String _escape(String text) => text.replaceAllMapped(
+  _control,
+  (match) => switch (match[0]!) {
+    '\n' => r'\n',
+    '\r' => r'\r',
+    '\t' => r'\t',
+    final String char =>
+      '\\x${char.codeUnitAt(0).toRadixString(16).padLeft(2, '0')}',
+  },
+);
+
+final RegExp _control = RegExp(r'[\x00-\x1f\x7f]');
 
 /// A logger for production: one JSON object per line on stdout, with the keys that Cloud Logging
 /// reads by itself and that Datadog or Loki map easily:

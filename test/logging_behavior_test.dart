@@ -143,6 +143,25 @@ void main() {
 
       expect(out.stdout, isEmpty);
     });
+
+    test('control characters are escaped: one log, one line', () {
+      final out = _capture(
+        () => const ConsoleLogger().warning(
+          'user ann\n2026-01-01T00:00:00Z [INFO] fake',
+          fields: {'name': '\x1b[31mred'},
+          error: const FormatException('bad\r\nvalue'),
+        ),
+      );
+
+      expect(
+        out.stderr,
+        contains(
+          r'user ann\n2026-01-01T00:00:00Z [INFO] fake name=\x1b[31mred',
+        ),
+      );
+      expect(out.stderr, contains(r'FormatException: bad\r\nvalue'));
+      expect('\n'.allMatches(out.stderr), hasLength(2));
+    });
   });
 
   group('JsonLogger (§7)', () {
