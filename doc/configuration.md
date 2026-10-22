@@ -153,6 +153,8 @@ adds yours on top of them (handy in tests).
   a late error is logged. Its scoped dependencies (`putScoped`) are disposed when it ends, not at
   the 503, so a connection it holds isn't given to another request. Leave room for the slowest
   upload of the app (`requestTimeout: Duration(minutes: 5)` for large files), or `null` for none.
+  It costs a timer per request: about 4 % of an empty endpoint ([benchmarks](benchmarks.md)),
+  nothing next to a real handler.
   `WinterTestClient.build(requestTimeout: ...)` takes it too.
 - HTTPS: usually the proxy in front of the app terminates TLS. To serve it from the app:
 
