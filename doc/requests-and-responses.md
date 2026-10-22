@@ -575,8 +575,10 @@ Route.post(
   filter after the `AuthFilter`, so a 401 isn't kept.
 - The body is read with `bytes()` (cached, so the handler still reads it with `body<T>()`) and
   compared, with the query string, by a fingerprint.
-- `InMemoryIdempotencyStore(maxKeys:)` keeps at most 100 000 keys by default: a new one past it
-  forgets the oldest, so a client sending a new key with every request can't fill the memory.
+- `InMemoryIdempotencyStore(maxKeys:, maxBytes:)` keeps at most 100 000 keys and 64 MB of
+  responses by default: a new one past either forgets the oldest, and a response bigger than
+  `maxBytes` isn't kept (its retry runs again). So a client sending a new key with every request
+  can't fill the memory, even with large responses.
 - The keys live in an `IdempotencyStore`: `InMemoryIdempotencyStore` by default (per isolate and
   per process, purged as it's used, `clock:` for the tests). Several instances need a shared one
   (a table, Redis) implementing `reserve` (atomic), `complete`, `release` and `clear`.

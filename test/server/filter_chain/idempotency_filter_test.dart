@@ -241,6 +241,40 @@ void main() {
     },
   );
 
+  test(
+    'the store keeps at most maxBytes: a new response forgets the oldest',
+    () async {
+      final small = InMemoryIdempotencyStore(maxBytes: 250);
+      Future<void> keep(String key, int length) async {
+        await small.reserve(
+          key,
+          fingerprint: 'f',
+          expiry: const Duration(hours: 1),
+        );
+        await small.complete(
+          key,
+          IdempotentResponse(
+            statusCode: 200,
+            headers: const {},
+            body: Uint8List(length),
+          ),
+        );
+      }
+
+      await keep('a', 100);
+      await keep('b', 100);
+      await keep('c', 100);
+      await keep('huge', 251);
+
+      // a was forgotten for c, and huge was never kept
+      expect(small.size, 2);
+      expect(small.bytes, 200);
+      await small.release('b');
+      expect(small.bytes, 100);
+      expect(() => InMemoryIdempotencyStore(maxBytes: 0), throwsArgumentError);
+    },
+  );
+
   test('a GET is never filtered, and a stream is never kept', () async {
     final payments = client();
 

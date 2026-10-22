@@ -333,8 +333,8 @@ Security, by severity:
 5. [x] A `putLazy`/`putLazyAsync` singleton was created inside the zone of the first request that
    finds it: its listeners and timers saw that request's authentication and id forever. Now it is
    created outside any `RequestScope`.
-6. [ ] `InMemoryIdempotencyStore` bounds the keys, not the bytes: 16-byte requests keep 512 KiB
-   responses (up to tens of GiB at 100 000 keys). A byte limit, total and per response.
+6. [x] `InMemoryIdempotencyStore` bounded the keys, not the bytes: 16-byte requests kept 512 KiB
+   responses (up to tens of GiB at 100 000 keys). Now `maxBytes` too (64 MB by default).
 7. [x] A `double`/`num` took `1e400` as `Infinity`: it passed the validators and every later
    response that serialized it was a 500. Now a 400 (`got a number too big`), as for `int`.
 8. [ ] The guide and the `api_patterns` example `await` the body between `checkPreconditions`
