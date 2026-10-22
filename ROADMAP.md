@@ -79,8 +79,8 @@ host. That's why a new rc goes first, not `1.0.0`.
    minor updates inside the constraints, no advisory on pub.dev; 1225 tests, coverage 99.73 % (the
    12 uncovered lines are the known ones of `CLAUDE.md`); `pana` **160/160** (Docker, clean clone);
    `messages*.g.dart` equal to the lowest slang; `dart doc` without warnings, the doc snippets, the
-   tests of every example; 38 examples started with `dart run`, the rest only failed to bind port
-   8080, taken by another local service (their tests pass); the benchmarks of the same day.
+   tests of every example; every example started with `dart run` (38 on port 8080, the other 25
+   on 18080 because another local service had 8080); the benchmarks of the same day.
 2. [x] `release/1.0.0-rc.4` from `develop`: the version in `pubspec.yaml`, the CHANGELOG entry
    with its date, the dry run (size and file list).
 3. [x] Merge into `main`, tag `v1.0.0-rc.4`, merge back into `develop`.
