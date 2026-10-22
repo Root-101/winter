@@ -348,8 +348,8 @@ Quality:
     Now the static routes are found by their path (router benchmark ~62 000 → 165 000+ req/s).
 11. [x] The fingerprint of `IdempotencyFilter` copied the whole body into a `List<int>` (~80 MB
     for 10 MB). Now it hashes the bytes in place (same hash).
-12. [ ] With `autoCompress`, a stream response (static files, 206) loses its `Content-Length`
-    although `dart:io` never compresses it.
+12. [x] With `autoCompress`, a stream response (static files, 206) lost its `Content-Length`
+    although `dart:io` never compresses it. Now only a body of bytes leaves it out.
 13. [ ] Small ones: request/trace ids byte by byte from `Random.secure()` (one helper), the filter
     chain sorted per request, a new SSE `Timer` per event, three copies of `_typeOf`.
 
