@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show CompressionOptions;
 
 import 'package:collection/collection.dart';
 import 'package:winter/src/openapi/open_api.dart'
@@ -668,6 +669,10 @@ class Route {
   /// - [protocols]: the subprotocols spoken, in order of preference; the first one the client
   ///  asks for is chosen, and a client that asks only for others is refused.
   /// - [pingInterval]: a ping every 30 seconds by default, so a dead client is found and closed.
+  /// - [compression]: off by default. `dart:io` inflates and keeps each whole message before the
+  ///  handler gets it, with no size limit, so with permessage-deflate a few KB from the client
+  ///  become MB in memory, past `maxBodySize`. Turn it on (`CompressionOptions.compressionDefault`)
+  ///  only for trusted clients.
   /// - The handler runs in a request scope of its own (`requestPrincipal`, `requestId`); an error
   ///  in it is logged and closes the socket (1011). The server closes every socket (1001) when it
   ///  shuts down.
@@ -677,6 +682,7 @@ class Route {
     List<String>? allowedOrigins,
     List<String> protocols = const [],
     Duration? pingInterval = const Duration(seconds: 30),
+    CompressionOptions compression = CompressionOptions.compressionOff,
     String? key,
     FilterConfig? filterConfig,
     RouteDocs? docs,
@@ -687,6 +693,7 @@ class Route {
       protocols: protocols,
       pingInterval: pingInterval,
       allowedOrigins: allowedOrigins,
+      compression: compression,
     ),
     key: key,
     filterConfig: filterConfig,

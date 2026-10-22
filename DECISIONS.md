@@ -430,7 +430,9 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
   WebSockets and a browser sends the cookies to any of them (cross-site WebSocket hijacking). The
   handler runs in a request scope of its own, completed when the socket closes; it isn't awaited
   as a request in progress, so the server closes the sockets itself (1001) when it shuts down,
-  also the ones that finish their upgrade while it's closing.
+  also the ones that finish their upgrade while it's closing. Compression (permessage-deflate) is
+  off unless the route asks for it: `dart:io` inflates and keeps each whole message with no size
+  limit, so a few KB of a client would become MB in memory, past `maxBodySize`.
 
 ## 11. The public API
 
