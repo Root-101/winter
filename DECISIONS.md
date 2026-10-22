@@ -66,6 +66,8 @@ Guide: [`doc/object-mapper.md`](doc/object-mapper.md).
   default: a client that sends more than the model knows (a newer version) keeps working.
 - **Strict primitives**: JSON has one number type, so `12.0` is an `int`; a string is never a
   number nor a bool (`"12"` is a 400), and an integer beyond 64 bits is a 400, never clamped.
+  A number too big for a `double` (`1e400`, which the JSON decoder reads as `Infinity`) is a 400 at
+  any depth, also in a body kept as it came (`Map<String, dynamic>`): it could never be written back.
 - **Limits against a hostile body**: at most 128 objects inside each other (deeper is a 400), each
   object renamed by `fieldNaming` once, and the cache of renamed keys bounded (the keys come from
   the client).
