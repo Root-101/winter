@@ -350,8 +350,10 @@ Quality:
     for 10 MB). Now it hashes the bytes in place (same hash).
 12. [x] With `autoCompress`, a stream response (static files, 206) lost its `Content-Length`
     although `dart:io` never compresses it. Now only a body of bytes leaves it out.
-13. [ ] Small ones: request/trace ids byte by byte from `Random.secure()` (one helper), the filter
-    chain sorted per request, a new SSE `Timer` per event, three copies of `_typeOf`.
+13. [x] Small ones: request/trace ids from one helper, 4 random bytes per call (they took one per
+    byte); one SSE `Timer` per stream, not per event; one `typeOf`, not three. Not done: sorting
+    the filters of each request (3-6 of them, a stable sort; caching it costs more code than it
+    saves).
 
 Hardening (no finding, only if cheap): `Route.websocket(allowedOrigins:)` open by default,
 Swagger UI from unpkg without SRI, `permissions:` and actions pinned by SHA in the CI,

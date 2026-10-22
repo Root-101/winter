@@ -9,6 +9,7 @@ import 'package:winter/src/context/validation/validation.dart' show mapKeyPath;
 import 'package:winter/src/multipart.dart'
     show multipartBoundary, parseMultipart;
 import 'package:winter/src/router/path_template.dart';
+import 'package:winter/src/utils/type_of.dart';
 import 'package:winter/src/trusted_proxies.dart'
     show forwardedClientIpKey, parseHost;
 import 'package:winter/winter.dart';
@@ -320,8 +321,8 @@ class RequestEntity {
     final ObjectMapper mapper = objectMapper ?? Winter.context.objectMapper;
     final Encoding encoding = this.encoding ?? utf8;
     final bool json = _isJson(mimeType);
-    if (T == Uint8List || T == _typeOf<Uint8List?>()) return await bytes() as T;
-    if (T == String || T == _typeOf<String?>()) {
+    if (T == Uint8List || T == typeOf<Uint8List?>()) return await bytes() as T;
+    if (T == String || T == typeOf<String?>()) {
       if (!json) {
         try {
           return await _body.text(encoding) as T;
@@ -490,8 +491,6 @@ class RequestEntity {
   static bool _isJson(String? mimeType) =>
       mimeType == MediaType.applicationJson.mimeType ||
       (mimeType != null && mimeType.endsWith('+json'));
-
-  static Type _typeOf<X>() => X;
 
   /// A copy of this request for the next filters:
   ///

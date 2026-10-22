@@ -13,7 +13,8 @@ export 'src/openapi/openapi.dart';
 export 'src/multipart.dart' hide multipartBoundary, parseMultipart;
 export 'src/request_entity.dart'
     hide attachRoute, limitBodySize, limitRequestBody, requestFromHttpRequest;
-export 'src/request_scope.dart' hide runOutsideRequestScope;
+export 'src/request_scope.dart'
+    hide hexBytes, runOutsideRequestScope, secureRandomBytes;
 export 'src/response_entity.dart' hide writeResponse;
 export 'src/router/router.dart';
 export 'src/scheduling/scheduling.dart';

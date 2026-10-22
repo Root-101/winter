@@ -117,7 +117,7 @@ void main() {
       },
     );
 
-    test('a comment every keepAlive without events', () async {
+    test('a comment every keepAlive without events, with one timer', () async {
       final List<void Function(Timer)> periodic = [];
       final StreamController<ServerSentEvent> events =
           StreamController<ServerSentEvent>();
@@ -141,6 +141,8 @@ void main() {
           periodic.last(Timer(Duration.zero, () {}));
           events.add(ServerSentEvent(data: 'x'));
           await Future<void>.delayed(Duration.zero);
+          // The tick right after an event sends nothing, the next one does
+          periodic.last(Timer(Duration.zero, () {}));
           periodic.last(Timer(Duration.zero, () {}));
           await events.close();
           await subscription.asFuture<void>();
@@ -159,6 +161,7 @@ void main() {
       );
 
       expect(received, [':\n\n', ':\n\n', 'data: x\n\n', ':\n\n']);
+      expect(periodic, hasLength(1));
     });
 
     test(
