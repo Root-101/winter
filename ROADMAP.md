@@ -3,8 +3,8 @@
 What is missing to publish `winter` 1.0.0: an HTTP framework that covers the main use cases of a
 REST API. Not at the level of Spring, but with the basics complete, stable and documented.
 
-> **Now: `1.0.0-rc.5` is on pub.dev (2026-10-22)**: `1.0.0-rc.4` (the fixes of two audits) plus
-> `AuthFilter(cacheControl:)`, asked for by its first real use. Everything
+> **Now: `1.0.0-rc.6` is on pub.dev (2026-10-25)**: `1.0.0-rc.5` plus a fix asked for by its
+> real use (the table of `DefaultOnLoadedRoutes.log()` came out as one escaped line). Everything
 > planned up to 1.0 is done (the summary is below). Next: use it for a while, then `1.0.0`.
 
 The decisions behind each point are in `DECISIONS.md` (§ numbers below), the behavior in the
@@ -64,6 +64,22 @@ case per feature in `example/`):
 
 ## Pending
 
+### Release `1.0.0-rc.6`
+
+feather-io, on rc.5, found the route table of `DefaultOnLoadedRoutes.log()` unreadable: one
+message with line breaks and bold codes, which `ConsoleLogger` escapes, so it came out as a single
+line full of `\n` and `\x1b[1m`.
+
+1. [x] One info entry per route between the `Routes log start`/`end` lines, without line breaks
+   nor terminal codes; `FilterConfig.toString()` on one line; `console_style.dart` deleted.
+   Colors for the level of `ConsoleLogger` were tried and left out (they didn't show in the
+   console of an IDE); pending in the CHANGELOG.
+2. [x] The release review (2026-10-25; only this changed since rc.5): format, analyze, 1224
+   tests, the tests of every example, `dart doc`, the doc snippets, the dry run (323 KB, 0
+   warnings; `.temp/` added to `.pubignore`). `pana` left to the CI (no Docker here).
+   `release/1.0.0-rc.6` merged into `main`, tag `v1.0.0-rc.6`.
+3. [ ] Published on pub.dev; feather-io moves to it.
+
 ### Release `1.0.0-rc.5`
 
 The first real use of rc.4 (feather-io, an S3 server: 546 tests, AWS CLI and rclone passing)
@@ -103,7 +119,7 @@ host. That's why a new rc goes first, not `1.0.0`.
 
 ### Release `1.0.0`
 
-1. [ ] Use `1.0.0-rc.5` for a while (the client-visible changes of rc.4 in a real client;
+1. [ ] Use `1.0.0-rc.6` for a while (the client-visible changes of rc.4 in a real client;
    feather-io already runs on rc.4).
 2. [ ] The release review again, fix what comes up, and publish `1.0.0`: tag `v1.0.0`, the version
    in `pubspec.yaml`, the CHANGELOG with the date, announcement (r/dartlang, Dart Discord, X).
@@ -153,7 +169,8 @@ The details of each step are in `CHANGELOG.md`, `DECISIONS.md` and the git histo
   conditional requests, `Deprecation`/`Sunset`, `Link`, idempotency keys, `Prefer`, health format.
 - **Releases:** `1.0.0-rc.1` (2026-10-09, used in feather-io), `1.0.0-rc.2` (2026-10-20,
   retracted: it carried `build/`), `1.0.0-rc.3` (2026-10-20), `1.0.0-rc.4` (2026-10-22, the
-  audits, on pub.dev), `1.0.0-rc.5` (2026-10-22, `AuthFilter(cacheControl:)`, on pub.dev).
+  audits, on pub.dev), `1.0.0-rc.5` (2026-10-22, `AuthFilter(cacheControl:)`, on pub.dev),
+  `1.0.0-rc.6` (2026-10-25, the route table of the logs).
 - **Audits (2026-10-21/22, in `develop`):** a security audit (8 findings: a quadratic route
   lookup, WebSocket compression, CSRF through `text/plain`, `Forwarded` parsing, singletons in a
   request scope, idempotency memory, `Infinity`, a lost update in the docs) and a quality audit
