@@ -1,4 +1,5 @@
-import 'package:winter/src/utils/console_style.dart';
+import 'dart:math';
+
 import 'package:winter/winter.dart';
 
 /// What a router does with its routes when it's built. An invalid or duplicated route fails
@@ -110,60 +111,30 @@ class DefaultOnLoadedRoutes {
     return (allRoutes) {};
   }
 
-  /// Logs the route table at info: the key, method, path and filters of each route
+  /// Logs the route table at info: a start line, one line per route with its method, path, key
+  /// and filters, aligned in columns, and an end line. No line breaks nor terminal codes: the
+  /// logger escapes them, and a JSON log keeps each route in its own entry
   static OnLoadedRoutes log() {
     return (allRoutes) {
-      final StringBuffer log = StringBuffer()
-        ..writeln('Routes log start ======================================');
+      String methodOf(Route route) =>
+          route.method?.name.toUpperCase() ?? 'PARENT';
+      int widest(Iterable<String> texts) =>
+          texts.fold(0, (width, text) => max(width, text.length));
 
-      final int defaultPad = 5;
-      // 1. Find the max length of every column
-      int maxKeyLen = 0;
-      int maxMethodLen = 6; // At least the length of 'METHOD'
-      int maxPathLen = 0;
+      final methodWidth = widest(allRoutes.map(methodOf));
+      final pathWidth = widest(allRoutes.map((route) => route.path));
+      final keyWidth = widest(allRoutes.map((route) => route.key));
 
-      for (var element in allRoutes) {
-        if (element.key.length > maxKeyLen) {
-          maxKeyLen = element.key.length;
-        }
-
-        final methodText = element.method != null
-            ? element.method!.name
-            : 'PARENT';
-        if (methodText.length > maxMethodLen) {
-          maxMethodLen = methodText.length;
-        }
-
-        if (element.path.length > maxPathLen) {
-          maxPathLen = element.path.length;
-        }
+      logger.info('Routes log start ======================================');
+      for (final route in allRoutes) {
+        logger.info(
+          '${methodOf(route).padRight(methodWidth)}  '
+          '${route.path.padRight(pathWidth)}  '
+          'key: ${route.key.padRight(keyWidth)}  '
+          'filters: ${route.filterConfig}',
+        );
       }
-
-      // 2. Print the routes aligned by those lengths
-      for (var element in allRoutes) {
-        final methodText = element.method != null
-            ? element.method!.name.toUpperCase()
-            : 'PARENT';
-
-        // Pad using the max length found
-        final formattedMethod = methodText
-            .padRight(maxMethodLen + defaultPad)
-            .bold;
-        final formattedKey = element.key.padRight(maxKeyLen + defaultPad);
-        final formattedPath = element.path.padRight(maxPathLen + defaultPad);
-        final formattedFilters = '${element.filterConfig}';
-
-        log
-          ..writeln('Key: ${formattedKey.bold}')
-          ..writeln('Method: ${formattedMethod.bold}')
-          ..writeln('Path: ${formattedPath.bold}')
-          ..writeln('Filters:')
-          ..writeln(formattedFilters.bold)
-          ..writeln('');
-      }
-
-      log.write('Routes log end ========================================');
-      logger.info(log.toString());
+      logger.info('Routes log end ========================================');
     };
   }
 }

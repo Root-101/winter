@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:test/test.dart';
-import 'package:winter/src/utils/console_style.dart';
 import 'package:winter/winter.dart';
 
 class _NoopFilter extends Filter {
@@ -24,7 +23,10 @@ void main() {
 
     test('FilterConfig.toString lists the filters', () {
       expect(const FilterConfig([]).toString(), '[]');
-      expect(FilterConfig([_NoopFilter()]).toString(), ' - NoopFilter');
+      expect(
+        FilterConfig([_NoopFilter(), _NoopFilter()]).toString(),
+        '[NoopFilter, NoopFilter]',
+      );
     });
 
     test('FilterConfig.merge keeps the order', () {
@@ -49,9 +51,5 @@ void main() {
       final config = rule.toFilterConfig();
       expect((config.filters.single as AuthFilter).authenticated, isTrue);
     });
-  });
-
-  test('bold adds the ANSI codes of a terminal', () {
-    expect('text'.bold, '\x1B[1mtext\x1B[0m');
   });
 }
