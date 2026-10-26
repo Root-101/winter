@@ -76,7 +76,7 @@ line full of `\n` and `\x1b[1m`.
    console of an IDE); pending in the CHANGELOG.
 2. [x] The release review (2026-10-25; only this changed since rc.5): format, analyze, 1224
    tests, the tests of every example, `dart doc`, the doc snippets, the dry run (323 KB, 0
-   warnings; `.temp/` added to `.pubignore`). `pana` left to the CI (no Docker here).
+   warnings; `.temp/` added to `.pubignore`). `pana` **160/160** (the CI; no Docker here).
    `release/1.0.0-rc.6` merged into `main`, tag `v1.0.0-rc.6`.
 3. [x] **Published on pub.dev on 2026-10-25** (323 KB, 0 warnings in the dry run); feather-io moves
    to it.
