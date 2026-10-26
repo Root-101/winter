@@ -1,3 +1,9 @@
+* 1.0.0-rc.6:
+    * **DATE** :date: : 2026-10-25.
+    * A fix found by a real use of `1.0.0-rc.5` (feather-io).
+    * **Fixes** :wrench: : `DefaultOnLoadedRoutes.log()` writes one info entry per route (method, path, key and filters, aligned in columns) between its `Routes log start`/`Routes log end` lines, with no line breaks nor terminal codes: the logger escapes them (so a value can't forge a line), and the table came out as a single line full of `\n` and `\x1b[1m`, in the console and in the `message` of a JSON log. `FilterConfig.toString()` is one line too (`[AuthFilter{...}, LoggingFilter]`).
+    * **Pending** :hourglass: : colors in the console (the level of `ConsoleLogger` in color on a terminal) were tried and left out: they didn't show in the console of an IDE. To be fixed in a later version.
+
 * 1.0.0-rc.5:
     * **DATE** :date: : 2026-10-22.
     * The first option asked for by a real use of `1.0.0-rc.4` (feather-io, an S3 server).
@@ -50,7 +56,6 @@
     * **Security** :lock: : `AuthFilter` (401 with `WWW-Authenticate`, 403) with composable rules (`hasRole`, `hasPermission`, `rule`, `&`, `|`), the typed principal of the request (`requestPrincipal<T>()`), CORS, `SecurityHeaders` (CSP, Referrer-Policy, HSTS) a sliding-window rate limiter with a pluggable `RateLimiterStore`, and response headers checked before they're sent (a line break taken from the request is a 500, never a header injection).
     * **Dependency injection** :syringe: : `put`, `putLazy`, `putLazyAsync` (created by `ready()`, before the server opens its port), `putFactory`, `putScoped` (one per request), tags, `onDispose`, `createAll()` to create every lazy singleton at start-up, `registrations` to list what is registered, and child containers (`di.child()`) for the fakes of a test.
     * **Configuration** :gear: : `Env` with typed values (`find`, `require`, `requireAll`, lists, `Duration`, enums), `.env` files and profiles (`WINTER_PROFILE`).
-    * **Logging** :memo: : `ConsoleLogger` and `JsonLogger`, levels, structured `fields`, and the request id in every log.
     * **i18n** :globe_with_meridians: : The validation messages in the language of the request (`Accept-Language`, English and Spanish), `requestLocale` from any code, and `Vary: Accept-Language` added by itself.
     * **Request scope** :link: : Every request runs in its own `Zone`: `requestId`, `requestPrincipal`, `requestLocale` from any code, and `onComplete`.
     * **Testing** :test_tube: : `WinterTestClient` runs the whole pipeline in memory, without ports (`bodyBytes` for a binary response, `as<T>()` to read a body with the object mapper).
