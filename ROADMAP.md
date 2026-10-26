@@ -78,7 +78,8 @@ line full of `\n` and `\x1b[1m`.
    tests, the tests of every example, `dart doc`, the doc snippets, the dry run (323 KB, 0
    warnings; `.temp/` added to `.pubignore`). `pana` left to the CI (no Docker here).
    `release/1.0.0-rc.6` merged into `main`, tag `v1.0.0-rc.6`.
-3. [ ] Published on pub.dev; feather-io moves to it.
+3. [x] **Published on pub.dev on 2026-10-25** (323 KB, 0 warnings in the dry run); feather-io moves
+   to it.
 
 ### Release `1.0.0-rc.5`
 
