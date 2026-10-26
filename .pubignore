@@ -9,6 +9,7 @@ pubspec.lock
 *.iml
 CLAUDE.md
 brag-output/
+.temp/
 
 # Tooling of the repository, not of the package
 .fvmrc

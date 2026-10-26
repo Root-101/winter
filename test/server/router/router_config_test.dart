@@ -79,7 +79,7 @@ void main() {
       },
     );
 
-    test('DefaultOnLoadedRoutes.log logs every route once', () {
+    test('DefaultOnLoadedRoutes.log logs one line per route', () {
       WinterRouter(
         config: RouterConfig(onLoadedRoutes: DefaultOnLoadedRoutes.log()),
         basePath: '/api',
@@ -90,13 +90,18 @@ void main() {
         ],
       );
 
-      final log = logger.logs.single;
-      expect(log, startsWith('info: Routes log start'));
-      expect(log, contains('/api/users'));
-      expect(log, contains('/api/users/{id}'));
-      expect(log, contains('DELETE'));
-      expect(log, contains('OPTIONS'));
-      expect(log, contains('Routes log end'));
+      expect(logger.logs, [
+        'info: Routes log start ======================================',
+        'info: GET      /api/users       key: GET /api/users          filters: []',
+        'info: DELETE   /api/users/{id}  key: DELETE /api/users/{id}  filters: []',
+        'info: OPTIONS  /api/users       key: OPTIONS /api/users      filters: []',
+        'info: Routes log end ========================================',
+      ]);
+      // One entry per route: a line break or a terminal code would be escaped by the logger
+      for (final log in logger.logs) {
+        expect(log, isNot(contains('\n')));
+        expect(log, isNot(contains('\x1B')));
+      }
     });
 
     test('DefaultOnLoadedRoutes.ignore (default) logs nothing', () {

@@ -17,3 +17,6 @@ coverage/lcov.info
 
 # The executables of the benchmarks (doc/benchmarks.md)
 build/
+
+# Local scratch files
+.temp/

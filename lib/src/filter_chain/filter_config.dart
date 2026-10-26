@@ -20,8 +20,5 @@ class FilterConfig {
   }
 
   @override
-  String toString() {
-    if (filters.isEmpty) return '[]';
-    return filters.map((f) => ' - $f').join('\n');
-  }
+  String toString() => '[${filters.join(', ')}]';
 }
