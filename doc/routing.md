@@ -159,6 +159,16 @@ WinterRouter(
 
 Each hook is a function, so it can do anything with the `Route` it receives.
 
+`DefaultOnLoadedRoutes.log()` writes a start line, one info entry per route, aligned in columns,
+and an end line (a filter appears by its `toString()`):
+
+```text
+Routes log start ======================================
+GET     /users       key: GET /users          filters: [AuthFilter{authenticated: true, rules: hasRole(admin), shouldFilter: all}]
+DELETE  /users/{id}  key: DELETE /users/{id}  filters: []
+Routes log end ========================================
+```
+
 ### Route keys
 
 Every route has a `key`: its method and full path (`GET /users/{id}`, `PARENT /users`), or the one
