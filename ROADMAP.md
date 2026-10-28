@@ -79,7 +79,9 @@ demo password of `basic_auth.dart`, the key of the `localhost` test certificate)
 2. [x] The release review (2026-10-28; no code changed since rc.6): format, analyze, the tests,
    the tests of every example, `dart doc`, the doc snippets, the dry run.
    `release/1.0.0-rc.7` merged into `main`, tag `v1.0.0-rc.7`.
-3. [ ] Published on pub.dev.
+3. [x] **Published on pub.dev on 2026-10-28** (324 KB, 0 warnings in the dry run). Checked on a
+   fresh clone of GitHub: no trace of the values in any branch or tag, and gitleaks only the 4
+   false positives.
 
 ### Release `1.0.0-rc.6`
 
