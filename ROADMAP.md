@@ -3,8 +3,8 @@
 What is missing to publish `winter` 1.0.0: an HTTP framework that covers the main use cases of a
 REST API. Not at the level of Spring, but with the basics complete, stable and documented.
 
-> **Now: `1.0.0-rc.6` is on pub.dev (2026-10-25)**: `1.0.0-rc.5` plus a fix asked for by its
-> real use (the table of `DefaultOnLoadedRoutes.log()` came out as one escaped line). Everything
+> **Now: `1.0.0-rc.7` is on pub.dev (2026-10-28)**: the code of `1.0.0-rc.6` with the git
+> history cleaned (a test credential and two test hosts of an example deleted in 2024). Everything
 > planned up to 1.0 is done (the summary is below). Next: use it for a while, then `1.0.0`.
 
 The decisions behind each point are in `DECISIONS.md` (§ numbers below), the behavior in the
@@ -64,6 +64,23 @@ case per feature in `example/`):
 
 ## Pending
 
+### Release `1.0.0-rc.7`
+
+A scan of the code and of the whole git history (regex over every commit, then `gitleaks` 8.21.2
+over every branch and tag) found the connection string of a test MongoDB with its password, and
+the hosts of two test services, in an example deleted in 2024 (`bin/example/`). The database no
+longer existed; gitleaks didn't flag the connection string (its default rules have none for
+databases). Its other 4 alerts are false positives (the `Sec-WebSocket-Key` of RFC 6455, the
+demo password of `basic_auth.dart`, the key of the `localhost` test certificate).
+
+1. [x] The history rewritten with `git filter-repo --replace-text` (the password, and the hosts
+   for `localhost`/`api.example.com`): the same files in every branch and tag, new hashes;
+   force-pushed. The hash cited by `doc/benchmarks.md` updated.
+2. [x] The release review (2026-10-28; no code changed since rc.6): format, analyze, the tests,
+   the tests of every example, `dart doc`, the doc snippets, the dry run.
+   `release/1.0.0-rc.7` merged into `main`, tag `v1.0.0-rc.7`.
+3. [ ] Published on pub.dev.
+
 ### Release `1.0.0-rc.6`
 
 feather-io, on rc.5, found the route table of `DefaultOnLoadedRoutes.log()` unreadable: one
@@ -120,7 +137,7 @@ host. That's why a new rc goes first, not `1.0.0`.
 
 ### Release `1.0.0`
 
-1. [ ] Use `1.0.0-rc.6` for a while (the client-visible changes of rc.4 in a real client;
+1. [ ] Use `1.0.0-rc.7` for a while (the client-visible changes of rc.4 in a real client;
    feather-io already runs on rc.4).
 2. [ ] The release review again, fix what comes up, and publish `1.0.0`: tag `v1.0.0`, the version
    in `pubspec.yaml`, the CHANGELOG with the date, announcement (r/dartlang, Dart Discord, X).
@@ -171,7 +188,8 @@ The details of each step are in `CHANGELOG.md`, `DECISIONS.md` and the git histo
 - **Releases:** `1.0.0-rc.1` (2026-10-09, used in feather-io), `1.0.0-rc.2` (2026-10-20,
   retracted: it carried `build/`), `1.0.0-rc.3` (2026-10-20), `1.0.0-rc.4` (2026-10-22, the
   audits, on pub.dev), `1.0.0-rc.5` (2026-10-22, `AuthFilter(cacheControl:)`, on pub.dev),
-  `1.0.0-rc.6` (2026-10-25, the route table of the logs).
+  `1.0.0-rc.6` (2026-10-25, the route table of the logs), `1.0.0-rc.7` (2026-10-28, the git
+  history cleaned).
 - **Audits (2026-10-21/22, in `develop`):** a security audit (8 findings: a quadratic route
   lookup, WebSocket compression, CSRF through `text/plain`, `Forwarded` parsing, singletons in a
   request scope, idempotency memory, `Infinity`, a lost update in the docs) and a quality audit

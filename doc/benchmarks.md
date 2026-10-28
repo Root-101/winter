@@ -29,7 +29,7 @@ build/http_bench.exe
 | Winter (`Winter.start`, whole pipeline, the defaults)          |      12 400 - 14 000 |     ~79 %    |
 | Winter with `requestTimeout: Duration(seconds: 30)`            |      12 450 - 13 150 |     ~76 %    |
 
-The same day, the code before the audits (`e8707db`) gave ~13 500 req/s (~80 %), alternating the
+The same day, the code before the audits (`11d618c`) gave ~13 500 req/s (~80 %), alternating the
 two executables six times. The audits left the pipeline as fast as before (the router and the ids
 got faster, the new checks cost nothing measurable). Turning on `requestTimeout` costs a timer per
 request, about **4 %** of an empty endpoint, nothing next to a real handler; that's why it is off
