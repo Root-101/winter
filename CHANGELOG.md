@@ -1,3 +1,8 @@
+* 1.0.0-rc.7:
+    * **DATE** :date: : 2026-10-28.
+    * The same code as `1.0.0-rc.6`: only the history of the repository changed.
+    * **Security** :lock: : the git history no longer has the connection string of a test database (with its password) nor the hosts of two test services, which an old example deleted in 2024 still carried in its commits. The database no longer existed. The history was rewritten with `git filter-repo`, which replaced only those values: every branch and tag keeps the same files, but their commit hashes changed, so a clone made before 2026-10-28 has to be cloned again (or reset to `main`/`develop`). The packages on pub.dev never had them.
+
 * 1.0.0-rc.6:
     * **DATE** :date: : 2026-10-25.
     * A fix found by a real use of `1.0.0-rc.5` (feather-io).
