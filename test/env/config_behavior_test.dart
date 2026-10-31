@@ -8,28 +8,28 @@ import 'package:winter/winter.dart';
 
 /// The behavior decided in the review of the configuration (DECISIONS.md §6)
 void main() {
-  group('find and require (§6)', () {
+  group('tryFind and find (§6)', () {
     final env = Env(env: {'PORT': '9000', 'EMPTY': '  ', 'NAME': 'winter'});
 
-    test('find returns null for a missing or empty variable', () {
-      expect(env.find<int>('PORT'), 9000);
-      expect(env.find<int>('MISSING'), isNull);
-      expect(env.find<String>('EMPTY'), isNull);
-      expect(env.find<int>('MISSING') ?? 8080, 8080);
+    test('tryFind returns null for a missing or empty variable', () {
+      expect(env.tryFind<int>('PORT'), 9000);
+      expect(env.tryFind<int>('MISSING'), isNull);
+      expect(env.tryFind<String>('EMPTY'), isNull);
+      expect(env.tryFind<int>('MISSING') ?? 8080, 8080);
     });
 
     test('a nullable type is supported', () {
-      expect(env.find<int?>('PORT'), 9000);
-      expect(env.find<String?>('MISSING'), isNull);
-      expect(env.find<List<int>?>('PORT'), [9000]);
+      expect(env.tryFind<int?>('PORT'), 9000);
+      expect(env.tryFind<String?>('MISSING'), isNull);
+      expect(env.tryFind<List<int>?>('PORT'), [9000]);
     });
 
-    test('require returns the value, or a StateError that names it', () {
-      final int port = env.require<int>('PORT');
+    test('find returns the value, or a StateError that names it', () {
+      final int port = env.find<int>('PORT');
 
       expect(port, 9000);
       expect(
-        () => env.require<String>('EMPTY'),
+        () => env.find<String>('EMPTY'),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,
@@ -55,8 +55,8 @@ void main() {
     });
 
     test('caseSensitive: false finds a key in any case', () {
-      expect(env.find<String>('name', caseSensitive: false), 'winter');
-      expect(env.require<int>('port', caseSensitive: false), 9000);
+      expect(env.tryFind<String>('name', caseSensitive: false), 'winter');
+      expect(env.find<int>('port', caseSensitive: false), 9000);
       expect(
         () => env.requireAll(['port'], caseSensitive: false),
         returnsNormally,
@@ -73,9 +73,9 @@ void main() {
       );
 
       for (final read in [
-        () => secrets.find<int>('DB_PASSWORD'),
-        () => secrets.find<List<int>>('LIST'),
-        () => secrets.findEnum('LEVEL', LogLevel.values),
+        () => secrets.tryFind<int>('DB_PASSWORD'),
+        () => secrets.tryFind<List<int>>('LIST'),
+        () => secrets.tryFindEnum('LEVEL', LogLevel.values),
       ]) {
         expect(
           read,
@@ -89,7 +89,7 @@ void main() {
         );
       }
       expect(
-        () => secrets.find<int>('DB_PASSWORD'),
+        () => secrets.tryFind<int>('DB_PASSWORD'),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,
@@ -119,26 +119,26 @@ void main() {
     );
 
     test('a String is returned as it is, the other types are trimmed', () {
-      expect(env.find<String>('SECRET'), '  pa ss  ');
-      expect(env.find<int>('PORT'), 8080);
-      expect(env.find<List<String>>('NAMES'), ['a', 'b', 'c']);
+      expect(env.tryFind<String>('SECRET'), '  pa ss  ');
+      expect(env.tryFind<int>('PORT'), 8080);
+      expect(env.tryFind<List<String>>('NAMES'), ['a', 'b', 'c']);
     });
 
     test('bool and List<bool> accept any case; an empty item is skipped', () {
-      expect(env.find<bool>('FLAG'), isTrue);
-      expect(env.find<List<bool>>('FLAGS'), [true, false]);
+      expect(env.tryFind<bool>('FLAG'), isTrue);
+      expect(env.tryFind<List<bool>>('FLAGS'), [true, false]);
     });
 
     test('Duration with a unit', () {
-      expect(env.find<Duration>('TIMEOUT'), const Duration(seconds: 30));
-      expect(env.find<List<Duration>>('TIMEOUTS'), [
+      expect(env.tryFind<Duration>('TIMEOUT'), const Duration(seconds: 30));
+      expect(env.tryFind<List<Duration>>('TIMEOUTS'), [
         const Duration(milliseconds: 250),
         const Duration(minutes: 5),
         const Duration(hours: 1),
         const Duration(days: 2),
       ]);
       expect(
-        () => Env(env: {'T': '30'}).find<Duration>('T'),
+        () => Env(env: {'T': '30'}).tryFind<Duration>('T'),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,
@@ -149,7 +149,7 @@ void main() {
       );
       // Too big for an int: the same error, naming the key and never the value
       expect(
-        () => Env(env: {'T': '99999999999999999999s'}).find<Duration>('T'),
+        () => Env(env: {'T': '99999999999999999999s'}).tryFind<Duration>('T'),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,
@@ -161,27 +161,24 @@ void main() {
     });
 
     test('Uri must be absolute', () {
-      expect(env.find<Uri>('API'), Uri.parse('https://api.example.com/v1'));
-      expect(() => env.find<Uri>('RELATIVE'), throwsStateError);
+      expect(env.tryFind<Uri>('API'), Uri.parse('https://api.example.com/v1'));
+      expect(() => env.tryFind<Uri>('RELATIVE'), throwsStateError);
     });
 
     test('numbers', () {
-      expect(env.find<double>('RATIO'), 0.5);
-      expect(env.find<num>('RATIO'), 0.5);
-      expect(env.find<double>('PORT'), 8080.0);
-      expect(() => env.find<int>('RATIO'), throwsStateError);
+      expect(env.tryFind<double>('RATIO'), 0.5);
+      expect(env.tryFind<num>('RATIO'), 0.5);
+      expect(env.tryFind<double>('PORT'), 8080.0);
+      expect(() => env.tryFind<int>('RATIO'), throwsStateError);
     });
 
     test('enums by name, any case', () {
+      expect(env.tryFindEnum('LEVEL', LogLevel.values), LogLevel.warning);
+      expect(env.tryFindEnum('MISSING', LogLevel.values), isNull);
       expect(env.findEnum('LEVEL', LogLevel.values), LogLevel.warning);
-      expect(env.findEnum('MISSING', LogLevel.values), isNull);
-      expect(env.requireEnum('LEVEL', LogLevel.values), LogLevel.warning);
+      expect(() => env.findEnum('MISSING', LogLevel.values), throwsStateError);
       expect(
-        () => env.requireEnum('MISSING', LogLevel.values),
-        throwsStateError,
-      );
-      expect(
-        () => Env(env: {'L': 'loud'}).findEnum('L', LogLevel.values),
+        () => Env(env: {'L': 'loud'}).tryFindEnum('L', LogLevel.values),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,
@@ -194,7 +191,7 @@ void main() {
 
     test('the unsupported type message lists every supported type', () {
       expect(
-        () => env.find<Set<int>>('PORT'),
+        () => env.tryFind<Set<int>>('PORT'),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,
@@ -209,7 +206,7 @@ void main() {
       );
     });
 
-    test('put returns the value and find reads it back', () {
+    test('put returns the value and tryFind reads it back', () {
       final env = Env(env: {});
 
       expect(env.put('WHEN', DateTime.utc(2026)), DateTime.utc(2026));
@@ -218,9 +215,9 @@ void main() {
         ..put('PORTS', [1, 2])
         ..put('LEVEL', LogLevel.error);
 
-      expect(env.find<Duration>('TIMEOUT'), const Duration(seconds: 2));
-      expect(env.find<List<int>>('PORTS'), [1, 2]);
-      expect(env.findEnum('LEVEL', LogLevel.values), LogLevel.error);
+      expect(env.tryFind<Duration>('TIMEOUT'), const Duration(seconds: 2));
+      expect(env.tryFind<List<int>>('PORTS'), [1, 2]);
+      expect(env.tryFindEnum('LEVEL', LogLevel.values), LogLevel.error);
       expect(env.all, containsPair('WHEN', DateTime.utc(2026).toString()));
     });
   });
@@ -246,9 +243,9 @@ void main() {
       );
 
       expect(env.profile, 'prod');
-      expect(env.require<int>('PORT'), 8080);
-      expect(env.require<String>('DB_URL'), 'postgres://db.internal/app');
-      expect(env.require<String>('NAME'), 'process');
+      expect(env.find<int>('PORT'), 8080);
+      expect(env.find<String>('DB_URL'), 'postgres://db.internal/app');
+      expect(env.find<String>('NAME'), 'process');
     });
 
     test('missing files are ignored (a container has none)', () {
@@ -258,7 +255,7 @@ void main() {
       );
 
       expect(env.profile, isNull);
-      expect(env.require<int>('PORT'), 9000);
+      expect(env.find<int>('PORT'), 9000);
     });
 
     test('without environment, the variables of the process', () {
@@ -268,7 +265,7 @@ void main() {
       final env = Env.load(directory: directory.path);
 
       expect(env.all[processKey], Platform.environment[processKey]);
-      expect(env.find<int>('WINTER_TEST_ONLY_IN_FILE'), 1);
+      expect(env.tryFind<int>('WINTER_TEST_ONLY_IN_FILE'), 1);
     });
 
     test('the profile can be given', () {
@@ -281,7 +278,7 @@ void main() {
       );
 
       expect(env.profile, 'test');
-      expect(env.find<String>('NAME'), 'test');
+      expect(env.tryFind<String>('NAME'), 'test');
     });
 
     test('the format: comments, export, quotes and escapes', () {

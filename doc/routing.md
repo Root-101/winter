@@ -47,6 +47,8 @@ void main() async {
 | `OPTIONS /api/users`   | 204, `Allow: GET, POST, HEAD, OPTIONS`                  |
 | `GET /api/orders`      | 404                                                     |
 
+Example: [`routing/hello_world.dart`](../example/routing/lib/hello_world.dart).
+
 ## How it works
 
 ### Routes
@@ -80,6 +82,8 @@ list, routes: [...])` answers `/orders` and its children inherit its filters. A 
 
 `basePath` is added to every route of the router.
 
+Example: [`routing/nested_routes.dart`](../example/routing/lib/nested_routes.dart).
+
 ### Path params
 
 | Path                       | Matches                    | `pathParams`               |
@@ -107,6 +111,8 @@ final Status? status = request.queryParam('status', values: Status.values);
   `ArgumentError`: both are bugs of the app (a 500).
 - `pathParams`, `queryParams` and `queryParamsAll` (every value of a repeated param) are the raw
   `Map`s.
+
+Example: [`routing/path_and_query_params.dart`](../example/routing/lib/path_and_query_params.dart).
 
 ### Regex routes
 
@@ -164,7 +170,7 @@ and an end line (a filter appears by its `toString()`):
 
 ```text
 Routes log start ======================================
-GET     /users       key: GET /users          filters: [AuthFilter{authenticated: true, rules: hasRole(admin), shouldFilter: all}]
+GET     /users       key: GET /users          filters: [AuthFilter{authenticated: true, rule: hasRole(admin), shouldFilter: all}]
 DELETE  /users/{id}  key: DELETE /users/{id}  filters: []
 Routes log end ========================================
 ```
@@ -258,6 +264,8 @@ WinterRouter(
 It matches every path under its prefix: declare it **after** the routes that share that prefix
 (`/assets/api`), and a `Route.static` at `/` last of all.
 
+Example: [`routing/static_files.dart`](../example/routing/lib/static_files.dart).
+
 ### Health checks
 
 ```dart
@@ -295,6 +303,8 @@ Route.health(
   works. Without checks it's a 200 while the server answers (path `/health` by default).
 - It's a normal route: add `filterConfig:` to protect it, or let `LoggingFilter.shouldFilter` skip
   it (`request.route?.key`) so the probes don't fill the logs.
+
+Example: [`routing/health_check.dart`](../example/routing/lib/health_check.dart).
 
 ### WebSockets
 
@@ -351,6 +361,8 @@ socket.send('Hello');
 Testing a WebSocket needs a real connection: start the server in the test and connect with
 `WebSocket.connect('ws://localhost:$port/chat')` of `dart:io` (see [testing](testing.md)).
 
+Example: [`realtime/websocket_chat.dart`](../example/realtime/lib/websocket_chat.dart).
+
 ### Testing the routes
 
 ```dart
@@ -369,6 +381,7 @@ test('an unknown user is a 404', () async {
 - **A space or a non-ASCII character in a path**: encode it (`/caf%C3%A9`).
 - **A custom router without `resolveRoute`**: its route filters never run.
 - The regex of a param can't contain `{` or `}` (`{code|[A-Z]{3}}`): use `[A-Z][A-Z][A-Z]` or `+`.
-- Routes are matched one by one: fine for hundreds of routes, not for tens of thousands.
+- Routes with params are matched one by one (static ones by a map lookup): fine for hundreds of
+  routes, not for tens of thousands.
 - **`Route.static(path: '/')` before other routes**: it catches every `GET`, and the routes after
   it with a param are never reached. Declare it last.

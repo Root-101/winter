@@ -93,7 +93,7 @@ class DependencyInjection {
   /// Registers a singleton created by an asynchronous [create] (a connection that must be opened):
   ///
   /// ```dart
-  /// di.putLazyAsync<Database>(() => Database.connect(env.require('DATABASE_URL')),
+  /// di.putLazyAsync<Database>(() => Database.connect(env.find('DATABASE_URL')),
   ///     onDispose: (db) => db.close());
   /// await di.ready();               // Winter.start does it before opening the port
   /// final db = di.find<Database>(); // synchronous from then on

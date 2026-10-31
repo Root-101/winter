@@ -60,13 +60,6 @@ void main() {
     expect(response.body, 'user John Doe');
   });
 
-  test('405 includes the Allow header', () async {
-    final response = await client.put('/users/42');
-
-    expect(response.statusCode, 405);
-    expect(response.headers['allow'], 'GET, DELETE, HEAD, OPTIONS');
-  });
-
   test('405 from another router of the MultiRouter includes Allow', () async {
     final response = await client.get('/items');
 

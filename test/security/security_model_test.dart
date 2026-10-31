@@ -34,7 +34,7 @@ void main() {
     });
 
     test('anonymous is not authenticated', () {
-      final anonymous = Authentication.anonymous();
+      final anonymous = Authentication.anonymous;
 
       expect(anonymous.authenticated, isFalse);
       expect(anonymous.roles, isEmpty);

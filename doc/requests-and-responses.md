@@ -112,7 +112,12 @@ final Uint8List image = await request.bytes();                 // binary, any Co
   is never rejected. The rest of a body rejected half read (a 413, a malformed multipart body) is
   read and discarded, so the client gets the answer.
 
-[`example/bodies`](../example/bodies) has a case for each kind, with the `curl` of each one.
+[`example/bodies`](../example/bodies) has a case for each kind, with the `curl` of each one:
+[`bodies/no_body.dart`](../example/bodies/lib/no_body.dart),
+[`bodies/json_body.dart`](../example/bodies/lib/json_body.dart),
+[`bodies/raw_text.dart`](../example/bodies/lib/raw_text.dart),
+[`bodies/binary.dart`](../example/bodies/lib/binary.dart),
+[`bodies/graphql.dart`](../example/bodies/lib/graphql.dart).
 
 ### A form
 
@@ -145,6 +150,9 @@ photo?.bytes;      // the content, a Uint8List
 - **Never use `filename` as a path**: it can be `../../etc/passwd`. Save the file with a name of
   your own, and don't trust `mimeType` either: check the content if it matters.
 
+Examples: [`bodies/urlencoded_form.dart`](../example/bodies/lib/urlencoded_form.dart),
+[`bodies/multipart_form.dart`](../example/bodies/lib/multipart_form.dart).
+
 ### Big uploads: `multipart()`
 
 `formData()` keeps the whole body in memory. To stream a big file to disk, read the parts as they
@@ -165,6 +173,8 @@ await for (final MultipartPart part in request.multipart()) {
 - `ServerConfig.maxBodySize` still applies (10 MB by default): raise it for big uploads.
 - A malformed body, or one that ends early, is a **400** thrown where it's being read.
 - Like `read()`, it consumes the body: once, and not after `body<T>()` or `formData()`.
+
+Example: [`bodies/streaming_upload.dart`](../example/bodies/lib/streaming_upload.dart).
 
 ### The response
 
@@ -290,6 +300,8 @@ Route.get(
 - Code that doesn't receive the request (a service) reads the request scope instead:
   `requestPrincipal<T>()`, `requestLocale`, `requestId`.
 
+Example: [`filters/request_context.dart`](../example/filters/lib/request_context.dart).
+
 ### Server-Sent Events
 
 A stream of events from the server to the browser (notifications, progress, a live feed) over a
@@ -351,8 +363,9 @@ data: {"id":42,"status":"paid"}
   `request.headers[HttpHeader.lastEventId]` and send what it missed.
 - `event` and `id` can't have a line break (it would start another event): an `ArgumentError`.
 
-[`example/realtime`](../example/realtime) has a countdown that resumes from `Last-Event-ID`, and
-`example/apps/files_gallery` sends every new photo to the open pages this way.
+[`realtime/server_sent_events.dart`](../example/realtime/lib/server_sent_events.dart) has a
+countdown that resumes from `Last-Event-ID`, and `example/apps/files_gallery` sends every new
+photo to the open pages this way.
 
 ### Other streams
 

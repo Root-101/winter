@@ -1,11 +1,10 @@
 # Roadmap to 1.0.0
 
-What is missing to publish `winter` 1.0.0: an HTTP framework that covers the main use cases of a
+What it took to publish `winter` 1.0.0: an HTTP framework that covers the main use cases of a
 REST API. Not at the level of Spring, but with the basics complete, stable and documented.
 
-> **Now: `1.0.0-rc.7` is on pub.dev (2026-10-28)**: the code of `1.0.0-rc.6` with the git
-> history cleaned (a test credential and two test hosts of an example deleted in 2024). Everything
-> planned up to 1.0 is done (the summary is below). Next: use it for a while, then `1.0.0`.
+> **Now: `1.0.0`**, on the branch `release/1.0.0`: the release review is done (below) and the
+> package is ready to publish. From here on a breaking change needs a 2.0.
 
 The decisions behind each point are in `DECISIONS.md` (§ numbers below), the behavior in the
 tests, the usage in `doc/`, and what each version has in `CHANGELOG.md`.
@@ -56,7 +55,7 @@ case per feature in `example/`):
 | Scheduled tasks                   | `Scheduler` with `every`/`cron`, each run in a request scope, waited on shutdown                                                                                                                                                                                     | `scheduling.md`                           | §13       |
 | i18n                              | The validation messages in the language of the request (English, Spanish), `requestLocale`, `Vary` by itself                                                                                                                                                         | `i18n.md`                                 | §1        |
 | Testing                           | `WinterTestClient`: the whole pipeline in memory, no ports, in parallel                                                                                                                                                                                              | `testing.md`                              | §10       |
-| Quality                           | ~1225 tests, coverage ~99.7 %, two security audits (the last one with every finding closed), benchmarks                                                                                                                                                              | `benchmarks.md`                           |           |
+| Quality                           | ~1208 tests, coverage ~99.7 %, two security audits (the last one with every finding closed), benchmarks                                                                                                                                                              | `benchmarks.md`                           |           |
 | Examples                          | 13 topics with one case and its test each (`routing`, `bodies`, `validation`, `object_mapper`, `errors`, `filters`, `security`, `di`, `api_patterns`, `openapi`, `realtime`, `scheduling`, `i18n`), and the apps `auth_jwt`, `orders`, `files_gallery`, `production` | `example/README.md`                       |           |
 | CI and package                    | GitHub Actions on Linux and Windows (format, analyze, tests, examples, slang, doc snippets, an obfuscated build, the dry run, pana), actions pinned, a package of 320 KB                                                                                             | `CONTRIBUTING.md`                         |           |
 
@@ -64,85 +63,41 @@ case per feature in `example/`):
 
 ## Pending
 
-### Release `1.0.0-rc.7`
-
-A scan of the code and of the whole git history (regex over every commit, then `gitleaks` 8.21.2
-over every branch and tag) found the connection string of a test MongoDB with its password, and
-the hosts of two test services, in an example deleted in 2024 (`bin/example/`). The database no
-longer existed; gitleaks didn't flag the connection string (its default rules have none for
-databases). Its other 4 alerts are false positives (the `Sec-WebSocket-Key` of RFC 6455, the
-demo password of `basic_auth.dart`, the key of the `localhost` test certificate).
-
-1. [x] The history rewritten with `git filter-repo --replace-text` (the password, and the hosts
-   for `localhost`/`api.example.com`): the same files in every branch and tag, new hashes;
-   force-pushed. The hash cited by `doc/benchmarks.md` updated.
-2. [x] The release review (2026-10-28; no code changed since rc.6): format, analyze, the tests,
-   the tests of every example, `dart doc`, the doc snippets, the dry run.
-   `release/1.0.0-rc.7` merged into `main`, tag `v1.0.0-rc.7`.
-3. [x] **Published on pub.dev on 2026-10-28** (324 KB, 0 warnings in the dry run). Checked on a
-   fresh clone of GitHub: no trace of the values in any branch or tag, and gitleaks only the 4
-   false positives.
-
-### Release `1.0.0-rc.6`
-
-feather-io, on rc.5, found the route table of `DefaultOnLoadedRoutes.log()` unreadable: one
-message with line breaks and bold codes, which `ConsoleLogger` escapes, so it came out as a single
-line full of `\n` and `\x1b[1m`.
-
-1. [x] One info entry per route between the `Routes log start`/`end` lines, without line breaks
-   nor terminal codes; `FilterConfig.toString()` on one line; `console_style.dart` deleted.
-   Colors for the level of `ConsoleLogger` were tried and left out (they didn't show in the
-   console of an IDE); pending in the CHANGELOG.
-2. [x] The release review (2026-10-25; only this changed since rc.5): format, analyze, 1224
-   tests, the tests of every example, `dart doc`, the doc snippets, the dry run (323 KB, 0
-   warnings; `.temp/` added to `.pubignore`). `pana` **160/160** (the CI; no Docker here).
-   `release/1.0.0-rc.6` merged into `main`, tag `v1.0.0-rc.6`.
-3. [x] **Published on pub.dev on 2026-10-25** (323 KB, 0 warnings in the dry run); feather-io moves
-   to it.
-
-### Release `1.0.0-rc.5`
-
-The first real use of rc.4 (feather-io, an S3 server: 546 tests, AWS CLI and rclone passing)
-asked for one option: `AuthFilter(cacheControl:)`, so an S3 object answers only the
-`Cache-Control` it was stored with and a public prefix stays cacheable by a CDN.
-
-1. [x] `AuthFilter(cacheControl:)`: `'private'` by default (as in rc.4), another directive, or
-   `null` for none; its test, `doc/security.md`, `DECISIONS.md` §8.
-2. [x] The release review (2026-10-22; only this changed since rc.4): format, analyze, 1225
-   tests, the tests of every example, `dart doc`, the doc snippets, `pana` **160/160** (Docker,
-   clean clone), the dry run. `release/1.0.0-rc.5` merged into `main`, tag `v1.0.0-rc.5`.
-3. [x] **Published on pub.dev on 2026-10-22** (323 KB, 0 warnings in the dry run); feather-io moves
-   to it (its rc.6, `cacheControl: null` on its 9 S3 routes).
-
-### Release `1.0.0-rc.4`
-
-`develop` has, since `1.0.0-rc.3`, the fixes of a security audit and a quality audit, the
-hardening that followed and a confirmation audit (all in the `Unreleased` entry of the CHANGELOG).
-Two of them change what a client sees: a typed `body<T>()` needs `Content-Type: application/json`
-(415 otherwise), and a `Route.websocket` without `allowedOrigins` only accepts a page of the same
-host. That's why a new rc goes first, not `1.0.0`.
-
-1. [x] The [release review](#release-review-before-every-release) (2026-10-22). Found and fixed:
-   two stale lines of the README (Winter at ~85 % of `dart:io`, now ~79 %; the request timeout case
-   missing from `api_patterns`). Checked: the API added since rc.3 (`Route.websocket(compression:)`,
-   `InMemoryIdempotencyStore.maxBytes`/`bytes`, `ValidationException.objectMapper`) is consistent
-   and documented, and the new helpers are hidden from `lib/winter.dart`; `dart pub outdated` only
-   minor updates inside the constraints, no advisory on pub.dev; 1225 tests, coverage 99.73 % (the
-   12 uncovered lines are the known ones of `CLAUDE.md`); `pana` **160/160** (Docker, clean clone);
-   `messages*.g.dart` equal to the lowest slang; `dart doc` without warnings, the doc snippets, the
-   tests of every example; every example started with `dart run` (38 on port 8080, the other 25
-   on 18080 because another local service had 8080); the benchmarks of the same day.
-2. [x] `release/1.0.0-rc.4` from `develop`: the version in `pubspec.yaml`, the CHANGELOG entry
-   with its date, the dry run (size and file list).
-3. [x] Merge into `main`, tag `v1.0.0-rc.4`, merge back into `develop`.
-4. [x] **Published on pub.dev on 2026-10-22** (322 KB, 0 warnings in the dry run).
-
 ### Release `1.0.0`
 
-1. [ ] Use `1.0.0-rc.7` for a while (the client-visible changes of rc.4 in a real client;
-   feather-io already runs on rc.4).
-2. [ ] The release review again, fix what comes up, and publish `1.0.0`: tag `v1.0.0`, the version
-   in `pubspec.yaml`, the CHANGELOG with the date, announcement (r/dartlang, Dart Discord, X).
+feather-io (an S3 server) runs on the last rc and dumpling (backups of PostgreSQL) on Winter, so
+the rc period ends here; both move to `1.0.0` once it's published.
+
+1. [x] The [release review](#release-review-before-every-release) (2026-10-31), on
+   `release/1.0.0`. Found and fixed:
+   - **API** (the last chance before 2.0): `Env.find<T>` throws for a missing variable and
+     `tryFind<T>` returns null, as `di.find`/`di.tryFind` (it was `find`/`require`; also
+     `tryFindEnum`/`findEnum`); `AuthFilter(rule:)` takes any `AuthorizationRule`, with `&`/`|`
+     on the base class, so a rule of the app needs no wrapper (`RuleBuilder` gone, the combining
+     rules private); `HttpHeader` and the `DefaultOn*` of `RouterConfig` are `abstract final`;
+     `TraceContext.tryParse` (it returns null); `Authentication.anonymous` a shared
+     `Authentication<String>`; new `Winter.server.port` (the one chosen for `port: 0`).
+   - **Tests**: two server tests shared ports 9111/9112 with the SSE and WebSocket tests (random
+     failures in parallel), moved to 9113/9114; 17 overlapping tests merged or deleted, 4
+     renamed, a real-clock assertion removed, `duplicated_route_test` moved in memory: 1208 tests.
+     Coverage 99.68 % (the 14 uncovered lines are the known kinds of `CLAUDE.md`).
+   - **Docs**: the README without "experimental" (used in production by feather-io and dumpling,
+     both in *Powered by Winter*), install with `dart pub add winter`; stale numbers (~85 % in
+     `DECISIONS.md`), the `.and()` of `auth_jwt`, the static routes found by a map, the timeout
+     filter in the order of `filters.md`; every example case linked from its guide; a note that
+     `logResponse` sees the response before the header check.
+   - **Security** (the real server probed on Windows): no medium or high finding. Logs and errors
+     without client values, static files (encoded `..`, hidden, 8.3 names, device names,
+     junctions), header injection, every body limit, malformed multipart, CORS, the WebSocket
+     origin and the forwarded headers all as designed. Low: `LoggingFilter` logs the 200 of a
+     response whose headers become a 500 after the pipeline (documented). Info: a 404 echoes a
+     long path in `instance` (1:1, not amplified). `dart pub get`: no advisories.
+   - Checked: format, analyze, the tests of the 17 example packages, `dart doc` without warnings,
+     the 160 doc snippets, the dry run (325 KB). `pana` in the CI (no Docker here).
+2. [x] The version in `pubspec.yaml` and the CHANGELOG entry with its date (2026-10-31, the last
+   commit of the branch), merge into `main`, tag `v1.0.0`, merge back into `develop`.
+3. [ ] Publish on pub.dev, a GitHub release from the tag, and the announcement (r/dartlang, Dart
+   Discord, X).
 
 ### Possible improvements after release 🟢
 
@@ -190,8 +145,8 @@ The details of each step are in `CHANGELOG.md`, `DECISIONS.md` and the git histo
 - **Releases:** `1.0.0-rc.1` (2026-10-09, used in feather-io), `1.0.0-rc.2` (2026-10-20,
   retracted: it carried `build/`), `1.0.0-rc.3` (2026-10-20), `1.0.0-rc.4` (2026-10-22, the
   audits, on pub.dev), `1.0.0-rc.5` (2026-10-22, `AuthFilter(cacheControl:)`, on pub.dev),
-  `1.0.0-rc.6` (2026-10-25, the route table of the logs), `1.0.0-rc.7` (2026-10-28, the git
-  history cleaned).
+  `1.0.0-rc.6` (2026-10-25, the route table of the logs, feather-io), `1.0.0-rc.7` (2026-10-28,
+  the git history cleaned of a test credential, rewritten with `git filter-repo`).
 - **Audits (2026-10-21/22, in `develop`):** a security audit (8 findings: a quadratic route
   lookup, WebSocket compression, CSRF through `text/plain`, `Forwarded` parsing, singletons in a
   request scope, idempotency memory, `Infinity`, a lost update in the docs) and a quality audit

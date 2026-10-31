@@ -97,5 +97,5 @@ WinterRouter router(
 );
 
 Future<void> main() async => Winter.start(
-  router: router(WebhookVerifier(env.require<String>('WEBHOOK_SECRET')), []),
+  router: router(WebhookVerifier(env.find<String>('WEBHOOK_SECRET')), []),
 );

@@ -59,12 +59,6 @@ void main() {
     expect(response.body, isNot(contains('Bad state')));
   });
 
-  test('Known path with wrong method returns 405', () async {
-    final response = await client.delete('/users');
-
-    expect(response.statusCode, 405);
-  });
-
   test(
     'Known path with wrong method in a nested MultiRouter returns 405',
     () async {

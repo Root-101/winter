@@ -342,7 +342,7 @@ void main() {
           Route.post(
             path: '/users',
             handler: _ok,
-            filterConfig: FilterConfig([AuthFilter(rules: hasRole('admin'))]),
+            filterConfig: FilterConfig([AuthFilter(rule: hasRole('admin'))]),
             docs: RouteDocs(
               summary: 'Create a user',
               tags: ['users'],

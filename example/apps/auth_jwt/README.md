@@ -23,7 +23,7 @@ This example demonstrates a comprehensive implementation of Authentication and A
 ### 4. Authorization Rules
 - **Role-Based Access Control (RBAC)**: Enforced using `hasRole('user'|'admin')`.
 - **Granular Permissions**: Fine-grained control using `hasPermission('user.delete')`.
-- **Complex Rules**: Combining multiple requirements using logical operators like `.and()`.
+- **Complex Rules**: Combining requirements with the `&` and `|` operators (`hasRole('admin') & hasPermission('user.delete')`).
 
 ### 5. Dependency Injection & Services
 - **Service Layer**: Business logic encapsulated in `AuthService` and `UserService`.

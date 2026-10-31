@@ -17,7 +17,7 @@ class JwtService {
   /// Never hardcode a default secret: anyone reading the code could forge tokens.
   /// Without the env var, a random secret is generated (tokens are invalid after a restart).
   static String _loadSecret() {
-    final secret = env.find<String>('JWT_SECRET');
+    final secret = env.tryFind<String>('JWT_SECRET');
     if (secret != null) {
       if (secret.length < _minSecretLength) {
         throw StateError(

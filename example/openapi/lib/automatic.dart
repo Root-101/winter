@@ -26,7 +26,7 @@ WinterRouter router() {
       // An AuthFilter with rules: Bearer security, a 401 and a 403
       Route.delete(
         path: '/products/{id|[0-9]+}',
-        filterConfig: FilterConfig([AuthFilter(rules: hasRole('admin'))]),
+        filterConfig: FilterConfig([AuthFilter(rule: hasRole('admin'))]),
         handler: (request) => ResponseEntity.noContent(),
       ),
       // A rate limit: a 429

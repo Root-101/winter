@@ -28,26 +28,26 @@ void main() {
       router: WinterRouter(
         routes: [
           protected('/authenticated', AuthFilter()),
-          protected('/role', AuthFilter(rules: hasRole('admin'))),
-          protected('/role-upper-case', AuthFilter(rules: hasRole('ADMIN'))),
+          protected('/role', AuthFilter(rule: hasRole('admin'))),
+          protected('/role-upper-case', AuthFilter(rule: hasRole('ADMIN'))),
           protected(
             '/permission',
-            AuthFilter(rules: hasPermission('user.create')),
+            AuthFilter(rule: hasPermission('user.create')),
           ),
           protected(
             '/and',
-            AuthFilter(rules: hasRole('admin') & hasPermission('user.update')),
+            AuthFilter(rule: hasRole('admin') & hasPermission('user.update')),
           ),
           protected(
             '/or',
-            AuthFilter(rules: hasRole('guest') | hasRole('user')),
+            AuthFilter(rule: hasRole('guest') | hasRole('user')),
           ),
           protected('/anonymous-allowed', AuthFilter(authenticated: false)),
           Route.get(
             path: '/two-filters',
             filterConfig: FilterConfig([
-              AuthFilter(rules: hasRole('admin')),
-              AuthFilter(rules: hasPermission('user.create')),
+              AuthFilter(rule: hasRole('admin')),
+              AuthFilter(rule: hasPermission('user.create')),
             ]),
             handler: (request) => ResponseEntity.ok(),
           ),
@@ -171,7 +171,7 @@ void main() {
           ),
           Route.get(
             path: '/admin',
-            filterConfig: FilterConfig([AuthFilter(rules: hasRole('admin'))]),
+            filterConfig: FilterConfig([AuthFilter(rule: hasRole('admin'))]),
             handler: (r) => ResponseEntity.ok(),
           ),
         ],
@@ -221,7 +221,7 @@ void main() {
           routes: [
             Route.get(
               path: '/',
-              filterConfig: FilterConfig([AuthFilter(rules: hasRole('admin'))]),
+              filterConfig: FilterConfig([AuthFilter(rule: hasRole('admin'))]),
               handler: (r) => ResponseEntity.ok(),
             ),
           ],
@@ -241,8 +241,8 @@ void main() {
 
   test('toString shows its configuration', () {
     expect(
-      AuthFilter(rules: hasRole('admin')).toString(),
-      'AuthFilter{authenticated: true, rules: hasRole(admin), shouldFilter: all}',
+      AuthFilter(rule: hasRole('admin')).toString(),
+      'AuthFilter{authenticated: true, rule: hasRole(admin), shouldFilter: all}',
     );
     expect(
       AuthFilter(shouldFilter: (request) => false).toString(),

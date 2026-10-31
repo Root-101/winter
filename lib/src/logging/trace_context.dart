@@ -5,7 +5,7 @@ import 'package:winter/winter.dart';
 /// it: the `traceparent` and `tracestate` headers that OpenTelemetry, Datadog, Jaeger or a
 /// gateway send.
 ///
-/// The server reads it from every request ([parse]) and keeps it in the scope ([requestTrace]):
+/// The server reads it from every request ([tryParse]) and keeps it in the scope ([requestTrace]):
 /// a request without a valid `traceparent` starts a trace of its own. Its [spanId] is the span
 /// of this request, so a call to another service continues the trace with [headers]:
 ///
@@ -60,7 +60,7 @@ final class TraceContext {
   /// - Lowercase hex only, and neither id all zeros.
   /// - A [traceState] longer than 512 characters, or with a character that isn't printable
   ///   ASCII, is dropped, as the recommendation asks.
-  static TraceContext? parse(String? traceparent, {String? traceState}) {
+  static TraceContext? tryParse(String? traceparent, {String? traceState}) {
     if (traceparent == null) return null;
     final RegExpMatch? match = _traceparent.firstMatch(traceparent.trim());
     if (match == null) return null;
@@ -85,12 +85,12 @@ final class TraceContext {
     );
   }
 
-  /// The trace of [request]: its `traceparent` and `tracestate` ([parse]). Several
+  /// The trace of [request]: its `traceparent` and `tracestate` ([tryParse]). Several
   /// `traceparent` headers are invalid; several `tracestate` lines are joined.
   static TraceContext? fromRequest(RequestEntity request) {
     final List<String>? parents = request.headersAll[HttpHeader.traceparent];
     if (parents == null || parents.length != 1) return null;
-    return parse(
+    return tryParse(
       parents.single,
       traceState: request.headersAll[HttpHeader.tracestate]?.join(','),
     );

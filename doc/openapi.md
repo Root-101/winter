@@ -79,7 +79,7 @@ For every route with a handler (not the hidden ones):
 | A path param `{id}`                  | a string param                                          |
 | `{id\|[0-9]+}`, `{id\|\d+}`          | an integer param                                        |
 | `{code\|[A-Z][A-Z]}` (another regex) | a string with `pattern: ^[A-Z][A-Z]$`                   |
-| An `AuthFilter` that runs for it     | `security`, a 401 (and a 403 when it has `rules`)       |
+| An `AuthFilter` that runs for it     | `security`, a 401 (and a 403 when it has a `rule`)      |
 | Its `challenge` (`Bearer`, `Basic`, `Cookie name="sid"`, `ApiKey header="X-API-Key"`, another scheme like `Digest`) | the security scheme (`bearerAuth`, `basicAuth`, `cookieAuth`, `apiKeyAuth` with `in: header`/`query`/`cookie`, `digestAuth`); one per kind, so two `Cookie` or `ApiKey` challenges with different names share the last one |
 | A `RateLimiterFilter`                | a 429                                                   |
 | A request body                       | a 400 and a 415                                         |
@@ -95,6 +95,8 @@ that skips `/public` doesn't mark `/public` as protected. The errors are Problem
 `Route.websocket` are left out (a tree of files, a WebSocket: not operations of an API); give them
 `docs:` to show them. A path with a regex outside a param (`/files/.*`) can't be written in
 OpenAPI and is left out.
+
+Example: [`openapi/automatic.dart`](../example/openapi/lib/automatic.dart).
 
 ### The bodies: four ways
 
@@ -155,6 +157,9 @@ responses: {
 },
 ```
 
+Examples: [`openapi/hand_written.dart`](../example/openapi/lib/hand_written.dart),
+[`openapi/body_docs.dart`](../example/openapi/lib/body_docs.dart).
+
 ### The rules of `validate()` in the schema
 
 The rules are read without being evaluated (no rule runs, nothing has side effects; the
@@ -175,6 +180,8 @@ asynchronous ones of `validateAsync()` never run):
 
 A field the example doesn't have (a `null` dropped by `includeNulls: false`) gets no constraint:
 give the example every field.
+
+Example: [`openapi/from_examples.dart`](../example/openapi/lib/from_examples.dart).
 
 ### `RouteDocs`
 
@@ -214,6 +221,8 @@ router
   both routes with `filterConfig:` if the document is not public.
 - `OpenApi(...).toJson()` gives the document as a `Map`: write it to a file for a client generator.
 
+Example: [`openapi/export_document.dart`](../example/openapi/lib/export_document.dart).
+
 ## Common cases
 
 ### A list with a query param
@@ -238,11 +247,13 @@ Route.get(
 ```dart
 Route.parent(
   path: '/admin',
-  filterConfig: FilterConfig([AuthFilter(rules: hasRole('admin'))]),
+  filterConfig: FilterConfig([AuthFilter(rule: hasRole('admin'))]),
   docs: const RouteDocs(tags: ['admin']),
   routes: [...], // every child is in "admin", with its 401 and 403
 )
 ```
+
+Example: [`openapi/documented_api.dart`](../example/openapi/lib/documented_api.dart).
 
 ### Testing the document
 

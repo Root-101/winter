@@ -365,7 +365,7 @@ void main() {
     test('autoCompress gzips the responses for a client that accepts it, not a stream', () async {
       await Winter.start(
         config: const ServerConfig(
-          port: port + 1,
+          port: 9113,
           handleSignals: false,
           autoCompress: true,
         ),
@@ -390,7 +390,7 @@ void main() {
       final client = HttpClient()..autoUncompress = false;
       Future<(HttpClientResponse, List<int>)> get(String path) async {
         final request = await client.getUrl(
-          Uri.parse('http://localhost:${port + 1}$path'),
+          Uri.parse('http://localhost:9113$path'),
         );
         request.headers.set(HttpHeaders.acceptEncodingHeader, 'gzip');
         final response = await request.close();
@@ -419,7 +419,7 @@ void main() {
           .readAsBytesSync();
       await Winter.start(
         config: ServerConfig(
-          port: port + 2,
+          port: 9114,
           handleSignals: false,
           securityContext: SecurityContext()
             ..useCertificateChainBytes(certificate)
@@ -441,7 +441,7 @@ void main() {
         context: SecurityContext()..setTrustedCertificatesBytes(certificate),
       );
       final response = await (await client.getUrl(
-        Uri.parse('https://localhost:${port + 2}/secure'),
+        Uri.parse('https://localhost:9114/secure'),
       )).close();
       client.close();
 

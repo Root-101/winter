@@ -21,7 +21,7 @@ void main() {
 
   Future<String> get(String path) => http.read(Uri.parse(url + path));
 
-  test('Test serve hierarchy', () async {
+  test('a ServeRouter answers any path', () async {
     expect(await get('/anything'), body);
     expect(await get('/anything-1'), body);
     expect(await get('/abc'), body);

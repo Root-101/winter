@@ -78,9 +78,27 @@ void main() {
     expect(response.body, 'ignored');
   });
 
-  test('Default limit is 10 MB and null means no limit', () {
+  test('Default limit is 10 MB and null means no limit', () async {
     expect(const ServerConfig().maxBodySize, 10 * 1024 * 1024);
     expect(const ServerConfig(maxBodySize: null).maxBodySize, isNull);
+
+    final client = WinterTestClient.build(
+      maxBodySize: null,
+      router: WinterRouter(
+        routes: [
+          Route.post(
+            path: '/echo',
+            handler: (request) async => ResponseEntity.ok(
+              body: '${(await request.body<String>()).length}',
+            ),
+          ),
+        ],
+      ),
+    );
+    final response = await client.post('/echo', body: 'a' * (11 * 1024 * 1024));
+
+    expect(response.statusCode, 200);
+    expect(response.body, '${11 * 1024 * 1024}');
   });
 
   test('limitBodySize fails as soon as the limit is exceeded', () async {

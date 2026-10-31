@@ -227,7 +227,7 @@ void main() {
     );
 
     test('the W3C trace and span of the request', () {
-      final trace = TraceContext.parse(
+      final trace = TraceContext.tryParse(
         '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
       )!;
       final out = _capture(

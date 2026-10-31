@@ -247,6 +247,21 @@ void main() {
       expect(ResponseEntity<void>(200).toString(), 'ResponseEntity{200}');
     });
 
+    test('an encoding of the app is the charset of its text', () {
+      final text = ResponseEntity<String>(200, body: 'año', encoding: latin1);
+      final json = ResponseEntity<Map<String, int>>(
+        200,
+        body: {'a': 1},
+        encoding: latin1,
+      );
+
+      expect(text.headers['content-type'], 'text/plain; charset=iso-8859-1');
+      expect(
+        json.headers['content-type'],
+        'application/json; charset=iso-8859-1',
+      );
+    });
+
     test(
       'a body of text or bytes can be read again; a stream only once',
       () async {

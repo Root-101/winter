@@ -8,11 +8,10 @@ Winter is a backend framework for Dart, inspired by **Spring**, **ASP.NET Core**
 It gives you routing, filters, dependency injection, JSON mapping, validation, security and
 consistent errors, on top of `dart:io` and without code generation.
 
-> ⚠️ **Winter is an experimental project**, built in our spare time. `1.0.0-rc.7` is a release
-> candidate: the API is the one we intend to keep in 1.0, but it may still change before it, and
-> the framework has been used by one real application so far ([feather-io](https://github.com/Root-101/feather-io)). Try it, build with it,
-> and [tell us](https://github.com/Root-101/winter/issues) what breaks; use it in production at
-> your own discretion.
+> Winter is a small project, built in our spare time and used in production by projects like
+> [feather-io](https://github.com/Root-101/feather-io) and
+> [dumpling](https://github.com/Root-101/dumpling). Its API is stable since 1.0: a breaking change
+> needs a new major version. If something breaks, [tell us](https://github.com/Root-101/winter/issues).
 
 **What Winter is:**
 
@@ -25,7 +24,8 @@ consistent errors, on top of `dart:io` and without code generation.
 
 **What Winter is not (yet):**
 
-- **Proven in production**: no app runs on it at scale yet, so expect rough edges.
+- **Proven at scale**: it runs real projects, but none under heavy traffic yet, so expect rough
+  edges.
 - **A full-stack framework**: no database access (bring your own driver), templates, sessions, CSRF
   protection nor OAuth flows.
 - **A distributed system**: the rate limiter and the scheduled tasks live in one process; several
@@ -41,11 +41,10 @@ You need the Dart SDK 3.13 or newer ([get Dart](https://dart.dev/get-dart)) and 
 (`dart create my_api`). Then add Winter:
 
 ```bash
-dart pub add winter:^1.0.0-rc.7
+dart pub add winter
 ```
 
-The version is needed while 1.0.0 is a release candidate: `dart pub add winter` alone only picks
-stable versions. That's all the setup there is: no generator to run, no configuration file.
+That's all the setup there is: no generator to run, no configuration file.
 
 ### Your first server
 
@@ -75,24 +74,24 @@ That's as simple as it gets, but Winter does a lot more.
 
 ## Features
 
-| Feature                | What you get                                                                                                  | Guide                                                                                         |
-|------------------------|---------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
-| Routing                | Nested routes, typed path and query params, regex, 404/405, `HEAD` and `OPTIONS`, static files, health checks | [routing](doc/routing.md)                                                                     |
-| Filters                | Global and route filters, ordered, that see every error                                                       | [filters](doc/filters.md)                                                                     |
+| Feature                | What you get                                                                                                                                                                         | Guide                                                                                         |
+|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
+| Routing                | Nested routes, typed path and query params, regex, 404/405, `HEAD` and `OPTIONS`, static files, health checks                                                                        | [routing](doc/routing.md)                                                                     |
+| Filters                | Global and route filters, ordered, that see every error                                                                                                                              | [filters](doc/filters.md)                                                                     |
 | Requests and responses | Headers, cookies, every kind of body (JSON, forms, uploads, binary), streams, conditional requests (304/412/428), `Prefer`, `Link` pagination, idempotency keys, deprecation headers | [requests and responses](doc/requests-and-responses.md)                                       |
-| JSON                   | `toJson()` without interfaces, your own serializers, generics, `snake_case`, clear errors                     | [object mapper](doc/object-mapper.md)                                                         |
-| Validation             | Typed validators, nested objects, async rules, a 422 with a code per field                                    | [validation](doc/validation.md)                                                               |
-| Errors                 | Every error is a Problem Details (RFC 9457); a 500 never leaks details                                        | [error handling](doc/error-handling.md)                                                       |
-| Security               | Authentication filters, roles and permissions, CORS, security headers, a rate limiter                         | [security](doc/security.md)                                                                   |
-| Dependency injection   | Singletons, lazy, factories, one instance per request, async startup, disposal on shutdown                    | [dependency injection](doc/dependency-injection.md)                                           |
-| Configuration          | Typed environment variables, `.env` files and profiles                                                        | [configuration](doc/configuration.md)                                                         |
-| Logging                | Console and JSON loggers, a request id and the W3C trace in every log                                         | [logging](doc/logging.md)                                                                     |
-| i18n                   | Messages in the language of the request                                                                       | [i18n](doc/i18n.md)                                                                           |
-| Real time              | WebSockets that go through the filters first, and Server-Sent Events                                          | [routing](doc/routing.md#websockets), [SSE](doc/requests-and-responses.md#server-sent-events) |
-| OpenAPI                | The document of the routes and Swagger UI, schemas from an example and its `validate()`                       | [openapi](doc/openapi.md)                                                                     |
-| Scheduled tasks        | Intervals and cron expressions, started and stopped with the server                                           | [scheduling](doc/scheduling.md)                                                               |
-| Testing                | The whole pipeline in memory, without ports                                                                   | [testing](doc/testing.md)                                                                     |
-| Deployment             | Native executables, Docker, graceful shutdown, health checks                                                  | [deployment](doc/deployment.md)                                                               |
+| JSON                   | `toJson()` without interfaces, your own serializers, generics, `snake_case`, clear errors                                                                                            | [object mapper](doc/object-mapper.md)                                                         |
+| Validation             | Typed validators, nested objects, async rules, a 422 with a code per field                                                                                                           | [validation](doc/validation.md)                                                               |
+| Errors                 | Every error is a Problem Details (RFC 9457); a 500 never leaks details                                                                                                               | [error handling](doc/error-handling.md)                                                       |
+| Security               | Authentication filters, roles and permissions, CORS, security headers, a rate limiter                                                                                                | [security](doc/security.md)                                                                   |
+| Dependency injection   | Singletons, lazy, factories, one instance per request, async startup, disposal on shutdown                                                                                           | [dependency injection](doc/dependency-injection.md)                                           |
+| Configuration          | Typed environment variables, `.env` files and profiles                                                                                                                               | [configuration](doc/configuration.md)                                                         |
+| Logging                | Console and JSON loggers, a request id and the W3C trace in every log                                                                                                                | [logging](doc/logging.md)                                                                     |
+| i18n                   | Messages in the language of the request                                                                                                                                              | [i18n](doc/i18n.md)                                                                           |
+| Real time              | WebSockets that go through the filters first, and Server-Sent Events                                                                                                                 | [routing](doc/routing.md#websockets), [SSE](doc/requests-and-responses.md#server-sent-events) |
+| OpenAPI                | The document of the routes and Swagger UI, schemas from an example and its `validate()`                                                                                              | [openapi](doc/openapi.md)                                                                     |
+| Scheduled tasks        | Intervals and cron expressions, started and stopped with the server                                                                                                                  | [scheduling](doc/scheduling.md)                                                               |
+| Testing                | The whole pipeline in memory, without ports                                                                                                                                          | [testing](doc/testing.md)                                                                     |
+| Deployment             | Native executables, Docker, graceful shutdown, health checks                                                                                                                         | [deployment](doc/deployment.md)                                                               |
 
 How it fits together: [architecture](doc/architecture.md). Every guide: [`doc/`](doc/README.md).
 
@@ -194,13 +193,13 @@ void main() async {
 
 What a client gets (every error is a Problem Details, `application/problem+json`):
 
-| Request (with `X-Client: web`) | Response |
-|--------------------------------|----------|
-| `POST /tasks` `{"title": "Write the docs"}` | `201`, `Location: /tasks/1`, `{"id": 1, "title": "Write the docs", "priority": 3}` |
+| Request (with `X-Client: web`)                | Response                                                                                |
+|-----------------------------------------------|-----------------------------------------------------------------------------------------|
+| `POST /tasks` `{"title": "Write the docs"}`   | `201`, `Location: /tasks/1`, `{"id": 1, "title": "Write the docs", "priority": 3}`      |
 | `POST /tasks` `{"title": " ", "priority": 9}` | `422` with a violation per field: `title` (`notBlank`) and `priority` (`max.inclusive`) |
-| `POST /tasks` `{"priority": 2}` | `400`, `"detail": "$.title: missing"` |
-| `GET /tasks/7` | `404`, `"detail": "Task 7 not found"` |
-| `GET /tasks` without `X-Client` | `400`, `"detail": "Send the X-Client header"` |
+| `POST /tasks` `{"priority": 2}`               | `400`, `"detail": "$.title: missing"`                                                   |
+| `GET /tasks/7`                                | `404`, `"detail": "Task 7 not found"`                                                   |
+| `GET /tasks` without `X-Client`               | `400`, `"detail": "Send the X-Client header"`                                           |
 
 And it's tested in memory, with the whole pipeline and without opening a port:
 
@@ -233,23 +232,23 @@ From zero to this, step by step: [getting started](doc/getting-started.md).
 If you liked it, [`example/`](example) has much more: many small examples by topic, one file per
 case with its test, and complete apps.
 
-| Topic                                                                                                            | Cases                                                                                                           |
-|------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
-| [routing](example/routing), [bodies](example/bodies)                                                             | Params, nested routes, a CRUD, static files, health checks; every kind of request body                          |
-| [object_mapper](example/object_mapper), [validation](example/validation)                                         | Field naming, adapters, `PATCH`, sealed classes; nested objects, custom and async rules                         |
-| [errors](example/errors), [filters](example/filters)                                                             | Exceptions of the domain, a handler of your own; tenants, maintenance mode, a response cache                    |
-| [security](example/security), [di](example/di)                                                                   | API keys, Basic auth, webhook signatures, login throttling; scoped services, async startup                      |
+| Topic                                                                                                            | Cases                                                                                                                                |
+|------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| [routing](example/routing), [bodies](example/bodies)                                                             | Params, nested routes, a CRUD, static files, health checks; every kind of request body                                               |
+| [object_mapper](example/object_mapper), [validation](example/validation)                                         | Field naming, adapters, `PATCH`, sealed classes; nested objects, custom and async rules                                              |
+| [errors](example/errors), [filters](example/filters)                                                             | Exceptions of the domain, a handler of your own; tenants, maintenance mode, a response cache                                         |
+| [security](example/security), [di](example/di)                                                                   | API keys, Basic auth, webhook signatures, login throttling; scoped services, async startup                                           |
 | [api_patterns](example/api_patterns)                                                                             | Pagination, ETag and `If-Match`, content negotiation, downloads, `202` jobs, idempotency keys, `Prefer`, versioning, request timeout |
-| [openapi](example/openapi), [realtime](example/realtime), [scheduling](example/scheduling), [i18n](example/i18n) | Swagger UI, Server-Sent Events, a WebSocket chat, cron tasks, translated messages                               |
-| [apps](example/apps)                                                                                             | Authentication with JWT, an orders API, a photo gallery with uploads and a chat, a production setup with Docker |
+| [openapi](example/openapi), [realtime](example/realtime), [scheduling](example/scheduling), [i18n](example/i18n) | Swagger UI, Server-Sent Events, a WebSocket chat, cron tasks, translated messages                                                    |
+| [apps](example/apps)                                                                                             | Authentication with JWT, an orders API, a photo gallery with uploads and a chat, a production setup with Docker                      |
 
 ## Powered by Winter
 
 The projects that run on Winter:
 
-| [<img src="https://raw.githubusercontent.com/Root-101/feather-io/main/docs/design/brand/icon.svg" width="64" alt="feather-io">](https://github.com/Root-101/feather-io) |           🌰           |       [➕](https://github.com/Root-101/winter/pulls)       |
-|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:----------------------:|:---------------------------------------------------------:|
-|                                                          [feather-io](https://github.com/Root-101/feather-io)                                                           | Almond: coming soon 🤭 | [Your project?](https://github.com/Root-101/winter/pulls) |
+| [<img src="https://raw.githubusercontent.com/Root-101/feather-io/main/docs/design/brand/icon.svg" width="64" alt="feather-io">](https://github.com/Root-101/feather-io) | [<img src="https://raw.githubusercontent.com/Root-101/dumpling/main/docs/design/brand/icon-tile.svg" width="64" alt="dumpling">](https://github.com/Root-101/dumpling) |           🌰           |       [➕](https://github.com/Root-101/winter/pulls)       |
+|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:----------------------:|:---------------------------------------------------------:|
+|                                                          [feather-io](https://github.com/Root-101/feather-io)                                                           |                                                           [dumpling](https://github.com/Root-101/dumpling)                                                            | Almond: coming soon 🤭 | [Your project?](https://github.com/Root-101/winter/pulls) |
 
 <!--
 A column per project, before the "Your project?" one: its icon in the first row, its name in the
