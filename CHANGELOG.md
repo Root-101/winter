@@ -1,3 +1,22 @@
+* 1.0.0:
+    * **DATE** :date: : 2026-10-31.
+    * The first stable version, after seven release candidates, used in production by [feather-io](https://github.com/Root-101/feather-io) and [dumpling](https://github.com/Root-101/dumpling). From here on, a breaking change needs a new major version. What 1.0 has, module by module (the guides in `doc/`, the reasons in `DECISIONS.md`):
+    * **Server** :rocket: : built directly on `dart:io` (~79 % of its requests per second on an empty endpoint): HTTPS, gzip, `idleTimeout`, `maxBodySize`, an optional `requestTimeout` (503), `shared` isolates, `ServerConfig` (`const`, validated, `fromEnv`), `Winter.server.port` (the one chosen for `port: 0`) and a graceful shutdown on SIGINT/SIGTERM that waits for the requests, the WebSockets and the scheduled tasks.
+    * **Requests and responses** :inbox_tray: : Winter's own `RequestEntity`/`ResponseEntity`: multi-value headers, cookies, `copyWith`, every kind of body (JSON, text, bytes, forms, multipart whole or streamed), typed path and query params, `clientIp` behind trusted proxies, conditional requests (304, 412, 428), `Prefer` (RFC 7240) and `Link` pagination (`WebLink.pages`).
+    * **Router** :twisted_rightwards_arrows: : nested routes, regex params, static routes by a map, 404/405 with `Allow`, automatic `HEAD` and `OPTIONS`, `QUERY`, a route table checked at start, `MultiRouter`, `ServeRouter`, static files (`Route.static`: ETag, `Range`, no traversal) and health checks (`Route.health`, `application/health+json`).
+    * **Filters** :link: : global and route filters sorted by `order`, the request scope (the user, the locale, the id and the trace from any code), idempotency keys (`IdempotencyFilter`) and deprecation headers (`DeprecationFilter`: `Deprecation`, `Sunset`).
+    * **Errors** :rotating_light: : every error is a Problem Details (RFC 9457): `ApiException` and its shortcuts, `SimpleExceptionHandler.on<T>()`, and a 500 that never shows its cause.
+    * **Object mapper** :card_file_box: : JSON ↔ objects without code generation (`toJson()`, `Serializer`/`Deserializer`, `JsonAdapter`), generic types, enums, strict primitives, `fieldNaming`, `rejectUnknownFields`, `PatchValue`, errors with the path of the value, UTF-8 bytes directly.
+    * **Validation** :white_check_mark: : typed validators chained per field, nested objects, lists and maps, async rules, `sensitive` fields, and a 422 with a `code` and `params` per violation, in the language of the request (English and Spanish).
+    * **Security** :lock: : `AuthFilter(rule:)` with rules combined by `&` and `|` (`hasRole`, `hasPermission`, `rule`, or a class of the app) and a typed principal, CORS, security headers (`nosniff` and `DENY` on every response), `Cache-Control: private` behind auth, a rate limiter with the `RateLimit` headers, trusted proxies, and response headers checked before they're sent.
+    * **Dependency injection** :syringe: : `put`, `putLazy`, `putLazyAsync` (`ready()`), `putFactory`, `putScoped` (one per request), tags, `onDispose`, and child containers for the fakes of a test.
+    * **Configuration and logging** :gear: : `Env` (typed values with `find`/`tryFind`, the same convention as `di`, `.env` files and profiles, errors without values); `ConsoleLogger`/`JsonLogger` with structured fields, a request id in every log and response, and W3C Trace Context.
+    * **Real time** :electric_plug: : `Route.websocket` (the handshake through the filters, same-host origin by default, compression opt-in) and `ResponseEntity.sse` (keep-alive, ended on shutdown).
+    * **OpenAPI** :page_with_curl: : `Route.openApi` (3.1, built from the routes, the filters and the validation rules) and `Route.swaggerUi` (pinned, with Subresource Integrity).
+    * **Scheduled tasks** :alarm_clock: : `Scheduler` with `every` and `cron`, each run in a request scope, waited on shutdown.
+    * **Testing** :test_tube: : `WinterTestClient` runs the whole pipeline in memory, without ports and in parallel.
+    * **Quality** :bar_chart: : 1208 tests (each one checks something no other does), ~99.7 % line coverage, two security audits with every finding closed, benchmarks in `doc/benchmarks.md`, and examples for 13 topics (one case per file, with its test) plus 4 complete apps.
+
 * 1.0.0-rc.7:
     * **DATE** :date: : 2026-10-28.
     * The same code as `1.0.0-rc.6`: only the history of the repository changed.

@@ -94,8 +94,8 @@ the rc period ends here; both move to `1.0.0` once it's published.
      long path in `instance` (1:1, not amplified). `dart pub get`: no advisories.
    - Checked: format, analyze, the tests of the 17 example packages, `dart doc` without warnings,
      the 160 doc snippets, the dry run (325 KB). `pana` in the CI (no Docker here).
-2. [ ] The version in `pubspec.yaml` and the CHANGELOG entry with its date (the last commit of the
-   branch), merge into `main`, tag `v1.0.0`, merge back into `develop`.
+2. [x] The version in `pubspec.yaml` and the CHANGELOG entry with its date (2026-10-31, the last
+   commit of the branch), merge into `main`, tag `v1.0.0`, merge back into `develop`.
 3. [ ] Publish on pub.dev, a GitHub release from the tag, and the announcement (r/dartlang, Dart
    Discord, X).
 
