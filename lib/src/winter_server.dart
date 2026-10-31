@@ -94,6 +94,10 @@ class Winter {
 
   final HttpServer _rawServer;
 
+  /// The port the server listens on: the one of [config], or the one the system chose for a
+  /// `port: 0` (`Winter.server.port`)
+  int get port => _rawServer.port;
+
   /// Requests being handled right now, to wait for them on a graceful close
   final _InFlightRequests _inFlightRequests;
 

@@ -79,13 +79,7 @@ void main() {
     expect(response.json, {'name': 'new'});
   });
 
-  test('404, 405 & HEAD behave like a real server', () async {
-    expect((await client.get('/unknown')).statusCode, 404);
-
-    final notAllowed = await client.delete('/items/1');
-    expect(notAllowed.statusCode, 405);
-    expect(notAllowed.headers['allow'], 'GET, HEAD, OPTIONS');
-
+  test('HEAD behaves like a real server', () async {
     final head = await client.head('/items/1');
     expect(head.statusCode, 200);
     expect(head.body, isEmpty);

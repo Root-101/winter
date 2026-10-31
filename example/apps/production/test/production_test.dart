@@ -31,8 +31,8 @@ void main() {
       );
 
       expect(env.profile, 'prod');
-      expect(env.find<String>('LOG_LEVEL'), 'info');
-      expect(env.require<int>('PORT'), 9000);
+      expect(env.tryFind<String>('LOG_LEVEL'), 'info');
+      expect(env.find<int>('PORT'), 9000);
       expect(ProductionApp.loggerFor(env), isA<JsonLogger>());
     });
 

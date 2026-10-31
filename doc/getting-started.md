@@ -10,7 +10,7 @@ From zero to a JSON API with validation and tests.
 ## Installation
 
 ```bash
-dart pub add winter:^1.0.0-rc.7   # a release candidate: pub only picks it when asked
+dart pub add winter
 dart pub add dev:test
 ```
 
@@ -153,6 +153,8 @@ curl localhost:8080/todos/abc
 
 Every error is a Problem Details (`application/problem+json`), and an unexpected one is a 500
 without details, logged with its request id.
+
+Example: [`routing/crud.dart`](../example/routing/lib/crud.dart).
 
 ## Testing it
 

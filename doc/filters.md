@@ -69,6 +69,9 @@ class MaintenanceFilter extends Filter {
 }
 ```
 
+Examples: [`filters/custom_filters.dart`](../example/filters/lib/custom_filters.dart),
+[`filters/maintenance_mode.dart`](../example/filters/lib/maintenance_mode.dart).
+
 ### Global and route filters
 
 ```dart
@@ -97,6 +100,8 @@ The filters of a parent route are inherited by its children, and run before thei
 (`FilterConfig([a]).merge(FilterConfig([b]))`). A filter or a list of filters becomes one with
 `.toFilterConfig()`.
 
+Example: [`filters/response_cache.dart`](../example/filters/lib/response_cache.dart).
+
 ### `order`
 
 `order` (0 by default) sorts the whole chain, lower first: a global filter with `order: 10` runs
@@ -109,7 +114,8 @@ class AuditFilter extends Filter {
 }
 ```
 
-The filters of Winter run first: `CorsFilter` (-100) and `SecurityHeadersFilter` (-99), so their
+The filters of Winter run first: `CorsFilter` (-100), `SecurityHeadersFilter` (-99) and, with
+`ServerConfig.requestTimeout`, the request timeout (-98), so their
 headers are on every response, the errors included.
 
 ### `shouldFilter`

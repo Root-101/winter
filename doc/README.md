@@ -36,4 +36,4 @@ examples are runnable: one file per case, with its test.
   the HTTP layer (§10), the public API (§11), OpenAPI (§12) and scheduled tasks (§13).
 - [`example/`](../example): every example, by topic, and four complete apps.
 - [`CHANGELOG.md`](../CHANGELOG.md): what each version contains.
-- [`ROADMAP.md`](../ROADMAP.md): what is left for 1.0, and the review before every release.
+- [`ROADMAP.md`](../ROADMAP.md): the road to 1.0, and the review before every release.

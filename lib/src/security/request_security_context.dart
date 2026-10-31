@@ -60,11 +60,9 @@ class Authentication<T> {
   }) : roles = Set.unmodifiable(roles ?? {}),
        permissions = Set.unmodifiable(permissions ?? {});
 
-  /// Nobody: not [authenticated], without roles nor permissions
-  static Authentication anonymous() => Authentication(
+  /// Nobody: not [authenticated], without roles nor permissions (immutable, so one is shared)
+  static final Authentication<String> anonymous = Authentication<String>(
     principal: 'Anonymous',
-    roles: {},
-    permissions: {},
     authenticated: false,
   );
 

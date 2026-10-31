@@ -24,7 +24,8 @@ void main() {
   );
 
   test('a role or a permission, as one rule', () {
-    RuleBuilder authority(String name) => hasRole(name) | hasPermission(name);
+    AuthorizationRule authority(String name) =>
+        hasRole(name) | hasPermission(name);
 
     expect(check(authority('User')), isTrue);
     expect(check(authority('user.create')), isTrue);
@@ -70,7 +71,7 @@ void main() {
 
   test('anonymous, or no roles nor permissions: every rule fails', () {
     for (final Authentication nobody in [
-      Authentication.anonymous(),
+      Authentication.anonymous,
       Authentication(principal: 'empty'),
     ]) {
       expect(check(hasRole('User'), nobody), isFalse);
@@ -96,7 +97,7 @@ void main() {
   });
 
   test('toString shows the expression, with its parentheses', () {
-    expect(const RoleRule('admin').toString(), 'hasRole(admin)');
+    expect(hasRole('admin').toString(), 'hasRole(admin)');
     expect(
       (hasRole('admin') & (hasPermission('a') | hasRole('b'))).toString(),
       'hasRole(admin) && (hasPermission(a) || hasRole(b))',

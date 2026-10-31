@@ -215,6 +215,8 @@ Winter.context.setUp(
 - If the function throws, what it throws is answered by the default rules (never by the
   mappings again, so they can't loop).
 
+Example: [`errors/domain_exceptions.dart`](../example/errors/lib/domain_exceptions.dart).
+
 ### Inheritance
 
 For more than a function per type, extend `SimpleExceptionHandler` and override `handle`, the
@@ -240,6 +242,8 @@ class MyExceptionHandler extends SimpleExceptionHandler {
 To replace everything, implement `ExceptionHandler` (one method:
 `call(RequestEntity request, Object error, StackTrace stackTrace)`). It receives `Exception`s and
 `Error`s alike.
+
+Example: [`errors/custom_handler.dart`](../example/errors/lib/custom_handler.dart).
 
 ### Logging the 500
 

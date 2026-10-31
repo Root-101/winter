@@ -133,7 +133,7 @@ A dependency that needs an `await` to exist (a connection opened, a file read) i
 
 ```dart
 di.putLazyAsync<Database>(
-  () => Database.connect(env.require<String>('DATABASE_URL')),
+  () => Database.connect(env.find<String>('DATABASE_URL')),
   onDispose: (db) => db.close(),
 );
 di.putLazy<UserRepository>(() => SqlUserRepository(di.find<Database>()));
@@ -152,6 +152,8 @@ await Winter.start(); // creates the async ones (di.ready()) before opening the 
 - Without a server (a test, a script), call `await di.ready()` yourself.
 - A cycle between async dependencies (`A` awaits `B`, which awaits `A`) is a `StateError`, never a
   wait forever.
+
+Example: [`di/async_startup.dart`](../example/di/lib/async_startup.dart).
 
 ### What is registered: `registrations`
 
@@ -231,6 +233,8 @@ Route.post(
 
 `RequestScope.current?.onComplete(() => ...)` runs any code of your own at the end of the request
 the same way (registering it after the request ended is a `StateError`: it would never run).
+
+Example: [`di/request_scoped.dart`](../example/di/lib/request_scoped.dart).
 
 ### Shutting down: `onDispose`
 
@@ -320,6 +324,8 @@ di
 
 di.find<Notifier>(tag: 'sms');
 ```
+
+Example: [`di/layered_services.dart`](../example/di/lib/layered_services.dart).
 
 ### Configuration values
 

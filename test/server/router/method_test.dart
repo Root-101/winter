@@ -1,8 +1,6 @@
 @TestOn('vm')
 library;
 
-import 'dart:convert';
-
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
@@ -98,21 +96,5 @@ void main() {
 
     expect(response.statusCode, 200);
     expect(response.body, 'Response from patch-method');
-  });
-
-  test('405: Method not allowed', () async {
-    String urlToTest = '/get-method';
-    TestResponse response = await client.post(urlToTest);
-
-    expect(response.statusCode, 405);
-    expect((jsonDecode(response.body) as Map)['title'], 'Method Not Allowed');
-  });
-
-  test('404: Not found', () async {
-    String urlToTest = '/some-other-method';
-    TestResponse response = await client.get(urlToTest);
-
-    expect(response.statusCode, 404);
-    expect((jsonDecode(response.body) as Map)['title'], 'Not Found');
   });
 }

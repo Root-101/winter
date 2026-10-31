@@ -1,19 +1,15 @@
 import 'package:winter/winter.dart';
 
-/// A rule as an [AuthFilter]: `hasRole('admin').toFilter()`
+/// A rule as an [AuthFilter] (`hasRole('admin').toFilter()`) or as the [FilterConfig] of a route
+/// (`filterConfig: hasRole('admin').toFilterConfig()`)
 ///
 /// {@category Security}
-extension AuthFilterFromRuleBuilder on RuleBuilder {
+extension AuthorizationRuleFilters on AuthorizationRule {
   /// An [AuthFilter] with this rule (and an authenticated user, unless [authenticated] is false)
   AuthFilter toFilter({bool authenticated = true}) =>
-      AuthFilter(authenticated: authenticated, rules: this);
-}
+      AuthFilter(authenticated: authenticated, rule: this);
 
-/// A rule as the [FilterConfig] of a route: `filterConfig: hasRole('admin').toFilterConfig()`
-///
-/// {@category Security}
-extension FilterConfigFromRuleBuilder on RuleBuilder {
-  /// A [FilterConfig] with the [AuthFilter] of this rule (see [AuthFilterFromRuleBuilder.toFilter])
+  /// A [FilterConfig] with the [AuthFilter] of this rule (see [toFilter])
   FilterConfig toFilterConfig({bool authenticated = true}) =>
       FilterConfig([toFilter(authenticated: authenticated)]);
 }

@@ -60,8 +60,8 @@ class ProductionApp {
   /// JSON logs in production (one object per line, with the request id), readable ones locally
   static WinterLogger loggerFor(Env env) {
     final LogLevel level =
-        env.findEnum('LOG_LEVEL', LogLevel.values) ?? LogLevel.info;
-    return env.find<String>('LOG_FORMAT') == 'json'
+        env.tryFindEnum('LOG_LEVEL', LogLevel.values) ?? LogLevel.info;
+    return env.tryFind<String>('LOG_FORMAT') == 'json'
         ? JsonLogger(minLevel: level)
         : ConsoleLogger(minLevel: level);
   }
@@ -106,7 +106,7 @@ class ProductionApp {
   static FilterConfig filters(Env env) => FilterConfig([
     LoggingFilter(),
     RateLimiterFilter(
-      maxRequests: env.find<int>('RATE_LIMIT') ?? 100,
+      maxRequests: env.tryFind<int>('RATE_LIMIT') ?? 100,
       // The client is its IP: behind the load balancer, the one it forwarded (trustedProxies)
       window: const Duration(minutes: 1),
     ),
@@ -116,16 +116,16 @@ class ProductionApp {
   /// `X-Forwarded-Proto` and `X-Forwarded-Host` give the IP of the client and the public URL;
   /// none locally, where a client could fake them
   static TrustedProxies? trustedProxies(Env env) {
-    final int count = env.find<int>('TRUSTED_PROXIES') ?? 0;
+    final int count = env.tryFind<int>('TRUSTED_PROXIES') ?? 0;
     return count > 0 ? TrustedProxies(count) : null;
   }
 
   static SecurityConfig security(Env env) => SecurityConfig(
     cors: CorsConfig(
-      allowedOrigins: env.find<List<String>>('CORS_ORIGINS') ?? const [],
+      allowedOrigins: env.tryFind<List<String>>('CORS_ORIGINS') ?? const [],
       allowCredentials: true,
     ),
-    securityHeaders: SecurityHeaders(hsts: env.find<bool>('HSTS') ?? false),
+    securityHeaders: SecurityHeaders(hsts: env.tryFind<bool>('HSTS') ?? false),
   );
 
   static Future<void> start({Env? env}) async {
@@ -134,29 +134,31 @@ class ProductionApp {
 
     /// Closed by Winter.shutdown() on SIGTERM, after the requests in progress
     di.put<Database>(
-      Database(config.require<String>('DATABASE_URL')),
+      Database(config.find<String>('DATABASE_URL')),
       onDispose: (database) => database.close(),
     );
     di.put<StockClient>(
       StockClient(
-        Uri.parse(config.find<String>('STOCK_URL') ?? 'http://localhost:8081'),
+        Uri.parse(
+          config.tryFind<String>('STOCK_URL') ?? 'http://localhost:8081',
+        ),
       ),
     );
 
     await Winter.start(
       config: ServerConfig.fromEnv(
         config,
-        maxBodySize: config.find<int>('MAX_BODY_SIZE') ?? 1024 * 1024,
+        maxBodySize: config.tryFind<int>('MAX_BODY_SIZE') ?? 1024 * 1024,
 
         /// Below the grace period of the platform (Kubernetes: 30 s by default)
         shutdownTimeout:
-            config.find<Duration>('SHUTDOWN_TIMEOUT') ??
+            config.tryFind<Duration>('SHUTDOWN_TIMEOUT') ??
             const Duration(seconds: 25),
         onShutdown: () => logger.info('Stopped accepting requests'),
 
         /// Off by default in Winter: a stuck dependency answers a 503 instead of holding the request
         requestTimeout:
-            config.find<Duration>('REQUEST_TIMEOUT') ??
+            config.tryFind<Duration>('REQUEST_TIMEOUT') ??
             const Duration(seconds: 30),
         trustedProxies: trustedProxies(config),
       ),

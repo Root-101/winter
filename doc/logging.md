@@ -148,6 +148,9 @@ await Winter.start(globalFilterConfig: FilterConfig([LoggingFilter()]), router: 
 It writes two lines per request, both in info and with the request id:
 `REQUEST: GET /users/1` when it arrives, and `RESPONSE: GET /users/1 => 200 (12 ms)` when it's
 answered (error responses too). `LoggingFilter(logRequest: ..., logResponse: ...)` replaces them.
+`logResponse` sees the response of the chain: if the server then turns it into a 500 because a
+header can't be sent (a line break or a non-ASCII value, see [security](security.md)), that 500 is
+logged apart, as an error with the same request id.
 
 **It never logs the body nor the query string**: they may contain passwords, tokens or personal
 data (`?email=...`), and a body may be huge. For the same reason, a failed deserialization logs the

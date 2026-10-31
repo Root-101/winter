@@ -43,7 +43,7 @@ class PostService {
 }
 
 /// The path names the owner: checked before the handler
-final RuleBuilder isOwner = rule(
+final AuthorizationRule isOwner = rule(
   (auth, request) =>
       request.pathParams['userId'] == (auth.principal as User).id,
   describe: 'isOwner',

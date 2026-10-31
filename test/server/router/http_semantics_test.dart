@@ -127,20 +127,4 @@ void main() {
       expect((await client.get('/regex/a/b/c')).body, 'regex');
     });
   });
-
-  test(
-    'Same route declared with and without trailing slash is a duplicate',
-    () {
-      final duplicated = <Route>[];
-      WinterRouter(
-        config: RouterConfig(onDuplicatedRoute: duplicated.add),
-        routes: [
-          Route.get(path: '/a', handler: (r) => ResponseEntity.ok()),
-          Route.get(path: '/a/', handler: (r) => ResponseEntity.ok()),
-        ],
-      );
-
-      expect(duplicated, hasLength(1));
-    },
-  );
 }

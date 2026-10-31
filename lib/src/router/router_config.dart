@@ -42,7 +42,7 @@ typedef OnInvalidUrl = void Function(Route failedRoute);
 /// The ready-made [OnInvalidUrl]s
 ///
 /// {@category Routing}
-class DefaultOnInvalidUrl {
+abstract final class DefaultOnInvalidUrl {
   /// Drops the route, with a warning unless [log] is false
   static OnInvalidUrl ignore({bool log = true}) {
     return (failedRoute) {
@@ -73,7 +73,7 @@ typedef OnDuplicatedRoute = void Function(Route duplicatedRoute);
 /// The ready-made [OnDuplicatedRoute]s
 ///
 /// {@category Routing}
-class DefaultOnDuplicatedRoute {
+abstract final class DefaultOnDuplicatedRoute {
   /// Drops the second route, with a warning unless [log] is false
   static OnDuplicatedRoute ignore({bool log = true}) {
     return (duplicatedRoute) {
@@ -105,7 +105,7 @@ typedef OnLoadedRoutes = void Function(List<Route> allRoutes);
 /// The ready-made [OnLoadedRoutes]
 ///
 /// {@category Routing}
-class DefaultOnLoadedRoutes {
+abstract final class DefaultOnLoadedRoutes {
   /// Does nothing. The default.
   static OnLoadedRoutes ignore() {
     return (allRoutes) {};

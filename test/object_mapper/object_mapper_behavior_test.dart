@@ -795,14 +795,15 @@ void main() {
     String nested(int depth) => '${'{"child":' * depth}null${'}' * depth}';
 
     for (final naming in [FieldNaming.none, FieldNaming.snakeCase]) {
-      test('objects nested too deeply are a 400, quickly (${naming.name})', () {
+      test('objects nested too deeply are a 400 (${naming.name})', () {
         final ObjectMapper nodes = ObjectMapper(
           fieldNaming: naming,
           deserializers: [Deserializer<_Node>.json(_Node.fromJson)],
         );
 
         expect(nodes.decode<_Node>(nested(100)).depth, 100);
-        final Stopwatch watch = Stopwatch()..start();
+        // It used to be a stack overflow (or take seconds, a copy per level); the test timeout
+        // catches that, never a real-clock assertion
         expect(
           () => nodes.decode<_Node>(nested(2000)),
           throwsA(
@@ -813,8 +814,6 @@ void main() {
             ),
           ),
         );
-        // It used to take seconds (a stack overflow, or a copy per level)
-        expect(watch.elapsed, lessThan(const Duration(seconds: 1)));
       });
     }
   });

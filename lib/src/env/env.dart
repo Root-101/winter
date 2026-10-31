@@ -6,15 +6,15 @@ import 'package:winter/src/utils/type_of.dart';
 /// The environment variables of the app, read with their type:
 ///
 /// ```dart
-/// final port = env.find<int>('PORT') ?? 8080;
-/// final dbUrl = env.require<String>('DB_URL');
-/// final timeout = env.find<Duration>('TIMEOUT') ?? const Duration(seconds: 30);
+/// final port = env.tryFind<int>('PORT') ?? 8080;
+/// final dbUrl = env.find<String>('DB_URL');
+/// final timeout = env.tryFind<Duration>('TIMEOUT') ?? const Duration(seconds: 30);
 /// ```
 ///
 /// Supported types: `String`, `bool`, `int`, `double`, `num`, `Duration` (`250ms`, `30s`, `5m`,
 /// `1h`, `2d`), `Uri` (absolute), a `List` of any of them (comma separated), their nullable forms,
-/// and enums with [findEnum]. An empty value counts as missing. A `String` is returned as it is;
-/// the other types are trimmed.
+/// and enums with [tryFindEnum]/[findEnum]. An empty value counts as missing. A `String` is
+/// returned as it is; the other types are trimmed.
 ///
 /// [Env.load] also reads `.env` files for local development. The errors never show a value: it
 /// may be a secret.
@@ -66,7 +66,7 @@ class Env {
 
   /// The variable [key] as a [T], or null if it's missing or empty.
   /// A value that is not a valid [T] is a [StateError] (that never shows the value).
-  T? find<T>(String key, {bool caseSensitive = true}) {
+  T? tryFind<T>(String key, {bool caseSensitive = true}) {
     final String? raw = _rawFind(key, caseSensitive: caseSensitive);
     if (raw == null || raw.trim().isEmpty) return null;
 
@@ -75,8 +75,8 @@ class Env {
   }
 
   /// The variable [key] as a [T]: a [StateError] that names it if it's missing or empty
-  T require<T>(String key, {bool caseSensitive = true}) =>
-      find<T>(key, caseSensitive: caseSensitive) ??
+  T find<T>(String key, {bool caseSensitive = true}) =>
+      tryFind<T>(key, caseSensitive: caseSensitive) ??
       (throw StateError(
         'The env variable $key is required, and it is missing',
       ));
@@ -96,7 +96,7 @@ class Env {
 
   /// The variable [key] as one of the [values] of an enum, by its name (any case), or null if
   /// it's missing. Another name is a [StateError] that lists the valid ones.
-  E? findEnum<E extends Enum>(
+  E? tryFindEnum<E extends Enum>(
     String key,
     List<E> values, {
     bool caseSensitive = true,
@@ -112,18 +112,18 @@ class Env {
         ));
   }
 
-  /// Like [findEnum], but a missing variable is a [StateError]
-  E requireEnum<E extends Enum>(
+  /// Like [tryFindEnum], but a missing variable is a [StateError]
+  E findEnum<E extends Enum>(
     String key,
     List<E> values, {
     bool caseSensitive = true,
   }) =>
-      findEnum(key, values, caseSensitive: caseSensitive) ??
+      tryFindEnum(key, values, caseSensitive: caseSensitive) ??
       (throw StateError(
         'The env variable $key is required, and it is missing',
       ));
 
-  /// Sets [key] to [value] (written so [find] reads it back: a `List` comma separated, a
+  /// Sets [key] to [value] (written so [tryFind] reads it back: a `List` comma separated, a
   /// `Duration` in milliseconds, an enum by name) and returns [value]
   T put<T>(String key, T value) {
     _env[key] = _format(value);

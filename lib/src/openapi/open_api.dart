@@ -320,10 +320,10 @@ class _OpenApiBuilder {
       }
       if (!runs) continue;
       if (filter is AuthFilter &&
-          (filter.authenticated || filter.rules != null)) {
+          (filter.authenticated || filter.rule != null)) {
         protection = protection.copyWith(
           authenticated: true,
-          rules: filter.rules != null,
+          rules: filter.rule != null,
           scheme: _scheme(filter.challenge),
         );
       } else if (filter is RateLimiterFilter) {

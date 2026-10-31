@@ -45,7 +45,7 @@ void main() {
       final rule = hasRole('admin');
 
       final filter = rule.toFilter(authenticated: false);
-      expect(filter.rules, same(rule));
+      expect(filter.rule, same(rule));
       expect(filter.authenticated, isFalse);
 
       final config = rule.toFilterConfig();

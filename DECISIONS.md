@@ -107,7 +107,7 @@ Guide: [`doc/validation.md`](doc/validation.md).
 - Every validator but `notNull` passes on `null`; `stopOnFailure` (default in `notNull`) skips the
   rest of the field. A validator of the app is an extension that calls `addRule`; its message is a
   function, called only on failure, so a valid request never reads the language.
-- **`body<T>()` validates** a `Validatable` (or a list of them) by default: a model implements it to
+- **`body<T>()` validates** a `Validatable` (or a list or a map of them) by default: a model implements it to
   be validated. A PATCH opts out (`validate: false`) or uses a model of its own.
 - **Nested objects**: `valid()` and `validEach()` prefix the violations (`address.zip`,
   `items[0].quantity`, `prices["eur"].amount`) and run the nested `validate()` with the clock of the
@@ -193,14 +193,15 @@ Guide: [`doc/dependency-injection.md`](doc/dependency-injection.md).
 
 Guide: [`doc/configuration.md`](doc/configuration.md).
 
-- **`find<T>` returns `T?`, `require<T>` a `T`**, and `requireAll` names every missing variable in
+- **`tryFind<T>` returns `T?`, `find<T>` a `T`** (a `StateError` that names a missing variable),
+  the same convention as `di.find`/`di.tryFind`, and `requireAll` names every missing variable in
   one error (in a container, one restart per missing variable is slow). An empty value counts as
   missing.
 - **An error never shows the value**: a configuration error ends in the logs, and the value may be
   a secret.
 - Types: `String`, `bool`, `int`, `double`, `num`, `Duration` (`30s`), absolute `Uri`, lists (comma
-  separated) and enums (`findEnum`). A `String` is never trimmed (a secret may have spaces); the
-  other types are.
+  separated) and enums (`tryFindEnum`/`findEnum`). A `String` is never trimmed (a secret may have
+  spaces); the other types are.
 - **`Env.load()`**: process variables > `.env.<WINTER_PROFILE>` > `.env`, missing files ignored.
   In production the platform gives the variables, the files are for local development, so the same
   code runs in both. No interpolation (`${OTHER}`): it hides where a value comes from.
@@ -250,6 +251,9 @@ Guide: [`doc/security.md`](doc/security.md).
 - **Roles and permissions**, nothing else: an "authority" is `hasRole(x) | hasPermission(x)`.
 - **Rules see the request** (`evaluate(authentication, request)`, `rule((auth, request) => ...)`),
   so "only the owner" lives in the rule. `describe()` gives the readable form of any rule.
+- **One rule per `AuthFilter`** (`rule:`), an `AuthorizationRule`: `&` and `|` are operators of
+  the base class, so a rule of the app goes alone or on either side of them, with no wrapper; the
+  rules that combine them are private (only the operators are API).
 - **A typed principal from any code**: `requestPrincipal<T>()` (the scope) and
   `request.principal<T>()`; nobody is a 401, another type a `StateError` (a bug of the app).
 - **CORS**: `'*'` with credentials echoes the origin and logs a warning (any site could use the
@@ -381,7 +385,8 @@ Guide: [`doc/requests-and-responses.md`](doc/requests-and-responses.md).
   no cache mixes the answers.
 - **Winter serves with `dart:io` directly**, with its own request and response, without shelf: its
   public API doesn't depend on another package (nor on its breaking changes), and an empty endpoint
-  is close to the `dart:io` ceiling (~85 %, `benchmark/http_benchmark.dart`).
+  is close to the `dart:io` ceiling (~79 % in the last measure, `benchmark/http_benchmark.dart`,
+  see `doc/benchmarks.md`).
 - **The request is read-only** (headers, query and path params): a filter passes a copy to the
   chain. `headers` (one value, case insensitive) and `headersAll` (every value); the headers of
   `dart:io` are read as a view, not copied. The body is read once and shared by the copies;

@@ -63,12 +63,14 @@ void main() {
     expect(response.body, 'Response from hierarchy #2');
   });
 
-  //This actually call hierarchy #2 because serve handle all request and never gets to hierarchy #3
-  test('Test Router #3 => /users', () async {
-    String urlToTest = '/users';
-    TestResponse response = await client.get(urlToTest);
+  test(
+    'a ServeRouter answers every path, so router #3 after it is never reached',
+    () async {
+      String urlToTest = '/users';
+      TestResponse response = await client.get(urlToTest);
 
-    expect(response.statusCode, 200);
-    expect(response.body, 'Response from hierarchy #2');
-  });
+      expect(response.statusCode, 200);
+      expect(response.body, 'Response from hierarchy #2');
+    },
+  );
 }

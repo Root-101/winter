@@ -51,33 +51,56 @@ void main() {
       expect(logger.logs, isEmpty);
     });
 
-    test('invalid urls fail the start with DefaultOnInvalidUrl.fail', () {
-      expect(
-        () => WinterRouter(
-          config: RouterConfig(onInvalidUrl: DefaultOnInvalidUrl.fail()),
-          routes: [Route.get(path: '/in valid', handler: ok)],
-        ),
-        throwsStateError,
-      );
-    });
-
     test(
-      'duplicated routes fail the start with DefaultOnDuplicatedRoute.fail',
+      'DefaultOnInvalidUrl.fail makes the WinterRouter constructor throw',
       () {
         expect(
           () => WinterRouter(
-            config: RouterConfig(
-              onDuplicatedRoute: DefaultOnDuplicatedRoute.fail(),
-            ),
-            routes: [
-              Route.get(path: '/a', handler: ok),
-              Route.get(path: '/a', handler: ok),
-            ],
+            config: RouterConfig(onInvalidUrl: DefaultOnInvalidUrl.fail()),
+            routes: [Route.get(path: '/in valid', handler: ok)],
           ),
           throwsStateError,
         );
       },
     );
+
+    test('the same custom key on different paths is a duplicate', () {
+      expect(
+        () => WinterRouter(
+          routes: [
+            Route.get(path: '/test1', key: 'duplicate-key', handler: ok),
+            Route.get(path: '/test2', key: 'duplicate-key', handler: ok),
+          ],
+        ),
+        throwsStateError,
+      );
+    });
+
+    test('DefaultOnDuplicatedRoute.ignore keeps the first route', () async {
+      final client = WinterTestClient.build(
+        router: WinterRouter(
+          config: RouterConfig(
+            onDuplicatedRoute: DefaultOnDuplicatedRoute.ignore(log: false),
+          ),
+          routes: [
+            Route.get(
+              path: '/test',
+              handler: (r) => ResponseEntity.ok(body: 'first'),
+            ),
+            Route.get(
+              path: '/test',
+              handler: (r) => ResponseEntity.ok(body: 'second'),
+            ),
+          ],
+        ),
+      );
+
+      final response = await client.get('/test');
+
+      expect(response.statusCode, 200);
+      expect(response.body, 'first');
+      expect(logger.logs, isEmpty);
+    });
 
     test('DefaultOnLoadedRoutes.log logs one line per route', () {
       WinterRouter(

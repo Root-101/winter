@@ -124,8 +124,8 @@ class ServerConfig {
     Duration? requestTimeout,
     TrustedProxies? trustedProxies,
   }) => ServerConfig(
-    host: env.find<String>('HOST')?.trim() ?? host,
-    port: env.find<int>('PORT') ?? port,
+    host: env.tryFind<String>('HOST')?.trim() ?? host,
+    port: env.tryFind<int>('PORT') ?? port,
     shared: shared,
     maxBodySize: maxBodySize,
     handleSignals: handleSignals,

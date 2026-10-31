@@ -122,6 +122,8 @@ Every validator returns the same `FieldValidator<T>`, so the type is kept along 
 
 Every validator takes `message:` (your own text) and `stopOnFailure:`.
 
+Example: [`validation/basic_rules.dart`](../example/validation/lib/basic_rules.dart).
+
 ### The response: 422
 
 `body<T>()` validates a `Validatable` body (and every element of a list of them, with its index:
@@ -194,6 +196,8 @@ The regex goes in the `params` of the violation (and in OpenAPI) so a client can
 a `RegExp` with flags (`caseSensitive: false`) is left out, as its source alone is another rule.
 For anything else, `cvc.merge(other.validate(), prefix: 'name')` merges a context by hand.
 
+Example: [`validation/nested_objects.dart`](../example/validation/lib/nested_objects.dart).
+
 ### Messages and languages
 
 Without `message:`, the text is Winter's, in the language of the request: English and Spanish
@@ -246,6 +250,8 @@ cvc.field('slug', slug).notNull().slug();
 - Give a `code` (and `params`) if clients need one.
 
 For a one-off rule, `custom((value) => value == password ? null : 'The passwords differ')`.
+
+Example: [`validation/custom_rules.dart`](../example/validation/lib/custom_rules.dart).
 
 ### A rule that depends on several fields
 
