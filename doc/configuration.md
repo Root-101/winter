@@ -24,8 +24,8 @@ class AppConfig {
   factory AppConfig.fromEnv(Env env) {
     env.requireAll(['DATABASE_URL']); // every missing variable in one error
     return AppConfig(
-      databaseUrl: env.require<String>('DATABASE_URL'),
-      requestTimeout: env.find<Duration>('REQUEST_TIMEOUT') ?? const Duration(seconds: 30),
+      databaseUrl: env.find<String>('DATABASE_URL'),
+      requestTimeout: env.tryFind<Duration>('REQUEST_TIMEOUT') ?? const Duration(seconds: 30),
     );
   }
 }
@@ -46,18 +46,18 @@ void main() async {
 
 ### Reading a variable
 
-| Method                            | Missing or empty            | Not a valid `T`  |
-|-----------------------------------|-----------------------------|------------------|
-| `env.find<T>(key)`                | `null` (`?? default`)       | `StateError`     |
-| `env.require<T>(key)`             | `StateError` that names it  | `StateError`     |
-| `env.findEnum(key, values)`       | `null`                      | `StateError` that lists the names |
-| `env.requireEnum(key, values)`    | `StateError`                | `StateError`     |
-| `env.requireAll([keys])`          | `StateError` that names **all** the missing ones | — |
+| Method                         | Missing or empty                                 | Not a valid `T`                   |
+|--------------------------------|--------------------------------------------------|-----------------------------------|
+| `env.tryFind<T>(key)`          | `null` (`?? default`)                            | `StateError`                      |
+| `env.find<T>(key)`             | `StateError` that names it                       | `StateError`                      |
+| `env.tryFindEnum(key, values)` | `null`                                           | `StateError` that lists the names |
+| `env.findEnum(key, values)`    | `StateError`                                     | `StateError`                      |
+| `env.requireAll([keys])`       | `StateError` that names **all** the missing ones | —                                 |
 
 ```dart
-final port = env.find<int>('PORT') ?? 8080;
-final dbUrl = env.require<String>('DATABASE_URL');
-final level = env.findEnum('LOG_LEVEL', LogLevel.values) ?? LogLevel.info;
+final port = env.tryFind<int>('PORT') ?? 8080;
+final dbUrl = env.find<String>('DATABASE_URL');
+final level = env.tryFindEnum('LOG_LEVEL', LogLevel.values) ?? LogLevel.info;
 ```
 
 - An empty value (`KEY=` or only spaces) counts as missing.
@@ -77,7 +77,7 @@ final level = env.findEnum('LOG_LEVEL', LogLevel.values) ?? LogLevel.info;
 | `Duration`  | `250ms`, `30s`, `5m`, `1h`, `2d`     | A number and a unit                          |
 | `Uri`       | `https://api.example.com/v1`         | Must be absolute (with a scheme)             |
 | `List<T>`   | `admin, editor`, `1,2,3`             | Comma separated, of any type above; empty items are skipped |
-| enums       | `warning` for `LogLevel.warning`     | With `findEnum`/`requireEnum`, by name, any case |
+| enums       | `warning` for `LogLevel.warning`     | With `tryFindEnum`/`findEnum`, by name, any case |
 
 Every type except `String` is trimmed (`' 8080 '` is `8080`), and the nullable forms work too
 (`find<int?>`). Another type (`Set<int>`, `DateTime`...) is a `StateError` that lists the
@@ -127,7 +127,7 @@ adds yours on top of them (handy in tests).
 | Option            | Default        | What it does                                                      |
 |-------------------|----------------|-------------------------------------------------------------------|
 | `host`            | `'0.0.0.0'`    | The address the server listens on (`'localhost'`, `'127.0.0.1'`, `'::'`) |
-| `port`            | `8080`         | `0` picks a free port                                             |
+| `port`            | `8080`         | `0` picks a free port, read back with `Winter.server.port`        |
 | `shared`          | `false`        | Several isolates listen on the same port and share the connections |
 | `maxBodySize`     | 10 MB          | A bigger body is a 413 when it's read; `null` for no limit        |
 | `handleSignals`   | `true`         | SIGINT/SIGTERM shut the server down gracefully                    |
@@ -161,7 +161,7 @@ adds yours on top of them (handy in tests).
   await Winter.start(
     config: ServerConfig.fromEnv(
       env,
-      requestTimeout: env.find<Duration>('REQUEST_TIMEOUT') ?? const Duration(seconds: 30),
+      requestTimeout: env.tryFind<Duration>('REQUEST_TIMEOUT') ?? const Duration(seconds: 30),
     ),
     router: router,
   );
@@ -213,7 +213,7 @@ Winter.context.setUp(
 ### A secret with a fallback for development
 
 ```dart
-final secret = env.find<String>('JWT_SECRET');
+final secret = env.tryFind<String>('JWT_SECRET');
 if (secret == null && env.profile == 'prod') {
   throw StateError('JWT_SECRET is required in production');
 }

@@ -4,7 +4,7 @@
 /// only shows in the responses.
 ///
 /// {@category HTTP}
-class HttpHeader {
+abstract final class HttpHeader {
   /// The `X-Forwarded-For` header, added by proxies with the address of the client
   /// (de facto standard, not in the HTTP spec).
   static const String xForwardedFor = 'X-Forwarded-For';

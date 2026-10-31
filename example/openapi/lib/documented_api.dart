@@ -99,7 +99,7 @@ WinterRouter router() {
       ),
       Route.parent(
         path: '/admin/books',
-        filterConfig: FilterConfig([AuthFilter(rules: hasRole('admin'))]),
+        filterConfig: FilterConfig([AuthFilter(rule: hasRole('admin'))]),
         docs: const RouteDocs(tags: ['admin']),
         routes: [
           Route.post(

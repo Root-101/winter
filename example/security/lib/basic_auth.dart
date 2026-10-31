@@ -74,7 +74,7 @@ WinterRouter router() => WinterRouter(
       filterConfig: FilterConfig([
         BasicAuthFilter({'admin': hash('s3cret')}),
         AuthFilter(
-          rules: hasRole('admin'),
+          rule: hasRole('admin'),
           challenge: 'Basic realm="admin", charset="UTF-8"',
         ),
       ]),

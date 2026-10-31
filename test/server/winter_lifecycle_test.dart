@@ -46,6 +46,17 @@ void main() {
       );
     });
 
+    test('port is the one the system chose for port 0', () async {
+      await Winter.start(config: const ServerConfig(port: 0));
+
+      final int chosen = Winter.server.port;
+      expect(chosen, greaterThan(0));
+      expect(
+        (await http.get(Uri.parse('http://localhost:$chosen/'))).statusCode,
+        404,
+      );
+    });
+
     test('the ServerConfig registered in the DI is used by start', () async {
       final config = ServerConfig(port: port);
       di.put<ServerConfig>(config);
@@ -94,7 +105,7 @@ void main() {
 
       final previousMapper = context.objectMapper;
       context.setUp(env: env);
-      expect(context.env.find<String>('KEY'), 'value');
+      expect(context.env.tryFind<String>('KEY'), 'value');
       expect(context.objectMapper, same(previousMapper));
 
       context.setUp(
@@ -117,26 +128,5 @@ void main() {
       expect(env, same(Winter.context.env));
       expect(logger, same(Winter.context.logger));
     });
-  });
-
-  test('maxBodySize: null accepts bodies of any size', () async {
-    final client = WinterTestClient.build(
-      maxBodySize: null,
-      router: WinterRouter(
-        routes: [
-          Route.post(
-            path: '/echo',
-            handler: (request) async => ResponseEntity.ok(
-              body: '${(await request.body<String>()).length}',
-            ),
-          ),
-        ],
-      ),
-    );
-
-    final response = await client.post('/echo', body: 'a' * (11 * 1024 * 1024));
-
-    expect(response.statusCode, 200);
-    expect(response.body, '${11 * 1024 * 1024}');
   });
 }

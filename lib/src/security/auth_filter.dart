@@ -1,12 +1,12 @@
 import 'package:winter/winter.dart';
 
-/// Lets a request go on only if it's authenticated ([authenticated]) and passes the [rules]:
+/// Lets a request go on only if it's authenticated ([authenticated]) and passes the [rule]:
 /// otherwise a 401 (nobody authenticated) or a 403 (authenticated, but not allowed).
 ///
 /// ```dart
 /// Route.parent(
 ///   path: '/admin',
-///   filterConfig: FilterConfig([AuthFilter(rules: hasRole('admin') | hasPermission('admin.read'))]),
+///   filterConfig: FilterConfig([AuthFilter(rule: hasRole('admin') | hasPermission('admin.read'))]),
 ///   routes: adminRoutes,
 /// )
 /// ```
@@ -19,8 +19,9 @@ class AuthFilter extends Filter {
   /// Whether the request needs an authenticated user (a 401 without one)
   final bool authenticated;
 
-  /// The rules the user must pass (a 403 otherwise), or null for none
-  final RuleBuilder? rules;
+  /// The rule the user must pass (a 403 otherwise), or null for none: one rule, or several
+  /// combined with `&` and `|`
+  final AuthorizationRule? rule;
   final bool Function(RequestEntity)? _shouldFilter;
 
   /// The `WWW-Authenticate` of a 401, required by RFC 9110: `Bearer` by default,
@@ -35,11 +36,11 @@ class AuthFilter extends Filter {
   /// `Authorization` (RFC 9111 §3.5), so `private` matters most with a cookie session.
   final String? cacheControl;
 
-  /// A filter that needs an authenticated user passing [rules]; the requests where
+  /// A filter that needs an authenticated user passing [rule]; the requests where
   /// `shouldFilter` returns false skip it
   AuthFilter({
     this.authenticated = true,
-    this.rules,
+    this.rule,
     this._shouldFilter,
     this.challenge = 'Bearer',
     this.cacheControl = 'private',
@@ -61,10 +62,11 @@ class AuthFilter extends Filter {
       throw _unauthorized;
     }
 
-    if (rules != null) {
+    final AuthorizationRule? rule = this.rule;
+    if (rule != null) {
       final authentication =
-          securityContext.authentication ?? Authentication.anonymous();
-      if (!rules!.evaluate(authentication, request)) {
+          securityContext.authentication ?? Authentication.anonymous;
+      if (!rule.evaluate(authentication, request)) {
         /// An anonymous user may get access by logging in (401),
         /// a logged in user without the needed roles/permissions can't (403)
         throw isAuthenticated ? const ForbiddenException() : _unauthorized;
@@ -87,6 +89,6 @@ class AuthFilter extends Filter {
 
   @override
   String toString() {
-    return 'AuthFilter{authenticated: $authenticated, rules: $rules, shouldFilter: ${_shouldFilter != null ? 'custom' : 'all'}}';
+    return 'AuthFilter{authenticated: $authenticated, rule: $rule, shouldFilter: ${_shouldFilter != null ? 'custom' : 'all'}}';
   }
 }

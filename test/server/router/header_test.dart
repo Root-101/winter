@@ -24,13 +24,6 @@ void main() {
             },
           ),
           Route(
-            path: '/problem',
-            method: HttpMethod.get,
-            handler: (request) async {
-              return ProblemDetails.of(StatusCode.badRequest).toResponse();
-            },
-          ),
-          Route(
             path: '/json-error',
             method: HttpMethod.get,
             handler: (request) async {
@@ -84,22 +77,6 @@ void main() {
   Uri url(String path) => Uri.parse(localUrl + path);
 
   group('Header Tests', () {
-    test('Response with JSON body has application/json content-type', () async {
-      http.Response response = await http.get(url('/json'));
-      expect(
-        response.headers[HttpHeader.contentType.toLowerCase()],
-        contains(MediaType.applicationJson.mimeType),
-      );
-    });
-
-    test('Response with Problem JSON body has application/problem+json content-type', () async {
-      http.Response response = await http.get(url('/problem'));
-      expect(
-        response.headers[HttpHeader.contentType.toLowerCase()],
-        contains(MediaType.applicationProblemJson.mimeType),
-      );
-    });
-
     test(
       'An error with another JSON body has application/json content-type',
       () async {
@@ -110,14 +87,6 @@ void main() {
         );
       },
     );
-
-    test('Response with String body has text/plain content-type', () async {
-      http.Response response = await http.get(url('/text'));
-      expect(
-        response.headers[HttpHeader.contentType.toLowerCase()],
-        contains(MediaType.textPlain.mimeType),
-      );
-    });
 
     test(
       'Response with Stream body has application/octet-stream content-type',

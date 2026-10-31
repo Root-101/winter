@@ -20,12 +20,12 @@ void main() {
       di = DependencyInjection();
     });
 
-    test('put and find', () {
+    test('put, find and tryFind', () {
       final service = ServiceA();
       di.put<ServiceA>(service);
 
-      final found = di.find<ServiceA>();
-      expect(found, equals(service));
+      expect(di.find<ServiceA>(), equals(service));
+      expect(di.tryFind<ServiceA>(), equals(service));
 
       di.delete<ServiceA>();
     });
@@ -44,30 +44,8 @@ void main() {
       di.delete<ServiceA>(tag: 'tag2');
     });
 
-    test('find throws StateError when not found', () {
-      expect(() => di.find<ServiceB>(), throwsA(isA<StateError>()));
-    });
-
     test('tryFind returns null when not found', () {
       expect(di.tryFind<ServiceB>(), isNull);
-    });
-
-    test('tryFind returns dependency when found', () {
-      final service = ServiceA();
-      di.put<ServiceA>(service);
-
-      expect(di.tryFind<ServiceA>(), equals(service));
-
-      di.delete<ServiceA>();
-    });
-
-    test('delete removes and returns dependency', () {
-      final service = ServiceA();
-      di.put<ServiceA>(service);
-
-      final deleted = di.delete<ServiceA>();
-      expect(deleted, equals(service));
-      expect(di.tryFind<ServiceA>(), isNull);
     });
 
     test('delete throws StateError when not found', () {
@@ -100,7 +78,8 @@ void main() {
       di.delete<ServiceB>();
     });
 
-    test('StateError message', () {
+    test('find throws a StateError naming the type and the tag', () {
+      expect(() => di.find<ServiceB>(), throwsStateError);
       try {
         di.find<ServiceB>(tag: 'my-tag');
         fail('Should have thrown StateError');

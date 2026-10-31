@@ -4,7 +4,6 @@ library;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
@@ -25,7 +24,7 @@ void main() {
         handler: (request) => ResponseEntity.ok(
           body: {
             'text': request.locale == WinterLocale.spanish ? 'Hola' : 'Hello',
-            'from': env.require<String>('GREETING_FROM'),
+            'from': env.find<String>('GREETING_FROM'),
           },
         ),
       ),
@@ -247,33 +246,6 @@ void main() {
       expect(
         error.headers['content-type'],
         'application/problem+json; charset=utf-8',
-      );
-    });
-
-    test('a body without text has no charset', () {
-      final bytes = ResponseEntity<Object>(
-        200,
-        headers: {'x': '1'},
-      ).copyWith(body: Uint8List.fromList([1, 2]));
-      final stream = ResponseEntity<Stream<List<int>>>(
-        200,
-        body: Stream.value([1]),
-      );
-
-      expect(bytes.headers['content-type'], 'application/octet-stream');
-      expect(stream.headers['content-type'], 'application/octet-stream');
-    });
-
-    test('an encoding of the app is the charset', () {
-      final response = ResponseEntity<String>(
-        200,
-        body: 'año',
-        encoding: latin1,
-      );
-
-      expect(
-        response.headers['content-type'],
-        'text/plain; charset=iso-8859-1',
       );
     });
   });

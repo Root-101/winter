@@ -160,6 +160,8 @@ Route.health(
 )
 ```
 
+Example: [`scheduling/nightly_report.dart`](../example/scheduling/lib/nightly_report.dart).
+
 ### A task that needs a dependency
 
 Find it inside the task, not when the scheduler is built: the dependencies registered later (or
@@ -173,6 +175,8 @@ scheduler.every(
 );
 ```
 
+Example: [`scheduling/interval_task.dart`](../example/scheduling/lib/interval_task.dart).
+
 ### Several instances of the server
 
 Every instance runs its own scheduler: with three replicas, the nightly report is sent three
@@ -180,7 +184,7 @@ times. Run the tasks that must happen once in one instance only (an environment 
 `SCHEDULER_ENABLED=true` in one of them), or take a lock in the database at the start of the task.
 
 ```dart
-final Scheduler? scheduler = (env.find<bool>('SCHEDULER_ENABLED') ?? false)
+final Scheduler? scheduler = (env.tryFind<bool>('SCHEDULER_ENABLED') ?? false)
     ? (Scheduler()..cron('0 3 * * *', name: 'nightly-report', task: sendReport))
     : null;
 await Winter.start(router: router, scheduler: scheduler);

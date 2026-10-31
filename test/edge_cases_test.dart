@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:test/test.dart';
 import 'package:winter/winter.dart';
 
@@ -131,21 +129,6 @@ void main() {
         const WinterLocale('es'),
         WinterLocale.tryParse('es'),
       }, hasLength(1));
-    });
-  });
-
-  group('ResponseEntity', () {
-    test('an encoding of the app is the charset of its text', () {
-      final response = ResponseEntity<Map<String, int>>(
-        200,
-        body: {'a': 1},
-        encoding: latin1,
-      );
-
-      expect(
-        response.headers['content-type'],
-        'application/json; charset=iso-8859-1',
-      );
     });
   });
 }

@@ -56,7 +56,7 @@ void main() {
         LoggingFilter(),
         BearerFilter(),
         RateLimiterFilter(
-          maxRequests: env.require<int>('RATE_LIMIT'),
+          maxRequests: env.find<int>('RATE_LIMIT'),
           window: const Duration(minutes: 1),
           clientId: (request) =>
               requestPrincipalOrNull<User>()?.name ?? 'anonymous',
@@ -469,7 +469,7 @@ class OrderItem implements Validatable {
     cvc
         .field('quantity', quantity)
         .positive()
-        .max(env.require<int>('MAX_QUANTITY'));
+        .max(env.find<int>('MAX_QUANTITY'));
     return cvc;
   }
 }

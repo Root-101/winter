@@ -83,7 +83,7 @@ The full app, with login, hashed passwords and expiring JWTs, is
 
 - `principal` (a `T`: your `User`, its id...), with `name` as its `toString()`.
 - `roles` and `permissions`: two unmodifiable `Set<String>`.
-- `authenticated`: `true` by default. `Authentication.anonymous()` is the one with `false`.
+- `authenticated`: `true` by default. `Authentication.anonymous` is the one with `false`.
 
 It's saved in the `RequestSecurityContext` of the request (`request.securityContext`), which the
 server creates before the filters, so every filter, the handler and the `copyWith()` copies of the
@@ -92,6 +92,8 @@ request share it.
 Your filter calls `setAuthentication(...)` when the credentials are valid, and does nothing
 otherwise: rejecting the request is the job of `AuthFilter`, so the public routes keep working
 without credentials. Declare it as a **global** filter so every route has its user.
+
+Example: [`security/webhook_signature.dart`](../example/security/lib/webhook_signature.dart).
 
 ### The user of the request, from any code
 
@@ -115,7 +117,7 @@ context (roles, permissions). Outside a request all of them are `null` (or a 401
 
 ### `AuthFilter`: 401 or 403
 
-`AuthFilter` lets the request go on only if it's authenticated and passes its `rules`:
+`AuthFilter` lets the request go on only if it's authenticated and passes its `rule`:
 
 | Situation                                              | Response                               |
 |--------------------------------------------------------|----------------------------------------|
@@ -136,12 +138,12 @@ give it to someone else. A browser may still keep it (use `no-store` for that).
 `cacheControl:` changes it per filter:
 
 ```dart
-AuthFilter(rules: hasRole('admin'), cacheControl: 'no-store') // not even the browser keeps it
+AuthFilter(rule: hasRole('admin'), cacheControl: 'no-store') // not even the browser keeps it
 
 // An S3-like API: an object answers only the Cache-Control it was stored with, and a public
 // prefix must stay cacheable by a CDN
 AuthFilter(
-  rules: hasPermission('get-object') | hasPermission('anonymous.get-object'),
+  rule: hasPermission('get-object') | hasPermission('anonymous.get-object'),
   cacheControl: null, // adds nothing
 )
 ```
@@ -150,9 +152,11 @@ Turning it off is safe when the requests carry `Authorization` (a token, a signa
 cache never keeps their answer (RFC 9111 §3.5), and a presigned URL has its signature in the URL,
 which is the key of the cache. With a session in a cookie, keep it.
 
-`AuthFilter(authenticated: false, rules: ...)` only checks the rules (an anonymous
-`Authentication` evaluates them). A rule turns into a filter with `.toFilter()` or into a whole
+`AuthFilter(authenticated: false, rule: ...)` only checks the rule (an anonymous
+`Authentication` evaluates it). A rule turns into a filter with `.toFilter()` or into a whole
 `FilterConfig` with `.toFilterConfig()`.
+
+Example: [`security/basic_auth.dart`](../example/security/lib/basic_auth.dart).
 
 ### Rules
 
@@ -160,7 +164,7 @@ which is the key of the cache. With a session in a cookie, keep it.
 before `|`; use parentheses to be clear):
 
 ```dart
-AuthFilter(rules: hasRole('admin') | (hasRole('editor') & hasPermission('posts.publish')))
+AuthFilter(rule: hasRole('admin') | (hasRole('editor') & hasPermission('posts.publish')))
 ```
 
 A rule receives the `Authentication` **and the request**, so a rule of your app can look at the
@@ -195,14 +199,19 @@ class HasPlanRule extends AuthorizationRule {
   String describe() => 'hasPlan($plan)';
 }
 
-AuthFilter(rules: hasRole('admin') | const HasPlanRule('pro'))
+AuthFilter(rule: hasRole('admin') | const HasPlanRule('pro'))
 ```
+
+A rule of the app is an `AuthorizationRule` like the others: it goes alone in `AuthFilter(rule:)`
+and combines on either side of `&` and `|`.
 
 `describe()` (the name of the class by default) is how the rule is shown in `toString()` and in the
 logs: `hasRole(admin) || hasPlan(pro)`.
 
 A rule is synchronous. A check that needs the database (is this user a member of this project?)
 belongs in the handler or the service, which throws a `ForbiddenException`.
+
+Example: [`security/resource_ownership.dart`](../example/security/lib/resource_ownership.dart).
 
 ### A global `AuthFilter`
 
@@ -221,6 +230,8 @@ await Winter.start(
 
 The filters run sorted by `order` (0 by default) and, with the same `order`, in the order they are
 declared: the global ones first, then the ones of the route.
+
+Example: [`security/api_key.dart`](../example/security/lib/api_key.dart).
 
 ### CORS
 
@@ -249,6 +260,9 @@ await Winter.start(
 - When the answer depends on the origin (a list of origins, or credentials), every response has
   `Vary: Origin`, even the ones for an origin that isn't allowed, so a cache never serves the
   answer of one origin to another.
+
+Example:
+[`security/cors_with_credentials.dart`](../example/security/lib/cors_with_credentials.dart).
 
 ### Security headers
 
@@ -340,6 +354,8 @@ if (!result.allowed) {
 `peek(id)` gives the state without recording a request, `reset(id)` forgets an id (after a correct
 login) and `clear()` forgets all of them.
 
+Example: [`security/login_throttling.dart`](../example/security/lib/login_throttling.dart).
+
 ## Configuration
 
 | Option                                  | Default        | What it does                                   |
@@ -347,7 +363,7 @@ login) and `clear()` forgets all of them.
 | `SecurityConfig(cors:)`                 | `null`         | Adds a `CorsFilter` (order -100)               |
 | `SecurityConfig(securityHeaders:)`      | `null`         | Adds a `SecurityHeadersFilter` (order -99)     |
 | `AuthFilter(authenticated:)`            | `true`         | Requires an authenticated user                 |
-| `AuthFilter(rules:)`                    | `null`         | The rules the user must pass                   |
+| `AuthFilter(rule:)`                     | `null`         | The rule the user must pass (`&`, `\|`)       |
 | `AuthFilter(challenge:)`                | `'Bearer'`     | The `WWW-Authenticate` of a 401                |
 | `AuthFilter(shouldFilter:)`             | every request  | Which requests it checks                       |
 | `RateLimiterFilter(clientId:)`          | the client IP  | The id that is limited                         |
@@ -431,7 +447,7 @@ RateLimiterFilter.fromRateLimiter(
   they write (`X-Forwarded-*` or `Forwarded`).
 - A rate limit on the login, per account, besides the one per IP.
 - `ServerConfig.maxBodySize` (10 MB by default) as small as your biggest request.
-- Secrets (the key of the JWTs) from the environment: `env.require<String>('JWT_SECRET')`.
+- Secrets (the key of the JWTs) from the environment: `env.find<String>('JWT_SECRET')`.
 - Never log tokens, passwords nor bodies (`LoggingFilter` doesn't), and `sensitive: true` on the
   validation of secret fields, so their value never ends in a violation.
 - A reverse proxy in front of the app (nginx, a load balancer) for what `dart:io` doesn't limit:

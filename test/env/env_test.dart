@@ -12,17 +12,17 @@ void main() {
 
     setUp(() => env = Env(env: {'START': 'start', 'Test': 'test'}));
 
-    test('find a variable; null when it is not there', () {
-      expect(env.find<String>('START'), 'start');
-      expect(env.find<String>('start'), isNull);
-      expect(env.find<String>('NON_EXISTENT'), isNull);
-      expect(env.find<String>('non_existent', caseSensitive: false), isNull);
+    test('tryFind a variable; null when it is not there', () {
+      expect(env.tryFind<String>('START'), 'start');
+      expect(env.tryFind<String>('start'), isNull);
+      expect(env.tryFind<String>('NON_EXISTENT'), isNull);
+      expect(env.tryFind<String>('non_existent', caseSensitive: false), isNull);
     });
 
     test('case-insensitive: the first match, in order of insertion', () {
       final Env twice = Env(env: {'abc': 'value1', 'ABC': 'value2'});
 
-      expect(twice.find<String>('AbC', caseSensitive: false), 'value1');
+      expect(twice.tryFind<String>('AbC', caseSensitive: false), 'value1');
     });
 
     test('put adds or replaces a value', () {
@@ -30,27 +30,30 @@ void main() {
         ..put('NEW_KEY', 'new_value')
         ..put('START', 'updated');
 
-      expect(env.find<String>('NEW_KEY'), 'new_value');
-      expect(env.find<String>('START'), 'updated');
+      expect(env.tryFind<String>('NEW_KEY'), 'new_value');
+      expect(env.tryFind<String>('START'), 'updated');
     });
 
     test('all is a copy', () {
       final Map<String, String> all = env.all..['TEMP_KEY'] = 'temp';
 
       expect(all['START'], 'start');
-      expect(env.find<String>('TEMP_KEY'), isNull);
+      expect(env.tryFind<String>('TEMP_KEY'), isNull);
     });
 
     test('the variables of the process, under the ones given', () {
       // PATH is on every platform (Path on Windows)
-      expect(env.find<String>('PATH') ?? env.find<String>('Path'), isNotNull);
-      expect(Env(env: {'PATH': 'custom'}).find<String>('PATH'), 'custom');
+      expect(
+        env.tryFind<String>('PATH') ?? env.tryFind<String>('Path'),
+        isNotNull,
+      );
+      expect(Env(env: {'PATH': 'custom'}).tryFind<String>('PATH'), 'custom');
     });
 
-    test('put and find every type', () {
+    test('put and tryFind every type', () {
       void roundTrip<T>(T value) {
         expect(env.put<T>('KEY', value), value);
-        expect(env.find<T>('KEY'), value, reason: '$T');
+        expect(env.tryFind<T>('KEY'), value, reason: '$T');
       }
 
       roundTrip<int>(8080);
@@ -77,21 +80,21 @@ void main() {
     );
 
     test('lists with spaces, of bool and of num', () {
-      expect(env.find<List<int>>('IDS'), [1, 2, 3]);
-      expect(env.find<List<bool>>('BOOLS'), [true, false]);
-      expect(env.find<List<num>>('NUMS'), [1, 2.5]);
+      expect(env.tryFind<List<int>>('IDS'), [1, 2, 3]);
+      expect(env.tryFind<List<bool>>('BOOLS'), [true, false]);
+      expect(env.tryFind<List<num>>('NUMS'), [1, 2.5]);
     });
 
     test('a decimal is never truncated to an int', () {
-      expect(() => env.find<int>('TIMEOUT'), throwsStateError);
-      expect(env.find<double>('TIMEOUT'), 3.7);
-      expect(env.find<num>('TIMEOUT'), 3.7);
+      expect(() => env.tryFind<int>('TIMEOUT'), throwsStateError);
+      expect(env.tryFind<double>('TIMEOUT'), 3.7);
+      expect(env.tryFind<num>('TIMEOUT'), 3.7);
     });
 
     test('a value that is not its type is a StateError', () {
-      expect(() => env.find<bool>('BOOL'), throwsStateError);
-      expect(() => env.find<int>('WORD'), throwsStateError);
-      expect(() => env.find<List<int>>('BAD_INTS'), throwsStateError);
+      expect(() => env.tryFind<bool>('BOOL'), throwsStateError);
+      expect(() => env.tryFind<int>('WORD'), throwsStateError);
+      expect(() => env.tryFind<List<int>>('BAD_INTS'), throwsStateError);
     });
   });
 }

@@ -114,7 +114,7 @@ void main() {
       'an anonymous user that fails the rules gets the challenge too',
       () async {
         final response = await authClient(
-          AuthFilter(authenticated: false, rules: hasRole('admin')),
+          AuthFilter(authenticated: false, rule: hasRole('admin')),
         ).get('/');
 
         expect(response.statusCode, 401);
@@ -123,7 +123,7 @@ void main() {
     );
 
     test('a 403 has no challenge: logging in again does not help', () async {
-      final response = await authClient(AuthFilter(rules: hasRole('admin')))
+      final response = await authClient(AuthFilter(rule: hasRole('admin')))
           .get('/', headers: {'x-user': 'ann'});
 
       expect(response.statusCode, 403);
@@ -143,7 +143,7 @@ void main() {
             filterConfig: FilterConfig([
               _SetUser(),
               AuthFilter(
-                rules:
+                rule:
                     hasRole('admin') |
                     rule(
                       (auth, request) => request.pathParams['id'] == auth.name,
@@ -182,13 +182,23 @@ void main() {
       expect(rule((a, r) => true).toString(), 'rule');
     });
 
-    test('a rule of the app can be printed (toString)', () {
-      final combined = hasRole('admin') | _OwnerRule();
+    test(
+      'a rule of the app combines on either side and is printed (toString)',
+      () {
+        final combined = hasRole('admin') | _OwnerRule();
 
-      expect(_OwnerRule().toString(), '_OwnerRule');
-      expect(combined.toString(), 'hasRole(admin) || _OwnerRule');
-      expect(AuthFilter(rules: combined).toString, returnsNormally);
-    });
+        expect(_OwnerRule().toString(), '_OwnerRule');
+        expect(combined.toString(), 'hasRole(admin) || _OwnerRule');
+        expect(
+          (_OwnerRule() & hasRole('admin')).toString(),
+          '_OwnerRule && hasRole(admin)',
+        );
+        expect(
+          AuthFilter(rule: _OwnerRule()).toString(),
+          contains('_OwnerRule'),
+        );
+      },
+    );
   });
 
   group('The typed principal (§8)', () {
@@ -267,7 +277,7 @@ void main() {
 
     test('an unauthenticated Authentication is nobody', () {
       final context = RequestSecurityContext<dynamic>.empty()
-        ..setAuthentication(Authentication.anonymous());
+        ..setAuthentication(Authentication.anonymous);
 
       RequestScope.run(RequestScope(securityContext: context), () {
         expect(requestPrincipalOrNull<String>(), isNull);

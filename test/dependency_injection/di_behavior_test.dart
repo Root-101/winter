@@ -259,6 +259,7 @@ void main() {
       Winter.context.setUp(dependencyInjection: di);
       addTearDown(() => Winter.context.setUp(dependencyInjection: previous));
       di.put(_Service(), onDispose: (_) => events.add('dispose'));
+      addTearDown(() => Winter.close(force: true, onNotRunning: () {}));
 
       await Winter.start(
         config: ServerConfig(

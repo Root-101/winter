@@ -8,9 +8,9 @@ void main() {
   const String traceparent = '00-$traceId-$parentId-01';
   final RegExp span = RegExp(r'^[0-9a-f]{16}$');
 
-  group('TraceContext.parse', () {
+  group('TraceContext.tryParse', () {
     test('continues the trace of the caller with a new span', () {
-      final trace = TraceContext.parse(traceparent, traceState: 'congo=t61');
+      final trace = TraceContext.tryParse(traceparent, traceState: 'congo=t61');
 
       expect(trace!.traceId, traceId);
       expect(trace.parentId, parentId);
@@ -19,12 +19,15 @@ void main() {
       expect(trace.sampled, isTrue);
       expect(trace.traceState, 'congo=t61');
       expect(trace.toString(), 'TraceContext(${trace.traceparent})');
-      expect(TraceContext.parse('00-$traceId-$parentId-00')!.sampled, isFalse);
+      expect(
+        TraceContext.tryParse('00-$traceId-$parentId-00')!.sampled,
+        isFalse,
+      );
     });
 
     test('a later version may add parts; ff and an invalid one are null', () {
       expect(
-        TraceContext.parse('01-$traceId-$parentId-01-more')?.traceId,
+        TraceContext.tryParse('01-$traceId-$parentId-01-more')?.traceId,
         traceId,
       );
       for (final invalid in [
@@ -38,15 +41,15 @@ void main() {
         'not a trace',
         '',
       ]) {
-        expect(TraceContext.parse(invalid), isNull, reason: invalid);
+        expect(TraceContext.tryParse(invalid), isNull, reason: invalid);
       }
-      expect(TraceContext.parse(null), isNull);
+      expect(TraceContext.tryParse(null), isNull);
     });
 
     test('a tracestate too long or not printable ASCII is dropped', () {
       for (final state in ['a=${'x' * 511}', 'a=ñ', 'a=\u0001', '  ']) {
         expect(
-          TraceContext.parse(traceparent, traceState: state)!.traceState,
+          TraceContext.tryParse(traceparent, traceState: state)!.traceState,
           isNull,
           reason: state,
         );
@@ -84,7 +87,7 @@ void main() {
   });
 
   test('the headers continue the trace with the span of this request', () {
-    final trace = TraceContext.parse(traceparent, traceState: 'a=1')!;
+    final trace = TraceContext.tryParse(traceparent, traceState: 'a=1')!;
     final root = TraceContext.root();
 
     expect(trace.headers, {

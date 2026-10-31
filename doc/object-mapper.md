@@ -194,6 +194,8 @@ om.addDeserializer(om.deserializerOf<int>().mapWithKeys<Status>()); // {"paid": 
 
 A key that isn't a `K` is a 400 at its path (`$.abc: expected an integer as the key`).
 
+Example: [`object_mapper/generic_types.dart`](../example/object_mapper/lib/generic_types.dart).
+
 ### Errors
 
 | Problem                                              | Exception                        | Response |
@@ -295,6 +297,8 @@ UTF-8) and `om.decodeBytes<T>(bytes)` (without the intermediate `String`): a fif
 than `utf8.encode(om.encode(...))` and `om.decode(utf8.decode(...))` (see
 [benchmarks](benchmarks.md#object-mapper)). `encode`/`decode` stay for JSON as text.
 
+Example: [`object_mapper/field_naming.dart`](../example/object_mapper/lib/field_naming.dart).
+
 ## Common cases
 
 ### A hand-written `fromJson`: typed fields
@@ -351,6 +355,8 @@ What the client gets for a wrong body (with `fieldNaming: FieldNaming.snakeCase`
 
 The models of `json_serializable` and `freezed` (below) don't need it: their generated `fromJson`
 is used as it is.
+
+Example: [`object_mapper/typed_fields.dart`](../example/object_mapper/lib/typed_fields.dart).
 
 ### Partial updates (PATCH): absent vs `null`
 
@@ -448,6 +454,8 @@ HTTP/1.1 400 Bad Request
 - `Deserializer.json(..., rejectUnknownFields:)` overrides the option of the mapper for one type.
 - The error names the first unknown key, as the client sent it (`is_admin`, with `fieldNaming`).
 
+Example: [`object_mapper/unknown_fields.dart`](../example/object_mapper/lib/unknown_fields.dart).
+
 ### `json_serializable` and `freezed`
 
 Their models have `toJson()` and `fromJson`, so they only need the deserializer:
@@ -486,6 +494,8 @@ other derived types come with it. It's not `JsonConverter`, so it doesn't clash 
 A value that is not a string is a 400 `expected a string, got ...`, and an invalid URI (`Uri.parse`
 throws) a 400 `invalid value`, both at the path of the value.
 
+Example: [`object_mapper/adapters.dart`](../example/object_mapper/lib/adapters.dart).
+
 ### Sealed classes and subtypes
 
 A serializer of the base type applies to every subtype. For each class the mapper uses, in this
@@ -505,6 +515,8 @@ om.addSerializer(
 
 Deserializers are never matched by subtype: `body<Shape>()` uses the deserializer of `Shape`,
 which decides which subtype to build.
+
+Example: [`object_mapper/sealed_classes.dart`](../example/object_mapper/lib/sealed_classes.dart).
 
 ### Validation
 

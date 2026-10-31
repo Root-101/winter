@@ -94,7 +94,7 @@ String allowHeader(Set<HttpMethod> methods) =>
 ///     Route.get(path: '/users/{id}', handler: (request) => users.find(request.pathParam<int>('id'))),
 ///     Route.parent(
 ///       path: '/admin',
-///       filterConfig: FilterConfig([AuthFilter(rules: hasRole('admin'))]),
+///       filterConfig: FilterConfig([AuthFilter(rule: hasRole('admin'))]),
 ///       routes: [Route.delete(path: '/users/{id}', handler: users.delete)],
 ///     ),
 ///   ],
