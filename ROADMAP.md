@@ -3,8 +3,8 @@
 What it took to publish `winter` 1.0.0: an HTTP framework that covers the main use cases of a
 REST API. Not at the level of Spring, but with the basics complete, stable and documented.
 
-> **Now: `1.0.0`**, on the branch `release/1.0.0`: the release review is done (below) and the
-> package is ready to publish. From here on a breaking change needs a 2.0.
+> **Now: `1.0.0` is on pub.dev (2026-10-31)**, the first stable version. From here on a breaking
+> change needs a 2.0; what may come next is under *Possible improvements after release*.
 
 The decisions behind each point are in `DECISIONS.md` (§ numbers below), the behavior in the
 tests, the usage in `doc/`, and what each version has in `CHANGELOG.md`.
@@ -96,8 +96,10 @@ the rc period ends here; both move to `1.0.0` once it's published.
      the 160 doc snippets, the dry run (325 KB). `pana` in the CI (no Docker here).
 2. [x] The version in `pubspec.yaml` and the CHANGELOG entry with its date (2026-10-31, the last
    commit of the branch), merge into `main`, tag `v1.0.0`, merge back into `develop`.
-3. [ ] Publish on pub.dev, a GitHub release from the tag, and the announcement (r/dartlang, Dart
-   Discord, X).
+3. [x] **Published on pub.dev on 2026-10-31** (327 KB, 0 warnings in the dry run; the CI green
+   on `main` and `develop`, `pana` **160/160**).
+4. [ ] A GitHub release from the tag `v1.0.0`, the announcement (r/dartlang, Dart Discord, X), and
+   feather-io and dumpling moved to `1.0.0`.
 
 ### Possible improvements after release 🟢
 
