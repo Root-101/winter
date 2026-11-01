@@ -1,4 +1,9 @@
-# <img src="doc/brand/icon.svg" width="40" alt="" align="center"> Winter
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/brand/lockup-dark.svg">
+    <img src="doc/brand/lockup-light.svg" width="300" alt="Winter">
+  </picture>
+</p>
 
 [![CI](https://github.com/Root-101/winter/actions/workflows/ci.yml/badge.svg)](https://github.com/Root-101/winter/actions/workflows/ci.yml)
 
