@@ -3,8 +3,9 @@
 What it took to publish `winter` 1.0.0: an HTTP framework that covers the main use cases of a
 REST API. Not at the level of Spring, but with the basics complete, stable and documented.
 
-> **Now: `1.0.0` is on pub.dev (2026-10-31)**, the first stable version. From here on a breaking
-> change needs a 2.0; what may come next is under *Possible improvements after release*.
+> **Now: `1.0.1` is on pub.dev (2026-10-31)**, the first stable version (`1.0.0`) with its
+> documentation updated. From here on a breaking change needs a 2.0; what may come next is under
+> *Possible improvements after release*.
 
 The decisions behind each point are in `DECISIONS.md` (§ numbers below), the behavior in the
 tests, the usage in `doc/`, and what each version has in `CHANGELOG.md`.
@@ -72,7 +73,8 @@ the code of `1.0.0`.
    `release/1.0.1`, on what changed since `1.0.0` (whose review was the same day): the README and
    the guide match the code, the claim of memory measured and recorded; format, analyze, tests,
    the examples, `dart doc`, the doc snippets, `dart pub outdated` and the dry run checked again.
-2. [ ] Merge into `main`, tag `v1.0.1`, merge back into `develop`, publish.
+2. [x] Merge into `main`, tag `v1.0.1`, merge back into `develop`. **Published on pub.dev on
+   2026-10-31.**
 
 ### Release `1.0.0`
 
