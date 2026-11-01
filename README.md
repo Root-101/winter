@@ -5,9 +5,11 @@
   </picture>
 </p>
 
-[![CI](https://github.com/Root-101/winter/actions/workflows/ci.yml/badge.svg)](https://github.com/Root-101/winter/actions/workflows/ci.yml)
+<p align="center">
+  <a href="https://github.com/Root-101/winter/actions/workflows/ci.yml"><img src="https://github.com/Root-101/winter/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+</p>
 
-### A backend framework for the Dart enthusiasts
+<h3 align="center">A backend framework for the Dart enthusiasts</h3>
 
 Winter is a backend framework for Dart, inspired by **Spring**, **ASP.NET Core** and **NestJS**.
 It gives you routing, filters, dependency injection, JSON mapping, validation, security and
