@@ -40,9 +40,9 @@ consistent errors, on top of `dart:io` and without code generation.
 
 ## Why Winter
 
-> **The problem.** Spring Boot, ASP.NET Core, Django and NestJS are a pleasure to write, but a basic
-> Spring Boot service easily takes hundreds of megabytes of RAM, and on a cloud that bills memory,
-> that adds up. The light alternatives, like the Rust frameworks, ask for a steep learning curve
+> **The problem.** Spring Boot, ASP.NET Core, Django and NestJS are super mature and have a great
+> ecosystem, but even a basic service easily takes hundreds of megabytes of RAM, and on a cloud that
+> bills memory, that adds up. The light alternatives, like the Rust frameworks, ask for a steep learning curve
 > instead. And in Dart, none of the options convinced us: [Dart Frog](https://dartfrog.vgv.dev/)
 > routes by files and folders, [shelf](https://pub.dev/packages/shelf) is a toolkit you build a
 > framework on, and most of the rest need code generation, because the other path, `dart:mirrors`,
