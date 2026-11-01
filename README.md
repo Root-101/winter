@@ -1,4 +1,4 @@
-# Winter ❄️
+# <img src="doc/brand/icon.svg" width="40" alt="" align="center"> Winter
 
 [![CI](https://github.com/Root-101/winter/actions/workflows/ci.yml/badge.svg)](https://github.com/Root-101/winter/actions/workflows/ci.yml)
 
@@ -30,6 +30,36 @@ consistent errors, on top of `dart:io` and without code generation.
   protection nor OAuth flows.
 - **A distributed system**: the rate limiter and the scheduled tasks live in one process; several
   instances need a shared store of their own.
+
+## Why Winter
+
+> **The problem.** Spring Boot, ASP.NET Core, Django and NestJS are a pleasure to write, but a basic
+> Spring Boot service easily takes hundreds of megabytes of RAM, and on a cloud that bills memory,
+> that adds up. The light alternatives, like the Rust frameworks, ask for a steep learning curve
+> instead. And in Dart, none of the options convinced us: [Dart Frog](https://dartfrog.vgv.dev/)
+> routes by files and folders, [shelf](https://pub.dev/packages/shelf) is a toolkit you build a
+> framework on, and most of the rest need code generation, because the other path, `dart:mirrors`,
+> doesn't even exist in an AOT executable.
+>
+> **What we wanted:**
+>
+> - **Very light.** Dart compiles to a native executable: the `hello_world` example starts with
+>   **~15 MiB** of memory and stays under 20 MiB after thousands of requests.
+> - **Easy to learn, hard to outgrow.** The API of the frameworks you already know, for someone trying
+>   backend for the first time, with enough underneath (DI, HTTP standards, security) that you don't
+>   hit a wall when the project grows.
+> - **No code generation.** Plain Dart that you read and debug as written; the only generator is
+>   optional, for translations.
+> - **Made for small and medium projects.** Most frameworks are designed for millions of requests per
+>   second, with the complexity that comes with it. Winter goes the other way: it holds real traffic,
+>   but simplicity comes first.
+>
+> **Where it is.** A complete framework for REST APIs: routing, filters, dependency injection, object
+> mapping, validation, security, HTTP standards (Problem Details, conditional requests, rate limit
+> headers...) and OpenAPI out of the box, running in production behind real projects.
+>
+> **Where it's going.** A wider scope, more robustness, and an ecosystem around it, with the goal of
+> becoming, in a few years, a standard choice for backends in Dart.
 
 Now that it's clear what Winter is, let's set it up.
 

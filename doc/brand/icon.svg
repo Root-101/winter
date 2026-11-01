@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Winter">
+  <defs>
+    <clipPath id="wt-circle"><circle cx="80" cy="80" r="74"/></clipPath>
+    <clipPath id="wt-right"><path d="M23.1 -141.9 L156.69 234.9 L439.3 134.7 L305.7 -242.1 Z"/></clipPath>
+  </defs>
+  <circle cx="80" cy="80" r="74" fill="#1f5f7a"/>
+  <g clip-path="url(#wt-circle)">
+    <path d="M40.7 52.45 L58 112 L80 50 L117 155" fill="none" stroke="#f6f8f9" stroke-width="11" stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="10"/>
+  </g>
+  <g clip-path="url(#wt-right)">
+    <path d="M119.3 52.45 L99 122" fill="none" stroke="#f6f8f9" stroke-width="11" stroke-linecap="round"/>
+  </g>
+</svg>
