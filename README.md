@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="doc/brand/lockup-dark.svg">
-    <img src="doc/brand/lockup-light.svg" width="300" alt="Winter">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Root-101/winter/main/doc/brand/lockup-dark.svg">
+    <img src="https://raw.githubusercontent.com/Root-101/winter/main/doc/brand/lockup-light.svg" width="300" alt="Winter">
   </picture>
 </p>
 
