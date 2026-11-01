@@ -63,6 +63,17 @@ case per feature in `example/`):
 
 ## Pending
 
+### Release `1.0.1`
+
+Documentation only (the README with the logo and *Why Winter*, the memory in `doc/benchmarks.md`),
+the code of `1.0.0`.
+
+1. [x] The [release review](#release-review-before-every-release) (2026-10-31), on
+   `release/1.0.1`, on what changed since `1.0.0` (whose review was the same day): the README and
+   the guide match the code, the claim of memory measured and recorded; format, analyze, tests,
+   the examples, `dart doc`, the doc snippets, `dart pub outdated` and the dry run checked again.
+2. [ ] Merge into `main`, tag `v1.0.1`, merge back into `develop`, publish.
+
 ### Release `1.0.0`
 
 feather-io (an S3 server) runs on the last rc and dumpling (backups of PostgreSQL) on Winter, so

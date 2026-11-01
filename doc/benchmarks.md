@@ -46,6 +46,18 @@ and writing the response.
 day's absolute numbers were lower): `dart:io` 6363 req/s, shelf alone 5561 (87 %), Winter on shelf
 3984 (**63 %**). Moving to `dart:io` took Winter from 63 % to ~85 % of the ceiling.
 
+## Memory
+
+The case `example/routing/lib/hello_world.dart` compiled with `dart compile exe` (2026-10-31, the
+working set of the process on Windows):
+
+| Moment                                  | Memory    |
+|-----------------------------------------|----------:|
+| Started, listening, no request yet      | ~15 MiB   |
+| After 2000 requests (one after another) | ~19 MiB   |
+
+A real app adds its own dependencies and data on top; the framework itself stays in this range.
+
 ## The pipeline in memory
 
 No network: what Winter does for a request, measured in a loop.

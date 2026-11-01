@@ -51,7 +51,8 @@ consistent errors, on top of `dart:io` and without code generation.
 > **What we wanted:**
 >
 > - **Very light.** Dart compiles to a native executable: the `hello_world` example starts with
->   **~15 MiB** of memory and stays under 20 MiB after thousands of requests.
+>   **~15 MiB** of memory and stays under 20 MiB after thousands of requests
+>   ([benchmarks](doc/benchmarks.md#memory)).
 > - **Easy to learn, hard to outgrow.** The API of the frameworks you already know, for someone trying
 >   backend for the first time, with enough underneath (DI, HTTP standards, security) that you don't
 >   hit a wall when the project grows.
