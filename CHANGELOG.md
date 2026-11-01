@@ -1,3 +1,8 @@
+* 1.0.1:
+    * **DATE** :date: : 2026-10-31.
+    * Documentation only: the code is the same as `1.0.0`.
+    * **Docs** :books: : the README opens with the logo of Winter (`doc/brand/`, a light and a dark version) and a *Why Winter* section: the memory of the big frameworks against the learning curve of the light ones, no code generation, and a framework made for small and medium projects. `doc/benchmarks.md` has the memory of a native server (~15 MiB started, ~19 MiB after 2000 requests).
+
 * 1.0.0:
     * **DATE** :date: : 2026-10-31.
     * The first stable version, after seven release candidates, used in production by [feather-io](https://github.com/Root-101/feather-io) and [dumpling](https://github.com/Root-101/dumpling). From here on, a breaking change needs a new major version. What 1.0 has, module by module (the guides in `doc/`, the reasons in `DECISIONS.md`):
